@@ -289,8 +289,11 @@ def assert_release_please_versions_aligned() -> None:
     )
 
 
-def assemble(platform: str, output_dir: pathlib.Path) -> pathlib.Path:
+def assemble(platform: str, output_dir: pathlib.Path, core_wheel: pathlib.Path | None = None) -> pathlib.Path:
     """Assemble the addon ZIP for the given platform.
+
+    ``core_wheel`` bundles a locally built dcc-mcp-core wheel (Meshy builds it
+    from meshy-dcc-core) instead of resolving one from PyPI.
 
     Returns the path to the created ZIP file.
     """
@@ -312,10 +315,14 @@ def assemble(platform: str, output_dir: pathlib.Path) -> pathlib.Path:
         _verify_skills_payload(addon_dir)
 
         # 2) Download and extract dcc-mcp-core
-        print(f"Resolving {CORE_PACKAGE}...")
-        core_version = resolve_core_version()
-        wheels_dir = tmp_dir / "wheels"
-        wheel = download_core_wheel(core_version, platform, wheels_dir)
+        if core_wheel is not None:
+            wheel = core_wheel
+            print(f"Using local {CORE_PACKAGE} wheel {wheel.name}")
+        else:
+            print(f"Resolving {CORE_PACKAGE}...")
+            core_version = resolve_core_version()
+            wheels_dir = tmp_dir / "wheels"
+            wheel = download_core_wheel(core_version, platform, wheels_dir)
         wheels_out = addon_dir / "wheels"
         wheels_out.mkdir(parents=True, exist_ok=True)
         staged_wheel = wheels_out / wheel.name
@@ -418,10 +425,15 @@ def main() -> None:
         default="dist_addon",
         help="Output directory for the ZIP file (default: dist_addon/)",
     )
+    parser.add_argument(
+        "--core-wheel",
+        type=pathlib.Path,
+        help="Bundle this local dcc-mcp-core wheel instead of downloading one from PyPI",
+    )
     args = parser.parse_args()
 
     output_dir = pathlib.Path(args.output_dir)
-    zip_path = assemble(platform=args.platform, output_dir=output_dir)
+    zip_path = assemble(platform=args.platform, output_dir=output_dir, core_wheel=args.core_wheel)
     print(f"\nDone: {zip_path}")
 
 
