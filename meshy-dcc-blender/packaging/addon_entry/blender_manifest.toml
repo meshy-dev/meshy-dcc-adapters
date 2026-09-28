@@ -6,9 +6,9 @@ schema_version = "1.0.0"
 
 id = "dcc_mcp_blender"
 version = "0.2.11"
-name = "DCC MCP Blender"
-tagline = "MCP HTTP server inside Blender for AI-driven workflows"
-maintainer = "Long Hao <hal.long@outlook.com>"
+name = "Meshy DCC"
+tagline = "Lets AI agents work in Blender through Meshy DCC Core"
+maintainer = "Meshy <support@meshy.ai>"
 type = "add-on"
 
 tags = ["System", "Pipeline", "Animation"]
@@ -21,11 +21,11 @@ blender_version_min = "4.5.0"
 # and retains the bundled MIT notice.
 license = ["SPDX:GPL-3.0-or-later"]
 
-location = "Top Bar > DCC MCP"
-description = "Embeds an MCP HTTP server (2025-03-26) for Claude, Cursor, and other MCP clients."
+location = "Top Bar > Meshy DCC"
+description = "Runs the Meshy DCC Core adapter so AI agents can inspect and edit this Blender session."
 category = "System"
 
-website = "https://github.com/dcc-mcp/dcc-mcp-blender"
+website = "https://www.meshy.ai"
 
 [permissions]
 network = "Host MCP HTTP/SSE and optional gateway election on localhost"

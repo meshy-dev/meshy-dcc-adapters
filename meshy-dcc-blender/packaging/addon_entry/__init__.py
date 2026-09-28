@@ -1,4 +1,4 @@
-"""Blender add-on / extension entry for DCC MCP Blender.
+"""Blender add-on / extension entry for Meshy DCC.
 
 Shipped at the root of the add-on folder next to ``blender_manifest.toml``.
 Keeps ``bl_info`` for legacy ``scripts/addons`` installs and supplies the
@@ -19,22 +19,21 @@ import bpy
 
 logger = logging.getLogger(__name__)
 
-_ECHO_PREFIX = "[DCC MCP Blender]"
+_ECHO_PREFIX = "[Meshy DCC]"
 
 bl_info = {
-    "name": "DCC MCP Blender",
-    "author": "Long Hao",
+    "name": "Meshy DCC",
+    "author": "Meshy",
     "version": (
         0,  # x-release-please-major
         2,  # x-release-please-minor
         11,  # x-release-please-patch
     ),
     "blender": (4, 5, 0),
-    "location": "Top Bar > DCC MCP",
+    "location": "Top Bar > Meshy DCC",
     "description": "Embeds an MCP HTTP server inside Blender for AI-driven 3D workflows",
     "category": "System",
-    "doc_url": "https://github.com/dcc-mcp/dcc-mcp-blender",
-    "tracker_url": "https://github.com/dcc-mcp/dcc-mcp-blender/issues",
+    "doc_url": "https://www.meshy.ai",
 }
 
 _DEFAULT_GATEWAY_PORT = 9765
@@ -523,7 +522,7 @@ class DCCMCP_OT_show_urls(bpy.types.Operator):
             for line in lines:
                 col.label(text=line)
 
-        context.window_manager.popup_menu(draw, title="DCC MCP Blender")
+        context.window_manager.popup_menu(draw, title="Meshy DCC")
         return {"FINISHED"}
 
 
@@ -603,7 +602,7 @@ class DCCMCP_OT_copy_instance_id(bpy.types.Operator):
 class DCCMCP_OT_server_info(bpy.types.Operator):
     bl_idname = "dcc_mcp.show_server_info"
     bl_label = "Server Info"
-    bl_description = "Show DCC MCP server status and connection details"
+    bl_description = "Show Meshy DCC server status and connection details"
     bl_options = {"REGISTER"}
 
     def execute(self, context):
@@ -665,14 +664,14 @@ class DCCMCP_OT_server_info(bpy.types.Operator):
             for line in lines:
                 col.label(text=line)
 
-        context.window_manager.popup_menu(draw, title="DCC MCP Server Info")
+        context.window_manager.popup_menu(draw, title="Meshy DCC Server Info")
         return {"FINISHED"}
 
 
 class DCCMCP_OT_about(bpy.types.Operator):
     bl_idname = "dcc_mcp.about"
-    bl_label = "About DCC MCP"
-    bl_description = "Show DCC MCP version and project information"
+    bl_label = "About Meshy DCC"
+    bl_description = "Show Meshy DCC version and project information"
     bl_options = {"REGISTER"}
 
     def execute(self, context):
@@ -688,7 +687,7 @@ class DCCMCP_OT_about(bpy.types.Operator):
             core_version = "unknown"
 
         lines: List[str] = [
-            f"Add-on:   dcc-mcp-blender {addon_version}",
+            f"Add-on:   meshy-dcc-blender {addon_version}",
             f"Core:     dcc-mcp-core {core_version}",
             "Protocol: MCP Streamable HTTP (2025-03-26)",
             "",
@@ -704,12 +703,12 @@ class DCCMCP_OT_about(bpy.types.Operator):
                 else:
                     col.separator()
 
-        context.window_manager.popup_menu(draw, title="About DCC MCP")
+        context.window_manager.popup_menu(draw, title="About Meshy DCC")
         return {"FINISHED"}
 
 
 class DCCMCP_MT_main_menu(bpy.types.Menu):
-    bl_label = "DCC MCP"
+    bl_label = "Meshy DCC"
     bl_idname = "DCCMCP_MT_main_menu"
 
     def draw(self, context):
@@ -731,7 +730,7 @@ class DCCMCP_MT_main_menu(bpy.types.Menu):
 
 
 def _draw_topbar_menu(self, context):
-    self.layout.menu(DCCMCP_MT_main_menu.bl_idname, text="DCC MCP")
+    self.layout.menu(DCCMCP_MT_main_menu.bl_idname, text="Meshy DCC")
 
 
 _CLASSES = (
@@ -776,10 +775,10 @@ def register() -> None:
         bpy.types.TOPBAR_MT_blender.append(_draw_topbar_menu)
         _draw_handlers.append(("TOPBAR_MT_blender", _draw_topbar_menu))
     else:
-        logger.warning("TOPBAR_MT_blender missing — DCC MCP top-bar menu not attached")
+        logger.warning("TOPBAR_MT_blender missing — Meshy DCC top-bar menu not attached")
 
     if os.environ.get(_BACKGROUND_RENDER_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
-        print("[DCC MCP Blender] Background render worker detected; server autostart skipped")
+        print("[Meshy DCC] Background render worker detected; server autostart skipped")
         return
 
     from dcc_mcp_core import capture_bootstrap_errors
@@ -794,11 +793,11 @@ def register() -> None:
             srv = _start_server_with_host()
             url = getattr(srv, "mcp_url", None) if srv is not None else None
             if url:
-                print("[DCC MCP Blender] Server started —", url)
+                print("[Meshy DCC] Server started —", url)
             else:
-                print("[DCC MCP Blender] Server start requested (URL not yet available)")
+                print("[Meshy DCC] Server start requested (URL not yet available)")
     except Exception as exc:  # noqa: BLE001
-        print(f"[DCC MCP Blender] Failed to start server: {exc}")
+        print(f"[Meshy DCC] Failed to start server: {exc}")
         raise
 
 
@@ -821,9 +820,9 @@ def unregister() -> None:
 
     try:
         _stop_server_with_host()
-        print("[DCC MCP Blender] Server stopped")
+        print("[Meshy DCC] Server stopped")
     except Exception as exc:  # noqa: BLE001
-        print(f"[DCC MCP Blender] Failed to stop server: {exc}")
+        print(f"[Meshy DCC] Failed to stop server: {exc}")
     finally:
         # Keep the public import bridge installed: Blender disables add-ons on
         # ``wm.read_factory_settings``, and batch scripts import
