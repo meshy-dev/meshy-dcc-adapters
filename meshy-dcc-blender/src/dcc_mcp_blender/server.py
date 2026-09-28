@@ -341,7 +341,10 @@ class BlenderMcpServer(DccServerBase):
 
         Returns *self* for chaining.
         """
+        from ._safe_stop import attach_safe_stop  # noqa: PLC0415
+
         super().start(install_atexit_hook=install_atexit_hook)
+        attach_safe_stop(self)
         if self._blender_dispatcher is not None:
             start_fn = getattr(self._blender_dispatcher, "start", None)
             if callable(start_fn):
