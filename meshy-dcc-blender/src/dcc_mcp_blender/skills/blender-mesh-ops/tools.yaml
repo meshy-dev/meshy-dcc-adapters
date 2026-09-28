@@ -1,0 +1,836 @@
+tools:
+  - name: get_poly_count
+    description: "Return mesh vertex, edge, face, loop, material, UV-map, and derived triangle counts."
+    source_file: scripts/get_poly_count.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+    output_schema: &mesh_result_schema
+      type: object
+      additionalProperties: true
+      required: [success]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        context:
+          type: object
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: inspect_mesh_components
+    description: >
+      Inspect bounded vertex, edge, or face coordinates, normals and adjacency
+      from the original Object-mode mesh. Local-space centroid/normal filters
+      and revision-pinned pagination help choose component indices before edits.
+    source_file: scripts/inspect_mesh_components.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 5
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+        component:
+          type: string
+          enum: [vertex, edge, face]
+          default: vertex
+        offset:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          default: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 256
+          default: 64
+        expected_revision:
+          type: string
+          pattern: '^mesh-query-v1:[0-9a-f]{64}$'
+          description: Revision returned by the preceding page; rejects stale indices.
+        bounds_min:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: {type: number}
+          description: Inclusive local-space centroid minimum; requires bounds_max.
+        bounds_max:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: {type: number}
+          description: Inclusive local-space centroid maximum; requires bounds_min.
+        normal_direction:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: {type: number}
+          description: Nonzero local-space direction for vertex/face filtering; unsupported for edges.
+        normal_min_dot:
+          type: number
+          minimum: -1
+          maximum: 1
+          default: 0.9
+    output_schema: *mesh_result_schema
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: cleanup_mesh
+    description: "Run common Blender mesh cleanup operators: merge doubles, fix normals, and delete loose geometry."
+    source_file: scripts/cleanup_mesh.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+        remove_doubles:
+          type: boolean
+          default: true
+          description: Merge coincident or near-coincident vertices.
+        fix_normals:
+          type: boolean
+          default: true
+          description: Recalculate normals consistently outside.
+        delete_loose:
+          type: boolean
+          default: true
+          description: Delete loose geometry when Blender's delete_loose operator is available.
+        merge_threshold:
+          type: number
+          minimum: 0
+          default: 0.0001
+          description: Merge distance used by remove-doubles cleanup.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+  - name: triangulate_mesh
+    description: "Convert selected or all mesh faces to triangles."
+    source_file: scripts/triangulate_mesh.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: separate_mesh
+    description: "Separate a mesh into new objects by selected faces, material, or loose parts."
+    source_file: scripts/separate_mesh.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+        mode:
+          type: string
+          enum: [selected, material, loose]
+          default: loose
+          description: Blender mesh separation mode.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+  - name: combine_meshes
+    description: "Join two or more mesh objects into a single mesh object."
+    source_file: scripts/combine_meshes.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_names]
+      properties:
+        object_names:
+          type: array
+          minItems: 2
+          items:
+            type: string
+            minLength: 1
+          description: Mesh object names to join.
+        new_name:
+          type: string
+          minLength: 1
+          description: Optional name for the joined object and mesh data.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+  - name: merge_vertices
+    description: "Merge vertices within a distance threshold on a mesh object."
+    source_file: scripts/merge_vertices.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+        threshold:
+          type: number
+          minimum: 0
+          default: 0.0001
+          description: Merge distance.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: extract_faces
+    description: "Extract face indices from a mesh into a newly separated object."
+    source_file: scripts/extract_faces.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, face_indices]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+        face_indices:
+          type: array
+          minItems: 1
+          items:
+            type: integer
+            minimum: 0
+          description: Polygon indices to extract.
+        new_name:
+          type: string
+          minLength: 1
+          description: Optional name for the extracted object and mesh data.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+  - name: mirror_mesh
+    description: "Add a Mirror modifier on an axis and optionally apply it immediately."
+    source_file: scripts/mirror_mesh.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+        axis:
+          type: string
+          enum: [x, y, z]
+          default: x
+          description: Mirror axis.
+        use_modifier:
+          type: boolean
+          default: true
+          description: Keep the Mirror modifier live instead of applying it.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: &modeling_destructive_annotations
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+  - name: select_by_material
+    description: "Select mesh faces assigned to a named material slot."
+    source_file: scripts/select_by_material.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, material_name]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+          description: Mesh object name.
+        material_name:
+          type: string
+          minLength: 1
+          description: Material name to match.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: extrude_faces
+    description: "Extrude bounded face indices and verify topology. Supply the query revision to reject stale indices before editing."
+    source_file: scripts/extrude_faces.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    group: modeling
+    timeout_hint_secs: 30
+    next-tools: &component_edit_recovery
+      on-success: [inspect_mesh_components]
+      on-failure: [inspect_mesh_components]
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, face_indices]
+      properties:
+        object_name:
+          type: string
+          minLength: 1
+        expected_revision: &component_edit_revision
+          type: string
+          pattern: '^mesh-query-v1:[0-9a-f]{64}$'
+          description: Exact inspect_mesh_components revision; checks the original Object-mode mesh before any edit. Omit for legacy unguarded behavior.
+        face_indices:
+          type: array
+          minItems: 1
+          maxItems: 4096
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 0
+        distance:
+          type: number
+          minimum: -1000000
+          maximum: 1000000
+          default: 0.0
+        direction:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            type: number
+            minimum: -1000000
+            maximum: 1000000
+          default: [0.0, 0.0, 1.0]
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: create_primitive
+    description: "Create a named mesh primitive with bounded transform parameters and exact object readback."
+    source_file: scripts/create_primitive.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [primitive_type, name]
+      properties:
+        primitive_type: {type: string, enum: [cube, sphere, ico_sphere, cylinder, cone, torus, plane, circle]}
+        name: {type: string, minLength: 1, maxLength: 255}
+        location: {type: array, minItems: 3, maxItems: 3, items: {type: number, minimum: -1000000, maximum: 1000000}, default: [0, 0, 0]}
+        rotation: {type: array, minItems: 3, maxItems: 3, items: {type: number, minimum: -360000, maximum: 360000}, default: [0, 0, 0]}
+        scale: {type: array, minItems: 3, maxItems: 3, items: {type: number, exclusiveMinimum: 0, maximum: 1000000}, default: [1, 1, 1]}
+        size: {type: number, exclusiveMinimum: 0, maximum: 1000000, default: 1.0}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations: &modeling_annotations
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+
+  - name: loft_sections
+    description: "Loft two to sixty-four ordered mesh edge-loop sections and verify output topology."
+    source_file: scripts/loft_sections.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 30
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [sections]
+      properties:
+        sections: {type: array, minItems: 2, maxItems: 64, uniqueItems: true, items: {type: string, minLength: 1}}
+        output_name: {type: string, minLength: 1, maxLength: 255}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations: *modeling_annotations
+
+  - name: lathe_profile
+    description: "Revolve a mesh profile with a native Screw modifier and verify applied topology."
+    source_file: scripts/lathe_profile.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 30
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [profile]
+      properties:
+        profile: {type: string, minLength: 1}
+        axis: {type: string, enum: [x, y, z], default: y}
+        origin: {type: array, minItems: 3, maxItems: 3, items: {type: number, minimum: -1000000, maximum: 1000000}, default: [0, 0, 0]}
+        segments: {type: integer, minimum: 3, maximum: 256, default: 32}
+        output_name: {type: string, minLength: 1, maxLength: 255}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations: *modeling_annotations
+
+  - name: bevel_edges
+    description: "Bevel bounded edge indices and verify topology. Supply the query revision to reject stale indices before editing."
+    source_file: scripts/bevel_edges.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    group: modeling
+    timeout_hint_secs: 30
+    next-tools: *component_edit_recovery
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, edge_indices, width]
+      properties:
+        object_name: {type: string, minLength: 1}
+        edge_indices: {type: array, minItems: 1, maxItems: 4096, uniqueItems: true, items: {type: integer, minimum: 0}}
+        width: {type: number, exclusiveMinimum: 0, maximum: 1000000}
+        segments: {type: integer, minimum: 1, maximum: 64, default: 1}
+        expected_revision: *component_edit_revision
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: inset
+    description: "Inset bounded face indices and verify topology. Supply the query revision to reject stale indices before editing."
+    source_file: scripts/inset.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    group: modeling
+    timeout_hint_secs: 30
+    next-tools: *component_edit_recovery
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, face_indices, thickness]
+      properties:
+        object_name: {type: string, minLength: 1}
+        face_indices: {type: array, minItems: 1, maxItems: 4096, uniqueItems: true, items: {type: integer, minimum: 0}}
+        thickness: {type: number, minimum: 0, maximum: 1000000}
+        depth: {type: number, minimum: -1000000, maximum: 1000000, default: 0}
+        expected_revision: *component_edit_revision
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: boolean_op
+    description: "Apply a typed Boolean operation between two meshes and verify modifier/application readback."
+    source_file: scripts/boolean_op.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 30
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [input_a, input_b, operation]
+      properties:
+        input_a: {type: string, minLength: 1}
+        input_b: {type: string, minLength: 1}
+        operation: {type: string, enum: [union, intersect, subtract]}
+        apply: {type: boolean, default: true}
+        output_name: {type: string, minLength: 1, maxLength: 255}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: add_edge_loop
+    description: "Subdivide bounded edge indices and verify topology. Supply the query revision to reject stale indices before editing."
+    source_file: scripts/add_edge_loop.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    group: modeling
+    timeout_hint_secs: 30
+    next-tools: *component_edit_recovery
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, edge_indices]
+      properties:
+        object_name: {type: string, minLength: 1}
+        edge_indices: {type: array, minItems: 1, maxItems: 4096, uniqueItems: true, items: {type: integer, minimum: 0}}
+        cuts: {type: integer, minimum: 1, maximum: 64, default: 1}
+        expected_revision: *component_edit_revision
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: array_instances
+    description: "Add a bounded Array modifier using an explicit constant offset and return modifier readback."
+    source_file: scripts/array_instances.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, count, offset]
+      properties:
+        object_name: {type: string, minLength: 1}
+        count: {type: integer, minimum: 2, maximum: 128}
+        offset: {type: array, minItems: 3, maxItems: 3, items: {type: number, minimum: -1000000, maximum: 1000000}}
+        apply: {type: boolean, default: false}
+        modifier_name: {type: string, minLength: 1, maxLength: 255}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: mirror
+    description: "Add a typed Mirror modifier on one axis and return exact modifier readback."
+    source_file: scripts/mirror.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name: {type: string, minLength: 1}
+        axis: {type: string, enum: [x, y, z], default: x}
+        merge: {type: boolean, default: true}
+        bisect: {type: boolean, default: false}
+        apply: {type: boolean, default: false}
+        modifier_name: {type: string, minLength: 1, maxLength: 255}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: set_pivot
+    description: "Move an object's origin to an explicit world-space position and verify exact readback."
+    source_file: scripts/set_pivot.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, position]
+      properties:
+        object_name: {type: string, minLength: 1}
+        position: {type: array, minItems: 3, maxItems: 3, items: {type: number, minimum: -1000000, maximum: 1000000}}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations: *modeling_annotations
+
+  - name: group_parent
+    description: "Link semantic object names into a collection and optionally parent them with readback."
+    source_file: scripts/group_parent.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_names, group_name]
+      properties:
+        object_names: {type: array, minItems: 1, maxItems: 128, uniqueItems: true, items: {type: string, minLength: 1}}
+        group_name: {type: string, minLength: 1, maxLength: 255}
+        parent_name: {type: string, minLength: 1}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations: *modeling_annotations
+
+  - name: freeze_transforms
+    description: "Apply selected object transforms and verify neutral transform values."
+    source_file: scripts/modeling_freeze_transforms.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name: {type: string, minLength: 1}
+        location: {type: boolean, default: false}
+        rotation: {type: boolean, default: true}
+        scale: {type: boolean, default: true}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: delete_history
+    description: "Apply the object's bounded modifier stack and verify no modifiers remain."
+    source_file: scripts/delete_history.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 30
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name: {type: string, minLength: 1}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: auto_uv
+    description: "Generate a smart-project UV map and return UV-map readback."
+    source_file: scripts/auto_uv.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name: {type: string, minLength: 1}
+        margin: {type: number, minimum: 0, maximum: 0.49, default: 0.001}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: uv_project
+    description: "Project UVs with a typed projection mode and return UV-map readback."
+    source_file: scripts/uv_project.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name]
+      properties:
+        object_name: {type: string, minLength: 1}
+        projection: {type: string, enum: [planar, cylindrical, spherical, cube], default: planar}
+        axis:
+          type: string
+          enum: [x, y, z]
+          default: z
+          description: "Planar projection axis. Other projection modes require the z sentinel and do not report an applied axis."
+        margin: {type: number, minimum: 0, maximum: 0.49, default: 0}
+      allOf:
+        - if:
+            properties:
+              projection: {enum: [cylindrical, spherical, cube]}
+            required: [projection]
+          then:
+            properties:
+              axis: {const: z}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations: *modeling_destructive_annotations
+
+  - name: assign_material
+    description: "Assign a named material slot and verify the slot connection before success."
+    source_file: scripts/modeling_assign_material.py
+    execution: sync
+    affinity: main
+    group: modeling
+    timeout_hint_secs: 0
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_name, material_name]
+      properties:
+        object_name: {type: string, minLength: 1}
+        material_name: {type: string, minLength: 1}
+        slot_index: {type: integer, minimum: 0, maximum: 63, default: 0}
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: create_pointed_arch
+    description: "Create a closed solid pointed-arch door/window frame with real jamb, crown and reveal depth. Local X is width, Z is height, and depth extends from Y=0 toward +Y; origin is the opening bottom center. Does not cut a wall or create a door."
+    source_file: scripts/create_pointed_arch.py
+    group: modeling
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    timeout_hint_secs: 10
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [name, width, spring_height, rise, frame_width, depth]
+      properties:
+        name: {type: string, minLength: 1, description: Unique object name. Existing names are rejected.}
+        width: {type: number, exclusiveMinimum: 0, description: Clear opening width in scene units.}
+        spring_height: {type: number, exclusiveMinimum: 0, description: Height of the straight jambs.}
+        rise: {type: number, exclusiveMinimum: 0, description: Opening crown height above the spring line.}
+        frame_width: {type: number, exclusiveMinimum: 0, description: Horizontal jamb and vertical crown thickness; curved thickness varies.}
+        depth: {type: number, exclusiveMinimum: 0, description: Solid reveal depth along local positive Y.}
+        segments: {type: integer, minimum: 2, maximum: 128, default: 16, description: Segments per half arch.}
+        location:
+          type: array
+          items: {type: number}
+          minItems: 3
+          maxItems: 3
+          default: [0, 0, 0]
+          description: World position of opening bottom center.
+    output_schema: *mesh_result_schema
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+    call_examples:
+      - arguments: {name: PortalFrame, width: 2.0, spring_height: 3.0, rise: 1.5, frame_width: 0.35, depth: 0.8}
+        note: Solid stone portal with an open threshold and closed jamb feet.

@@ -1,0 +1,111 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+.eggs/
+.installed.cfg
+lib/
+lib64/
+MANIFEST
+
+# Never commit mistaken wheel extracts / nested copies under the adapter package
+src/dcc_mcp_blender/dcc_mcp_core/
+src/dcc_mcp_blender/dcc_mcp_blender/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing
+.tox/
+.nox/
+.benchmarks/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+mcporter_geometry.blend
+mcporter_geometry.fbx
+mcporter_geometry.obj
+mcp_server2_url
+mcp_test_done
+mcp_test2_done
+
+# CI / local workflow artifacts
+blender-cache/
+run_e2e.py
+start_mcp_server.py
+start_mcp_server2.py
+get-pip.py
+blender-e2e-site/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Distribution / packaging
+.Python
+develop-eggs/
+downloads/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# Ruff
+.ruff_cache/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docs
+docs/_build/
+site/
+
+# Release
+CHANGELOG.md
+*.zip
+dist_*
+
+# CodeGraph index
+.codegraph/
+
+# Multica local runtime context. The daemon may write these into a bound
+# local_directory, but they must not be committed.
+.agent_context/
+.multica/

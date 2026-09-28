@@ -1,0 +1,104 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dcc-mcp-blender"
+version = "0.2.11"
+description = "Blender addon for the DCC Model Context Protocol (MCP) ecosystem — embeds a Streamable HTTP MCP server directly inside Blender"
+authors = [{ name = "Long Hao", email = "hal.long@outlook.com" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.7"
+keywords = ["blender", "mcp", "dcc", "ai", "llm", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+
+dependencies = [
+    # v0.20.0: native UI Control is provided by standalone dcc-cua 0.4.0+.
+    #
+    # The upper bound is pinned to the 0.20.x series: ``<1.0.0`` admitted any
+    # future minor, so a Core minor release could silently break this adapter's
+    # CI (0.20.34 changed the Install SOP schema revision). Failing at
+    # dependency resolution is louder and cheaper than failing the whole test
+    # matrix. Runtime installs into a user's Blender stay permissive via
+    # MIN_CORE_VERSION in install.py.
+    "dcc-mcp-core>=0.20.0,<0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jsonschema>=4.23",
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
+    "ruff>=0.8.0",
+    "pyyaml>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/dcc-mcp/dcc-mcp-blender"
+Repository = "https://github.com/dcc-mcp/dcc-mcp-blender"
+Issues = "https://github.com/dcc-mcp/dcc-mcp-blender/issues"
+Changelog = "https://github.com/dcc-mcp/dcc-mcp-blender/releases"
+
+[project.scripts]
+dcc-mcp-blender = "dcc_mcp_blender.install:main"
+
+[project.entry-points."dcc_mcp.adapters"]
+blender = "dcc_mcp_blender:BlenderMcpServer"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dcc_mcp_blender"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# "src" must be on sys.path: this is a src-layout repo, so tests have to import
+# the working copy under src/ rather than a stale non-editable dcc_mcp_blender
+# left in site-packages. Without it a bare `pytest tests/` run silently
+# exercises an already-released package and reports false failures that CI
+# (which always runs `pip install -e .`) never sees.
+pythonpath = ["src", "tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short -m 'not e2e and not packaging'"
+markers = [
+    "e2e: end-to-end tests that require a real Blender standalone interpreter",
+    "packaging: tests for packaging/assemble_zip.py that require network access to PyPI",
+]
+
+[tool.coverage.run]
+source = ["dcc_mcp_blender"]
+branch = true
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py37"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dcc_mcp_blender"]

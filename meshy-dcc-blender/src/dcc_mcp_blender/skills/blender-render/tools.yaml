@@ -1,0 +1,448 @@
+tools:
+  - name: render_scene
+    description: "Render the current scene and save to a file"
+    source_file: scripts/render_scene.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        output_path:
+          type: string
+          minLength: 1
+          description: Optional destination image path; defaults to the scene output path.
+        write_still:
+          type: boolean
+          default: true
+          description: Write the rendered image to disk.
+    read_only: false
+    destructive: false
+    idempotent: false
+  - name: set_render_settings
+    description: "Configure render settings (engine, resolution, samples, output path)"
+    source_file: scripts/set_render_settings.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        engine:
+          type: string
+          enum: [CYCLES, BLENDER_EEVEE, BLENDER_EEVEE_NEXT, BLENDER_WORKBENCH]
+          description: Blender render engine identifier.
+        resolution_x:
+          type: integer
+          minimum: 1
+          description: Horizontal output resolution in pixels.
+        resolution_y:
+          type: integer
+          minimum: 1
+          description: Vertical output resolution in pixels.
+        resolution_percentage:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Output resolution percentage.
+        fps:
+          type: integer
+          minimum: 1
+          description: Output frame rate.
+        samples:
+          type: integer
+          minimum: 1
+          description: Render sample count for Cycles or EEVEE.
+        output_path:
+          type: string
+          minLength: 1
+          description: Output file path or directory used by Blender.
+        file_format:
+          type: string
+          minLength: 1
+          description: Blender image format identifier such as PNG, JPEG, or OPEN_EXR.
+    read_only: false
+    destructive: false
+    idempotent: true
+  - name: get_render_info
+    description: "Return current render settings"
+    source_file: scripts/get_render_info.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties: {}
+    read_only: true
+    destructive: false
+    idempotent: true
+  - name: capture_viewport
+    description: "Capture the active viewport to an image file"
+    source_file: scripts/capture_viewport.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [filepath]
+      properties:
+        filepath:
+          type: string
+          minLength: 1
+          description: Destination image path.
+        resolution_x:
+          type: integer
+          minimum: 1
+          description: Optional temporary viewport capture width.
+        resolution_y:
+          type: integer
+          minimum: 1
+          description: Optional temporary viewport capture height.
+    read_only: false
+    destructive: false
+    idempotent: false
+  - name: start_render_job
+    description: "Save the current .blend and start an isolated background animation render, reusing the scene's render.image_settings.file_format unless output_format is given and the scene's saved Cycles device unless device is given; optionally render only missing frames."
+    source_file: scripts/start_render_job.py
+    execution: sync
+    affinity: main
+    read_only: false
+    destructive: false
+    idempotent: false
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [output_pattern, start_frame, end_frame]
+      properties:
+        output_pattern:
+          type: string
+          minLength: 1
+          description: "Absolute output pattern containing # placeholders, for example C:/renders/beauty_####. Blender appends the selected format's extension."
+        output_format:
+          type: string
+          enum: [OPEN_EXR_MULTILAYER, OPEN_EXR, PNG]
+          description: "Background render output format. Omit to reuse the scene's current render.image_settings.file_format, which is what set_render_settings writes. PNG produces display-ready frames; multilayer EXR preserves render passes. The resolved format is returned as output_format."
+        start_frame:
+          type: integer
+          minimum: 0
+        end_frame:
+          type: integer
+          minimum: 0
+        step:
+          type: integer
+          minimum: 1
+          default: 1
+        resume_missing:
+          type: boolean
+          default: true
+          description: "Skip existing files with a valid signature for the selected output format and render only missing frames."
+        device:
+          type: [string, "null"]
+          enum: [OPTIX, CUDA, HIP, ONEAPI, METAL, CPU, null]
+          default: null
+          description: "Cycles device override for the worker. Omit (default null) to render with the Cycles device saved in the .blend file, which is CPU for a new scene; passing a value overrides the artist's scene setting. OPTIX needs an NVIDIA GPU and is Windows/Linux only, so it fails on macOS and on any host without an NVIDIA GPU."
+        save_before_render:
+          type: boolean
+          default: true
+        factory_startup:
+          type: boolean
+          default: false
+          description: "Disable user preferences and add-ons in the worker. Enable only after proving the scene has no external add-on dependency."
+    next-tools:
+      on-success: [blender_render__get_render_job]
+      on-failure: [dcc_diagnostics__process_status]
+  - name: get_render_job
+    description: "Return bounded frame progress, process status, and log paths for an owned background render job."
+    source_file: scripts/get_render_job.py
+    execution: sync
+    affinity: any
+    read_only: true
+    destructive: false
+    idempotent: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          minLength: 1
+        job_directory:
+          type: string
+          minLength: 1
+          description: Absolute multiview job directory for receipt recovery after restart; nonterminal liveness is unknown.
+  - name: cancel_render_job
+    description: "Cancel an owned animation worker, or request multiview cancellation between images; repeated cancellation is safe."
+    source_file: scripts/cancel_render_job.py
+    execution: sync
+    affinity: any
+    read_only: false
+    destructive: true
+    idempotent: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          minLength: 1
+        job_directory:
+          type: string
+          minLength: 1
+          description: Absolute multiview job directory for cooperative cancellation after restart; no PID is trusted from disk.
+  - name: start_multiview_render_job
+    description: "Render up to 8 cameras with beauty and/or real source-mesh wire edges in an isolated scene copy. PNG outputs have decoded dimensions and hashes. Beauty bypasses compositor/sequencer; wire ignores modifiers and non-mesh geometry."
+    source_file: scripts/start_multiview_render_job.py
+    execution: sync
+    job_strategy: isolated
+    affinity: main
+    enforce_thread_affinity: true
+    timeout_hint_secs: 120
+    read_only: false
+    destructive: false
+    idempotent: false
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [output_directory, camera_names]
+      properties:
+        output_directory: {type: string, minLength: 1, description: Absolute parent directory; a unique owned job subdirectory is created.}
+        camera_names:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: {type: string, minLength: 1}
+          description: Unique cameras in the current scene; renders its current frame.
+        passes:
+          type: array
+          minItems: 1
+          maxItems: 2
+          items: {type: string, enum: [beauty, wire]}
+          default: [beauty, wire]
+        resolution_x: {type: integer, minimum: 16, maximum: 4096, default: 1200}
+        resolution_y: {type: integer, minimum: 16, maximum: 4096, default: 1200}
+        wire_radius: {type: number, exclusiveMinimum: 0, maximum: 1, default: 0.008, description: Source mesh edge tube radius in local object units.}
+        max_source_edges: {type: integer, minimum: 1, maximum: 500000, default: 100000, description: Explicit source edge budget checked before submission and again in the worker.}
+    output_schema:
+      type: object
+      required: [success]
+      properties:
+        success: {type: boolean}
+        context: {type: object}
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+    next-tools:
+      on-success: [blender_render__get_render_job, blender_render__cancel_render_job]
+
+  - name: get_view_layer_passes
+    description: "Report which AOV / render passes are enabled on a view layer."
+    source_file: scripts/get_view_layer_passes.py
+    execution: sync
+    affinity: main
+    input_schema: &view_layer_target
+      type: object
+      additionalProperties: false
+      properties:
+        scene_name:
+          type: string
+          minLength: 1
+        view_layer_name:
+          type: string
+          minLength: 1
+          description: Defaults to the active view layer.
+    output_schema: &render_result_schema
+      type: object
+      additionalProperties: true
+      required: [success]
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        context: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations: &read_only_annotations
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: set_view_layer_passes
+    description: "Turn AOV / render passes on or off for a view layer. Complements configure_view_layer, which can only enable passes."
+    source_file: scripts/set_view_layer_passes.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        enable:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Pass names to switch on.
+        disable:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Pass names to switch off.
+        scene_name:
+          type: string
+          minLength: 1
+        view_layer_name:
+          type: string
+          minLength: 1
+          description: Defaults to the active view layer.
+    output_schema: *render_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations: &mutating_idempotent_annotations
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+  - name: set_render_denoise
+    description: "Configure Cycles denoising (enable, denoiser, input passes, prefilter, GPU)."
+    source_file: scripts/set_render_denoise.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+        denoiser:
+          type: string
+          enum: [AUTO, OPENIMAGEDENOISE, OPTIX, NONE]
+        input_passes:
+          type: string
+          enum: [RGB, RGB_ALBEDO, RGB_ALBEDO_NORMAL]
+        prefilter:
+          type: string
+          minLength: 1
+        use_gpu:
+          type: boolean
+        scene_name:
+          type: string
+          minLength: 1
+    output_schema: *render_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations: *mutating_idempotent_annotations
+
+  - name: get_render_output
+    description: "Report render output configuration (path, format, color mode/depth, EXR codec, multi-layer mode)."
+    source_file: scripts/get_render_output.py
+    execution: sync
+    affinity: main
+    input_schema: &scene_target
+      type: object
+      additionalProperties: false
+      properties:
+        scene_name:
+          type: string
+          minLength: 1
+    output_schema: *render_result_schema
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations: *read_only_annotations
+
+  - name: set_render_output
+    description: "Configure render output path, format, color mode/depth, EXR codec, and multi-layer EXR mode."
+    source_file: scripts/set_render_output.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        filepath:
+          type: string
+          minLength: 1
+        file_format:
+          type: string
+          enum: [PNG, JPEG, OPEN_EXR, OPEN_EXR_MULTILAYER, TIFF, TARGA, TARGA_RAW, BMP, HDR, CINEON, DPX, WEBP]
+        color_mode:
+          type: string
+          enum: [RGB, RGBA, BW, RGBA_PREMUL]
+        color_depth:
+          type: string
+          enum: ["8", "10", "12", "16", "16F", "32F"]
+        exr_codec:
+          type: string
+          enum: [NONE, PXR24, ZIP, PIZ, RLE, ZIPS, B44, B44A, DWAA, DWAB]
+        multilayer:
+          type: boolean
+          description: True switches the container to OPEN_EXR_MULTILAYER and renders every layer into that one file. False drops back to OPEN_EXR when the container was multi-layer. Applied after file_format.
+        use_preview:
+          type: boolean
+        use_file_extension:
+          type: boolean
+        use_overwrite:
+          type: boolean
+        use_placeholder:
+          type: boolean
+        scene_name:
+          type: string
+          minLength: 1
+    output_schema: *render_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations: *mutating_idempotent_annotations
+
+  - name: set_render_region
+    description: "Enable and configure border (region) rendering with normalised 0..1 coordinates."
+    source_file: scripts/set_render_region.py
+    execution: sync
+    affinity: main
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        min_x: {type: number, minimum: 0, maximum: 1, default: 0}
+        min_y: {type: number, minimum: 0, maximum: 1, default: 0}
+        max_x: {type: number, minimum: 0, maximum: 1, default: 1}
+        max_y: {type: number, minimum: 0, maximum: 1, default: 1}
+        enabled:
+          type: boolean
+          default: true
+        scene_name:
+          type: string
+          minLength: 1
+    output_schema: *render_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations: *mutating_idempotent_annotations
+
+  - name: clear_render_region
+    description: "Disable border rendering and reset the region to the full frame."
+    source_file: scripts/clear_render_region.py
+    execution: sync
+    affinity: main
+    input_schema: *scene_target
+    output_schema: *render_result_schema
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations: *mutating_idempotent_annotations
+
+  - name: get_render_status
+    description: "Report animation frame range, frame count, and the render state that affects output (format, region, denoise, passes, camera)."
+    source_file: scripts/get_render_status.py
+    execution: sync
+    affinity: main
+    input_schema: *view_layer_target
+    output_schema: *render_result_schema
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations: *read_only_annotations
