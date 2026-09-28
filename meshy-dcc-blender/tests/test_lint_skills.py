@@ -26,7 +26,7 @@ def test_tool_metadata_requires_execution_affinity_and_safety_flags(tmp_path, mo
 name: blender-example
 description: "Example Blender skill"
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: blender
     version: "1.0.0"
     tags: [blender]
@@ -47,7 +47,7 @@ metadata:
         encoding="utf-8",
     )
     (scripts_dir / "example_tool.py").write_text(
-        """from dcc_mcp_core.skill import skill_entry
+        """from meshy_dcc_core.skill import skill_entry
 
 
 @skill_entry
@@ -75,7 +75,7 @@ def test_tool_metadata_rejects_top_level_bpy_import(tmp_path, monkeypatch):
 name: blender-example
 description: "Example Blender skill"
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: blender
     version: "1.0.0"
     tags: [blender]
@@ -103,7 +103,7 @@ metadata:
     (scripts_dir / "example_tool.py").write_text(
         """import bpy
 
-from dcc_mcp_core.skill import skill_entry
+from meshy_dcc_core.skill import skill_entry
 
 
 @skill_entry

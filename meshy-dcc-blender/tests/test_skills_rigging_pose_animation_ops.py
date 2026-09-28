@@ -10,7 +10,7 @@ import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
-SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_blender" / "skills"
+SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_blender" / "skills"
 RIGGING_DIR = SKILLS_ROOT / "blender-rigging"
 POSE_DIR = SKILLS_ROOT / "blender-pose-library"
 ANIMATION_DIR = SKILLS_ROOT / "blender-animation"

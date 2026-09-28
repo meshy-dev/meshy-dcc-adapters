@@ -14,7 +14,7 @@ if ([string]::IsNullOrEmpty($BlenderVersion)) {
 # Detect Blender addons directory
 $AppData = $env:APPDATA
 $AddonsDir = Join-Path $AppData "Blender Foundation\Blender\$BlenderVersion\scripts\addons"
-$Target = Join-Path $AddonsDir "dcc_mcp_blender"
+$Target = Join-Path $AddonsDir "meshy_dcc_blender"
 
 Write-Host "🧹 Removing Blender dev symlinks..." -ForegroundColor Cyan
 

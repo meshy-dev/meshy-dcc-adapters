@@ -1,24 +1,24 @@
-"""Assemble a Blender addon ZIP package for dcc-mcp-blender.
+"""Assemble a Blender addon ZIP package for meshy-dcc-blender.
 
 This script:
-1. Resolves the latest compatible dcc-mcp-core version from PyPI (>= MIN_CORE_VERSION).
+1. Resolves the latest compatible meshy-dcc-core version from PyPI (>= MIN_CORE_VERSION).
 2. Downloads the best platform wheel (prefer ``cp38-abi3-*`` — PyPI does not ship
    ``cp311-cp311-*`` builds; Blender 4.x Python still loads stable-ABI wheels).
-3. Copies the ``dcc-mcp-core`` **wheel** into ``wheels/`` and records it in
+3. Copies the ``meshy-dcc-core`` **wheel** into ``wheels/`` and records it in
    ``blender_manifest.toml`` under ``wheels = [...]`` so Blender installs it into
    the extension's isolated ``site-packages`` (no ``sys.path`` hacks, no loose
-   ``dcc_mcp_core/`` tree — required by Blender's extensions policy).
+   ``meshy_dcc_core/`` tree — required by Blender's extensions policy).
 4. Bundles the adapter modules, skills, and required distribution licenses at
    the add-on package root.
-5. Produces ``dcc_mcp_blender_addon_{platform}_v{version}.zip`` — install via
+5. Produces ``meshy_dcc_blender_addon_{platform}_v{version}.zip`` — install via
    **Edit → Preferences → Extensions → Install from Disk** (recommended) or
    Blender's extension package installer.
 
-Version strings in ``pyproject.toml``, ``src/dcc_mcp_blender/__version__.py``, and
+Version strings in ``pyproject.toml``, ``src/meshy_dcc_blender/__version__.py``, and
 ``packaging/addon_entry/blender_manifest.toml`` are maintained by **release-please**
 only; this script reads ``pyproject.toml`` for the ZIP filename, copies the manifest
 from ``addon_entry/``, then appends the ``wheels = [...]`` and ``platforms = [...]``
-entries for the downloaded ``dcc-mcp-core`` wheel basename.
+entries for the downloaded ``meshy-dcc-core`` wheel basename.
 
 Usage::
 
@@ -43,16 +43,16 @@ from urllib.error import URLError
 # ── configuration ─────────────────────────────────────────────────────────────
 
 PACKAGE_ROOT = pathlib.Path(__file__).parent.parent
-SRC_DIR = PACKAGE_ROOT / "src" / "dcc_mcp_blender"
+SRC_DIR = PACKAGE_ROOT / "src" / "meshy_dcc_blender"
 ADDON_ENTRY_DIR = PACKAGE_ROOT / "packaging" / "addon_entry"
 PYPROJECT = PACKAGE_ROOT / "pyproject.toml"
 
-# Must stay in sync with the ``dcc-mcp-core`` constraint in ``pyproject.toml``.
-MIN_CORE_VERSION = "0.20.0"
+# Must stay in sync with the ``meshy-dcc-core`` constraint in ``pyproject.toml``.
+MIN_CORE_VERSION = "0.2.0"
 # Exclusive upper bound: bundling a Core release the adapter's own dependency
 # spec rejects would ship an addon ZIP that cannot satisfy its runtime.
-MAX_CORE_VERSION = "0.21.0"
-CORE_PACKAGE = "dcc-mcp-core"
+MAX_CORE_VERSION = "0.3.0"
+CORE_PACKAGE = "meshy-dcc-core"
 ADDON_PLATFORMS = ("win64", "linux", "macos")
 
 # PyPI ships ``cp38-abi3-*`` wheels (stable ABI) for win/linux/macos — not cp311-tagged wheels.
@@ -63,7 +63,7 @@ GPL_3_0_URL = "https://raw.githubusercontent.com/spdx/license-list-data/60fbd824
 GPL_3_0_SHA256 = "fb981668c18a279e285fc4d83fba1e836cc84dd4daa73c9697d3cfd2d8aca6e0"
 
 # Never bundle mistaken local trees (e.g. accidental wheel extracts under src/).
-_SKIPPED_TOP_LEVEL_NAMES = frozenset({"dcc_mcp_blender", "dcc_mcp_core", "__pycache__", "__init__.py"})
+_SKIPPED_TOP_LEVEL_NAMES = frozenset({"meshy_dcc_blender", "meshy_dcc_core", "__pycache__", "__init__.py"})
 
 
 def _ignore_for_addon_copy(path: str, names: list[str]) -> set[str]:
@@ -98,9 +98,9 @@ def _verify_skills_payload(staged_pkg: pathlib.Path) -> None:
 def _copy_adapter_package_into_addon_root(addon_dir: pathlib.Path) -> None:
     """Copy adapter modules into the add-on package root.
 
-    The release add-on itself is the top-level ``dcc_mcp_blender`` package. If
-    the adapter package is copied below another ``dcc_mcp_blender/`` directory,
-    Blender imports the add-on entrypoint but ``dcc_mcp_blender.server`` cannot
+    The release add-on itself is the top-level ``meshy_dcc_blender`` package. If
+    the adapter package is copied below another ``meshy_dcc_blender/`` directory,
+    Blender imports the add-on entrypoint but ``meshy_dcc_blender.server`` cannot
     resolve from a clean extension install.
     """
     for child in SRC_DIR.iterdir():
@@ -134,7 +134,7 @@ def _fetch_json(url: str) -> dict:
 
 
 def resolve_core_version(min_version: str = MIN_CORE_VERSION) -> str:
-    """Return the latest dcc-mcp-core version >= min_version."""
+    """Return the latest meshy-dcc-core version >= min_version."""
     data = _fetch_json(PYPI_URL.format(package=CORE_PACKAGE))
     from packaging.version import Version
 
@@ -190,7 +190,7 @@ def pick_core_wheel_file(release_files: list[dict], platform: str) -> dict | Non
 
 
 def download_core_wheel(version: str, platform: str, dest_dir: pathlib.Path) -> pathlib.Path:
-    """Download exactly one dcc-mcp-core wheel for *platform*.
+    """Download exactly one meshy-dcc-core wheel for *platform*.
 
     Raises:
         RuntimeError: When no compatible wheel exists on PyPI for this platform/version.
@@ -276,7 +276,7 @@ def _read_assigned_quoted_string(path: pathlib.Path, key: str) -> str:
 def assert_release_please_versions_aligned() -> None:
     """Fail fast when version sources drift (all bumps go through release-please)."""
     py_v = get_package_version()
-    mod_v = _read_assigned_quoted_string(PACKAGE_ROOT / "src" / "dcc_mcp_blender" / "__version__.py", "__version__")
+    mod_v = _read_assigned_quoted_string(PACKAGE_ROOT / "src" / "meshy_dcc_blender" / "__version__.py", "__version__")
     man_v = _read_assigned_quoted_string(ADDON_ENTRY_DIR / "blender_manifest.toml", "version")
     if py_v == mod_v == man_v:
         return
@@ -292,29 +292,29 @@ def assert_release_please_versions_aligned() -> None:
 def assemble(platform: str, output_dir: pathlib.Path, core_wheel: pathlib.Path | None = None) -> pathlib.Path:
     """Assemble the addon ZIP for the given platform.
 
-    ``core_wheel`` bundles a locally built dcc-mcp-core wheel (Meshy builds it
+    ``core_wheel`` bundles a locally built meshy-dcc-core wheel (Meshy builds it
     from meshy-dcc-core) instead of resolving one from PyPI.
 
     Returns the path to the created ZIP file.
     """
     assert_release_please_versions_aligned()
     version = get_package_version()
-    zip_name = f"dcc_mcp_blender_addon_{platform}_v{version}.zip"
+    zip_name = f"meshy_dcc_blender_addon_{platform}_v{version}.zip"
     zip_path = output_dir / zip_name
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = pathlib.Path(tmp)
-        addon_dir = tmp_dir / "dcc_mcp_blender"
+        addon_dir = tmp_dir / "meshy_dcc_blender"
         addon_dir.mkdir()
 
-        # 1) Copy dcc_mcp_blender package source into the add-on package root.
-        print("Copying dcc_mcp_blender package...")
+        # 1) Copy meshy_dcc_blender package source into the add-on package root.
+        print("Copying meshy_dcc_blender package...")
         _copy_adapter_package_into_addon_root(addon_dir)
         _verify_skills_payload(addon_dir)
 
-        # 2) Download and extract dcc-mcp-core
+        # 2) Download and extract meshy-dcc-core
         if core_wheel is not None:
             wheel = core_wheel
             print(f"Using local {CORE_PACKAGE} wheel {wheel.name}")
@@ -413,7 +413,7 @@ def _stage_addon_entry(addon_dir: pathlib.Path, *, version: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Assemble Blender addon ZIP for dcc-mcp-blender")
+    parser = argparse.ArgumentParser(description="Assemble Blender addon ZIP for meshy-dcc-blender")
     parser.add_argument(
         "--platform",
         choices=list(ADDON_PLATFORMS),
@@ -428,7 +428,7 @@ def main() -> None:
     parser.add_argument(
         "--core-wheel",
         type=pathlib.Path,
-        help="Bundle this local dcc-mcp-core wheel instead of downloading one from PyPI",
+        help="Bundle this local meshy-dcc-core wheel instead of downloading one from PyPI",
     )
     args = parser.parse_args()
 

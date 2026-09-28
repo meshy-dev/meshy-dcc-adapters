@@ -1,7 +1,7 @@
-# Install dcc-mcp-blender
+# Install meshy-dcc-blender
 
 This runbook installs, verifies, upgrades, and removes the Blender adapter under
-[DCC-MCP Adapter Install SOP v1](https://dcc-mcp.github.io/dcc-mcp-core/guide/adapter-install-sop).
+[Meshy DCC Adapter Install SOP v1](https://www.meshy.ai/meshy-dcc/meshy-dcc-core/guide/adapter-install-sop).
 The standard lifecycle host-enables a package that is already installed in the
 selected Blender interpreter. It never controls Blender's UI.
 
@@ -10,7 +10,7 @@ selected Blender interpreter. It never controls Blender's UI.
 - **Blender:** 4.5 or newer. Both the Python/startup-hook path and the
   Blender Extensions ZIP require Blender 4.5 or newer.
 - **Python:** Blender's selected bundled interpreter, Python 3.7 or newer.
-- **dcc-mcp-core:** `>=0.20.0,<0.21.0` in that exact interpreter.
+- **meshy-dcc-core:** `>=0.20.0,<0.21.0` in that exact interpreter.
 - **Platforms:** Windows, macOS, and Linux.
 - **Permissions:** write access to the selected version's user `scripts/startup`
   directory and the user receipt directory.
@@ -19,21 +19,21 @@ Install the package into Blender's interpreter first. Do not substitute an
 unrelated `python` from `PATH`:
 
 ```bash
-<blender-python> -m pip install --upgrade "dcc-mcp-blender"
+<blender-python> -m pip install --upgrade "meshy-dcc-blender"
 ```
 
 If the bundled environment is read-only, the legacy setup helper supports a
 user-site install and prints the matching Blender launch command:
 
 ```bash
-<blender-python> -m pip install --user --upgrade "dcc-mcp-blender"
-python skills/dcc-mcp-blender-setup/scripts/setup_dcc_mcp_blender.py --source pypi --user
+<blender-python> -m pip install --user --upgrade "meshy-dcc-blender"
+python skills/meshy-dcc-blender-setup/scripts/setup_meshy_dcc_blender.py --source pypi --user
 blender --python-use-system-env
 ```
 
 ## Supported versions
 
-| Adapter | dcc-mcp-core | Blender | Python | Platforms |
+| Adapter | meshy-dcc-core | Blender | Python | Platforms |
 |---|---|---|---|---|
 | Current `0.2.x` | `>=0.20.0,<0.21.0` | `4.5+` startup hook and Extension ZIP | `3.7+` | Windows, macOS, Linux |
 
@@ -44,32 +44,32 @@ interpreters are reported as beyond the tested maximum, not rejected.
 ## Host support boundary
 
 Blender 5.x starts its bundled interpreter in isolated mode, so `PYTHONPATH` and
-user-site entries never reach `sys.path` and `import dcc_mcp_blender` fails with
+user-site entries never reach `sys.path` and `import meshy_dcc_blender` fails with
 `ModuleNotFoundError`. Run the preflight in the target interpreter to get the
 declared boundary, the detected mode, and the matching fix instead:
 
 ```bash
-blender --background --python <site-packages>/dcc_mcp_blender/_host_support.py -- --json
+blender --background --python <site-packages>/meshy_dcc_blender/_host_support.py -- --json
 ```
 
 Run it **inside the host** (`blender --python`), not with a bare interpreter: only
 the host interpreter reproduces the isolation flags that hide `PYTHONPATH`, so a
 bare `<blender-python>` run reports `isolated=0` and can print `supported` for a
 host that cannot import the adapter. Script arguments go after `--`; Blender's own
-arguments are ignored. The standalone run always checks both `dcc_mcp_blender` and
-`dcc_mcp_core`; `--require MODULE` adds to that set, it never replaces it.
+arguments are ignored. The standalone run always checks both `meshy_dcc_blender` and
+`meshy_dcc_core`; `--require MODULE` adds to that set, it never replaces it.
 
 It imports no adapter modules, exits `0` when the host is supported and `1` when
 it is not, and names the missing distributions plus the fix that matches the
 detected mode: `--python-use-system-env` for an isolated interpreter, or the
-Extension ZIP that bundles the `dcc-mcp-core` wheel. Hosts that reach the
+Extension ZIP that bundles the `meshy-dcc-core` wheel. Hosts that reach the
 adapter itself raise the same `HostSupportError` at import time.
 
 Preflight runs `<blender> --version`, rejects unsupported hosts, and binds the
 matching versioned user profile. `--dcc-path` and `--python` always select the
 exact host and interpreter recorded in the plan and receipt.
 The lifecycle never assumes its own CLI interpreter belongs to Blender:
-`--python` is required unless `DCC_MCP_INSTALL_PYTHON` explicitly selects the
+`--python` is required unless `MESHY_DCC_INSTALL_PYTHON` explicitly selects the
 target, and JSON reports which of those two sources was used.
 
 ## Agent quick path
@@ -78,15 +78,15 @@ Inspect the Core catalog plan first. Its Blender entry already resolves this
 repository's raw installation guide:
 
 ```bash
-dcc-mcp-cli install --dcc-type blender
-dcc-mcp-cli install --dcc-type blender --execute --json
+meshy-dcc-cli install --dcc-type blender
+meshy-dcc-cli install --dcc-type blender --execute --json
 ```
 
 Then inspect and execute the adapter-owned host-enablement plan:
 
 ```bash
-dcc-mcp-blender install --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --dry-run
-dcc-mcp-blender install --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --yes
+meshy-dcc-blender install --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --dry-run
+meshy-dcc-blender install --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --yes
 ```
 
 The default invocation and `--dry-run` are non-mutating. All lifecycle verbs
@@ -109,14 +109,14 @@ Stable exit codes are:
 ## Manual path
 
 1. Locate the exact Blender application and its matching bundled Python.
-2. Install `dcc-mcp-blender` and `dcc-mcp-core` into that interpreter.
-3. Run `dcc-mcp-blender install ... --json --dry-run` and review every path.
+2. Install `meshy-dcc-blender` and `meshy-dcc-core` into that interpreter.
+3. Run `meshy-dcc-blender install ... --json --dry-run` and review every path.
 4. Execute the same command with `--yes`.
 5. Launch Blender only when the returned `next_steps` asks for it.
-6. Run `dcc-mcp-blender verify ... --json`.
+6. Run `meshy-dcc-blender verify ... --json`.
 
 The lifecycle writes one adapter-owned
-`scripts/startup/dcc_mcp_blender_startup.py` and a versioned receipt. It builds
+`scripts/startup/meshy_dcc_blender_startup.py` and a versioned receipt. It builds
 the complete startup hook in staging, moves the previous receipted state to a
 backup, atomically commits the new file and receipt, and performs rollback if a
 commit fails. Unknown unreceipted startup files are preserved and fail closed.
@@ -124,7 +124,7 @@ Re-running the same desired version converges without duplicating hooks.
 
 The release Extension ZIP is an alternative distribution for Blender 4.5+.
 Because Blender physically owns its Extension enablement UI, install it with
-`Edit > Preferences > Extensions > Install from Disk`, then enable **DCC MCP
+`Edit > Preferences > Extensions > Install from Disk`, then enable **Meshy DCC
 Blender**. Do not combine the ZIP and startup-hook paths, and do not automate
 that UI through a generic input fallback.
 
@@ -133,13 +133,13 @@ that UI through a generic input fallback.
 Read the installed state without mutation:
 
 ```bash
-dcc-mcp-blender status --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json
+meshy-dcc-blender status --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json
 ```
 
 Verify to usable:
 
 ```bash
-dcc-mcp-blender verify --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json
+meshy-dcc-blender verify --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json
 ```
 
 Verification checks the receipt binding, startup-file digest, exact target
@@ -159,9 +159,9 @@ Upgrade the distribution in the same Blender interpreter, inspect the host
 plan, then execute it:
 
 ```bash
-<blender-python> -m pip install --upgrade "dcc-mcp-blender"
-dcc-mcp-blender upgrade --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --dry-run
-dcc-mcp-blender upgrade --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --yes
+<blender-python> -m pip install --upgrade "meshy-dcc-blender"
+meshy-dcc-blender upgrade --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --dry-run
+meshy-dcc-blender upgrade --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --yes
 ```
 
 `upgrade` requires an existing valid receipt and reuses the staged replacement
@@ -172,8 +172,8 @@ transaction. A commit failure restores the previous startup hook and receipt.
 Review and execute receipt-only host cleanup:
 
 ```bash
-dcc-mcp-blender uninstall --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --dry-run
-dcc-mcp-blender uninstall --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --yes
+meshy-dcc-blender uninstall --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --dry-run
+meshy-dcc-blender uninstall --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json --yes
 ```
 
 Only the file named and hashed in the receipt is removed. Modified or unknown
@@ -181,18 +181,18 @@ files are preserved, and a second uninstall is an idempotent success. After
 host cleanup, remove the Python distribution explicitly if desired:
 
 ```bash
-<blender-python> -m pip uninstall dcc-mcp-blender
+<blender-python> -m pip uninstall meshy-dcc-blender
 ```
 
-For the Extension ZIP path, remove **DCC MCP Blender** through Blender's
+For the Extension ZIP path, remove **Meshy DCC Blender** through Blender's
 Extensions preferences. The startup-hook lifecycle never deletes extension or
 scene data it does not own.
 
 ## Stale user-level copies shadow the installed package
 
-Blender loads user-level extension copies (`bl_ext.<repository>.dcc_mcp_blender`)
+Blender loads user-level extension copies (`bl_ext.<repository>.meshy_dcc_blender`)
 **before** any package environment or startup hook runs. A copy left behind by an
-earlier install therefore keeps answering `import dcc_mcp_blender` even when a
+earlier install therefore keeps answering `import meshy_dcc_blender` even when a
 package manager resolved a different copy for that session. That stale copy
 satisfies its own, older compatibility gate, starts an MCP server, and reports an
 old version **without raising anything** — every capability captured from that host
@@ -200,8 +200,8 @@ then silently describes the wrong runtime.
 
 The lifecycle defends against this in two places:
 
-1. The generated startup hook compares the origin of `dcc_mcp_blender` and
-   `dcc_mcp_core` against the expected package root, and fails closed when the
+1. The generated startup hook compares the origin of `meshy_dcc_blender` and
+   `meshy_dcc_core` against the expected package root, and fails closed when the
    adapter came from somewhere else.
 2. The add-on entry runs the same check plus the `min_core_version` gate in
    `register()`, before any operator class is registered, and it hands the runtime
@@ -211,7 +211,7 @@ Declare the authoritative package root for a session to make the check strict:
 
 ```bash
 # one root, or several separated by the platform path separator
-export DCC_MCP_BLENDER_PACKAGE_ROOT="/studio/resolve/site-packages"
+export MESHY_DCC_BLENDER_PACKAGE_ROOT="/studio/resolve/site-packages"
 ```
 
 A declared root replaces the site-packages directory the startup hook was
@@ -219,37 +219,37 @@ installed with, so a package manager that resolves the runtime per session (rez,
 for example) is never judged against a stale install-time directory. Write it as
 the directory that **holds** the package — the `sys.path` entry, such as
 `/studio/resolve/site-packages` — or as the package directory itself
-(`/studio/resolve/site-packages/dcc_mcp_blender`); both are accepted.
+(`/studio/resolve/site-packages/meshy_dcc_blender`); both are accepted.
 
-Set `DCC_MCP_BLENDER_STRICT_ORIGIN=0` to downgrade a violation from an error to a
+Set `MESHY_DCC_BLENDER_STRICT_ORIGIN=0` to downgrade a violation from an error to a
 warning on a machine you cannot clean yet. Never leave it set in a farm
 environment: it is the switch that turns a visible failure back into a silent one.
 
 To find and remove a stale copy:
 
 ```bash
-dcc-mcp-blender status --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json
+meshy-dcc-blender status --dcc-path "<absolute-blender-path>" --python "<absolute-blender-python>" --json
 ```
 
 Inside the host, compare what the interpreter really imported:
 
 ```python
-import dcc_mcp_blender, dcc_mcp_core
-print(dcc_mcp_blender.__version__, dcc_mcp_blender.__file__)
-print(dcc_mcp_core.__version__, dcc_mcp_core.__file__)
+import meshy_dcc_blender, meshy_dcc_core
+print(meshy_dcc_blender.__version__, meshy_dcc_blender.__file__)
+print(meshy_dcc_core.__version__, meshy_dcc_core.__file__)
 ```
 
 Both paths must sit inside the directory the resolve supplied. If either points at
 a Blender user extension or add-ons directory, remove that copy (Blender
 `Edit > Preferences > Extensions`, or delete the matching
-`bl_ext.<repository>.dcc_mcp_blender` directory) and restart Blender.
+`bl_ext.<repository>.meshy_dcc_blender` directory) and restart Blender.
 
 ## Troubleshooting
 
 | Result | Diagnosis | Action |
 |---|---|---|
 | Exit `10`, `dcc_path_required` | Blender was not selected safely | Pass the exact executable or `.app` with `--dcc-path`. |
-| Exit `10`, `python_required` | Blender's target interpreter was not selected | Pass its exact interpreter with `--python` or `DCC_MCP_INSTALL_PYTHON`. |
+| Exit `10`, `python_required` | Blender's target interpreter was not selected | Pass its exact interpreter with `--python` or `MESHY_DCC_INSTALL_PYTHON`. |
 | Exit `10`, `unsupported_blender_version` | Host is older than Blender 4.5 | Install a supported Blender version. |
 | Exit `10`, `python_mismatch` | Interpreter differs from the receipt | Use the exact receipted Blender Python or uninstall from the original target first. |
 | Exit `10`, `unreceipted_startup_script` | Ownership cannot be proven | Inspect the reported file; do not delete or overwrite user content. |
@@ -264,5 +264,5 @@ a Blender user extension or add-ons directory, remove that copy (Blender
 The catalog `instructions_url` is:
 
 ```text
-https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-blender/main/install.md
+https://raw.githubusercontent.com/meshy-dev/meshy-dcc-blender/main/install.md
 ```

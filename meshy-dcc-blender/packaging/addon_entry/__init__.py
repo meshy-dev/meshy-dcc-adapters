@@ -36,9 +36,9 @@ bl_info = {
     "doc_url": "https://www.meshy.ai",
 }
 
-_DEFAULT_GATEWAY_PORT = 9765
-_BACKGROUND_RENDER_ENV = "DCC_MCP_BACKGROUND_RENDER"
-_UI_CONTROL_PROCESS_ID_ENV = "DCC_MCP_UI_CONTROL_PROCESS_ID"
+_DEFAULT_GATEWAY_PORT = 19765
+_BACKGROUND_RENDER_ENV = "MESHY_DCC_BACKGROUND_RENDER"
+_UI_CONTROL_PROCESS_ID_ENV = "MESHY_DCC_UI_CONTROL_PROCESS_ID"
 
 _draw_handlers: List[Tuple[str, object]] = []
 _server_dispatcher: Any = None
@@ -96,7 +96,7 @@ def _resolve_canonical_package() -> str:
 
     Blender loads user-level extensions before a package environment is visible,
     so a stale extension copy -- left behind by an earlier install under the same
-    Blender major version -- keeps answering ``import dcc_mcp_blender`` even when
+    Blender major version -- keeps answering ``import meshy_dcc_blender`` even when
     a package manager resolved a newer copy for this session. The stale copy
     satisfies its own, older compatibility gate, starts a server, and reports an
     old version without a single error, so every capability captured from that
@@ -117,12 +117,12 @@ def _resolve_canonical_package() -> str:
     if not package.startswith("bl_ext."):
         # Legacy add-on installs and the library package both serve the public
         # distribution name. Only an extension namespace is a distinct tree.
-        _canonical_package = "dcc_mcp_blender"
+        _canonical_package = "meshy_dcc_blender"
         return _canonical_package
     _canonical_package = package
     origin = None
     try:
-        origin = importlib.import_module(f"{package}._extension_imports").public_package_origin("dcc_mcp_blender")
+        origin = importlib.import_module(f"{package}._extension_imports").public_package_origin("meshy_dcc_blender")
     except Exception as exc:  # noqa: BLE001 - provenance is best effort, never fatal here
         logger.debug("package origin lookup failed: %s", exc)
     if not origin:
@@ -139,15 +139,15 @@ def _resolve_canonical_package() -> str:
         or _version_tuple(resolved_version) >= _version_tuple(extension_version)
     ):
         print(
-            f"{_ECHO_PREFIX} Running dcc_mcp_blender {resolved_version or 'unknown'} resolved by the environment at "
+            f"{_ECHO_PREFIX} Running meshy_dcc_blender {resolved_version or 'unknown'} resolved by the environment at "
             f"{distribution_dir} instead of this extension copy {extension_version or 'unknown'}."
         )
-        _canonical_package = "dcc_mcp_blender"
+        _canonical_package = "meshy_dcc_blender"
     else:
         print(
-            f"{_ECHO_PREFIX} WARNING: dcc_mcp_blender {resolved_version} at {distribution_dir} is older than this "
+            f"{_ECHO_PREFIX} WARNING: meshy_dcc_blender {resolved_version} at {distribution_dir} is older than this "
             f"extension copy ({extension_version}); keeping the extension. Remove the stale copy to let the "
-            "environment resolve the runtime, or export DCC_MCP_BLENDER_PACKAGE_ROOT to fail closed."
+            "environment resolve the runtime, or export MESHY_DCC_BLENDER_PACKAGE_ROOT to fail closed."
         )
     return _canonical_package
 
@@ -211,7 +211,7 @@ def _install_runtime_import_aliases(*, strict: bool = True) -> None:
         # resolves to it. Bridging would shadow it with this extension copy.
         # A bridge installed earlier (the best-effort import-time one, before
         # the package environment was on ``sys.path``) must go too, or the
-        # extension copy keeps answering ``import dcc_mcp_blender``.
+        # extension copy keeps answering ``import meshy_dcc_blender``.
         _remove_runtime_import_aliases()
         return
     installer = _addon_module("_extension_imports").install_extension_import_aliases
@@ -225,7 +225,7 @@ def _remove_runtime_import_aliases() -> None:
 
     An ordinary ``unregister()`` calls :func:`_detach_runtime_import_aliases`
     instead: Blender disables add-ons on ``wm.read_factory_settings``, and
-    headless pipeline scripts import ``dcc_mcp_blender`` right after that.
+    headless pipeline scripts import ``meshy_dcc_blender`` right after that.
     """
     global _runtime_import_aliases  # noqa: PLW0603
     aliases = _runtime_import_aliases
@@ -245,9 +245,9 @@ def _detach_runtime_import_aliases() -> None:
 def __getattr__(name: str):
     """Expose the wheel channel's top-level surface from the add-on entrypoint.
 
-    The Blender extension package root *is* ``dcc_mcp_blender``, so this module
-    is what ``import dcc_mcp_blender`` resolves to in that channel. Without this
-    hook, ``dcc_mcp_blender.BlenderHost`` and friends exist only in the wheel
+    The Blender extension package root *is* ``meshy_dcc_blender``, so this module
+    is what ``import meshy_dcc_blender`` resolves to in that channel. Without this
+    hook, ``meshy_dcc_blender.BlenderHost`` and friends exist only in the wheel
     channel and skill scripts break on one of the two distributions.
     """
     if name == "__all__":
@@ -345,7 +345,7 @@ def _start_server_with_host():
     try:
         # The release ZIP replaces the library package entrypoint with this
         # Blender add-on entrypoint. Enforce the same compatibility contract
-        # before importing host/server modules that bind dcc-mcp-core.
+        # before importing host/server modules that bind meshy-dcc-core.
         _addon_module("_core_compat").require_compatible_core()
         host = _addon_module("host")
         server_module = _addon_module("server")
@@ -363,8 +363,8 @@ def _start_server_with_host():
         dispatcher = BlenderUiDispatcher()
         try:
             server = start_server(
-                gateway_port=_env_port("DCC_MCP_GATEWAY_PORT", _DEFAULT_GATEWAY_PORT),
-                registry_dir=os.environ.get("DCC_MCP_REGISTRY_DIR") or None,
+                gateway_port=_env_port("MESHY_DCC_GATEWAY_PORT", _DEFAULT_GATEWAY_PORT),
+                registry_dir=os.environ.get("MESHY_DCC_REGISTRY_DIR") or None,
                 dispatcher=dispatcher,
             )
             dispatcher.start()
@@ -422,7 +422,7 @@ def _http_base() -> str:
 
 
 def _gateway_base() -> str:
-    raw = os.environ.get("DCC_MCP_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT)).strip()
+    raw = os.environ.get("MESHY_DCC_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT)).strip()
     if not raw.isdigit():
         return ""
     port = int(raw, 10)
@@ -431,8 +431,8 @@ def _gateway_base() -> str:
     return f"http://127.0.0.1:{port}"
 
 
-class DCCMCP_OT_open_mcp(bpy.types.Operator):
-    bl_idname = "dcc_mcp.open_mcp_endpoint"
+class MESHYDCC_OT_open_mcp(bpy.types.Operator):
+    bl_idname = "meshy_dcc.open_mcp_endpoint"
     bl_label = "Open MCP Endpoint"
     bl_options = {"REGISTER"}
 
@@ -448,8 +448,8 @@ class DCCMCP_OT_open_mcp(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_open_openapi(bpy.types.Operator):
-    bl_idname = "dcc_mcp.open_openapi_docs"
+class MESHYDCC_OT_open_openapi(bpy.types.Operator):
+    bl_idname = "meshy_dcc.open_openapi_docs"
     bl_label = "OpenAPI Docs"
     bl_options = {"REGISTER"}
 
@@ -465,8 +465,8 @@ class DCCMCP_OT_open_openapi(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_open_admin(bpy.types.Operator):
-    bl_idname = "dcc_mcp.open_admin_panel"
+class MESHYDCC_OT_open_admin(bpy.types.Operator):
+    bl_idname = "meshy_dcc.open_admin_panel"
     bl_label = "Gateway Admin"
     bl_options = {"REGISTER"}
 
@@ -482,8 +482,8 @@ class DCCMCP_OT_open_admin(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_open_metrics(bpy.types.Operator):
-    bl_idname = "dcc_mcp.open_metrics"
+class MESHYDCC_OT_open_metrics(bpy.types.Operator):
+    bl_idname = "meshy_dcc.open_metrics"
     bl_label = "Prometheus Metrics"
     bl_options = {"REGISTER"}
 
@@ -499,8 +499,8 @@ class DCCMCP_OT_open_metrics(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_show_urls(bpy.types.Operator):
-    bl_idname = "dcc_mcp.show_server_urls"
+class MESHYDCC_OT_show_urls(bpy.types.Operator):
+    bl_idname = "meshy_dcc.show_server_urls"
     bl_label = "Show Server URLs…"
     bl_options = {"REGISTER"}
 
@@ -526,8 +526,8 @@ class DCCMCP_OT_show_urls(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_restart(bpy.types.Operator):
-    bl_idname = "dcc_mcp.restart_server"
+class MESHYDCC_OT_restart(bpy.types.Operator):
+    bl_idname = "meshy_dcc.restart_server"
     bl_label = "Restart MCP Server"
     bl_options = {"REGISTER"}
 
@@ -542,8 +542,8 @@ class DCCMCP_OT_restart(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_toggle_hot_reload(bpy.types.Operator):
-    bl_idname = "dcc_mcp.toggle_hot_reload"
+class MESHYDCC_OT_toggle_hot_reload(bpy.types.Operator):
+    bl_idname = "meshy_dcc.toggle_hot_reload"
     bl_label = "Toggle Skill Hot-Reload"
     bl_options = {"REGISTER"}
 
@@ -569,8 +569,8 @@ class DCCMCP_OT_toggle_hot_reload(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_copy_instance_id(bpy.types.Operator):
-    bl_idname = "dcc_mcp.copy_instance_id"
+class MESHYDCC_OT_copy_instance_id(bpy.types.Operator):
+    bl_idname = "meshy_dcc.copy_instance_id"
     bl_label = "Copy Instance ID"
     bl_description = "Copy the DCC instance UUID to the clipboard"
     bl_options = {"REGISTER"}
@@ -599,8 +599,8 @@ class DCCMCP_OT_copy_instance_id(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_server_info(bpy.types.Operator):
-    bl_idname = "dcc_mcp.show_server_info"
+class MESHYDCC_OT_server_info(bpy.types.Operator):
+    bl_idname = "meshy_dcc.show_server_info"
     bl_label = "Server Info"
     bl_description = "Show Meshy DCC server status and connection details"
     bl_options = {"REGISTER"}
@@ -630,7 +630,7 @@ class DCCMCP_OT_server_info(bpy.types.Operator):
         server_port = None
         if srv is not None:
             server_port = getattr(srv, "port", None)
-        gateway_port = os.environ.get("DCC_MCP_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT)).strip()
+        gateway_port = os.environ.get("MESHY_DCC_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT)).strip()
 
         # Gather versions
         try:
@@ -642,7 +642,7 @@ class DCCMCP_OT_server_info(bpy.types.Operator):
 
         core_version = None
         try:
-            from dcc_mcp_core.server_base import _package_version
+            from meshy_dcc_core.server_base import _package_version
 
             core_version = _package_version()
         except Exception:
@@ -668,8 +668,8 @@ class DCCMCP_OT_server_info(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_OT_about(bpy.types.Operator):
-    bl_idname = "dcc_mcp.about"
+class MESHYDCC_OT_about(bpy.types.Operator):
+    bl_idname = "meshy_dcc.about"
     bl_label = "About Meshy DCC"
     bl_description = "Show Meshy DCC version and project information"
     bl_options = {"REGISTER"}
@@ -677,10 +677,10 @@ class DCCMCP_OT_about(bpy.types.Operator):
     def execute(self, context):
         addon_version = ".".join(str(x) for x in bl_info["version"])
 
-        # Try to resolve dcc-mcp-core version
+        # Try to resolve meshy-dcc-core version
         core_version = None
         try:
-            from dcc_mcp_core.server_base import _package_version
+            from meshy_dcc_core.server_base import _package_version
 
             core_version = _package_version()
         except Exception:
@@ -688,7 +688,7 @@ class DCCMCP_OT_about(bpy.types.Operator):
 
         lines: List[str] = [
             f"Add-on:   meshy-dcc-blender {addon_version}",
-            f"Core:     dcc-mcp-core {core_version}",
+            f"Core:     meshy-dcc-core {core_version}",
             "Protocol: MCP Streamable HTTP (2025-03-26)",
             "",
             f"Author:   {bl_info['author']}",
@@ -707,44 +707,44 @@ class DCCMCP_OT_about(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class DCCMCP_MT_main_menu(bpy.types.Menu):
+class MESHYDCC_MT_main_menu(bpy.types.Menu):
     bl_label = "Meshy DCC"
-    bl_idname = "DCCMCP_MT_main_menu"
+    bl_idname = "MESHYDCC_MT_main_menu"
 
     def draw(self, context):
         layout = self.layout.column(align=True)
-        layout.operator("dcc_mcp.copy_instance_id", icon="COPYDOWN")
+        layout.operator("meshy_dcc.copy_instance_id", icon="COPYDOWN")
         layout.separator()
-        layout.operator("dcc_mcp.show_server_info", icon="INFO")
+        layout.operator("meshy_dcc.show_server_info", icon="INFO")
         layout.separator()
-        layout.operator("dcc_mcp.open_mcp_endpoint", icon="URL")
-        layout.operator("dcc_mcp.open_openapi_docs", icon="DOCUMENTS")
-        layout.operator("dcc_mcp.open_metrics", icon="GRAPH")
+        layout.operator("meshy_dcc.open_mcp_endpoint", icon="URL")
+        layout.operator("meshy_dcc.open_openapi_docs", icon="DOCUMENTS")
+        layout.operator("meshy_dcc.open_metrics", icon="GRAPH")
         layout.separator()
-        layout.operator("dcc_mcp.open_admin_panel", icon="SETTINGS")
+        layout.operator("meshy_dcc.open_admin_panel", icon="SETTINGS")
         layout.separator()
-        layout.operator("dcc_mcp.restart_server", icon="FILE_REFRESH")
-        layout.operator("dcc_mcp.toggle_hot_reload", icon="FILE_CACHE")
+        layout.operator("meshy_dcc.restart_server", icon="FILE_REFRESH")
+        layout.operator("meshy_dcc.toggle_hot_reload", icon="FILE_CACHE")
         layout.separator()
-        layout.operator("dcc_mcp.about", icon="BLANK1")
+        layout.operator("meshy_dcc.about", icon="BLANK1")
 
 
 def _draw_topbar_menu(self, context):
-    self.layout.menu(DCCMCP_MT_main_menu.bl_idname, text="Meshy DCC")
+    self.layout.menu(MESHYDCC_MT_main_menu.bl_idname, text="Meshy DCC")
 
 
 _CLASSES = (
-    DCCMCP_OT_open_mcp,
-    DCCMCP_OT_open_openapi,
-    DCCMCP_OT_open_admin,
-    DCCMCP_OT_open_metrics,
-    DCCMCP_OT_show_urls,
-    DCCMCP_OT_restart,
-    DCCMCP_OT_toggle_hot_reload,
-    DCCMCP_OT_copy_instance_id,
-    DCCMCP_OT_server_info,
-    DCCMCP_OT_about,
-    DCCMCP_MT_main_menu,
+    MESHYDCC_OT_open_mcp,
+    MESHYDCC_OT_open_openapi,
+    MESHYDCC_OT_open_admin,
+    MESHYDCC_OT_open_metrics,
+    MESHYDCC_OT_show_urls,
+    MESHYDCC_OT_restart,
+    MESHYDCC_OT_toggle_hot_reload,
+    MESHYDCC_OT_copy_instance_id,
+    MESHYDCC_OT_server_info,
+    MESHYDCC_OT_about,
+    MESHYDCC_MT_main_menu,
 )
 
 
@@ -758,13 +758,13 @@ def register() -> None:
     _addon_module("_core_compat").require_compatible_core()
     # Gate the package that will actually serve, not the public name: when the
     # extension keeps control (its copy is newer than the resolve) the runtime
-    # runs from ``bl_ext.<repository>.dcc_mcp_blender``, and the public name is
+    # runs from ``bl_ext.<repository>.meshy_dcc_blender``, and the public name is
     # only bridged onto it later, in ``_start_server_with_host()``. Checking
-    # ``dcc_mcp_blender`` here would inspect the distribution on ``sys.path`` --
+    # ``meshy_dcc_blender`` here would inspect the distribution on ``sys.path`` --
     # or skip the check entirely when there is none -- and let the extension
     # copy serve from outside a declared root without ever being examined.
     _addon_module("_provenance").require_expected_origin(
-        names=(_resolve_canonical_package(), "dcc_mcp_core"),
+        names=(_resolve_canonical_package(), "meshy_dcc_core"),
         echo=True,
     )
 
@@ -781,13 +781,13 @@ def register() -> None:
         print("[Meshy DCC] Background render worker detected; server autostart skipped")
         return
 
-    from dcc_mcp_core import capture_bootstrap_errors
+    from meshy_dcc_core import capture_bootstrap_errors
 
     try:
         with capture_bootstrap_errors(
             "blender",
             adapter_version=__addon_version__,
-            min_core_version="0.20.0",
+            min_core_version="0.2.0",
             phase="startup",
         ):
             srv = _start_server_with_host()
@@ -826,7 +826,7 @@ def unregister() -> None:
     finally:
         # Keep the public import bridge installed: Blender disables add-ons on
         # ``wm.read_factory_settings``, and batch scripts import
-        # ``dcc_mcp_blender`` immediately afterwards.
+        # ``meshy_dcc_blender`` immediately afterwards.
         _detach_runtime_import_aliases()
 
 
@@ -838,6 +838,6 @@ def unregister() -> None:
 # provenance warning against whatever stale copy happens to be importable at
 # scan time. ``register()`` installs the bridge once the host is real, and
 # ``unregister()`` detaches rather than uninstalls it, which is what keeps
-# ``import dcc_mcp_blender`` working after ``wm.read_factory_settings``.
+# ``import meshy_dcc_blender`` working after ``wm.read_factory_settings``.
 
 __addon_version__ = "0.2.11"  # x-release-please-version

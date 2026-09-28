@@ -424,7 +424,7 @@ class TestValidationSkills:
         assert "ANIMATION_FRAME_RANGE_INVALID" in _codes(result)
 
     def test_get_validation_report_returns_latest_report(self):
-        from dcc_mcp_blender import _asset_pipeline_ops as ops
+        from meshy_dcc_blender import _asset_pipeline_ops as ops
 
         cube = _FakeObject()
         bpy = _make_bpy(cube)
@@ -509,7 +509,7 @@ class TestPublishOutputs:
 
         assert result["success"] is True
         payload = json.loads(output_path.read_text(encoding="utf-8"))
-        assert payload["schema"] == "dcc-mcp-blender.publish-manifest.v1"
+        assert payload["schema"] == "meshy-dcc-blender.publish-manifest.v1"
         assert payload["assets"][0]["name"] == "Cube"
 
     def test_create_publish_manifest_rejects_url_path(self):

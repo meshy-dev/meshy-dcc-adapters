@@ -11,14 +11,14 @@ from unittest.mock import MagicMock
 import pytest
 import yaml
 
-from dcc_mcp_blender import _render_job_ops
+from meshy_dcc_blender import _render_job_ops
 from tests.conftest import load_and_call, make_mock_bpy
 
 
 def _device_schema_validators():
     """Return every core validator that gates a published tool schema."""
     try:
-        from dcc_mcp_core._core import ToolValidator as RustValidator
+        from meshy_dcc_core._core import ToolValidator as RustValidator
     except ImportError:  # pragma: no cover - native module unavailable
         pass
     else:
@@ -29,7 +29,7 @@ def _device_schema_validators():
         yield validate_rust
 
     try:
-        from dcc_mcp_core.skills_helper import ToolValidator as PythonValidator
+        from meshy_dcc_core.skills_helper import ToolValidator as PythonValidator
     except ImportError:  # pragma: no cover - helper unavailable
         pass
     else:
@@ -80,7 +80,7 @@ def _assert_nullable_device_schema(device):
 
 
 def test_render_tools_publish_ci_safe_input_contracts():
-    tools_path = Path("src/dcc_mcp_blender/skills/blender-render/tools.yaml")
+    tools_path = Path("src/meshy_dcc_blender/skills/blender-render/tools.yaml")
     tools = {tool["name"]: tool for tool in yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]}
 
     render_scene = tools["render_scene"]["input_schema"]

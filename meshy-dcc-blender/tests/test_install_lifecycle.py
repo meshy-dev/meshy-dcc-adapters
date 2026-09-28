@@ -18,7 +18,7 @@ def test_package_exposes_the_standard_lifecycle_console_entrypoint():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
     assert "[project.scripts]" in pyproject
-    assert 'dcc-mcp-blender = "dcc_mcp_blender.install:main"' in pyproject
+    assert 'meshy-dcc-blender = "meshy_dcc_blender.install:main"' in pyproject
 
 
 def test_install_runbook_covers_the_public_lifecycle_and_catalog_route():
@@ -39,7 +39,7 @@ def test_install_runbook_covers_the_public_lifecycle_and_catalog_route():
     for platform in ("Windows", "macOS", "Linux"):
         assert platform in guide
     for verb in ("install", "status", "verify", "uninstall", "upgrade"):
-        assert "dcc-mcp-blender %s" % verb in guide
+        assert "meshy-dcc-blender %s" % verb in guide
     for flag in ("--json", "--yes", "--dry-run", "--dcc-path", "--python"):
         assert flag in guide
     for code in ("`0`", "`10`", "`20`", "`30`", "`40`", "`50`"):
@@ -50,31 +50,31 @@ def test_install_runbook_covers_the_public_lifecycle_and_catalog_route():
         "rollback",
         "capture_bootstrap_errors",
         "host.ping",
-        "https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-blender/main/install.md",
+        "https://raw.githubusercontent.com/meshy-dev/meshy-dcc-blender/main/install.md",
     ):
         assert term in guide
 
 
 def test_setup_skill_routes_agents_to_the_standard_lifecycle_first():
     """The discoverable setup skill must not present the legacy script as canonical."""
-    skill = (ROOT / "skills" / "dcc-mcp-blender-setup" / "SKILL.md").read_text(encoding="utf-8")
+    skill = (ROOT / "skills" / "meshy-dcc-blender-setup" / "SKILL.md").read_text(encoding="utf-8")
 
-    assert "dcc-mcp-blender install --json --dry-run" in skill
-    assert "dcc-mcp-blender verify --json" in skill
+    assert "meshy-dcc-blender install --json --dry-run" in skill
+    assert "meshy-dcc-blender verify --json" in skill
     assert "Legacy compatibility path" in skill
 
 
 def test_install_dry_run_emits_a_complete_non_mutating_plan(tmp_path, monkeypatch, capsys):
     """The public CLI must plan the exact Blender target without writing it."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     user_scripts = tmp_path / "user-scripts"
     receipt = tmp_path / "receipts" / "blender.json"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(user_scripts))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(user_scripts))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt))
 
     exit_code = install.main(
         [
@@ -104,18 +104,18 @@ def test_install_dry_run_emits_a_complete_non_mutating_plan(tmp_path, monkeypatc
         "verify",
     ]
     assert "--yes" in report["next_steps"][0]["command"]
-    assert not (user_scripts / "startup" / "dcc_mcp_blender_startup.py").exists()
+    assert not (user_scripts / "startup" / "meshy_dcc_blender_startup.py").exists()
     assert not receipt.exists()
 
 
 def test_install_requires_an_explicit_target_interpreter(tmp_path, monkeypatch, capsys):
     """The agent CLI interpreter is not implicitly a Blender-owned interpreter."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.delenv("DCC_MCP_INSTALL_PYTHON", raising=False)
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.delenv("MESHY_DCC_INSTALL_PYTHON", raising=False)
 
     exit_code = install.main(["install", "--json", "--dry-run", "--dcc-path", str(blender)])
 
@@ -128,36 +128,36 @@ def test_install_requires_an_explicit_target_interpreter(tmp_path, monkeypatch, 
 
 def test_environment_selected_interpreter_reports_its_real_source(tmp_path, monkeypatch, capsys):
     """Machine-provided interpreter selection must not be mislabeled as --python."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_INSTALL_PYTHON", sys.executable)
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_INSTALL_PYTHON", sys.executable)
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
 
     exit_code = install.main(["install", "--json", "--dry-run", "--dcc-path", str(blender)])
 
     report = json.loads(capsys.readouterr().out)
     assert exit_code == install.INSTALL_EXIT_OK
     assert report["python"]["path"] == str(Path(sys.executable).resolve())
-    assert report["python"]["selection_source"] == "DCC_MCP_INSTALL_PYTHON"
+    assert report["python"]["selection_source"] == "MESHY_DCC_INSTALL_PYTHON"
 
 
 def test_receipt_round_trip_is_convergent_and_uninstall_is_idempotent(tmp_path, monkeypatch, capsys):
     """Host enablement remains installed when only live readiness is unavailable."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     user_scripts = tmp_path / "user-scripts"
     receipt_path = tmp_path / "receipts" / "blender.json"
     registry = tmp_path / "registry"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(user_scripts))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt_path))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(registry))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(user_scripts))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt_path))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(registry))
     common = [
         "--json",
         "--dcc-path",
@@ -198,18 +198,18 @@ def test_receipt_round_trip_is_convergent_and_uninstall_is_idempotent(tmp_path, 
 
 def test_install_preserves_unreceipted_marker_spoof(tmp_path, monkeypatch, capsys):
     """A comment containing the legacy marker is not proof of adapter ownership."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     startup_path = tmp_path / "scripts" / "startup" / install.STARTUP_SCRIPT_NAME
     startup_path.parent.mkdir(parents=True)
-    spoof = '# Auto-start dcc-mcp-blender\nraise RuntimeError("operator owned")\n'
+    spoof = '# Auto-start meshy-dcc-blender\nraise RuntimeError("operator owned")\n'
     startup_path.write_text(spoof, encoding="utf-8")
     receipt_path = tmp_path / "receipt.json"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt_path))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt_path))
 
     exit_code = install.main(
         [
@@ -232,16 +232,16 @@ def test_install_preserves_unreceipted_marker_spoof(tmp_path, monkeypatch, capsy
 
 def test_install_repairs_only_exact_generated_unreceipted_startup(tmp_path, monkeypatch, capsys):
     """Losing a receipt is repairable only for exact known generated content."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     startup_path = tmp_path / "scripts" / "startup" / install.STARTUP_SCRIPT_NAME
     receipt_path = tmp_path / "receipt.json"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt_path))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt_path))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = ["--json", "--dcc-path", str(blender), "--python", sys.executable]
 
     assert install.main(["install", "--yes", *common]) == install.INSTALL_EXIT_VERIFY
@@ -258,14 +258,14 @@ def test_install_repairs_only_exact_generated_unreceipted_startup(tmp_path, monk
 
 def test_upgrade_requires_a_receipt_and_reuses_the_install_transaction(tmp_path, monkeypatch, capsys):
     """Upgrade is distinct from fresh install but shares its safe commit path."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = [
         "--json",
         "--dcc-path",
@@ -293,15 +293,15 @@ def test_upgrade_requires_a_receipt_and_reuses_the_install_transaction(tmp_path,
 
 def test_verify_refuses_interpreter_drift_from_the_receipt(tmp_path, monkeypatch, capsys):
     """Verification must stay bound to the exact interpreter selected at install time."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     receipt_path = tmp_path / "receipt.json"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt_path))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt_path))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = [
         "--json",
         "--dcc-path",
@@ -329,7 +329,7 @@ def test_public_reports_satisfy_the_shared_install_sop_schema(tmp_path, monkeypa
     required key set: a structural check accepts reports Core's validator
     rejects, so it cannot prove the emitted document satisfies the contract.
     """
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     schema = install.load_install_sop_schema()
     # Core republishes the Install SOP schema artifact: ``-v1`` is frozen at the bytes core
@@ -337,16 +337,16 @@ def test_public_reports_satisfy_the_shared_install_sop_schema(tmp_path, monkeypa
     # suffix is the identity of a published artifact, not an adapter contract, so assert the
     # canonical id namespace plus the document's own pin on the report field rather than one
     # revision. Hard-coding ``-v1`` here broke main the day core served ``-v2``.
-    assert schema["$id"].startswith("https://dcc-mcp.github.io/schemas/adapter-install-sop-v")
+    assert schema["$id"].startswith("https://www.meshy.ai/meshy-dcc/schemas/adapter-install-sop-v")
     assert schema["$id"].endswith(".schema.json")
     assert schema["properties"]["schema_version"]["const"] == install.report_schema_version()
     required = set(schema["required"])
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
     common = [
         "--json",
         "--dcc-path",
@@ -373,7 +373,7 @@ def _schema_document(const):
 
 def test_report_schema_version_follows_published_document(monkeypatch):
     """The report field comes from the ``const`` Core's validator enforces."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     monkeypatch.setattr(install, "_published_schema", lambda: _schema_document(7))
 
@@ -389,7 +389,7 @@ def test_report_schema_version_ignores_cores_artifact_revision(monkeypatch):
     quantities that merely agreed while both were 1, so the constant must never
     reach the report.
     """
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     monkeypatch.setattr(install, "_published_schema", lambda: _schema_document(1))
     monkeypatch.setattr(install, "INSTALL_SOP_SCHEMA_VERSION", 2)
@@ -399,7 +399,7 @@ def test_report_schema_version_ignores_cores_artifact_revision(monkeypatch):
 
 def test_report_schema_version_falls_back_when_document_is_unreadable(monkeypatch):
     """A Core with no readable schema document still yields a usable report."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     monkeypatch.setattr(install, "_published_schema", lambda: None)
 
@@ -422,7 +422,7 @@ def test_report_schema_version_survives_schema_read_failure(monkeypatch, error):
     situation this CLI exists to report on, so the read failure has to degrade
     to the fallback value instead of propagating.
     """
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     def _raise():
         raise error
@@ -450,7 +450,7 @@ def test_validate_public_report_survives_schema_read_failure(monkeypatch, error)
     validation-path read unguarded lets a caller compute a report it then
     crashes on.
     """
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     def _raise():
         raise error
@@ -483,13 +483,13 @@ def test_validate_public_report_survives_schema_read_failure(monkeypatch, error)
 
 def test_public_report_validation_uses_cores_native_validator(tmp_path, monkeypatch, capsys):
     """Report validation runs through Core's Rust-backed validator, not jsonschema."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
 
     install.main(["status", "--json", "--dcc-path", str(blender), "--python", sys.executable])
     report = json.loads(capsys.readouterr().out)
@@ -508,13 +508,13 @@ def test_public_report_validation_uses_cores_native_validator(tmp_path, monkeypa
 
 def test_public_report_validation_still_rejects_invalid_reports(tmp_path, monkeypatch, capsys):
     """A report that breaks the Install SOP contract still raises ValueError."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
 
     install.main(["status", "--json", "--dcc-path", str(blender), "--python", sys.executable])
     report = json.loads(capsys.readouterr().out)
@@ -538,13 +538,13 @@ def test_structural_fallback_rejects_non_integer_schema_version(tmp_path, monkey
     which is exactly when a malformed external document is most likely to be
     read -- and Core's own schema requires the field to be an integer.
     """
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
     monkeypatch.setattr(install, "_native_report_validator", lambda: None)
 
     install.main(["status", "--json", "--dcc-path", str(blender), "--python", sys.executable])
@@ -560,7 +560,7 @@ def test_structural_fallback_rejects_non_integer_schema_version(tmp_path, monkey
 
 def test_runtime_dependencies_exclude_jsonschema():
     """The adapter validates at runtime through Core, not a third-party package."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     runtime = pyproject.split("[project.optional-dependencies]")[0]
@@ -571,7 +571,7 @@ def test_runtime_dependencies_exclude_jsonschema():
         # imported at all. The pinned main matrix must not red on either -- that
         # is what the pin is for -- but the drift has to stay visible somewhere,
         # so the core-latest job, which tracks the newest Core, fails on it.
-        if os.environ.get("DCC_MCP_CORE_LATEST"):
+        if os.environ.get("MESHY_DCC_CORE_LATEST"):
             pytest.fail("Core no longer exports `validate_install_sop_report`")
         pytest.skip(
             "Core does not export `validate_install_sop_report`; the core-latest "
@@ -586,7 +586,7 @@ def test_emitted_report_satisfies_cores_published_schema():
     artifact with a different document version, this pins the adapter to follow
     the document instead of the ``-vN`` revision constant.
     """
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     schema = install.load_install_sop_schema()
     const = schema["properties"]["schema_version"]["const"]
@@ -596,15 +596,15 @@ def test_emitted_report_satisfies_cores_published_schema():
 
 def test_missing_receipted_startup_is_reported_as_partial(tmp_path, monkeypatch, capsys):
     """Status must diagnose stale receipts instead of claiming a current install."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     user_scripts = tmp_path / "scripts"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(user_scripts))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(user_scripts))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = [
         "--json",
         "--dcc-path",
@@ -628,15 +628,15 @@ def test_missing_receipted_startup_is_reported_as_partial(tmp_path, monkeypatch,
 
 def test_malformed_receipt_status_is_typed_partial_not_internal_failure(tmp_path, monkeypatch, capsys):
     """Corrupt ownership metadata remains a repairable, classified preflight state."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     receipt_path = tmp_path / "receipt.json"
     receipt_path.write_text("[]", encoding="utf-8")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt_path))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt_path))
 
     assert (
         install.main(
@@ -660,15 +660,15 @@ def test_malformed_receipt_status_is_typed_partial_not_internal_failure(tmp_path
 
 def test_verify_rejects_malformed_receipt_ownership_as_a_typed_failure(tmp_path, monkeypatch, capsys):
     """Malformed file ownership cannot escape the verify exit-code boundary."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     receipt_path = tmp_path / "receipt.json"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt_path))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt_path))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = [
         "--json",
         "--dcc-path",
@@ -691,13 +691,13 @@ def test_verify_rejects_malformed_receipt_ownership_as_a_typed_failure(tmp_path,
 
 def test_typed_host_ping_is_required_for_direct_usability(tmp_path, monkeypatch, capsys):
     """A successful typed probe is the only path to directly_usable=true."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
     monkeypatch.setattr(
         install,
         "query_runtime_state",
@@ -732,13 +732,13 @@ def test_typed_host_ping_is_required_for_direct_usability(tmp_path, monkeypatch,
 
 def test_uninstall_dry_run_describes_receipt_owned_removal(tmp_path, monkeypatch, capsys):
     """An uninstall plan must describe removal rather than installation stages."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
     common = [
         "--json",
         "--dcc-path",
@@ -760,16 +760,16 @@ def test_uninstall_dry_run_describes_receipt_owned_removal(tmp_path, monkeypatch
 
 def test_receipt_commit_failure_rolls_back_the_previous_install(tmp_path, monkeypatch, capsys):
     """A failed receipt commit must restore both previously owned artifacts."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
     startup_path = tmp_path / "scripts" / "startup" / install.STARTUP_SCRIPT_NAME
     receipt_path = tmp_path / "receipt.json"
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(receipt_path))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(receipt_path))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = [
         "--json",
         "--dcc-path",
@@ -802,13 +802,13 @@ def test_receipt_commit_failure_rolls_back_the_previous_install(tmp_path, monkey
 
 def test_windows_lock_is_a_restart_boundary_not_a_clean_install_failure(tmp_path, monkeypatch, capsys):
     """Locked owned files produce stable exit 50 and a restart-shaped result."""
-    from dcc_mcp_blender import install
+    from meshy_dcc_blender import install
 
     blender = tmp_path / "blender"
     blender.write_bytes(b"")
-    monkeypatch.setenv("DCC_MCP_BLENDER_VERSION", "4.5.13")
-    monkeypatch.setenv("DCC_MCP_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
-    monkeypatch.setenv("DCC_MCP_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_VERSION", "4.5.13")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_USER_SCRIPTS", str(tmp_path / "scripts"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_RECEIPT", str(tmp_path / "receipt.json"))
     common = [
         "--json",
         "--dcc-path",

@@ -1,4 +1,4 @@
-"""Tests for the Blender adapter's dcc-mcp-core interface integrations.
+"""Tests for the Blender adapter's meshy-dcc-core interface integrations.
 
 Mirrors the Maya adapter's coverage for the newly wired integrations:
 
@@ -77,7 +77,7 @@ class _FakeServer:
 
 class TestReadinessBinder:
     def test_no_dispatcher_marks_dcc_ready_immediately(self):
-        from dcc_mcp_blender._readiness import ReadinessBinder
+        from meshy_dcc_blender._readiness import ReadinessBinder
 
         server = _FakeServer(dispatcher=None)
         binder = ReadinessBinder()
@@ -90,7 +90,7 @@ class TestReadinessBinder:
         assert server._server.readiness_probe is binder.probe
 
     def test_async_dispatcher_schedules_then_marks_ready(self):
-        from dcc_mcp_blender._readiness import ReadinessBinder
+        from meshy_dcc_blender._readiness import ReadinessBinder
 
         captured = {}
 
@@ -113,7 +113,7 @@ class TestReadinessBinder:
 
     def test_main_thread_executor_deferred_until_probe_completes(self):
         """main_thread_executor stays False until the dcc probe callback fires."""
-        from dcc_mcp_blender._readiness import ReadinessBinder
+        from meshy_dcc_blender._readiness import ReadinessBinder
 
         pending_on_complete = {}
 
@@ -148,7 +148,7 @@ class TestReadinessBinder:
         )
 
     def test_bind_idempotent(self):
-        from dcc_mcp_blender._readiness import ReadinessBinder
+        from meshy_dcc_blender._readiness import ReadinessBinder
 
         server = _FakeServer()
         binder = ReadinessBinder()
@@ -157,13 +157,13 @@ class TestReadinessBinder:
         assert binder.bind(server) is True
 
     def test_resolve_timeout_env(self, monkeypatch):
-        from dcc_mcp_blender._readiness import resolve_readiness_timeout_secs
+        from meshy_dcc_blender._readiness import resolve_readiness_timeout_secs
 
-        monkeypatch.setenv("DCC_MCP_BLENDER_READINESS_TIMEOUT_SECS", "45")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_READINESS_TIMEOUT_SECS", "45")
         assert resolve_readiness_timeout_secs() == 45
-        monkeypatch.setenv("DCC_MCP_BLENDER_READINESS_TIMEOUT_SECS", "-3")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_READINESS_TIMEOUT_SECS", "-3")
         assert resolve_readiness_timeout_secs() is None
-        monkeypatch.delenv("DCC_MCP_BLENDER_READINESS_TIMEOUT_SECS", raising=False)
+        monkeypatch.delenv("MESHY_DCC_BLENDER_READINESS_TIMEOUT_SECS", raising=False)
         assert resolve_readiness_timeout_secs(12) == 12
 
 
@@ -174,7 +174,7 @@ class TestReadinessBinder:
 
 class TestCapabilityManifest:
     def _builder(self, *, loaded: bool = False):
-        from dcc_mcp_blender._capability_manifest import BlenderCapabilityManifestBuilder
+        from meshy_dcc_blender._capability_manifest import BlenderCapabilityManifestBuilder
 
         skills = [
             {
@@ -223,7 +223,7 @@ class TestCapabilityManifest:
         assert rec.tool_slug.startswith("blender.instance.")
 
     def test_build_manifest_payload_totals(self):
-        from dcc_mcp_blender._capability_manifest import build_manifest_payload
+        from meshy_dcc_blender._capability_manifest import build_manifest_payload
 
         records = self._builder(loaded=False).build()
         payload = build_manifest_payload(records, dcc_name="blender", scene="/tmp/x.blend")
@@ -233,7 +233,7 @@ class TestCapabilityManifest:
         assert payload["metadata"]["scene"] == "/tmp/x.blend"
 
     def test_register_capability_mcp_tool(self):
-        from dcc_mcp_blender._capability_manifest import register_capability_mcp_tool
+        from meshy_dcc_blender._capability_manifest import register_capability_mcp_tool
 
         server = _FakeServer()
         builder = self._builder(loaded=False)
@@ -245,7 +245,7 @@ class TestCapabilityManifest:
         assert result["context"]["dcc_type"] == "blender"
 
     def test_register_returns_false_without_inner(self):
-        from dcc_mcp_blender._capability_manifest import register_capability_mcp_tool
+        from meshy_dcc_blender._capability_manifest import register_capability_mcp_tool
 
         class _NoInner:
             _server = None
@@ -260,25 +260,25 @@ class TestCapabilityManifest:
 
 class TestProjectTools:
     def test_scene_resolver_returns_none_outside_blender(self):
-        from dcc_mcp_blender._project_tools import BlenderSceneResolver
+        from meshy_dcc_blender._project_tools import BlenderSceneResolver
 
         # No bpy importable in the test interpreter.
         assert BlenderSceneResolver().current_scene() is None
 
     def test_resolve_enabled_env_opt_out(self, monkeypatch):
-        from dcc_mcp_blender._project_tools import resolve_enabled
+        from meshy_dcc_blender._project_tools import resolve_enabled
 
-        monkeypatch.setenv("DCC_MCP_BLENDER_PROJECT_TOOLS", "0")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_PROJECT_TOOLS", "0")
         assert resolve_enabled() is False
-        monkeypatch.setenv("DCC_MCP_BLENDER_PROJECT_TOOLS", "1")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_PROJECT_TOOLS", "1")
         assert resolve_enabled() is True
-        monkeypatch.delenv("DCC_MCP_BLENDER_PROJECT_TOOLS", raising=False)
+        monkeypatch.delenv("MESHY_DCC_BLENDER_PROJECT_TOOLS", raising=False)
         assert resolve_enabled() is True
 
     def test_bind_with_fake_resolver(self, monkeypatch):
-        import dcc_mcp_core
+        import meshy_dcc_core
 
-        from dcc_mcp_blender._project_tools import BlenderSceneResolver, ProjectToolsIntegration
+        from meshy_dcc_blender._project_tools import BlenderSceneResolver, ProjectToolsIntegration
 
         calls = {}
 
@@ -287,7 +287,7 @@ class TestProjectTools:
             calls["dcc_name"] = dcc_name
             calls["project"] = project
 
-        monkeypatch.setattr(dcc_mcp_core, "register_project_tools", _fake_register)
+        monkeypatch.setattr(meshy_dcc_core, "register_project_tools", _fake_register)
 
         class _Resolver(BlenderSceneResolver):
             def current_scene(self) -> Optional[str]:
@@ -311,9 +311,9 @@ class TestProjectTools:
         assert integration.registered is True
 
     def test_attach_to_server_disabled(self, monkeypatch):
-        from dcc_mcp_blender._project_tools import attach_to_server
+        from meshy_dcc_blender._project_tools import attach_to_server
 
-        monkeypatch.setenv("DCC_MCP_BLENDER_PROJECT_TOOLS", "0")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_PROJECT_TOOLS", "0")
         assert attach_to_server(_FakeServer()) is None
 
 
@@ -324,7 +324,7 @@ class TestProjectTools:
 
 class TestResources:
     def test_bind_registers_producer_and_publishes_scene(self):
-        from dcc_mcp_blender._resources import SCHEME_BLENDER_DATA, BlenderResourceBinder
+        from meshy_dcc_blender._resources import SCHEME_BLENDER_DATA, BlenderResourceBinder
 
         server = _FakeServer()
         snapshots = [{"dcc": "blender", "scene": "/tmp/x.blend"}]
@@ -335,7 +335,7 @@ class TestResources:
         assert server._server.resources().scene_payloads == snapshots
 
     def test_install_scene_events_uses_injected_installer(self):
-        from dcc_mcp_blender._resources import BlenderResourceBinder
+        from meshy_dcc_blender._resources import BlenderResourceBinder
 
         recorded = {}
 
@@ -354,13 +354,13 @@ class TestResources:
         binder.unbind()
 
     def test_install_resources_env_opt_out(self, monkeypatch):
-        from dcc_mcp_blender._resources import install_resources
+        from meshy_dcc_blender._resources import install_resources
 
-        monkeypatch.setenv("DCC_MCP_BLENDER_RESOURCES", "0")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_RESOURCES", "0")
         assert install_resources(_FakeServer(), snapshot_provider=lambda: {}) is None
 
     def test_blender_data_producer_without_bpy(self):
-        from dcc_mcp_blender._resources import _blender_data_producer
+        from meshy_dcc_blender._resources import _blender_data_producer
 
         result = _blender_data_producer("blender-data://current")
         assert result["mimeType"] == "application/json"
@@ -374,21 +374,21 @@ class TestResources:
 
 class TestSemanticIndex:
     def test_resolve_enabled_default_off(self, monkeypatch):
-        from dcc_mcp_blender._semantic_index import resolve_semantic_index_enabled
+        from meshy_dcc_blender._semantic_index import resolve_semantic_index_enabled
 
-        monkeypatch.delenv("DCC_MCP_BLENDER_SEMANTIC_INDEX", raising=False)
+        monkeypatch.delenv("MESHY_DCC_BLENDER_SEMANTIC_INDEX", raising=False)
         assert resolve_semantic_index_enabled() is False
-        monkeypatch.setenv("DCC_MCP_BLENDER_SEMANTIC_INDEX", "1")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_SEMANTIC_INDEX", "1")
         assert resolve_semantic_index_enabled() is True
 
     def test_build_returns_none_when_disabled(self, monkeypatch):
-        from dcc_mcp_blender._semantic_index import build_semantic_index
+        from meshy_dcc_blender._semantic_index import build_semantic_index
 
-        monkeypatch.delenv("DCC_MCP_BLENDER_SEMANTIC_INDEX", raising=False)
+        monkeypatch.delenv("MESHY_DCC_BLENDER_SEMANTIC_INDEX", raising=False)
         assert build_semantic_index() is None
 
     def test_augment_appends_recall_preserving_base(self):
-        from dcc_mcp_blender._semantic_index import BlenderSemanticIndex
+        from meshy_dcc_blender._semantic_index import BlenderSemanticIndex
 
         class _Hit:
             def __init__(self, skill_id):
@@ -413,7 +413,7 @@ class TestSemanticIndex:
         assert "blender-render" in names  # recall appended
 
     def test_augment_empty_query_returns_base(self):
-        from dcc_mcp_blender._semantic_index import BlenderSemanticIndex
+        from meshy_dcc_blender._semantic_index import BlenderSemanticIndex
 
         index = BlenderSemanticIndex(MagicMock(), "hashed")
         base = [{"name": "blender-scene"}]
@@ -426,13 +426,13 @@ class TestSemanticIndex:
         preview" hit the correct skills even when the base result set does not
         contain them.
         """
-        monkeypatch.delenv("DCC_MCP_BLENDER_SEMANTIC_INDEX", raising=False)
-        monkeypatch.setenv("DCC_MCP_BLENDER_SEMANTIC_INDEX", "1")
-        monkeypatch.delenv("DCC_MCP_BLENDER_SEMANTIC_EMBEDDER", raising=False)
+        monkeypatch.delenv("MESHY_DCC_BLENDER_SEMANTIC_INDEX", raising=False)
+        monkeypatch.setenv("MESHY_DCC_BLENDER_SEMANTIC_INDEX", "1")
+        monkeypatch.delenv("MESHY_DCC_BLENDER_SEMANTIC_EMBEDDER", raising=False)
         # Use hashed embedder (zero-dependency, always available)
-        monkeypatch.setenv("DCC_MCP_BLENDER_SEMANTIC_EMBEDDER", "hashed")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_SEMANTIC_EMBEDDER", "hashed")
 
-        from dcc_mcp_blender._semantic_index import build_semantic_index
+        from meshy_dcc_blender._semantic_index import build_semantic_index
 
         index = build_semantic_index()
         assert index is not None, "semantic index should be built when env is enabled"
@@ -489,14 +489,14 @@ class TestSemanticIndex:
 
     def test_morphology_recall_default_off_no_side_effect(self, monkeypatch):
         """When SEMANTIC_INDEX is not set, build_semantic_index returns None."""
-        monkeypatch.delenv("DCC_MCP_BLENDER_SEMANTIC_INDEX", raising=False)
-        from dcc_mcp_blender._semantic_index import build_semantic_index
+        monkeypatch.delenv("MESHY_DCC_BLENDER_SEMANTIC_INDEX", raising=False)
+        from meshy_dcc_blender._semantic_index import build_semantic_index
 
         assert build_semantic_index() is None, "should be None when env is not set"
 
     def test_semantic_augment_deduplicates_existing_skills(self):
         """Skills already in base should not be duplicated by recall."""
-        from dcc_mcp_blender._semantic_index import BlenderSemanticIndex
+        from meshy_dcc_blender._semantic_index import BlenderSemanticIndex
 
         class _Hit:
             def __init__(self, skill_id):
@@ -531,7 +531,7 @@ class TestSemanticIndex:
 
 class TestContextSnapshot:
     def test_unavailable_outside_blender(self):
-        from dcc_mcp_blender.context_snapshot import BlenderContextSnapshotProvider
+        from meshy_dcc_blender.context_snapshot import BlenderContextSnapshotProvider
 
         provider = BlenderContextSnapshotProvider(bpy_provider=lambda: None)
         snap = provider.collect()
@@ -539,7 +539,7 @@ class TestContextSnapshot:
         assert snap["available"] is False
 
     def test_collect_with_fake_bpy(self):
-        from dcc_mcp_blender.context_snapshot import BlenderContextSnapshotProvider, collect_gateway_metadata
+        from meshy_dcc_blender.context_snapshot import BlenderContextSnapshotProvider, collect_gateway_metadata
 
         fake = MagicMock()
         fake.data.filepath = "/projects/shot/shot.blend"
@@ -580,7 +580,7 @@ class TestContextSnapshot:
 
 class TestServerWiring:
     def test_server_exposes_readiness_and_manifest(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         report = server.readiness_report()
@@ -590,7 +590,7 @@ class TestServerWiring:
         assert "capabilities" in manifest
 
     def test_public_exports(self):
-        import dcc_mcp_blender as b
+        import meshy_dcc_blender as b
 
         for symbol in (
             "ReadinessBinder",

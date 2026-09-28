@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from dcc_mcp_blender import _host_support as host_support
+from meshy_dcc_blender import _host_support as host_support
 
 # Every flag name CPython has shipped on a structseq ``sys.flags``. Names this
 # interpreter does not know fall back to 0, so the stub stays usable on the
@@ -83,7 +83,7 @@ def test_isolated_flags_suppress_pythonpath_and_imply_user_site(monkeypatch):
 def test_diagnose_host_reports_both_injection_signals(monkeypatch):
     monkeypatch.setattr(sys, "flags", _flags(no_user_site=1))
 
-    report = host_support.diagnose_host(("dcc_mcp_core",))
+    report = host_support.diagnose_host(("meshy_dcc_core",))
 
     assert report["pythonpath_suppressed"] is False
     assert report["user_site_suppressed"] is True
@@ -93,7 +93,7 @@ def test_diagnose_host_reports_both_injection_signals(monkeypatch):
 def test_user_site_only_failure_suggests_the_user_site_fix(monkeypatch):
     """A -s host gets the -s fix, not --python-use-system-env."""
     monkeypatch.setattr(sys, "flags", _flags(no_user_site=1))
-    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["dcc_mcp_core"])
+    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["meshy_dcc_core"])
 
     with pytest.raises(host_support.HostSupportError) as excinfo:
         host_support.require_supported_host()
@@ -104,13 +104,13 @@ def test_user_site_only_failure_suggests_the_user_site_fix(monkeypatch):
 
 
 def test_missing_distributions_reports_invisible_modules(monkeypatch):
-    assert host_support.missing_distributions(("dcc_mcp_core",)) == []
-    assert host_support.missing_distributions(("_dcc_mcp_not_installed_xyz",)) == ["_dcc_mcp_not_installed_xyz"]
+    assert host_support.missing_distributions(("meshy_dcc_core",)) == []
+    assert host_support.missing_distributions(("_meshy_dcc_not_installed_xyz",)) == ["_meshy_dcc_not_installed_xyz"]
 
 
 def test_missing_distributions_treats_loaded_modules_as_present(monkeypatch):
-    monkeypatch.setitem(sys.modules, "_dcc_mcp_loaded_probe", object())
-    assert host_support.missing_distributions(("_dcc_mcp_loaded_probe",)) == []
+    monkeypatch.setitem(sys.modules, "_meshy_dcc_loaded_probe", object())
+    assert host_support.missing_distributions(("_meshy_dcc_loaded_probe",)) == []
 
 
 def test_environment_injection_suppressed_reads_interpreter_flags(monkeypatch):
@@ -123,7 +123,7 @@ def test_environment_injection_suppressed_reads_interpreter_flags(monkeypatch):
 
 def test_diagnose_host_reports_window_and_visibility(monkeypatch):
     monkeypatch.setattr(sys, "flags", _flags())
-    report = host_support.diagnose_host(("dcc_mcp_core",))
+    report = host_support.diagnose_host(("meshy_dcc_core",))
 
     assert report["supported"] is True
     assert report["missing_distributions"] == []
@@ -135,23 +135,23 @@ def test_diagnose_host_reports_window_and_visibility(monkeypatch):
 
 def test_require_supported_host_passes_on_a_supported_host(monkeypatch):
     monkeypatch.setattr(sys, "flags", _flags())
-    report = host_support.require_supported_host(("dcc_mcp_core",))
+    report = host_support.require_supported_host(("meshy_dcc_core",))
 
     assert report["supported"] is True
 
 
 def test_require_supported_host_names_the_boundary_when_core_is_invisible(monkeypatch):
-    """A host that cannot see dcc-mcp-core must not surface ModuleNotFoundError."""
+    """A host that cannot see meshy-dcc-core must not surface ModuleNotFoundError."""
     monkeypatch.setattr(sys, "flags", _flags(isolated=1, ignore_environment=1))
-    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["dcc_mcp_core"])
+    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["meshy_dcc_core"])
 
     with pytest.raises(host_support.HostSupportError) as excinfo:
         host_support.require_supported_host(adapter_version="0.2.10")
 
     message = str(excinfo.value)
     assert "ModuleNotFoundError" not in message
-    assert "dcc-mcp-blender 0.2.10 is not usable in this host" in message
-    assert "dcc_mcp_core" in message
+    assert "meshy-dcc-blender 0.2.10 is not usable in this host" in message
+    assert "meshy_dcc_core" in message
     assert "declared window: >=3.7 (tested up to 3.13)" in message
     assert "environment injection: suppressed" in message
     # The remediation has to match the detected mode, not the install flavour.
@@ -161,14 +161,14 @@ def test_require_supported_host_names_the_boundary_when_core_is_invisible(monkey
 
 def test_require_supported_host_suggests_install_when_injection_is_enabled(monkeypatch):
     monkeypatch.setattr(sys, "flags", _flags())
-    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["dcc_mcp_core"])
+    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["meshy_dcc_core"])
 
     with pytest.raises(host_support.HostSupportError) as excinfo:
         host_support.require_supported_host()
 
     message = str(excinfo.value)
     assert "environment injection: enabled" in message
-    assert "pip install --user dcc-mcp-core" in message
+    assert "pip install --user meshy-dcc-core" in message
     assert "--python-use-system-env" not in message
 
 
@@ -189,7 +189,7 @@ def test_newer_than_tested_python_is_reported_but_not_rejected(monkeypatch):
     monkeypatch.setattr(sys, "flags", _flags())
     monkeypatch.setattr(host_support, "host_python_version", lambda: (3, 14, 0))
 
-    report = host_support.require_supported_host(("dcc_mcp_core",))
+    report = host_support.require_supported_host(("meshy_dcc_core",))
 
     assert report["supported"] is True
     assert report["python_beyond_tested"] is True
@@ -197,13 +197,13 @@ def test_newer_than_tested_python_is_reported_but_not_rejected(monkeypatch):
 
 def test_main_exits_non_zero_and_prints_json_for_an_unsupported_host(monkeypatch, capsys):
     monkeypatch.setattr(sys, "flags", _flags(isolated=1, ignore_environment=1))
-    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["dcc_mcp_core"])
+    monkeypatch.setattr(host_support, "missing_distributions", lambda *args, **kwargs: ["meshy_dcc_core"])
 
-    assert host_support.main(["--json", "--require", "dcc_mcp_core"]) == 1
+    assert host_support.main(["--json", "--require", "meshy_dcc_core"]) == 1
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["supported"] is False
-    assert payload["missing_distributions"] == ["dcc_mcp_core"]
+    assert payload["missing_distributions"] == ["meshy_dcc_core"]
     assert payload["environment_injection_suppressed"] is True
 
 
@@ -214,12 +214,12 @@ def test_main_exits_zero_for_a_supported_host(monkeypatch, capsys):
     assert host_support.main([]) == 0
 
     output = capsys.readouterr().out
-    assert "dcc-mcp-blender host support: supported" in output
+    assert "meshy-dcc-blender host support: supported" in output
     assert "declared window: >=3.7" in output
 
 
 def test_main_require_extends_the_default_set_instead_of_replacing_it(monkeypatch, capsys):
-    """--require must never drop dcc_mcp_blender / dcc_mcp_core from the check.
+    """--require must never drop meshy_dcc_blender / meshy_dcc_core from the check.
 
     Replacing the defaults lets an invisible adapter report 'supported' -- the
     exact silent failure the preflight exists to catch.
@@ -235,20 +235,20 @@ def test_main_require_extends_the_default_set_instead_of_replacing_it(monkeypatc
 
     assert host_support.main(["--require", "json"]) == 0
 
-    assert seen == [("dcc_mcp_blender", "dcc_mcp_core", "json")]
+    assert seen == [("meshy_dcc_blender", "meshy_dcc_core", "json")]
 
 
 def test_main_requires_adapter_even_when_another_distribution_is_requested(monkeypatch, capsys):
     """A host missing only the adapter must still fail the standalone preflight."""
 
     def _missing(required=(), *_args, **_kwargs):
-        return [name for name in required if name == "dcc_mcp_blender"]
+        return [name for name in required if name == "meshy_dcc_blender"]
 
     monkeypatch.setattr(sys, "flags", _flags())
     monkeypatch.setattr(host_support, "missing_distributions", _missing)
 
     assert host_support.main(["--require", "json"]) == 1
-    assert "missing distributions: dcc_mcp_blender" in capsys.readouterr().out
+    assert "missing distributions: meshy_dcc_blender" in capsys.readouterr().out
 
 
 def test_main_ignores_host_arguments_passed_by_blender(monkeypatch, capsys):
@@ -269,5 +269,5 @@ def test_module_is_stdlib_only():
     with open(source, encoding="utf-8") as handle:
         text = handle.read()
 
-    for forbidden in ("import bpy", "import dcc_mcp_core", "from dcc_mcp_blender", "from ."):
+    for forbidden in ("import bpy", "import meshy_dcc_core", "from meshy_dcc_blender", "from ."):
         assert forbidden not in text, forbidden

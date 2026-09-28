@@ -1,6 +1,6 @@
 """Blender safe stop refuses unless the user agreed to discard unsaved work."""
 
-from dcc_mcp_blender._safe_stop import handle_stop_request
+from meshy_dcc_blender._safe_stop import handle_stop_request
 
 
 def test_stop_needs_matching_instance_and_discard_consent():

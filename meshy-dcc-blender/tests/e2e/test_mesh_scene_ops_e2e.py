@@ -131,7 +131,7 @@ class TestMeshSceneOpsE2E:
         assert cleaned["context"]["readback"]["remaining_modifiers"] == []
 
     def test_applied_modifiers_boolean_and_uvs_prove_real_mesh_digest_changes(self):
-        from dcc_mcp_blender._modeling_common import uv_state
+        from meshy_dcc_blender._modeling_common import uv_state
 
         create_mod = load_skill("blender-mesh-ops", "create_primitive")
         body = create_mod.create_primitive(primitive_type="cube", name="DigestBody", size=2.0)

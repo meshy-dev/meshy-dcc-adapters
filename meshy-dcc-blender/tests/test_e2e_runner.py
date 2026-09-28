@@ -11,7 +11,7 @@ import textwrap
 
 import pytest
 
-RUNNER = pathlib.Path(__file__).parents[1] / ".github" / "scripts" / "run_blender_e2e.py"
+RUNNER = pathlib.Path(__file__).parents[1] / "tools" / "run_blender_e2e.py"
 HOST_DOUBLE = """
 from types import ModuleType, SimpleNamespace
 host = ModuleType("bpy")

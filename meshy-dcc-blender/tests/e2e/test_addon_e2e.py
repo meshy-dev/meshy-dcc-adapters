@@ -22,11 +22,11 @@ pytestmark = pytest.mark.e2e
 
 from tests.e2e.conftest import load_skill  # noqa: E402
 
-_ADDON_MODULE = "dcc_mcp_blender_e2e_temp_addon"
-_ADDON_SOURCE = '''"""Throwaway add-on used only by the dcc-mcp-blender E2E suite."""
+_ADDON_MODULE = "meshy_dcc_blender_e2e_temp_addon"
+_ADDON_SOURCE = '''"""Throwaway add-on used only by the meshy-dcc-blender E2E suite."""
 
 bl_info = {
-    "name": "DCC MCP Blender E2E Temp Addon",
+    "name": "Meshy DCC Blender E2E Temp Addon",
     "version": (1, 0, 0),
     "blender": (3, 0, 0),
     "category": "Development",

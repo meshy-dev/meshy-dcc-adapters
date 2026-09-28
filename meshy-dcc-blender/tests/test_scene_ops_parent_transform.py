@@ -1,4 +1,4 @@
-"""Unit tests for :func:`dcc_mcp_blender._scene_ops.parent_object`.
+"""Unit tests for :func:`meshy_dcc_blender._scene_ops.parent_object`.
 
 These tests use a fake ``bpy`` that models the two Blender behaviours the fix
 depends on:

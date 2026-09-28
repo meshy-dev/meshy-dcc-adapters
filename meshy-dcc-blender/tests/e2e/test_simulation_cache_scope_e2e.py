@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dcc_mcp_blender._physics_ops import bake_simulation, clear_simulation_cache
+from meshy_dcc_blender._physics_ops import bake_simulation, clear_simulation_cache
 
 bpy = pytest.importorskip("bpy")
 

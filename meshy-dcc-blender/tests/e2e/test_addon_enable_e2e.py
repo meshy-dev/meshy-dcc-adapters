@@ -39,7 +39,7 @@ if sys.platform == "win32":
 pytestmark = pytest.mark.e2e
 
 ADDON_ENTRY = Path(__file__).parents[2] / "packaging" / "addon_entry" / "__init__.py"
-ADDON_MODULE = "dcc_mcp_blender_enable_e2e"
+ADDON_MODULE = "meshy_dcc_blender_enable_e2e"
 
 
 def _addon_dir() -> Path:
@@ -92,9 +92,9 @@ def test_blender_enables_packaged_addon():
 
     import addon_utils  # noqa: PLC0415
 
-    # Ensure the real package owns ``dcc_mcp_blender`` in sys.modules so the
+    # Ensure the real package owns ``meshy_dcc_blender`` in sys.modules so the
     # add-on entry's self-aliasing guard stays a no-op (it uses setdefault).
-    import dcc_mcp_blender  # noqa: F401, PLC0415
+    import meshy_dcc_blender  # noqa: F401, PLC0415
 
     assert ADDON_ENTRY.is_file(), f"add-on entry missing: {ADDON_ENTRY}"
 
@@ -122,9 +122,9 @@ def test_blender_enables_packaged_addon():
         assert is_loaded, f"{ADDON_MODULE} module not loaded after addon_enable"
 
         # register() must have registered the operator + menu classes.
-        assert hasattr(bpy.types, "DCCMCP_MT_main_menu"), "top-bar menu class not registered"
-        assert hasattr(bpy.ops, "dcc_mcp") and hasattr(bpy.ops.dcc_mcp, "show_server_urls"), (
-            "dcc_mcp operators not registered after enable"
+        assert hasattr(bpy.types, "MESHYDCC_MT_main_menu"), "top-bar menu class not registered"
+        assert hasattr(bpy.ops, "meshy_dcc") and hasattr(bpy.ops.meshy_dcc, "show_server_urls"), (
+            "meshy_dcc operators not registered after enable"
         )
     finally:
         _cleanup(dest)

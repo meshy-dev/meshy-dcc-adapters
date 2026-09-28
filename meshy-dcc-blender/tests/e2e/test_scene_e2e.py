@@ -100,7 +100,7 @@ class TestSceneSkillsE2E:
 
         # Step 3 — verify the dispatcher timer is actually installed.
         try:
-            from dcc_mcp_blender.server import get_server
+            from meshy_dcc_blender.server import get_server
 
             server = get_server()
             if server is not None:

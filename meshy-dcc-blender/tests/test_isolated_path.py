@@ -14,7 +14,7 @@ import sys
 
 import pytest
 
-from dcc_mcp_blender import _isolated_path as helper
+from meshy_dcc_blender import _isolated_path as helper
 
 TOOLS_DIR = pathlib.Path(__file__).parent.parent / "tools"
 
@@ -175,7 +175,7 @@ def test_doctor_probe_reports_adapter_and_core():
     report = doctor.probe(repair=True)
 
     assert report["helper_loaded"] is True
-    assert report["imports"]["dcc_mcp_blender"]["ok"] is True
-    assert report["imports"]["dcc_mcp_core"]["ok"] is True
+    assert report["imports"]["meshy_dcc_blender"]["ok"] is True
+    assert report["imports"]["meshy_dcc_core"]["ok"] is True
     assert report["tool_surface"]["submodules"] > 0
     assert report["ok"] is True

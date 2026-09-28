@@ -7,15 +7,15 @@ import json
 from pathlib import Path
 
 import yaml
-from dcc_mcp_core.asset_import import AssetDescriptor
+from meshy_dcc_core.asset_import import AssetDescriptor
 
-import dcc_mcp_blender._comfyui_publish_ops as publish_ops
+import meshy_dcc_blender._comfyui_publish_ops as publish_ops
 
 ROOT = Path(__file__).parent.parent
 
 
 def test_pipeline_declares_comfyui_publish_contract():
-    skill = ROOT / "src" / "dcc_mcp_blender" / "skills" / "blender-pipeline"
+    skill = ROOT / "src" / "meshy_dcc_blender" / "skills" / "blender-pipeline"
     tools = yaml.safe_load((skill / "tools.yaml").read_text(encoding="utf-8"))["tools"]
     tool = next(item for item in tools if item["name"] == "publish_comfyui_asset")
     assert tool["affinity"] == "main"

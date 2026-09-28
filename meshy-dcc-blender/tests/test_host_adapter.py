@@ -51,7 +51,7 @@ def _mock_bpy(background: bool = False):
 
 
 def test_blender_host_uses_bpy_background_flag():
-    from dcc_mcp_blender.host import BlenderHost
+    from meshy_dcc_blender.host import BlenderHost
 
     bpy, _registered = _mock_bpy(background=True)
     with patch.dict(sys.modules, {"bpy": bpy}):
@@ -59,7 +59,7 @@ def test_blender_host_uses_bpy_background_flag():
 
 
 def test_blender_host_attaches_and_detaches_timer():
-    from dcc_mcp_blender.host import BlenderHost
+    from meshy_dcc_blender.host import BlenderHost
 
     bpy, registered = _mock_bpy(background=False)
     dispatcher = _Dispatcher()
@@ -83,7 +83,7 @@ def test_blender_host_attaches_and_detaches_timer():
 
 
 def test_blender_callable_dispatcher_posts_work_to_tick_loop():
-    from dcc_mcp_blender.host import BlenderCallableDispatcher
+    from meshy_dcc_blender.host import BlenderCallableDispatcher
 
     dispatcher = BlenderCallableDispatcher()
     result = []
@@ -102,9 +102,9 @@ def test_blender_callable_dispatcher_posts_work_to_tick_loop():
 
 
 def test_blender_ui_dispatcher_uses_core_queue_and_timer_pump():
-    from dcc_mcp_core import HostUiDispatcherBase
+    from meshy_dcc_core import HostUiDispatcherBase
 
-    from dcc_mcp_blender.host import BlenderUiDispatcher
+    from meshy_dcc_blender.host import BlenderUiDispatcher
 
     bpy, registered = _mock_bpy(background=False)
     with patch.dict(sys.modules, {"bpy": bpy}):
@@ -142,7 +142,7 @@ def test_blender_ui_dispatcher_uses_core_queue_and_timer_pump():
 
 
 def test_blender_ui_dispatcher_shutdown_unblocks_pending_main_thread_work():
-    from dcc_mcp_blender.host import BlenderUiDispatcher
+    from meshy_dcc_blender.host import BlenderUiDispatcher
 
     bpy, registered = _mock_bpy(background=False)
     with patch.dict(sys.modules, {"bpy": bpy}):

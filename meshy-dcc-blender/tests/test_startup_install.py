@@ -12,11 +12,11 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 ROOT = pathlib.Path(__file__).parent.parent
-SETUP_SCRIPT = ROOT / "skills" / "dcc-mcp-blender-setup" / "scripts" / "setup_dcc_mcp_blender.py"
+SETUP_SCRIPT = ROOT / "skills" / "meshy-dcc-blender-setup" / "scripts" / "setup_meshy_dcc_blender.py"
 
 
 def _load_setup_module():
-    spec = importlib.util.spec_from_file_location("setup_dcc_mcp_blender_for_tests", SETUP_SCRIPT)
+    spec = importlib.util.spec_from_file_location("setup_meshy_dcc_blender_for_tests", SETUP_SCRIPT)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -27,11 +27,11 @@ def _load_startup_module(path: pathlib.Path, monkeypatch):
     real_import = builtins.__import__
 
     def guarded_import(name, *args, **kwargs):
-        if name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender."):
-            raise AssertionError("startup discovery imported dcc_mcp_blender eagerly")
+        if name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender."):
+            raise AssertionError("startup discovery imported meshy_dcc_blender eagerly")
         return real_import(name, *args, **kwargs)
 
-    spec = importlib.util.spec_from_file_location("dcc_mcp_blender_startup_for_tests", path)
+    spec = importlib.util.spec_from_file_location("meshy_dcc_blender_startup_for_tests", path)
     module = importlib.util.module_from_spec(spec)
     with monkeypatch.context() as context:
         context.setattr(builtins, "__import__", guarded_import)
@@ -56,7 +56,7 @@ def test_setup_installs_blender5_registerable_idempotent_startup_script(monkeypa
 
     assert setup.main([]) == 0
 
-    startup_path = user_scripts / "startup" / "dcc_mcp_blender_startup.py"
+    startup_path = user_scripts / "startup" / "meshy_dcc_blender_startup.py"
     assert startup_path.is_file()
     startup = _load_startup_module(startup_path, monkeypatch)
     assert callable(startup.register)
@@ -65,7 +65,7 @@ def test_setup_installs_blender5_registerable_idempotent_startup_script(monkeypa
     calls = []
     state = {"server": None}
     running_server = SimpleNamespace(is_running=True)
-    fake_package = ModuleType("dcc_mcp_blender")
+    fake_package = ModuleType("meshy_dcc_blender")
 
     def start_server():
         calls.append("start")
@@ -79,7 +79,7 @@ def test_setup_installs_blender5_registerable_idempotent_startup_script(monkeypa
     fake_package.get_server = lambda: state["server"]
     fake_package.start_server = start_server
     fake_package.stop_server = stop_server
-    monkeypatch.setitem(sys.modules, "dcc_mcp_blender", fake_package)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_blender", fake_package)
 
     assert startup.register() is running_server
     assert startup.register() is running_server
@@ -141,13 +141,13 @@ def test_startup_bridge_captures_and_reraises_bootstrap_failures(monkeypatch, tm
             captured.append((dcc_name, kwargs, exc))
             raise
 
-    fake_core = ModuleType("dcc_mcp_core")
+    fake_core = ModuleType("meshy_dcc_core")
     fake_core.capture_bootstrap_errors = capture_bootstrap_errors
-    fake_package = ModuleType("dcc_mcp_blender")
+    fake_package = ModuleType("meshy_dcc_blender")
     fake_package.get_server = lambda: (_ for _ in ()).throw(RuntimeError("startup exploded"))
     fake_package.start_server = lambda: None
-    monkeypatch.setitem(sys.modules, "dcc_mcp_core", fake_core)
-    monkeypatch.setitem(sys.modules, "dcc_mcp_blender", fake_package)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_core", fake_core)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_blender", fake_package)
 
     with pytest.raises(RuntimeError, match="startup exploded"):
         startup.register()
@@ -159,14 +159,14 @@ def test_startup_bridge_captures_and_reraises_bootstrap_failures(monkeypatch, tm
 
 def _render_startup(tmp_path, monkeypatch):
     """Render the lifecycle-owned startup script and load it as a module."""
-    from dcc_mcp_blender import install as lifecycle
+    from meshy_dcc_blender import install as lifecycle
 
     site_packages = tmp_path / "site-packages"
     context = SimpleNamespace(
         site_packages=site_packages,
         bootstrap_log_dir=tmp_path / "bootstrap-logs",
     )
-    script = tmp_path / "dcc_mcp_blender_startup.py"
+    script = tmp_path / "meshy_dcc_blender_startup.py"
     script.write_text(lifecycle._render_startup_script(context), encoding="utf-8")
     return _load_startup_module(script, monkeypatch)
 
@@ -198,20 +198,20 @@ def test_startup_script_rejects_a_stale_user_level_adapter(monkeypatch, tmp_path
     startup = _render_startup(tmp_path, monkeypatch)
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_blender",
-        _stale_module(tmp_path, "dcc_mcp_blender", "0.2.1"),
+        "meshy_dcc_blender",
+        _stale_module(tmp_path, "meshy_dcc_blender", "0.2.1"),
     )
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_core",
-        _installed_module(tmp_path, "dcc_mcp_core", "0.20.28"),
+        "meshy_dcc_core",
+        _installed_module(tmp_path, "meshy_dcc_core", "0.20.28"),
     )
 
     with pytest.raises(RuntimeError) as raised:
         startup._assert_expected_origin()
 
     message = str(raised.value)
-    assert "dcc_mcp_blender 0.2.1" in message
+    assert "meshy_dcc_blender 0.2.1" in message
     assert "bl_ext" in message
 
 
@@ -220,13 +220,13 @@ def test_startup_script_accepts_the_installed_origin(monkeypatch, tmp_path):
     startup = _render_startup(tmp_path, monkeypatch)
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_blender",
-        _installed_module(tmp_path, "dcc_mcp_blender", "0.2.10"),
+        "meshy_dcc_blender",
+        _installed_module(tmp_path, "meshy_dcc_blender", "0.2.10"),
     )
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_core",
-        _installed_module(tmp_path, "dcc_mcp_core", "0.20.28"),
+        "meshy_dcc_core",
+        _installed_module(tmp_path, "meshy_dcc_core", "0.20.28"),
     )
 
     assert startup._assert_expected_origin() is None
@@ -243,15 +243,15 @@ def test_startup_script_prefers_a_declared_root_over_the_installed_one(monkeypat
     resolve_root = tmp_path / "resolve" / "site-packages"
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_blender",
-        _installed_module(resolve_root, "dcc_mcp_blender", "0.2.4"),
+        "meshy_dcc_blender",
+        _installed_module(resolve_root, "meshy_dcc_blender", "0.2.4"),
     )
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_core",
-        _installed_module(resolve_root, "dcc_mcp_core", "0.20.28"),
+        "meshy_dcc_core",
+        _installed_module(resolve_root, "meshy_dcc_core", "0.20.28"),
     )
-    monkeypatch.setenv("DCC_MCP_BLENDER_PACKAGE_ROOT", str(resolve_root))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_PACKAGE_ROOT", str(resolve_root))
 
     assert startup._assert_expected_origin() is None
 
@@ -261,17 +261,17 @@ def test_startup_script_accepts_a_root_spelled_as_the_package_dir(monkeypatch, t
     startup = _render_startup(tmp_path, monkeypatch)
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_blender",
-        _installed_module(tmp_path, "dcc_mcp_blender", "0.2.10"),
+        "meshy_dcc_blender",
+        _installed_module(tmp_path, "meshy_dcc_blender", "0.2.10"),
     )
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_core",
-        _installed_module(tmp_path, "dcc_mcp_core", "0.20.28"),
+        "meshy_dcc_core",
+        _installed_module(tmp_path, "meshy_dcc_core", "0.20.28"),
     )
     monkeypatch.setenv(
-        "DCC_MCP_BLENDER_PACKAGE_ROOT",
-        str(tmp_path / "site-packages" / "dcc_mcp_blender"),
+        "MESHY_DCC_BLENDER_PACKAGE_ROOT",
+        str(tmp_path / "site-packages" / "meshy_dcc_blender"),
     )
 
     assert startup._assert_expected_origin() is None
@@ -282,20 +282,20 @@ def test_startup_script_rejects_the_installed_root_when_another_is_declared(monk
     startup = _render_startup(tmp_path, monkeypatch)
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_blender",
-        _installed_module(tmp_path, "dcc_mcp_blender", "0.2.10"),
+        "meshy_dcc_blender",
+        _installed_module(tmp_path, "meshy_dcc_blender", "0.2.10"),
     )
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_core",
-        _installed_module(tmp_path, "dcc_mcp_core", "0.20.28"),
+        "meshy_dcc_core",
+        _installed_module(tmp_path, "meshy_dcc_core", "0.20.28"),
     )
-    monkeypatch.setenv("DCC_MCP_BLENDER_PACKAGE_ROOT", str(tmp_path / "resolve" / "site-packages"))
+    monkeypatch.setenv("MESHY_DCC_BLENDER_PACKAGE_ROOT", str(tmp_path / "resolve" / "site-packages"))
 
     with pytest.raises(RuntimeError) as raised:
         startup._assert_expected_origin()
 
-    assert "dcc_mcp_blender 0.2.10" in str(raised.value)
+    assert "meshy_dcc_blender 0.2.10" in str(raised.value)
 
 
 def test_startup_script_treats_a_foreign_core_as_advisory(monkeypatch, tmp_path, capsys):
@@ -303,13 +303,13 @@ def test_startup_script_treats_a_foreign_core_as_advisory(monkeypatch, tmp_path,
     startup = _render_startup(tmp_path, monkeypatch)
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_blender",
-        _installed_module(tmp_path, "dcc_mcp_blender", "0.2.10"),
+        "meshy_dcc_blender",
+        _installed_module(tmp_path, "meshy_dcc_blender", "0.2.10"),
     )
-    foreign = ModuleType("dcc_mcp_core")
-    foreign.__file__ = str(tmp_path / "other-interpreter" / "site-packages" / "dcc_mcp_core" / "__init__.py")
+    foreign = ModuleType("meshy_dcc_core")
+    foreign.__file__ = str(tmp_path / "other-interpreter" / "site-packages" / "meshy_dcc_core" / "__init__.py")
     foreign.__version__ = "0.20.28"
-    monkeypatch.setitem(sys.modules, "dcc_mcp_core", foreign)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_core", foreign)
 
     assert startup._assert_expected_origin() is None
     assert "NOTE" in capsys.readouterr().out
@@ -320,10 +320,10 @@ def test_startup_script_violation_can_be_downgraded(monkeypatch, tmp_path, capsy
     startup = _render_startup(tmp_path, monkeypatch)
     monkeypatch.setitem(
         sys.modules,
-        "dcc_mcp_blender",
-        _stale_module(tmp_path, "dcc_mcp_blender", "0.2.1"),
+        "meshy_dcc_blender",
+        _stale_module(tmp_path, "meshy_dcc_blender", "0.2.1"),
     )
-    monkeypatch.setenv("DCC_MCP_BLENDER_STRICT_ORIGIN", "0")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_STRICT_ORIGIN", "0")
 
     assert startup._assert_expected_origin() is None
     assert "WARNING" in capsys.readouterr().out

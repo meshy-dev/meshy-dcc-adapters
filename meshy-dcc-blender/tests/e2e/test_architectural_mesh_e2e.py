@@ -5,7 +5,7 @@ import pytest
 bpy = pytest.importorskip("bpy")
 pytestmark = pytest.mark.e2e
 
-from dcc_mcp_blender._architectural_mesh import create_pointed_arch  # noqa: E402
+from meshy_dcc_blender._architectural_mesh import create_pointed_arch  # noqa: E402
 
 
 def test_solid_arch_depth_bounds_and_context():

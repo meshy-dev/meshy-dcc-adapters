@@ -1,4 +1,4 @@
-# Release Smoke Checklist — dcc-mcp-blender
+# Release Smoke Checklist — meshy-dcc-blender
 
 Run these checks against every release ZIP before publishing.
 This checklist validates the GUI Extension install path for Blender 4.5+.
@@ -6,7 +6,7 @@ This checklist validates the GUI Extension install path for Blender 4.5+.
 ## Prerequisites
 
 - Blender 4.5.0 or later
-- A clean Blender profile (no prior dcc-mcp-blender installed):
+- A clean Blender profile (no prior meshy-dcc-blender installed):
   ```bash
   blender --factory-startup
   ```
@@ -29,8 +29,8 @@ This checklist validates the GUI Extension install path for Blender 4.5+.
 
 - [ ] Open Blender with a clean profile
 - [ ] **Edit → Preferences → Extensions → Install from Disk…**
-- [ ] Select the release ZIP (`dcc_mcp_blender_addon_<platform>_vX.Y.Z.zip`)
-- [ ] Confirm the extension **"DCC MCP Blender"** appears in the Extensions list
+- [ ] Select the release ZIP (`meshy_dcc_blender_addon_<platform>_vX.Y.Z.zip`)
+- [ ] Confirm the extension **"Meshy DCC Blender"** appears in the Extensions list
 - [ ] **DO NOT** use **Edit → Preferences → Add-ons → Install** — the legacy
   add-on path is unsupported. Installing there will produce:
   > *"ZIP packaged incorrectly; `__init__.py` should be in a directory, not at top-level"*
@@ -38,12 +38,12 @@ This checklist validates the GUI Extension install path for Blender 4.5+.
 
 ## 2. Server Auto-Start
 
-- [ ] Enable the **DCC MCP Blender** extension
+- [ ] Enable the **Meshy DCC Blender** extension
 - [ ] Check Blender console / Info area:
   ```
-  [DCC MCP Blender] Server started — http://127.0.0.1:<assigned-port>/mcp
+  [Meshy DCC Blender] Server started — http://127.0.0.1:<assigned-port>/mcp
   ```
-- [ ] Record the exact URL from the log or `dcc-mcp-cli list`; do not assume a
+- [ ] Record the exact URL from the log or `meshy-dcc-cli list`; do not assume a
   fixed instance port.
 - [ ] Navigate to `<instance-url>/mcp` in a browser —
   expect `{"jsonrpc":"2.0","error":...}` (valid MCP endpoint, not a connection error)
@@ -73,7 +73,7 @@ This checklist validates the GUI Extension install path for Blender 4.5+.
       method="POST"
   )
   resp = json.loads(urllib.request.urlopen(req, timeout=10).read())
-  assert resp["result"]["serverInfo"]["name"] == "dcc-mcp-blender"
+  assert resp["result"]["serverInfo"]["name"] == "meshy-dcc-blender"
   print("PASS: MCP initialize handshake")
   ```
 
@@ -165,7 +165,7 @@ fail with `THREAD_AFFINITY_UNAVAILABLE`.
 
 ## 7. Graceful Shutdown & Restart
 
-- [ ] Disable the **DCC MCP Blender** extension in Preferences → Extensions
+- [ ] Disable the **Meshy DCC Blender** extension in Preferences → Extensions
 - [ ] Confirm the recorded instance URL no longer responds.
 - [ ] Re-enable the extension and verify server restarts cleanly
 - [ ] Verify `/v1/readyz` goes through the green transition again
@@ -177,7 +177,7 @@ If two Blender instances are available:
 - [ ] Start Blender #1 with the extension enabled — verify it becomes gateway
 - [ ] Start Blender #2 with the extension enabled —
   verify it registers on an ephemeral port
-- [ ] Run `dcc-mcp-cli list` — both instances and distinct direct URLs should appear
+- [ ] Run `meshy-dcc-cli list` — both instances and distinct direct URLs should appear
 - [ ] Close Blender #1 — verify Blender #2 takes over gateway port
 
 ---
@@ -216,7 +216,7 @@ init = mcp("initialize", {
     "capabilities": {},
     "clientInfo": {"name": "smoke", "version": "1"},
 })
-check("initialize", init["result"]["serverInfo"]["name"] == "dcc-mcp-blender")
+check("initialize", init["result"]["serverInfo"]["name"] == "meshy-dcc-blender")
 
 # 2. tools/list
 tools = mcp("tools/list", {})

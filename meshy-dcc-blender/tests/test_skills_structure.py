@@ -7,13 +7,13 @@ import re
 
 import pytest
 
-SKILLS_DIR = pathlib.Path(__file__).parent.parent / "src" / "dcc_mcp_blender" / "skills"
+SKILLS_DIR = pathlib.Path(__file__).parent.parent / "src" / "meshy_dcc_blender" / "skills"
 SKILLS_INDEX = SKILLS_DIR / "SKILLS_INDEX.md"
 
-# Controlled vocabulary for ``metadata.dcc-mcp.layer``.
+# Controlled vocabulary for ``metadata.meshy-dcc.layer``.
 #
-# The values mirror the ``LAYER_*`` constants in dcc-mcp-core
-# ``crates/dcc-mcp-skills/src/catalog/scoring.rs``, which multiplies the BM25
+# The values mirror the ``LAYER_*`` constants in meshy-dcc-core
+# ``crates/meshy-dcc-skills/src/catalog/scoring.rs``, which multiplies the BM25
 # score by a per-layer coefficient. ``domain`` and an unset layer both carry a
 # 1.00 multiplier, so backfilling ``layer: domain`` is rank-neutral.
 ALLOWED_LAYERS = frozenset({"domain", "infrastructure", "thin-harness", "example"})
@@ -27,7 +27,7 @@ EXPECTED_LAYER_BY_SKILL = {
 }
 DEFAULT_LAYER = "domain"
 
-# Controlled vocabulary for ``metadata.dcc-mcp.stage``: the coarse
+# Controlled vocabulary for ``metadata.meshy-dcc.stage``: the coarse
 # progressive-loading phase a skill belongs to. Derived from the SKILLS_INDEX
 # "Stage Map" plus the stages already merged into the front matter.
 ALLOWED_STAGES = frozenset(
@@ -50,10 +50,10 @@ ALLOWED_STAGES = frozenset(
 _FRONTMATTER_RE = re.compile(r"\A---\n(?P<body>.*?)\n---\n", re.DOTALL)
 # `metadata:` has to sit at column 0. An indented `metadata:` belongs to
 # whichever mapping owns that indent, so it is never the block that
-# dcc-mcp-core reads and must not anchor the taxonomy lookup. The trailing
+# meshy-dcc-core reads and must not anchor the taxonomy lookup. The trailing
 # `(?:#.*)?` keeps the anchor working when the key carries an end-of-line
 # comment (`metadata: # taxonomy`): YAML ignores that comment, so the block it
-# opens is still the one dcc-mcp-core scores.
+# opens is still the one meshy-dcc-core scores.
 _METADATA_RE = re.compile(r"^metadata:[ \t]*(?:#.*)?$", re.MULTILINE)
 # Indentation is matched with [ \t] rather than \s so an indent group can never
 # swallow the preceding newline, which inflates its length and drops the key.
@@ -145,7 +145,7 @@ def _strip_comment(line: str) -> str:
 
     ``#`` only opens a comment at the start of a line or after a space/tab, and
     never inside a quoted scalar, so ``description: "rank #1"`` keeps its ``#``
-    while ``dcc-mcp: # taxonomy`` collapses to ``dcc-mcp:``. A comment-only line
+    while ``meshy-dcc: # taxonomy`` collapses to ``meshy-dcc:``. A comment-only line
     becomes an empty line instead of disappearing: the scanners below key off
     line positions, so dropping lines would shift them.
 
@@ -233,8 +233,8 @@ def _find_direct_key(lines: list[str], key: str) -> int:
     owns ``lines``, and matching it would let a nested decoy stand in for the
     real field.
 
-    Comments are stripped first, so ``dcc-mcp: # taxonomy`` still counts as the
-    ``dcc-mcp:`` child.
+    Comments are stripped first, so ``meshy-dcc: # taxonomy`` still counts as the
+    ``meshy-dcc:`` child.
     """
     child_indent = _direct_child_indent(lines)
     for index, line in enumerate(_strip_comments(lines)):
@@ -244,14 +244,14 @@ def _find_direct_key(lines: list[str], key: str) -> int:
 
 
 def _frontmatter_skill(skill_md: pathlib.Path) -> dict[str, str]:
-    """Return the ``metadata.dcc-mcp`` scalar keys declared in a SKILL.md.
+    """Return the ``metadata.meshy-dcc`` scalar keys declared in a SKILL.md.
 
     The lookup is anchored twice: first on the top-level ``metadata:`` key,
-    then on its **direct** ``dcc-mcp:`` child. A ``dcc-mcp:`` mapping parked
+    then on its **direct** ``meshy-dcc:`` child. A ``meshy-dcc:`` mapping parked
     anywhere else — under a sibling key, or on an indented line inside a folded
     ``description`` scalar — therefore cannot declare ``layer`` / ``stage`` and
     satisfy the taxonomy assertions without those fields existing where
-    dcc-mcp-core reads them.
+    meshy-dcc-core reads them.
 
     Deliberately regex/indent based (no PyYAML import) so the assertion runs on
     any interpreter, including the Python 3.7 lane, without a Blender host.
@@ -265,15 +265,15 @@ def _frontmatter_skill(skill_md: pathlib.Path) -> dict[str, str]:
     assert metadata_match, "%s front matter has no top-level 'metadata' mapping" % skill_md
 
     metadata_lines = _nested_block(body[metadata_match.end() :].splitlines(), 0)
-    dcc_mcp_index = _find_direct_key(metadata_lines, "dcc-mcp")
-    assert dcc_mcp_index >= 0, "%s front matter has no 'metadata.dcc-mcp' mapping" % skill_md
+    meshy_dcc_index = _find_direct_key(metadata_lines, "meshy-dcc")
+    assert meshy_dcc_index >= 0, "%s front matter has no 'metadata.meshy-dcc' mapping" % skill_md
 
-    dcc_mcp_lines = _nested_block(metadata_lines[dcc_mcp_index + 1 :], _direct_child_indent(metadata_lines))
-    child_indent = _direct_child_indent(dcc_mcp_lines)
+    meshy_dcc_lines = _nested_block(metadata_lines[meshy_dcc_index + 1 :], _direct_child_indent(metadata_lines))
+    child_indent = _direct_child_indent(meshy_dcc_lines)
 
     return {
         match_key.group("key"): match_key.group("value")
-        for match_key in _SCALAR_RE.finditer("\n".join(dcc_mcp_lines))
+        for match_key in _SCALAR_RE.finditer("\n".join(meshy_dcc_lines))
         if len(match_key.group("indent")) == child_indent
     }
 
@@ -292,7 +292,7 @@ def test_every_skill_declares_layer_and_stage():
         fields = _frontmatter_skill(skill_md)
         for field in ("layer", "stage"):
             if not fields.get(field):
-                errors.append("%s: missing 'metadata.dcc-mcp.%s'" % (skill_dir.name, field))
+                errors.append("%s: missing 'metadata.meshy-dcc.%s'" % (skill_dir.name, field))
 
     assert not errors, "Skill taxonomy errors:\n" + "\n".join("  - %s" % error for error in errors)
 
@@ -338,21 +338,21 @@ def test_infrastructure_skills_keep_their_ranking_penalty():
     assert not errors, "Skill layer errors:\n" + "\n".join("  - %s" % error for error in errors)
 
 
-def test_taxonomy_fields_must_live_under_metadata_dcc_mcp(tmp_path):
+def test_taxonomy_fields_must_live_under_metadata_meshy_dcc(tmp_path):
     """A sibling mapping must not satisfy the taxonomy assertions.
 
     Guards the front-matter parser: matching four-space scalars anywhere in the
     front matter would let an unrelated mapping declare ``layer`` / ``stage``
     and let the taxonomy tests pass on a SKILL.md that never declares them
-    under ``metadata.dcc-mcp``.
+    under ``metadata.meshy-dcc``.
     """
     skill_md = tmp_path / "SKILL.md"
     skill_md.write_text(
         "---\n"
         "name: blender-decoy\n"
-        'description: "Decoy skill with taxonomy declared outside dcc-mcp"\n'
+        'description: "Decoy skill with taxonomy declared outside meshy-dcc"\n'
         "metadata:\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    dcc: blender\n"
         '    version: "1.0.0"\n'
         "  decoy:\n"
@@ -371,27 +371,27 @@ def test_taxonomy_fields_must_live_under_metadata_dcc_mcp(tmp_path):
     assert "stage" not in fields
 
 
-def test_dcc_mcp_mapping_outside_top_level_metadata_is_ignored(tmp_path):
-    """A ``dcc-mcp:`` mapping parked outside ``metadata`` must not be read.
+def test_meshy_dcc_mapping_outside_top_level_metadata_is_ignored(tmp_path):
+    """A ``meshy-dcc:`` mapping parked outside ``metadata`` must not be read.
 
     Combines the two ways a decoy can hide from a naive first-match search:
     under an unrelated top-level key, and under an **indented** ``metadata:``
     that only looks like the real one. Both declare ``layer`` / ``stage`` while
-    ``metadata.dcc-mcp`` carries neither, so reading either would let the
-    taxonomy tests pass on a SKILL.md dcc-mcp-core cannot score.
+    ``metadata.meshy-dcc`` carries neither, so reading either would let the
+    taxonomy tests pass on a SKILL.md meshy-dcc-core cannot score.
     """
     skill_md = tmp_path / "SKILL.md"
     skill_md.write_text(
         "---\n"
         "name: blender-decoy\n"
-        'description: "Decoy skill with a dcc-mcp mapping outside the top-level metadata"\n'
+        'description: "Decoy skill with a meshy-dcc mapping outside the top-level metadata"\n'
         "x-preview:\n"
         "  metadata:\n"
-        "    dcc-mcp:\n"
+        "    meshy-dcc:\n"
         "      layer: domain\n"
         "      stage: authoring\n"
         "metadata:\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    dcc: blender\n"
         '    version: "1.0.0"\n'
         "---\n"
@@ -407,11 +407,11 @@ def test_dcc_mcp_mapping_outside_top_level_metadata_is_ignored(tmp_path):
     assert "stage" not in fields
 
 
-def test_indented_dcc_mcp_inside_a_description_scalar_is_ignored(tmp_path):
-    """An indented ``dcc-mcp:`` inside a folded ``description`` is prose, not config.
+def test_indented_meshy_dcc_inside_a_description_scalar_is_ignored(tmp_path):
+    """An indented ``meshy-dcc:`` inside a folded ``description`` is prose, not config.
 
     ``_FRONTMATTER_RE`` is non-greedy, so the description still sits inside the
-    front-matter body: an indented ``dcc-mcp:`` written there is text, and only
+    front-matter body: an indented ``meshy-dcc:`` written there is text, and only
     appears as a mapping to a line-oriented parser.
     """
     skill_md = tmp_path / "SKILL.md"
@@ -420,11 +420,11 @@ def test_indented_dcc_mcp_inside_a_description_scalar_is_ignored(tmp_path):
         "name: blender-decoy\n"
         "description: >\n"
         "  Mentions a nested mapping in prose:\n"
-        "    dcc-mcp:\n"
+        "    meshy-dcc:\n"
         "      layer: domain\n"
         "      stage: authoring\n"
         "metadata:\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    dcc: blender\n"
         '    version: "1.0.0"\n'
         "---\n"
@@ -440,20 +440,20 @@ def test_indented_dcc_mcp_inside_a_description_scalar_is_ignored(tmp_path):
     assert "stage" not in fields
 
 
-def test_metadata_without_a_dcc_mcp_child_is_rejected(tmp_path):
-    """``metadata`` that never declares ``dcc-mcp`` must fail loudly.
+def test_metadata_without_a_meshy_dcc_child_is_rejected(tmp_path):
+    """``metadata`` that never declares ``meshy-dcc`` must fail loudly.
 
-    ``dcc-mcp-preview`` is a near-miss key: prefix matching would accept it and
+    ``meshy-dcc-preview`` is a near-miss key: prefix matching would accept it and
     then report an empty taxonomy instead of a missing one.
     """
     skill_md = tmp_path / "SKILL.md"
     skill_md.write_text(
         "---\n"
         "name: blender-decoy\n"
-        'description: "Decoy skill whose metadata has no dcc-mcp child"\n'
+        'description: "Decoy skill whose metadata has no meshy-dcc child"\n'
         "metadata:\n"
         "  source: bundled\n"
-        "  dcc-mcp-preview:\n"
+        "  meshy-dcc-preview:\n"
         "    layer: domain\n"
         "    stage: authoring\n"
         "---\n"
@@ -462,14 +462,14 @@ def test_metadata_without_a_dcc_mcp_child_is_rejected(tmp_path):
         encoding="utf-8",
     )
 
-    with pytest.raises(AssertionError, match="metadata.dcc-mcp"):
+    with pytest.raises(AssertionError, match="metadata.meshy-dcc"):
         _frontmatter_skill(skill_md)
 
 
-def test_dcc_mcp_nested_below_metadata_is_rejected(tmp_path):
-    """``metadata.catalog.dcc-mcp`` is a grandchild, not ``metadata.dcc-mcp``.
+def test_meshy_dcc_nested_below_metadata_is_rejected(tmp_path):
+    """``metadata.catalog.meshy-dcc`` is a grandchild, not ``metadata.meshy-dcc``.
 
-    dcc-mcp-core reads the taxonomy at exactly ``metadata.dcc-mcp``, so a
+    meshy-dcc-core reads the taxonomy at exactly ``metadata.meshy-dcc``, so a
     mapping nested one level deeper is misplaced and must be reported rather
     than silently adopted.
     """
@@ -477,10 +477,10 @@ def test_dcc_mcp_nested_below_metadata_is_rejected(tmp_path):
     skill_md.write_text(
         "---\n"
         "name: blender-decoy\n"
-        'description: "Decoy skill with dcc-mcp nested one level too deep"\n'
+        'description: "Decoy skill with meshy-dcc nested one level too deep"\n'
         "metadata:\n"
         "  catalog:\n"
-        "    dcc-mcp:\n"
+        "    meshy-dcc:\n"
         "      layer: domain\n"
         "      stage: authoring\n"
         "---\n"
@@ -489,7 +489,7 @@ def test_dcc_mcp_nested_below_metadata_is_rejected(tmp_path):
         encoding="utf-8",
     )
 
-    with pytest.raises(AssertionError, match="metadata.dcc-mcp"):
+    with pytest.raises(AssertionError, match="metadata.meshy-dcc"):
         _frontmatter_skill(skill_md)
 
 
@@ -507,7 +507,7 @@ def test_comment_stripping_keeps_a_hash_inside_a_quoted_scalar():
     inside a quoted scalar and never mid-token, so values such as
     ``"rank #1"`` or a URL fragment survive intact.
     """
-    assert _strip_comment("  dcc-mcp: # taxonomy") == "  dcc-mcp: "
+    assert _strip_comment("  meshy-dcc: # taxonomy") == "  meshy-dcc: "
     assert _strip_comment("# column 0 comment") == ""
     assert _strip_comment('  note: "rank #1"') == '  note: "rank #1"'
     assert _strip_comment("  url: https://example.com#anchor") == "  url: https://example.com#anchor"
@@ -550,7 +550,7 @@ def test_metadata_key_may_carry_an_end_of_line_comment(tmp_path):
         "name: blender-comment-fixture\n"
         'description: "Fixture with a commented metadata anchor"\n'
         "metadata: # taxonomy\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    layer: domain\n"
         "    stage: authoring\n",
     )
@@ -561,12 +561,12 @@ def test_metadata_key_may_carry_an_end_of_line_comment(tmp_path):
     assert fields["stage"] == "authoring"
 
 
-def test_column_zero_comment_between_metadata_and_dcc_mcp_is_skipped(tmp_path):
-    """A column 0 comment above ``dcc-mcp:`` must not end the ``metadata:`` block.
+def test_column_zero_comment_between_metadata_and_meshy_dcc_is_skipped(tmp_path):
+    """A column 0 comment above ``meshy-dcc:`` must not end the ``metadata:`` block.
 
     Regression from PR #217: ``_nested_block`` stopped at the first non-blank line
     that is not indented past ``metadata:``, and a full-line comment at column 0
-    is exactly such a line, so the ``dcc-mcp:`` child below it was never found.
+    is exactly such a line, so the ``meshy-dcc:`` child below it was never found.
     The pre-#217 parser searched the whole body and accepted this file.
     """
     skill_md = _write_front_matter(
@@ -575,7 +575,7 @@ def test_column_zero_comment_between_metadata_and_dcc_mcp_is_skipped(tmp_path):
         'description: "Fixture with a column 0 comment inside metadata"\n'
         "metadata:\n"
         "# taxonomy lives below\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    layer: domain\n"
         "    stage: authoring\n",
     )
@@ -586,22 +586,22 @@ def test_column_zero_comment_between_metadata_and_dcc_mcp_is_skipped(tmp_path):
     assert fields["stage"] == "authoring"
 
 
-def test_dcc_mcp_key_may_carry_an_end_of_line_comment(tmp_path):
-    """``dcc-mcp: # taxonomy`` counts as the ``dcc-mcp:`` child.
+def test_meshy_dcc_key_may_carry_an_end_of_line_comment(tmp_path):
+    """``meshy-dcc: # taxonomy`` counts as the ``meshy-dcc:`` child.
 
     Pre-existing limitation, recorded here rather than fixed in PR #217: that
-    parser required a bare ``dcc-mcp:`` line and rejected this file outright,
-    and the pre-#217 parser did the same for its own ``dcc-mcp:`` search. The
-    expected behaviour is acceptance — dcc-mcp-core reads the mapping the same
+    parser required a bare ``meshy-dcc:`` line and rejected this file outright,
+    and the pre-#217 parser did the same for its own ``meshy-dcc:`` search. The
+    expected behaviour is acceptance — meshy-dcc-core reads the mapping the same
     way with or without the comment -- and the comment-tolerant scanner now
     delivers it.
     """
     skill_md = _write_front_matter(
         tmp_path,
         "name: blender-comment-fixture\n"
-        'description: "Fixture with a commented dcc-mcp key"\n'
+        'description: "Fixture with a commented meshy-dcc key"\n'
         "metadata:\n"
-        "  dcc-mcp: # taxonomy\n"
+        "  meshy-dcc: # taxonomy\n"
         "    layer: domain\n"
         "    stage: authoring\n",
     )
@@ -626,7 +626,7 @@ def test_layer_value_may_carry_an_end_of_line_comment(tmp_path):
         "name: blender-comment-fixture\n"
         'description: "Fixture with a commented layer value"\n'
         "metadata:\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    layer: domain # the layer\n"
         "    stage: authoring\n",
     )
@@ -641,7 +641,7 @@ def test_comment_indented_shallower_than_the_block_is_skipped(tmp_path):
     """A comment indented shallower than its block must not truncate that block.
 
     Pre-existing limitation, recorded here rather than fixed in PR #217: the
-    block run stopped at the first line not indented past ``dcc-mcp:``, so a
+    block run stopped at the first line not indented past ``meshy-dcc:``, so a
     comment at indent 2 inside a four-space block ended the run and dropped
     every scalar below it — ``stage`` here, while ``layer`` still parsed.
     Comments are not structure, so the run now continues past them.
@@ -651,7 +651,7 @@ def test_comment_indented_shallower_than_the_block_is_skipped(tmp_path):
         "name: blender-comment-fixture\n"
         'description: "Fixture with a shallow comment inside the block"\n'
         "metadata:\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    layer: domain\n"
         "  # stage follows\n"
         "    stage: authoring\n",
@@ -675,7 +675,7 @@ def test_a_commented_out_taxonomy_field_stays_missing(tmp_path):
         "name: blender-comment-fixture\n"
         'description: "Fixture whose taxonomy is commented out"\n'
         "metadata:\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    dcc: blender\n"
         "    # layer: thin-harness\n"
         "    # stage: authoring\n",

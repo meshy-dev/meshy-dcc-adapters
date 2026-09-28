@@ -1,14 +1,14 @@
-"""Regression tests for the cross-channel ``dcc_mcp_blender`` import contract.
+"""Regression tests for the cross-channel ``meshy_dcc_blender`` import contract.
 
 Two distributions ship the same adapter and must expose the same top-level
 names:
 
-* the wheel / site-packages channel, where ``dcc_mcp_blender/__init__.py`` is
+* the wheel / site-packages channel, where ``meshy_dcc_blender/__init__.py`` is
   the library package init;
 * the Blender 4.2+ extension channel, where the add-on package root *is*
-  ``dcc_mcp_blender`` and its ``__init__.py`` is the Blender add-on entrypoint.
+  ``meshy_dcc_blender`` and its ``__init__.py`` is the Blender add-on entrypoint.
 
-A pipeline script written as ``dcc_mcp_blender.start_server(...)`` must resolve
+A pipeline script written as ``meshy_dcc_blender.start_server(...)`` must resolve
 identically in both, and must keep resolving after
 ``bpy.ops.wm.read_factory_settings(use_empty=True)`` — the standard "open a
 clean scene" prologue that makes Blender disable every add-on.
@@ -27,10 +27,10 @@ import pytest
 
 ROOT = pathlib.Path(__file__).parent.parent
 ADDON_ENTRY = ROOT / "packaging" / "addon_entry" / "__init__.py"
-SRC_ROOT = ROOT / "src" / "dcc_mcp_blender"
+SRC_ROOT = ROOT / "src" / "meshy_dcc_blender"
 PUBLIC_API = SRC_ROOT / "_public_api.py"
 
-EXTENSION_NAME = "bl_ext.user_default.dcc_mcp_blender"
+EXTENSION_NAME = "bl_ext.user_default.meshy_dcc_blender"
 
 
 def _library_public_names() -> set[str]:
@@ -46,7 +46,7 @@ def _library_public_names() -> set[str]:
 
 def _purge_public_modules(monkeypatch) -> None:
     for name in tuple(sys.modules):
-        if name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender."):
+        if name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender."):
             monkeypatch.delitem(sys.modules, name)
 
 
@@ -56,7 +56,7 @@ def _purge_public_modules_for_reimport(addon_module) -> None:
     if aliases is not None:
         aliases.detach()
     for name in tuple(sys.modules):
-        if name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender."):
+        if name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender."):
             del sys.modules[name]
 
 
@@ -96,8 +96,8 @@ def extension_addon(monkeypatch):
 
 
 def test_wheel_channel_publishes_the_library_surface():
-    """``dcc_mcp_blender.__all__`` must be exactly the canonical surface."""
-    import dcc_mcp_blender as public
+    """``meshy_dcc_blender.__all__`` must be exactly the canonical surface."""
+    import meshy_dcc_blender as public
 
     assert set(public.__all__) == _library_public_names()
 
@@ -108,7 +108,7 @@ def test_wheel_and_extension_channels_expose_the_same_top_level_names(extension_
     assert {"BlenderHost", "start_server", "build_manifest_payload"} <= library_names
 
     extension_addon._install_runtime_import_aliases()
-    extension_public = importlib.import_module("dcc_mcp_blender")
+    extension_public = importlib.import_module("meshy_dcc_blender")
 
     missing = sorted(name for name in library_names if not hasattr(extension_public, name))
     assert not missing, f"extension channel is missing top-level names: {missing}"
@@ -122,13 +122,13 @@ def test_both_channels_return_the_same_version_value(extension_addon):
     package attribute; left alone, the extension channel would answer with a
     module where the wheel channel answers with a string.
     """
-    import dcc_mcp_blender as wheel_public
+    import meshy_dcc_blender as wheel_public
 
     wheel_version = wheel_public.__version__
 
     _purge_public_modules_for_reimport(extension_addon)
     extension_addon._install_runtime_import_aliases()
-    extension_public = importlib.import_module("dcc_mcp_blender")
+    extension_public = importlib.import_module("meshy_dcc_blender")
 
     assert isinstance(wheel_version, str)
     assert extension_public.__version__ == wheel_version
@@ -138,7 +138,7 @@ def test_both_channels_return_the_same_version_value(extension_addon):
 def test_extension_channel_resolves_real_callables(extension_addon):
     """Aliased attributes must be the same objects the add-on itself uses."""
     extension_addon._install_runtime_import_aliases()
-    public = importlib.import_module("dcc_mcp_blender")
+    public = importlib.import_module("meshy_dcc_blender")
     server = extension_addon._addon_module("server")
     host = extension_addon._addon_module("host")
 
@@ -152,20 +152,20 @@ def test_extension_channel_resolves_real_callables(extension_addon):
 def test_factory_reset_keeps_public_import_resolvable(extension_addon):
     """``read_factory_settings`` disables add-ons but must not break imports."""
     extension_addon._install_runtime_import_aliases()
-    assert importlib.import_module("dcc_mcp_blender").start_server is not None
+    assert importlib.import_module("meshy_dcc_blender").start_server is not None
 
     # Blender disables every add-on on a factory reset: unregister() runs.
     extension_addon.unregister()
 
-    public = importlib.import_module("dcc_mcp_blender")
+    public = importlib.import_module("meshy_dcc_blender")
     assert public.start_server is not None
-    assert importlib.import_module("dcc_mcp_blender.server").get_server is not None
+    assert importlib.import_module("meshy_dcc_blender.server").get_server is not None
 
 
 def test_public_import_survives_purged_extension_namespace(extension_addon, monkeypatch):
     """A script reload that purges ``bl_ext.*`` must still resolve imports."""
     extension_addon._install_runtime_import_aliases()
-    first = importlib.import_module("dcc_mcp_blender")
+    first = importlib.import_module("meshy_dcc_blender")
 
     # Blender's script reload drops the extension namespace from sys.modules.
     for name in tuple(sys.modules):
@@ -173,10 +173,10 @@ def test_public_import_survives_purged_extension_namespace(extension_addon, monk
             monkeypatch.delitem(sys.modules, name)
     _purge_public_modules(monkeypatch)
 
-    public = importlib.import_module("dcc_mcp_blender")
+    public = importlib.import_module("meshy_dcc_blender")
     assert public is not first
     assert public.start_server is not None
-    assert importlib.import_module("dcc_mcp_blender.host").BlenderHost is not None
+    assert importlib.import_module("meshy_dcc_blender.host").BlenderHost is not None
 
 
 def test_failed_enable_still_withdraws_the_bridge(extension_addon, monkeypatch):
@@ -193,14 +193,14 @@ def test_failed_enable_still_withdraws_the_bridge(extension_addon, monkeypatch):
         return original(name)
 
     monkeypatch.setattr(extension_addon, "_addon_module", addon_module)
-    monkeypatch.delenv("DCC_MCP_UI_CONTROL_PROCESS_ID", raising=False)
+    monkeypatch.delenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", raising=False)
 
     with pytest.raises(RuntimeError, match="incompatible core"):
         extension_addon._start_server_with_host()
 
     assert extension_addon._runtime_import_aliases is None
     assert not any(getattr(finder, "canonical_package", None) == EXTENSION_NAME for finder in sys.meta_path)
-    assert not any(name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender.") for name in sys.modules)
+    assert not any(name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender.") for name in sys.modules)
 
 
 def test_addon_entry_does_not_eagerly_import_the_adapter(extension_addon, monkeypatch):
@@ -254,7 +254,7 @@ def _assert_gates_ran_in_order(calls: list[str]) -> None:
     ``repair_sys_path`` would turn every Blender 5.x host into a hard
     ``HostSupportError`` even on hosts the repair rescues.
     """
-    from dcc_mcp_blender._public_api import PUBLIC_API_GATE_NAMES
+    from meshy_dcc_blender._public_api import PUBLIC_API_GATE_NAMES
 
     for name in PUBLIC_API_GATE_NAMES:
         assert name in calls, f"gate {name!r} never ran; the channel executed {calls}"
@@ -275,15 +275,15 @@ def _assert_gates_ran_in_order(calls: list[str]) -> None:
 def test_wheel_channel_runs_every_import_gate_in_order(monkeypatch):
     """The wheel channel must run all three gates, repair first.
 
-    The host gate used to live inline in ``src/dcc_mcp_blender/__init__.py``.
+    The host gate used to live inline in ``src/meshy_dcc_blender/__init__.py``.
     Moving the surface into ``_public_api`` dropped it there, and with it the
     named ``HostSupportError`` boundary -- silently, because the exported names
     were all still present.
     """
     _purge_public_modules(monkeypatch)
-    calls = _install_gate_spies(monkeypatch, "dcc_mcp_blender")
+    calls = _install_gate_spies(monkeypatch, "meshy_dcc_blender")
 
-    importlib.import_module("dcc_mcp_blender._public_api")
+    importlib.import_module("meshy_dcc_blender._public_api")
 
     _assert_gates_ran_in_order(calls)
 

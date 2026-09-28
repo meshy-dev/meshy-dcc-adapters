@@ -12,7 +12,7 @@ import yaml
 from tests.conftest import load_and_call, make_mock_bpy
 
 GEOMETRY_NODES_DIR = "blender-geometry-nodes"
-GEOMETRY_NODES_PATH = "src/dcc_mcp_blender/skills/blender-geometry-nodes/tools.yaml"
+GEOMETRY_NODES_PATH = "src/meshy_dcc_blender/skills/blender-geometry-nodes/tools.yaml"
 
 
 def _socket_type_of(socket):
@@ -623,7 +623,7 @@ class TestGeometryNodesReturnContract:
     }
 
     def _skill_md(self):
-        return Path("src/dcc_mcp_blender/skills/blender-geometry-nodes/SKILL.md").read_text(encoding="utf-8")
+        return Path("src/meshy_dcc_blender/skills/blender-geometry-nodes/SKILL.md").read_text(encoding="utf-8")
 
     def _create(self, bpy, name, **kwargs):
         return load_and_call(f"{GEOMETRY_NODES_DIR}/scripts/create_geometry_node_group.py", bpy, name=name, **kwargs)

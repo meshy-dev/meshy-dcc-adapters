@@ -1,7 +1,7 @@
 """Adapter-facing MCP protocol compatibility checks.
 
 These tests intentionally exercise the HTTP boundary through the public
-``BlenderMcpServer`` rather than importing dcc-mcp-core implementation
+``BlenderMcpServer`` rather than importing meshy-dcc-core implementation
 details. The matrix is the contract this adapter ships against:
 
 * 2025-03-26 remains supported for legacy MCP clients;
@@ -23,7 +23,7 @@ import pytest
 @pytest.fixture()
 def running_server():
     """Start an isolated adapter HTTP server for one compatibility check."""
-    from dcc_mcp_blender.server import BlenderMcpServer
+    from meshy_dcc_blender.server import BlenderMcpServer
 
     server = BlenderMcpServer(port=0, gateway_port=0, enable_gateway_failover=False)
     server.start()
@@ -36,7 +36,7 @@ def running_server():
 def _initialize(server, requested_version=None):
     params = {
         "capabilities": {},
-        "clientInfo": {"name": "dcc-mcp-blender-contract-test", "version": "1"},
+        "clientInfo": {"name": "meshy-dcc-blender-contract-test", "version": "1"},
     }
     if requested_version is not None:
         params["protocolVersion"] = requested_version
@@ -74,6 +74,6 @@ def test_initialize_identity_is_adapter_owned(running_server):
     """Core owns the envelope; Blender owns the server identity fields."""
     result = _initialize(running_server, "2025-06-18")["result"]
 
-    from dcc_mcp_blender.server import SERVER_NAME, SERVER_VERSION
+    from meshy_dcc_blender.server import SERVER_NAME, SERVER_VERSION
 
     assert result["serverInfo"] == {"name": SERVER_NAME, "version": SERVER_VERSION}

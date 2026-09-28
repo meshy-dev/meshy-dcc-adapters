@@ -10,7 +10,7 @@ import yaml
 from tests.conftest import load_and_call
 from tests.test_skills_physics import _bpy_with_objects, _make_obj
 
-PHYSICS_PATH = "src/dcc_mcp_blender/skills/blender-physics/tools.yaml"
+PHYSICS_PATH = "src/meshy_dcc_blender/skills/blender-physics/tools.yaml"
 SKILL = "blender-physics"
 
 
@@ -570,7 +570,7 @@ def test_new_tools_declare_required_contract_fields():
         tool = tools[name]
         assert tool["execution"] == "sync", name
         assert tool["affinity"] == "main", name
-        source = Path("src/dcc_mcp_blender/skills") / SKILL / tool["source_file"]
+        source = Path("src/meshy_dcc_blender/skills") / SKILL / tool["source_file"]
         assert source.is_file(), f"missing source script: {source}"
 
 
@@ -701,7 +701,7 @@ def test_bake_particle_system_is_flagged_destructive():
 
 
 def test_fluid_and_child_enums_match_blender():
-    from dcc_mcp_blender._physics_ops import CHILD_TYPES, FLUID_TYPES
+    from meshy_dcc_blender._physics_ops import CHILD_TYPES, FLUID_TYPES
 
     assert set(FLUID_TYPES) == {"DOMAIN", "FLOW", "EFFECTOR"}
     assert set(CHILD_TYPES) == {"NONE", "SIMPLE", "INTERPOLATED"}

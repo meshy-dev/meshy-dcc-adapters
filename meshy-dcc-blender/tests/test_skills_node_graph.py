@@ -9,7 +9,7 @@ import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
-NODE_GRAPH_PATH = "src/dcc_mcp_blender/skills/blender-node-graph/tools.yaml"
+NODE_GRAPH_PATH = "src/meshy_dcc_blender/skills/blender-node-graph/tools.yaml"
 
 
 def _make_scene_with_compositor(use_nodes=True):

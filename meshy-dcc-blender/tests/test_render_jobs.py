@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from dcc_mcp_blender import _render_job_ops as jobs
+from meshy_dcc_blender import _render_job_ops as jobs
 
 
 def _write_valid_exr(path):
@@ -162,7 +162,7 @@ def test_start_get_cancel_background_render_job(monkeypatch, tmp_path):
     job_id = started["context"]["job_id"]
     assert started["context"]["expected_frame_count"] == 3
     assert saved == [str(blend)]
-    assert created[0][1]["env"]["DCC_MCP_BACKGROUND_RENDER"] == "1"
+    assert created[0][1]["env"]["MESHY_DCC_BACKGROUND_RENDER"] == "1"
 
     status = jobs.get_render_job(job_id)
     assert status["context"]["status"] == "running"

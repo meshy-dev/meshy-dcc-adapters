@@ -1,4 +1,4 @@
-# dcc-mcp-blender development justfile
+# meshy-dcc-blender development justfile
 # Unified dependency and task management
 
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
@@ -34,8 +34,8 @@ default:
 # Verify dependency installation
 @verify-deps:
     echo "🔍 Verifying dependency installation..."
-    python -c "from dcc_mcp_blender import start_server; print('✓ dcc_mcp_blender')"
-    python -c "from dcc_mcp_core import create_skill_server; print('✓ dcc_mcp_core')"
+    python -c "from meshy_dcc_blender import start_server; print('✓ meshy_dcc_blender')"
+    python -c "from meshy_dcc_core import create_skill_server; print('✓ meshy_dcc_core')"
     python -c "import pytest; print('✓ pytest')"
     python -c "import bpy" 2>/dev/null && echo "✓ bpy (Blender Python)" || echo "⚠️  bpy not available (install in Blender or use blender python)"
     echo "✅ Core dependencies verified"
@@ -100,7 +100,7 @@ lint-all: lint lint-skills
 # Run tests with coverage
 @test-coverage:
     echo "🧪 Running tests with coverage..."
-    python -m pytest --cov=dcc_mcp_blender --cov-report=term-missing tests/
+    python -m pytest --cov=meshy_dcc_blender --cov-report=term-missing tests/
     echo "✅ Tests complete with coverage report"
 
 # Run specific test file
@@ -149,9 +149,9 @@ lint-all: lint lint-skills
 # Show dependency tree
 @deps-tree:
     echo "📦 Dependency tree (core packages):"
-    python -m pip show dcc-mcp-blender -f 2>/dev/null | grep "Location\|Requires" || echo "dcc-mcp-blender not installed"
+    python -m pip show meshy-dcc-blender -f 2>/dev/null | grep "Location\|Requires" || echo "meshy-dcc-blender not installed"
     echo ""
-    python -m pip show dcc-mcp-core -f | grep "Location\|Requires"
+    python -m pip show meshy-dcc-core -f | grep "Location\|Requires"
 
 # ============================================================================
 # CI/CD Utilities
@@ -180,11 +180,11 @@ lint-all: lint lint-skills
     python -m pip --version
     echo ""
     echo "Installed packages (key ones):"
-    python -m pip list | grep -E "dcc-mcp|pytest|ruff"
+    python -m pip list | grep -E "meshy-dcc|pytest|ruff"
     echo ""
     echo "Trying imports:"
-    python -c "from dcc_mcp_blender import start_server; print('✓ dcc_mcp_blender imports OK')" 2>&1 || echo "✗ dcc_mcp_blender import failed"
-    python -c "from dcc_mcp_core import create_skill_server; print('✓ dcc_mcp_core imports OK')" 2>&1 || echo "✗ dcc_mcp_core import failed"
+    python -c "from meshy_dcc_blender import start_server; print('✓ meshy_dcc_blender imports OK')" 2>&1 || echo "✗ meshy_dcc_blender import failed"
+    python -c "from meshy_dcc_core import create_skill_server; print('✓ meshy_dcc_core imports OK')" 2>&1 || echo "✗ meshy_dcc_core import failed"
     echo ""
     echo "✅ Diagnostic complete"
 
@@ -238,7 +238,7 @@ _blender-addons-dir := _blender-scripts-dir + "/addons"
     if [ -f "justfile" ]; then PROJECT_ROOT="$(pwd)"; fi
 
     ADDONS_DIR="{{ _blender-addons-dir }}"
-    TARGET="$ADDONS_DIR/dcc_mcp_blender"
+    TARGET="$ADDONS_DIR/meshy_dcc_blender"
 
     echo "🔗 Setting up Blender dev symlinks (Blender {{ blender-version }})..."
     echo "   Project  : $PROJECT_ROOT"
@@ -261,25 +261,25 @@ _blender-addons-dir := _blender-scripts-dir + "/addons"
     # Create symlink
     if [ "$(uname -s)" = "MINGW"* ] || [ "$(uname -s)" = "MSYS"* ] || [ -n "${WINDIR:-}" ]; then
         # Windows (Git Bash): use mklink (requires admin or developer mode)
-        cmd //c "mklink /D \"$(cygpath -w "$TARGET")\" \"$(cygpath -w "$PROJECT_ROOT/src/dcc_mcp_blender")\"" 2>/dev/null || \
-            { echo "   ⚠️  Symlink failed, copying instead..."; cp -r "$PROJECT_ROOT/src/dcc_mcp_blender" "$TARGET"; }
+        cmd //c "mklink /D \"$(cygpath -w "$TARGET")\" \"$(cygpath -w "$PROJECT_ROOT/src/meshy_dcc_blender")\"" 2>/dev/null || \
+            { echo "   ⚠️  Symlink failed, copying instead..."; cp -r "$PROJECT_ROOT/src/meshy_dcc_blender" "$TARGET"; }
     else
         # Unix: symlinks just work
-        ln -sf "$PROJECT_ROOT/src/dcc_mcp_blender" "$TARGET"
+        ln -sf "$PROJECT_ROOT/src/meshy_dcc_blender" "$TARGET"
     fi
 
     echo ""
     echo "   ✅ Symlink created:"
-    echo "      $TARGET → $PROJECT_ROOT/src/dcc_mcp_blender (live source)"
+    echo "      $TARGET → $PROJECT_ROOT/src/meshy_dcc_blender (live source)"
     echo ""
-    echo "   Next: start Blender {{ blender-version }} → Edit → Preferences → Add-ons → Enable 'DCC MCP Blender'"
+    echo "   Next: start Blender {{ blender-version }} → Edit → Preferences → Add-ons → Enable 'Meshy DCC Blender'"
     echo "   Edit source → restart Blender (or press F8 to reload scripts) to see changes."
 
 # Windows version: Create symlinks using PowerShell (for native Windows without Git Bash)
 @blender-link-win:
     powershell -NoProfile -ExecutionPolicy Bypass -File tools/blender-link-win.ps1 -BlenderVersion {{ blender-version }}
 
-# Build a Blender-installable addon ZIP (bundles dcc-mcp-core from PyPI).
+# Build a Blender-installable addon ZIP (bundles meshy-dcc-core from PyPI).
 # Usage: `just blender-addon-zip [platform] [output_dir]`.
 blender-addon-platform := if os() == "windows" { "win64" } else if os() == "macos" { "macos" } else { "linux" }
 blender-addon-zip platform=blender-addon-platform output_dir="dist_addon":
@@ -290,7 +290,7 @@ blender-addon-zip platform=blender-addon-platform output_dir="dist_addon":
     #!/usr/bin/env bash
     set -euo pipefail
     ADDONS_DIR="{{ _blender-addons-dir }}"
-    TARGET="$ADDONS_DIR/dcc_mcp_blender"
+    TARGET="$ADDONS_DIR/meshy_dcc_blender"
 
     echo "🧹 Removing Blender dev symlinks..."
 
@@ -309,7 +309,7 @@ blender-addon-zip platform=blender-addon-platform output_dir="dist_addon":
 @blender-status:
     #!/usr/bin/env bash
     ADDONS_DIR="{{ _blender-addons-dir }}"
-    TARGET="$ADDONS_DIR/dcc_mcp_blender"
+    TARGET="$ADDONS_DIR/meshy_dcc_blender"
 
     echo "📋 Blender dev link status:"
     echo "   Addons dir: $ADDONS_DIR"
@@ -317,11 +317,11 @@ blender-addon-zip platform=blender-addon-platform output_dir="dist_addon":
 
     if [ -L "$TARGET" ]; then
         REAL=$(readlink "$TARGET" 2>/dev/null || echo "?")
-        echo "   ✅ dcc_mcp_blender → $REAL (symlink)"
+        echo "   ✅ meshy_dcc_blender → $REAL (symlink)"
     elif [ -d "$TARGET" ]; then
-        echo "   ⚠️  dcc_mcp_blender exists (copied, not linked)"
+        echo "   ⚠️  meshy_dcc_blender exists (copied, not linked)"
     else
-        echo "   ❌ dcc_mcp_blender not found"
+        echo "   ❌ meshy_dcc_blender not found"
     fi
 
 # Windows version: Show Blender dev link status using PowerShell
@@ -352,22 +352,22 @@ blender-dev: blender-link verify-deps
     @echo "   Unix/macOS: just blender-start"
     @echo "   Windows: just blender-start (or use blender-link-win for PowerShell)"
     @echo ""
-    @echo "   Then in Blender: Edit → Preferences → Add-ons → Enable 'DCC MCP Blender'"
+    @echo "   Then in Blender: Edit → Preferences → Add-ons → Enable 'Meshy DCC Blender'"
     @echo ""
     @echo "   Verify with:"
     @echo "     just blender-status       # Unix/macOS"
     @echo "     just blender-status-win   # Windows"
 
 # ============================================================================
-# Blender + Core Development (with dcc-mcp-core build)
+# Blender + Core Development (with meshy-dcc-core build)
 # ============================================================================
 
-# Windows: build dcc-mcp-core with Blender's Python, then symlink both
-# `dcc_mcp_core` (from core's `python/dcc_mcp_core`) and `dcc_mcp_blender` (from `src/dcc_mcp_blender`)
+# Windows: build meshy-dcc-core with Blender's Python, then symlink both
+# `meshy_dcc_core` (from core's `python/meshy_dcc_core`) and `meshy_dcc_blender` (from `src/meshy_dcc_blender`)
 # into Blender's addons directory. Then start Blender for debugging.
 #
 # After run, use MCP URL printed below; see Blender MCP setup docs for Cursor + debugpy.
-# Default core repo: sibling directory `../dcc-mcp-core` or env `DCC_MCP_CORE_REPO`.
+# Default core repo: sibling directory `../meshy-dcc-core` or env `MESHY_DCC_CORE_REPO`.
 #
 #   just blender-dev-build-link-core-win
 #   just blender-dev-debug-win

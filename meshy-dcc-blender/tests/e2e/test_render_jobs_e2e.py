@@ -17,8 +17,8 @@ import pytest
 bpy = pytest.importorskip("bpy")
 pytestmark = pytest.mark.e2e
 
-from dcc_mcp_blender import _render_job_ops as jobs  # noqa: E402
-from dcc_mcp_blender._render_job_ops import get_render_job, start_render_job  # noqa: E402
+from meshy_dcc_blender import _render_job_ops as jobs  # noqa: E402
+from meshy_dcc_blender._render_job_ops import get_render_job, start_render_job  # noqa: E402
 
 # Scene ``render.image_settings.file_format`` values every supported Blender
 # still exposes, mapped to the extension the worker must write for them.

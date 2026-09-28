@@ -4,7 +4,7 @@
 
 schema_version = "1.0.0"
 
-id = "dcc_mcp_blender"
+id = "meshy_dcc_blender"
 version = "0.2.11"
 name = "Meshy DCC"
 tagline = "Lets AI agents work in Blender through Meshy DCC Core"

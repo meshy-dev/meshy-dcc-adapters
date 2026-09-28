@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 
 import pytest
 
-from dcc_mcp_blender._uv_quality import _intersection_area, audit_uv_layout, export_uv_layout
+from meshy_dcc_blender._uv_quality import _intersection_area, audit_uv_layout, export_uv_layout
 from tests.conftest import load_and_call
 
 TRI = ((0.0, 0.0), (1.0, 0.0), (0.0, 1.0))

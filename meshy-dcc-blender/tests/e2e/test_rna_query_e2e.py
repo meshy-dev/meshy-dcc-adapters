@@ -20,7 +20,7 @@ def _call(stem, **kwargs):
     json.dumps(result, allow_nan=False)
     context = result["context"]
     assert context["blender_version"] == bpy.app.version_string
-    assert context["schema"] == "dcc-mcp-blender.rna-query.v1"
+    assert context["schema"] == "meshy-dcc-blender.rna-query.v1"
     return context
 
 

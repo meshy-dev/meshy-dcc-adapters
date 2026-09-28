@@ -11,7 +11,7 @@ from tests.conftest import load_and_call, make_mock_bpy
 
 
 def test_scripting_tools_publish_ci_safe_input_contracts():
-    tools_path = Path("src/dcc_mcp_blender/skills/blender-scripting/tools.yaml")
+    tools_path = Path("src/meshy_dcc_blender/skills/blender-scripting/tools.yaml")
     tools = {tool["name"]: tool for tool in yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]}
 
     execute_python = tools["execute_python"]["input_schema"]
@@ -152,7 +152,7 @@ class TestArbitraryExecutionOptOut:
     """The two escape hatches must refuse to run when an opt-out env var is set."""
 
     def test_execute_python_refused_by_disable_execute_python(self, monkeypatch):
-        monkeypatch.setenv("DCC_MCP_BLENDER_DISABLE_EXECUTE_PYTHON", "1")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_DISABLE_EXECUTE_PYTHON", "1")
         result = load_and_call(
             "blender-scripting/scripts/execute_python.py",
             make_mock_bpy(),
@@ -160,10 +160,10 @@ class TestArbitraryExecutionOptOut:
         )
         assert result["success"] is False
         assert result["error"] == "arbitrary_execution_disabled"
-        assert result["context"]["disabled_by"] == ["DCC_MCP_BLENDER_DISABLE_EXECUTE_PYTHON"]
+        assert result["context"]["disabled_by"] == ["MESHY_DCC_BLENDER_DISABLE_EXECUTE_PYTHON"]
 
     def test_execute_python_refused_by_disable_arbitrary_script(self, monkeypatch):
-        monkeypatch.setenv("DCC_MCP_BLENDER_DISABLE_ARBITRARY_SCRIPT", "1")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_DISABLE_ARBITRARY_SCRIPT", "1")
         result = load_and_call(
             "blender-scripting/scripts/execute_python.py",
             make_mock_bpy(),
@@ -173,7 +173,7 @@ class TestArbitraryExecutionOptOut:
         assert result["error"] == "arbitrary_execution_disabled"
 
     def test_execute_script_file_refused_by_disable_arbitrary_script(self, monkeypatch):
-        monkeypatch.setenv("DCC_MCP_BLENDER_DISABLE_ARBITRARY_SCRIPT", "1")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_DISABLE_ARBITRARY_SCRIPT", "1")
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write("raise AssertionError('must not run')\n")
             fpath = f.name
@@ -185,10 +185,10 @@ class TestArbitraryExecutionOptOut:
         )
         assert result["success"] is False
         assert result["error"] == "arbitrary_execution_disabled"
-        assert result["context"]["disabled_by"] == ["DCC_MCP_BLENDER_DISABLE_ARBITRARY_SCRIPT"]
+        assert result["context"]["disabled_by"] == ["MESHY_DCC_BLENDER_DISABLE_ARBITRARY_SCRIPT"]
 
     def test_execute_script_file_refused_by_disable_execute_python(self, monkeypatch):
-        monkeypatch.setenv("DCC_MCP_BLENDER_DISABLE_EXECUTE_PYTHON", "1")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_DISABLE_EXECUTE_PYTHON", "1")
         result = load_and_call(
             "blender-scripting/scripts/execute_script_file.py",
             make_mock_bpy(),
@@ -199,8 +199,8 @@ class TestArbitraryExecutionOptOut:
         assert result["error"] == "arbitrary_execution_disabled"
 
     def test_opt_outs_are_inactive_by_default(self, monkeypatch):
-        monkeypatch.delenv("DCC_MCP_BLENDER_DISABLE_EXECUTE_PYTHON", raising=False)
-        monkeypatch.delenv("DCC_MCP_BLENDER_DISABLE_ARBITRARY_SCRIPT", raising=False)
+        monkeypatch.delenv("MESHY_DCC_BLENDER_DISABLE_EXECUTE_PYTHON", raising=False)
+        monkeypatch.delenv("MESHY_DCC_BLENDER_DISABLE_ARBITRARY_SCRIPT", raising=False)
         result = load_and_call(
             "blender-scripting/scripts/execute_python.py",
             make_mock_bpy(),
@@ -210,7 +210,7 @@ class TestArbitraryExecutionOptOut:
         assert result["context"]["result"] == "7"
 
     def test_falsy_value_does_not_disable(self, monkeypatch):
-        monkeypatch.setenv("DCC_MCP_BLENDER_DISABLE_EXECUTE_PYTHON", "0")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_DISABLE_EXECUTE_PYTHON", "0")
         result = load_and_call(
             "blender-scripting/scripts/execute_python.py",
             make_mock_bpy(),

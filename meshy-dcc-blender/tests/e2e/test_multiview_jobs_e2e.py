@@ -7,8 +7,8 @@ import pytest
 bpy = pytest.importorskip("bpy")
 pytestmark = pytest.mark.e2e
 
-from dcc_mcp_blender._multiview_ops import start_multiview_render_job  # noqa: E402
-from dcc_mcp_blender._render_job_ops import get_render_job  # noqa: E402
+from meshy_dcc_blender._multiview_ops import start_multiview_render_job  # noqa: E402
+from meshy_dcc_blender._render_job_ops import get_render_job  # noqa: E402
 
 
 def test_multiview_images_and_source_topology(tmp_path):
@@ -52,7 +52,7 @@ def test_multiview_images_and_source_topology(tmp_path):
         len(bpy.data.objects),
     )
     assert bpy.context.active_object == cube
-    from dcc_mcp_blender import _render_job_ops
+    from meshy_dcc_blender import _render_job_ops
 
     del _render_job_ops._JOBS[job_id]
     recovered = get_render_job(job_id, directory)
@@ -64,8 +64,8 @@ def test_worker_preserves_partial_failure(tmp_path):
     import json
     from pathlib import Path
 
-    from dcc_mcp_blender import _render_job_ops
-    from dcc_mcp_blender._multiview_receipt import write_receipt
+    from meshy_dcc_blender import _render_job_ops
+    from meshy_dcc_blender._multiview_receipt import write_receipt
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.mesh.primitive_cube_add()

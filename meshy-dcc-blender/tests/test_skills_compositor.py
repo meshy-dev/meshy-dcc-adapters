@@ -6,10 +6,10 @@ from pathlib import Path
 
 import yaml
 
-from dcc_mcp_blender._compositor_ops import resolve_compositor_node_type
+from meshy_dcc_blender._compositor_ops import resolve_compositor_node_type
 from tests.conftest import load_and_call, make_mock_bpy
 
-COMPOSITOR_PATH = "src/dcc_mcp_blender/skills/blender-compositor/tools.yaml"
+COMPOSITOR_PATH = "src/meshy_dcc_blender/skills/blender-compositor/tools.yaml"
 SKILL = "blender-compositor"
 
 
@@ -709,7 +709,7 @@ def test_tools_yaml_declares_tools():
         assert tool["execution"] == "sync"
         assert tool["affinity"] == "main"
         assert "annotations" in tool
-        source = Path("src/dcc_mcp_blender/skills") / SKILL / tool["source_file"]
+        source = Path("src/meshy_dcc_blender/skills") / SKILL / tool["source_file"]
         assert source.is_file(), f"missing source script: {source}"
 
 

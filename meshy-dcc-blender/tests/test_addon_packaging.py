@@ -41,12 +41,12 @@ def _load_assemble_zip_module():
 
 
 def _manifest_wheels(manifest: str):
-    return re.findall(r'"\.\/(wheels\/dcc_mcp_core-[^"]+\.whl)"', manifest)
+    return re.findall(r'"\.\/(wheels\/meshy_dcc_core-[^"]+\.whl)"', manifest)
 
 
 def _write_fake_core_wheel(path: pathlib.Path, members: tuple[str, ...] = ()) -> None:
     with zipfile.ZipFile(path, "w") as archive:
-        archive.writestr("dcc_mcp_core/__init__.py", "")
+        archive.writestr("meshy_dcc_core/__init__.py", "")
         for member in members:
             archive.writestr(member, b"MZ")
 
@@ -75,8 +75,8 @@ def test_manifest_tagline_meets_blender_extensions_limit():
 
 def test_extension_namespace_import_does_not_create_top_level_alias(monkeypatch):
     """Extension startup must keep its bundled modules in Blender's namespace."""
-    extension_name = "bl_ext.user_default.dcc_mcp_blender"
-    source_root = ROOT / "src" / "dcc_mcp_blender"
+    extension_name = "bl_ext.user_default.meshy_dcc_blender"
+    source_root = ROOT / "src" / "meshy_dcc_blender"
     fake_bpy = SimpleNamespace(types=SimpleNamespace(Operator=object, Menu=object))
 
     for package in ("bl_ext", "bl_ext.user_default"):
@@ -84,7 +84,7 @@ def test_extension_namespace_import_does_not_create_top_level_alias(monkeypatch)
         module.__path__ = []
         monkeypatch.setitem(sys.modules, package, module)
     for name in tuple(sys.modules):
-        if name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender."):
+        if name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender."):
             monkeypatch.delitem(sys.modules, name)
     monkeypatch.setitem(sys.modules, "bpy", fake_bpy)
 
@@ -100,14 +100,14 @@ def test_extension_namespace_import_does_not_create_top_level_alias(monkeypatch)
     server = module._addon_module("server")
 
     assert server.__name__ == f"{extension_name}.server"
-    assert not any(name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender.") for name in sys.modules)
+    assert not any(name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender.") for name in sys.modules)
 
     module._install_runtime_import_aliases()
     try:
-        public_server = importlib.import_module("dcc_mcp_blender.server")
+        public_server = importlib.import_module("meshy_dcc_blender.server")
         assert public_server.get_server is server.get_server
         assert public_server is not server
-        assert public_server._dcc_mcp_alias_target is server
+        assert public_server._meshy_dcc_alias_target is server
 
         lifecycle_calls = []
         fake_bpy.ops = SimpleNamespace(
@@ -138,13 +138,13 @@ def test_extension_namespace_import_does_not_create_top_level_alias(monkeypatch)
     finally:
         module._remove_runtime_import_aliases()
 
-    assert not any(name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender.") for name in sys.modules)
+    assert not any(name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender.") for name in sys.modules)
 
 
 def test_extension_startup_failure_removes_public_import_bridge(monkeypatch):
     """A failed enable must not leave a finder or public facade installed."""
-    extension_name = "bl_ext.user_default.dcc_mcp_blender_failure"
-    source_root = ROOT / "src" / "dcc_mcp_blender"
+    extension_name = "bl_ext.user_default.meshy_dcc_blender_failure"
+    source_root = ROOT / "src" / "meshy_dcc_blender"
     fake_bpy = SimpleNamespace(types=SimpleNamespace(Operator=object, Menu=object))
 
     for package in ("bl_ext", "bl_ext.user_default"):
@@ -152,10 +152,10 @@ def test_extension_startup_failure_removes_public_import_bridge(monkeypatch):
         module.__path__ = []
         monkeypatch.setitem(sys.modules, package, module)
     for name in tuple(sys.modules):
-        if name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender."):
+        if name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender."):
             monkeypatch.delitem(sys.modules, name)
     monkeypatch.setitem(sys.modules, "bpy", fake_bpy)
-    monkeypatch.delenv("DCC_MCP_UI_CONTROL_PROCESS_ID", raising=False)
+    monkeypatch.delenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", raising=False)
 
     spec = importlib.util.spec_from_file_location(
         extension_name,
@@ -184,16 +184,16 @@ def test_extension_startup_failure_removes_public_import_bridge(monkeypatch):
     assert module._runtime_import_aliases is None
     assert not any(
         getattr(finder, "canonical_package", None) == extension_name
-        and getattr(finder, "public_package", None) == "dcc_mcp_blender"
+        and getattr(finder, "public_package", None) == "meshy_dcc_blender"
         for finder in sys.meta_path
     )
-    assert not any(name == "dcc_mcp_blender" or name.startswith("dcc_mcp_blender.") for name in sys.modules)
+    assert not any(name == "meshy_dcc_blender" or name.startswith("meshy_dcc_blender.") for name in sys.modules)
 
 
 def test_assembled_addon_zip_uses_flat_importable_package_layout(tmp_path, monkeypatch):
     """The add-on package root must directly contain ``server.py`` and skills."""
     assemble_zip = _load_assemble_zip_module()
-    fake_wheel = tmp_path / "dcc_mcp_core-0.19.17-cp38-abi3-win_amd64.whl"
+    fake_wheel = tmp_path / "meshy_dcc_core-0.19.17-cp38-abi3-win_amd64.whl"
     _write_fake_core_wheel(fake_wheel)
 
     monkeypatch.setattr(assemble_zip, "resolve_core_version", lambda min_version="0.19.17": "0.19.17")
@@ -221,9 +221,9 @@ def test_assembled_addon_zip_uses_flat_importable_package_layout(tmp_path, monke
     assert "skills/blender-scene/SKILL.md" in names
     assert "COPYING" in names
     assert "LICENSE-MIT" in names
-    assert not any(name.startswith("dcc_mcp_blender/") for name in names)
-    assert [name for name in sorted(names) if name.startswith("wheels/dcc_mcp_core-")] == [
-        "wheels/dcc_mcp_core-0.19.17-cp38-abi3-win_amd64.whl"
+    assert not any(name.startswith("meshy_dcc_blender/") for name in names)
+    assert [name for name in sorted(names) if name.startswith("wheels/meshy_dcc_core-")] == [
+        "wheels/meshy_dcc_core-0.19.17-cp38-abi3-win_amd64.whl"
     ]
     addon_tree = ast.parse(addon_init)
     addon_bl_info = next(
@@ -236,7 +236,7 @@ def test_assembled_addon_zip_uses_flat_importable_package_layout(tmp_path, monke
     )
     assert isinstance(addon_version_node, ast.Tuple)
     assert ast.literal_eval(addon_version_node) == _parse_version_tuple(_get_addon_version())
-    assert _manifest_wheels(manifest) == ["wheels/dcc_mcp_core-0.19.17-cp38-abi3-win_amd64.whl"]
+    assert _manifest_wheels(manifest) == ["wheels/meshy_dcc_core-0.19.17-cp38-abi3-win_amd64.whl"]
     assert 'license = ["SPDX:GPL-3.0-or-later"]' in manifest
     assert 'platforms = ["windows-x64"]' in manifest
     assert manifest.index("wheels = [") < manifest.index("[permissions]")
@@ -248,8 +248,8 @@ def test_assembled_addon_zip_uses_flat_importable_package_layout(tmp_path, monke
     assert start_source.index('_addon_module("_core_compat").require_compatible_core()') < start_source.index(
         '_addon_module("host")'
     )
-    assert "dcc_mcp_blender.host" not in start_source
-    assert "dcc_mcp_blender.server" not in start_source
+    assert "meshy_dcc_blender.host" not in start_source
+    assert "meshy_dcc_blender.server" not in start_source
 
 
 def test_manifest_platforms_follow_the_selected_wheel():
@@ -338,8 +338,8 @@ def test_addon_register_starts_server_with_core_backed_blender_ui_dispatcher(mon
     monkeypatch.setitem(sys.modules, "bpy", fake_bpy)
     spec.loader.exec_module(mod)
 
-    import dcc_mcp_blender.host as host_mod
-    import dcc_mcp_blender.server as server_mod
+    import meshy_dcc_blender.host as host_mod
+    import meshy_dcc_blender.server as server_mod
 
     calls = []
 
@@ -360,10 +360,10 @@ def test_addon_register_starts_server_with_core_backed_blender_ui_dispatcher(mon
     monkeypatch.setattr(server_mod, "get_server", lambda: None)
     monkeypatch.setattr(server_mod, "start_server", _start_server)
     monkeypatch.setattr(server_mod, "stop_server", lambda: calls.append(("stop_server", None)))
-    monkeypatch.setenv("DCC_MCP_BLENDER_PORT", "18765")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "19765")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", "/tmp/dcc-mcp-registry")
-    monkeypatch.delenv("DCC_MCP_UI_CONTROL_PROCESS_ID", raising=False)
+    monkeypatch.setenv("MESHY_DCC_BLENDER_PORT", "18765")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", "/tmp/meshy-dcc-registry")
+    monkeypatch.delenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", raising=False)
 
     mod.register()
 
@@ -372,10 +372,10 @@ def test_addon_register_starts_server_with_core_backed_blender_ui_dispatcher(mon
     assert [call[0] for call in calls] == ["start_server", "dispatcher.start"]
     assert calls[0][1] == {
         "gateway_port": 19765,
-        "registry_dir": "/tmp/dcc-mcp-registry",
+        "registry_dir": "/tmp/meshy-dcc-registry",
         "dispatcher": calls[1][1],
     }
-    assert os.environ["DCC_MCP_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
+    assert os.environ["MESHY_DCC_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
 
     mod.unregister()
 
@@ -415,9 +415,9 @@ def test_addon_register_captures_and_reraises_server_start_failure(monkeypatch):
             captured.append((dcc_name, kwargs, exc))
             raise
 
-    import dcc_mcp_core
+    import meshy_dcc_core
 
-    monkeypatch.setattr(dcc_mcp_core, "capture_bootstrap_errors", capture_bootstrap_errors)
+    monkeypatch.setattr(meshy_dcc_core, "capture_bootstrap_errors", capture_bootstrap_errors)
     monkeypatch.setattr(
         mod,
         "_start_server_with_host",
@@ -441,7 +441,7 @@ def test_addon_rejects_ui_control_binding_to_another_process(monkeypatch):
         SimpleNamespace(types=SimpleNamespace(Operator=object, Menu=object)),
     )
     spec.loader.exec_module(mod)
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_PROCESS_ID", str(os.getpid() + 1))
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", str(os.getpid() + 1))
 
     with pytest.raises(RuntimeError, match="must identify the current Blender process"):
         mod._bind_ui_control_to_host_process()
@@ -472,7 +472,7 @@ def test_addon_register_does_not_start_server_in_background_render_worker(monkey
     spec.loader.exec_module(mod)
     starts = []
     monkeypatch.setattr(mod, "_start_server_with_host", lambda: starts.append(True))
-    monkeypatch.setenv("DCC_MCP_BACKGROUND_RENDER", "1")
+    monkeypatch.setenv("MESHY_DCC_BACKGROUND_RENDER", "1")
 
     mod.register()
 
@@ -505,7 +505,7 @@ def test_addon_register_skips_server_autostart_in_background_render_worker(monke
     mod = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, "bpy", fake_bpy)
     spec.loader.exec_module(mod)
-    monkeypatch.setenv("DCC_MCP_BACKGROUND_RENDER", "1")
+    monkeypatch.setenv("MESHY_DCC_BACKGROUND_RENDER", "1")
     monkeypatch.setattr(mod, "_start_server_with_host", lambda: (_ for _ in ()).throw(AssertionError("started")))
 
     mod.register()

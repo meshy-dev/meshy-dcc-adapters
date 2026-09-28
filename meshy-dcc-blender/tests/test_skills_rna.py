@@ -13,7 +13,7 @@ import yaml
 from tests.conftest import load_and_call
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "src/dcc_mcp_blender/skills/blender-rna"
+SKILL = ROOT / "src/meshy_dcc_blender/skills/blender-rna"
 
 
 class Properties(list):
@@ -70,7 +70,7 @@ def test_search_is_runtime_versioned_filtered_and_paginated():
     bpy.types._Private = SimpleNamespace(bl_rna=SimpleNamespace(identifier="_Private"))
     first = call("search_rna_types", bpy, query="modifier", limit=1)["context"]
     assert first["blender_version"] == "4.2.10"
-    assert first["schema"] == "dcc-mcp-blender.rna-query.v1"
+    assert first["schema"] == "meshy-dcc-blender.rna-query.v1"
     assert [row["identifier"] for row in first["types"]] == ["OtherModifier"]
     assert first["next_offset"] == 1
     assert first["total"] == 2
@@ -296,7 +296,7 @@ def test_missing_host_type_object_modifier_fail_explicitly():
         call("get_modifier_values", object_name="Cube", modifier_name="Missing", properties=["levels"])["success"]
         is False
     )
-    from dcc_mcp_blender import _rna_query
+    from meshy_dcc_blender import _rna_query
 
     with patch.dict("sys.modules", {"bpy": None}):
         assert _rna_query.search_rna_types()["success"] is False
@@ -305,7 +305,7 @@ def test_missing_host_type_object_modifier_fail_explicitly():
 
 
 def test_skill_schema_is_explicit_bounded_and_main_affinity():
-    from dcc_mcp_core import validate_skill
+    from meshy_dcc_core import validate_skill
 
     report = validate_skill(str(SKILL))
     assert not report.has_errors, report.issues
@@ -398,9 +398,9 @@ def test_enum_identifier_truncation_is_explicit():
 
 
 def test_public_core_catalog_retains_rna_schema_and_affinity(monkeypatch):
-    from dcc_mcp_core import create_skill_server
+    from meshy_dcc_core import create_skill_server
 
-    monkeypatch.setenv("DCC_MCP_DISABLE_DEFAULT_SKILL_PATHS", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_DEFAULT_SKILL_PATHS", "1")
     server = create_skill_server("blender", extra_paths=[str(SKILL.parent)])
     # Registration only; no host callback executes in this catalog test.
     executor = Mock(return_value="{}")

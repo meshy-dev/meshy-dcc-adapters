@@ -59,7 +59,7 @@ class TestLightRigE2E:
             assert hdri["context"]["coordinate_output"] == "Normal"
             assert bpy.context.scene.world.use_nodes is True
             world = bpy.context.scene.world
-            mapping = bpy.context.scene.world.node_tree.nodes.get("DCC MCP Mapping")
+            mapping = bpy.context.scene.world.node_tree.nodes.get("Meshy DCC Mapping")
             assert mapping is not None
             assert round(mapping.inputs["Rotation"].default_value[2], 3) == round(math.radians(15.0), 3)
             coordinate_link = next(

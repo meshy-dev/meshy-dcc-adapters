@@ -1,18 +1,18 @@
-# Build dcc-mcp-core with the target Blender's Python, then link core + dcc-mcp-blender into
+# Build meshy-dcc-core with the target Blender's Python, then link core + meshy-dcc-blender into
 # Blender's addons directory for live debugging (no wheel copy).
 #
 # Prerequisites: Rust (cargo) on PATH, Git, optional vx on PATH for stubgen fallback.
 #
 # Usage:
 #   .\tools\blender-dev-build-link-core-win.ps1 -BlenderVersion 4.5
-#   .\tools\blender-dev-build-link-core-win.ps1 -BlenderVersion 4.5 -CoreRepo G:\path\to\dcc-mcp-core
+#   .\tools\blender-dev-build-link-core-win.ps1 -BlenderVersion 4.5 -CoreRepo G:\path\to\meshy-dcc-core
 #   .\tools\blender-dev-build-link-core-win.ps1 -BlenderVersion 4.5 -LaunchBlender
 #
 # Environment:
-#   DCC_MCP_CORE_REPO — override path to dcc-mcp-core (default: sibling of this git repo)
+#   MESHY_DCC_CORE_REPO — override path to meshy-dcc-core (default: sibling of this git repo)
 #
-# Blender bundles its own Python. We use this Python to build dcc-mcp-core with maturin develop,
-# then symlink both dcc_mcp_core and dcc_mcp_blender into Blender's addons directory.
+# Blender bundles its own Python. We use this Python to build meshy-dcc-core with maturin develop,
+# then symlink both meshy_dcc_core and meshy_dcc_blender into Blender's addons directory.
 
 param(
     [string]$BlenderVersion = "4.5",
@@ -29,17 +29,17 @@ if (-not $BlenderRoot) {
 }
 
 if (-not $CoreRepo) {
-    if ($env:DCC_MCP_CORE_REPO) {
-        $CoreRepo = $env:DCC_MCP_CORE_REPO
+    if ($env:MESHY_DCC_CORE_REPO) {
+        $CoreRepo = $env:MESHY_DCC_CORE_REPO
     } else {
-        $sibling = Join-Path (Split-Path $BlenderRoot -Parent) "dcc-mcp-core"
+        $sibling = Join-Path (Split-Path $BlenderRoot -Parent) "meshy-dcc-core"
         if (Test-Path (Join-Path $sibling "Cargo.toml")) {
             $CoreRepo = $sibling
         }
     }
 }
 if (-not $CoreRepo -or -not (Test-Path (Join-Path $CoreRepo "Cargo.toml"))) {
-    Write-Error "dcc-mcp-core not found. Clone it next to dcc-mcp-blender or set DCC_MCP_CORE_REPO / -CoreRepo."
+    Write-Error "meshy-dcc-core not found. Clone it next to meshy-dcc-blender or set MESHY_DCC_CORE_REPO / -CoreRepo."
 }
 
 $CoreRepo = (Resolve-Path $CoreRepo).Path
@@ -99,7 +99,7 @@ if ([version]$PyTag -ge [version]"3.8") {
     Write-Host "   Features: DEV (no abi3)" -ForegroundColor Gray
 }
 
-Write-Host "=== dcc-mcp-core (maturin develop via Blender Python) ===" -ForegroundColor Cyan
+Write-Host "=== meshy-dcc-core (maturin develop via Blender Python) ===" -ForegroundColor Cyan
 Write-Host "   Core repo : $CoreRepo"
 Write-Host "   Python    : $BlenderPython"
 Write-Host ""
@@ -116,7 +116,7 @@ if (-not $SkipBuild) {
         & $BlenderPython -m pip install -q --upgrade pip
         & $BlenderPython -m pip install -q maturin
 
-        $coreNativeDir = Join-Path $CoreRepo "python\dcc_mcp_core"
+        $coreNativeDir = Join-Path $CoreRepo "python\meshy_dcc_core"
         Get-ChildItem -Path $coreNativeDir -Filter "_core*.pyd" -ErrorAction SilentlyContinue | ForEach-Object {
             Write-Host "   Removing stale $($_.Name) before rebuild" -ForegroundColor Gray
             Remove-Item $_.FullName -Force
@@ -126,30 +126,30 @@ if (-not $SkipBuild) {
         & $BlenderPython -m maturin develop --features $DevFeatures
         if ($LASTEXITCODE -ne 0) { throw "maturin develop failed" }
 
-        # Build the standalone dcc-mcp-server binary for sidecar mode
-        Write-Host "   cargo build --release -p dcc-mcp-server ..." -ForegroundColor Gray
-        & cargo build --release -p dcc-mcp-server
-        if ($LASTEXITCODE -ne 0) { throw "cargo build dcc-mcp-server failed" }
+        # Build the standalone meshy-dcc-server binary for sidecar mode
+        Write-Host "   cargo build --release -p meshy-dcc-server ..." -ForegroundColor Gray
+        & cargo build --release -p meshy-dcc-server
+        if ($LASTEXITCODE -ne 0) { throw "cargo build meshy-dcc-server failed" }
     } finally {
         Pop-Location
     }
 
-    $corePkg = Join-Path $CoreRepo "python\dcc_mcp_core"
+    $corePkg = Join-Path $CoreRepo "python\meshy_dcc_core"
     if (-not (Test-Path $corePkg)) {
         Write-Error "Expected package dir missing after build: $corePkg"
     }
-    Write-Host "   ✅ dcc_mcp_core built under $corePkg" -ForegroundColor Green
+    Write-Host "   ✅ meshy_dcc_core built under $corePkg" -ForegroundColor Green
 } else {
     Write-Host "   SkipBuild: not rebuilding core" -ForegroundColor Yellow
 }
 
 # Resolve the sidecar binary path
-$ServerBin = Join-Path $CoreRepo "target\release\dcc-mcp-server.exe"
+$ServerBin = Join-Path $CoreRepo "target\release\meshy-dcc-server.exe"
 if (-not (Test-Path $ServerBin)) {
-    Write-Host "   ⚠️  dcc-mcp-server.exe not found at $ServerBin" -ForegroundColor Yellow
+    Write-Host "   ⚠️  meshy-dcc-server.exe not found at $ServerBin" -ForegroundColor Yellow
     $ServerBin = $null
 } else {
-    Write-Host "   ✅ dcc-mcp-server binary at $ServerBin" -ForegroundColor Green
+    Write-Host "   ✅ meshy-dcc-server binary at $ServerBin" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -157,9 +157,9 @@ Write-Host "=== Blender addon link (core + blender) ===" -ForegroundColor Cyan
 
 # Blender addons directory
 $AddonsDir = Join-Path $env:APPDATA "Blender Foundation\Blender\$BlenderVersion\scripts\addons"
-$Target = Join-Path $AddonsDir "dcc_mcp_blender"
-$PkgBlender = Join-Path $BlenderRoot "src\dcc_mcp_blender"
-$PkgCore = Join-Path $CoreRepo "python\dcc_mcp_core"
+$Target = Join-Path $AddonsDir "meshy_dcc_blender"
+$PkgBlender = Join-Path $BlenderRoot "src\meshy_dcc_blender"
+$PkgCore = Join-Path $CoreRepo "python\meshy_dcc_core"
 
 if (-not (Test-Path $PkgBlender)) { Write-Error "Missing $PkgBlender" }
 if (-not $SkipBuild -and -not (Test-Path $PkgCore)) { Write-Error "Missing $PkgCore — build core first (remove -SkipBuild)" }
@@ -173,10 +173,10 @@ if (Test-Path $Target) {
 New-Item -ItemType Directory -Force -Path $Target | Out-Null
 
 # Create symbolic links
-$linkBlender = Join-Path $Target "dcc_mcp_blender"
-$linkCore = Join-Path $Target "dcc_mcp_core"
+$linkBlender = Join-Path $Target "meshy_dcc_blender"
+$linkCore = Join-Path $Target "meshy_dcc_core"
 
-# For addons, we need to put source directly in addons/dcc_mcp_blender/
+# For addons, we need to put source directly in addons/meshy_dcc_blender/
 # Actually, Blender expects the addon to be a directory containing __init__.py
 # So we link the source directory as the addon directory
 
@@ -184,38 +184,38 @@ try {
     # Remove if exists
     if (Test-Path $Target) { Remove-Item $Target -Recurse -Force }
     
-    # Create symlink for dcc_mcp_blender (the entire package)
+    # Create symlink for meshy_dcc_blender (the entire package)
     New-Item -ItemType SymbolicLink -Path $Target -Target $PkgBlender -ErrorAction Stop | Out-Null
     Write-Host "   ✅ $Target → $PkgBlender" -ForegroundColor Green
 } catch {
-    Write-Error "Symlink dcc_mcp_blender failed (enable Windows Developer Mode or run elevated): $_"
+    Write-Error "Symlink meshy_dcc_blender failed (enable Windows Developer Mode or run elevated): $_"
 }
 
-# For dcc_mcp_core, we need it in Blender's Python sys.path
+# For meshy_dcc_core, we need it in Blender's Python sys.path
 # Option 1: Create a .pth file in addons directory
 # Option 2: Create a symlink in the addons directory
 # Let's use option 2 for consistency
 
-$coreLinkPath = Join-Path $AddonsDir "dcc_mcp_core"
+$coreLinkPath = Join-Path $AddonsDir "meshy_dcc_core"
 try {
     if (Test-Path $coreLinkPath) { Remove-Item $coreLinkPath -Recurse -Force }
     New-Item -ItemType SymbolicLink -Path $coreLinkPath -Target $PkgCore -ErrorAction Stop | Out-Null
     Write-Host "   ✅ $coreLinkPath → $PkgCore" -ForegroundColor Green
 } catch {
-    Write-Host "   ⚠️  Cannot symlink dcc_mcp_core, will create .pth file" -ForegroundColor Yellow
+    Write-Host "   ⚠️  Cannot symlink meshy_dcc_core, will create .pth file" -ForegroundColor Yellow
     
     # Create .pth file to add core to sys.path
-    $pthPath = Join-Path $AddonsDir "dcc_mcp_core.pth"
+    $pthPath = Join-Path $AddonsDir "meshy_dcc_core.pth"
     $PkgCore | Out-File -FilePath $pthPath -Encoding ASCII
     Write-Host "   ✅ Created $pthPath" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "Done. Start Blender $BlenderVersion → Edit → Preferences → Add-ons → Enable 'DCC MCP Blender'." -ForegroundColor Cyan
+Write-Host "Done. Start Blender $BlenderVersion → Edit → Preferences → Add-ons → Enable 'Meshy DCC Blender'." -ForegroundColor Cyan
 Write-Host ""
-Write-Host "MCP instance: OS-assigned; inspect the Blender log or run dcc-mcp-cli list" -ForegroundColor Cyan
-Write-Host "Gateway: http://127.0.0.1:9765/mcp" -ForegroundColor Cyan
-Write-Host "Docs: See dcc-mcp-blender docs for Cursor/Bender MCP setup" -ForegroundColor Gray
+Write-Host "MCP instance: OS-assigned; inspect the Blender log or run meshy-dcc-cli list" -ForegroundColor Cyan
+Write-Host "Gateway: http://127.0.0.1:19765/mcp" -ForegroundColor Cyan
+Write-Host "Docs: See meshy-dcc-blender docs for Cursor/Bender MCP setup" -ForegroundColor Gray
 
 if ($LaunchBlender) {
     if (Test-Path $BlenderExe) {

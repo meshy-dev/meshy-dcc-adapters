@@ -349,7 +349,7 @@ class TestLightRig:
 
         assert result["success"] is True
         world = bpy.context.scene.world
-        mapping = world.node_tree.nodes.get("DCC MCP Mapping")
+        mapping = world.node_tree.nodes.get("Meshy DCC Mapping")
         coordinate_link = next(link for link in world.node_tree.links if link.to_node is mapping)
         assert coordinate_link.from_socket.name == "Normal"
 
@@ -380,7 +380,7 @@ class TestLightRig:
             {"frame": 61, "rotation": 360.0},
         ]
         assert animated["context"]["replace_existing"] is True
-        mapping = bpy.context.scene.world.node_tree.nodes.get("DCC MCP Mapping")
+        mapping = bpy.context.scene.world.node_tree.nodes.get("Meshy DCC Mapping")
         rotation_socket = mapping.inputs.get("Rotation")
         assert [keyframe["frame"] for keyframe in rotation_socket.keyframes] == [1, 61]
         assert [round(keyframe["value"], 6) for keyframe in rotation_socket.keyframes] == [

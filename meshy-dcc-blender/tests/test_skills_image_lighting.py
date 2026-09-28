@@ -10,8 +10,8 @@ import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
-LIBRARY_PATH = "src/dcc_mcp_blender/skills/blender-material-library/tools.yaml"
-LIGHTING_PATH = "src/dcc_mcp_blender/skills/blender-lighting/tools.yaml"
+LIBRARY_PATH = "src/meshy_dcc_blender/skills/blender-material-library/tools.yaml"
+LIGHTING_PATH = "src/meshy_dcc_blender/skills/blender-lighting/tools.yaml"
 LIBRARY = "blender-material-library"
 LIGHTING = "blender-lighting"
 
@@ -653,7 +653,7 @@ def test_new_tools_declare_required_contract_fields():
             tool = tools[name]
             assert tool["execution"] == "sync", name
             assert tool["affinity"] == "main", name
-            source = Path("src/dcc_mcp_blender/skills") / skill / tool["source_file"]
+            source = Path("src/meshy_dcc_blender/skills") / skill / tool["source_file"]
             assert source.is_file(), f"missing source script: {source}"
             assert tool["read_only"] is tool["annotations"]["read_only_hint"], name
 

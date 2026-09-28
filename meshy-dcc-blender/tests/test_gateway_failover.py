@@ -13,7 +13,7 @@ def _free_port() -> int:
 
 
 def test_non_gateway_instance_survives_gateway_shutdown(tmp_path):
-    from dcc_mcp_blender.server import BlenderMcpServer
+    from meshy_dcc_blender.server import BlenderMcpServer
 
     gateway_port = _free_port()
     s1 = BlenderMcpServer(

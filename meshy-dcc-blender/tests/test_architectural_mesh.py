@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dcc_mcp_blender._architectural_mesh import create_pointed_arch, pointed_arch_geometry
+from meshy_dcc_blender._architectural_mesh import create_pointed_arch, pointed_arch_geometry
 
 
 @pytest.mark.parametrize("segments", [2, 16, 128])

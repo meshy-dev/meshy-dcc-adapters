@@ -22,7 +22,7 @@ if sys.version_info[:2] != (3, 7):
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _SCAN_ROOTS = (
-    _REPO_ROOT / "src" / "dcc_mcp_blender",
+    _REPO_ROOT / "src" / "meshy_dcc_blender",
     _REPO_ROOT / "tests",
     _REPO_ROOT / "tools",
     _REPO_ROOT / "packaging",

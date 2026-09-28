@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dcc_mcp_blender.extension_packages import (
+from meshy_dcc_blender.extension_packages import (
     ExtensionPackageError,
     install_extension_package,
     plan_extension_install,

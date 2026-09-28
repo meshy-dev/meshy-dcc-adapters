@@ -12,7 +12,7 @@ def _free_port() -> int:
 
 
 def test_gateway_params_start_server_with_failover_enabled(tmp_path):
-    from dcc_mcp_blender.server import BlenderMcpServer
+    from meshy_dcc_blender.server import BlenderMcpServer
 
     gateway_port = _free_port()
     server = BlenderMcpServer(

@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from dcc_mcp_blender import _multiview_receipt as receipts
-from dcc_mcp_blender._multiview_receipt import read_receipt, write_receipt
+from meshy_dcc_blender import _multiview_receipt as receipts
+from meshy_dcc_blender._multiview_receipt import read_receipt, write_receipt
 from tests.conftest import load_skill_script
 
 

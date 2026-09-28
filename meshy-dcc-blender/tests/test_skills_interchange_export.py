@@ -10,7 +10,7 @@ import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
-SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_blender" / "skills"
+SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_blender" / "skills"
 INTERCHANGE_DIR = SKILLS_ROOT / "blender-interchange"
 PRESET_DIR = SKILLS_ROOT / "blender-export-preset"
 SHOT_DIR = SKILLS_ROOT / "blender-shot-export"
@@ -193,7 +193,7 @@ def test_export_obj_fallback_and_gltf_batch_export(tmp_path):
     obj_path = tmp_path / "mesh.obj"
     result = load_and_call("blender-geometry/scripts/export_obj.py", bpy, path=str(obj_path), object_names=["Cube"])
     assert result["success"] is True
-    assert obj_path.read_text(encoding="utf-8").startswith("# Exported by dcc-mcp-blender")
+    assert obj_path.read_text(encoding="utf-8").startswith("# Exported by meshy-dcc-blender")
     assert result["context"]["written_files"] == [str(obj_path)]
 
     preset = load_and_call(

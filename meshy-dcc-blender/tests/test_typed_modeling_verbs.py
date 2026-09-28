@@ -8,10 +8,10 @@ from unittest.mock import MagicMock, PropertyMock
 import pytest
 import yaml
 
-from dcc_mcp_blender._modeling_common import MAX_EVIDENCE_ELEMENTS
+from meshy_dcc_blender._modeling_common import MAX_EVIDENCE_ELEMENTS
 from tests.conftest import load_and_call, make_mock_bpy
 
-SKILL_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_blender" / "skills" / "blender-mesh-ops"
+SKILL_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_blender" / "skills" / "blender-mesh-ops"
 
 MODELING_TOOLS = {
     "add_edge_loop",
@@ -1576,7 +1576,7 @@ def test_modeling_contracts_mark_potentially_destructive_mesh_changes() -> None:
 
 
 def test_mesh_state_rejects_unbounded_evidence_before_iteration() -> None:
-    from dcc_mcp_blender._modeling_common import mesh_state
+    from meshy_dcc_blender._modeling_common import mesh_state
 
     class _TooLarge:
         def __len__(self):

@@ -4,7 +4,7 @@
 
 param(
     [string]$BlenderVersion = $env:BLENDER_VERSION,
-    # tools/ → repository root (dcc-mcp-blender), not the monorepo parent
+    # tools/ → repository root (meshy-dcc-blender), not the monorepo parent
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
@@ -16,7 +16,7 @@ if ([string]::IsNullOrEmpty($BlenderVersion)) {
 # Detect Blender addons directory
 $AppData = $env:APPDATA
 $AddonsDir = Join-Path $AppData "Blender Foundation\Blender\$BlenderVersion\scripts\addons"
-$Target = Join-Path $AddonsDir "dcc_mcp_blender"
+$Target = Join-Path $AddonsDir "meshy_dcc_blender"
 
 Write-Host "🔗 Setting up Blender dev symlinks (Blender $BlenderVersion)..." -ForegroundColor Cyan
 Write-Host "   Project  : $ProjectRoot" -ForegroundColor Gray
@@ -45,11 +45,11 @@ if (Test-Path $Target) {
 }
 
 # Source directory
-$SourceDir = Join-Path $ProjectRoot "src\dcc_mcp_blender"
+$SourceDir = Join-Path $ProjectRoot "src\meshy_dcc_blender"
 
 if (!(Test-Path -LiteralPath $SourceDir)) {
     Write-Host "   ❌ Source not found: $SourceDir" -ForegroundColor Red
-    Write-Host "   Fix: run this script from the dcc-mcp-blender repo (or pass -ProjectRoot)." -ForegroundColor Yellow
+    Write-Host "   Fix: run this script from the meshy-dcc-blender repo (or pass -ProjectRoot)." -ForegroundColor Yellow
     exit 1
 }
 
@@ -71,5 +71,5 @@ try {
 }
 
 Write-Host ""
-Write-Host "   Next: start Blender $BlenderVersion → Edit → Preferences → Add-ons → Enable 'DCC MCP Blender'" -ForegroundColor Cyan
+Write-Host "   Next: start Blender $BlenderVersion → Edit → Preferences → Add-ons → Enable 'Meshy DCC Blender'" -ForegroundColor Cyan
 Write-Host "   Edit source → restart Blender (or press F8 to reload scripts) to see changes." -ForegroundColor Cyan

@@ -107,7 +107,7 @@ def test_export_obj_writes_basic_obj_when_operator_context_fails(tmp_path):
 
     assert result["success"] is True
     assert out_path.read_text(encoding="utf-8").splitlines() == [
-        "# Exported by dcc-mcp-blender",
+        "# Exported by meshy-dcc-blender",
         "o Triangle",
         "v 0 0 0",
         "v 1 0 0",

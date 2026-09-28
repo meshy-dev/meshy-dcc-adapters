@@ -30,7 +30,7 @@ def _post_mcp(url: str, body: dict) -> dict:
 
 
 def test_two_blender_servers_can_compete_for_gateway(tmp_path):
-    from dcc_mcp_blender.server import BlenderMcpServer
+    from meshy_dcc_blender.server import BlenderMcpServer
 
     gateway_port = _free_port()
     s1 = BlenderMcpServer(
@@ -70,7 +70,7 @@ def test_two_blender_servers_can_compete_for_gateway(tmp_path):
                     },
                 },
             )
-            assert response["result"]["serverInfo"]["name"] == "dcc-mcp-blender"
+            assert response["result"]["serverInfo"]["name"] == "meshy-dcc-blender"
     finally:
         s2.stop()
         s1.stop()

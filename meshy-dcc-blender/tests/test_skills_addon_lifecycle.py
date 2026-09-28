@@ -10,7 +10,7 @@ import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
-DEV_PATH = "src/dcc_mcp_blender/skills/blender-dev/tools.yaml"
+DEV_PATH = "src/meshy_dcc_blender/skills/blender-dev/tools.yaml"
 SKILL = "blender-dev"
 
 
@@ -293,7 +293,7 @@ def test_remove_addon_reports_an_unremovable_addon():
     _ENABLED["my_addon"] = True
     bpy = _bpy_with_addons([_module("my_addon")], ops)
 
-    import dcc_mcp_blender._dev_ops as dev_ops
+    import meshy_dcc_blender._dev_ops as dev_ops
 
     original = dev_ops.shutil.rmtree
     dev_ops.shutil.rmtree = lambda *args, **kwargs: None
@@ -363,7 +363,7 @@ def test_new_addon_tools_declare_required_contract_fields():
         tool = tools[name]
         assert tool["execution"] == "sync", name
         assert tool["affinity"] == "main", name
-        source = Path("src/dcc_mcp_blender/skills") / SKILL / tool["source_file"]
+        source = Path("src/meshy_dcc_blender/skills") / SKILL / tool["source_file"]
         assert source.is_file(), f"missing source script: {source}"
 
 
@@ -427,7 +427,7 @@ def test_remove_addon_reports_when_files_cannot_be_deleted(tmp_path):
     bpy = _bpy_with_addons([module], ops)
 
     # Simulate a read-only add-on directory: deletion silently does nothing.
-    import dcc_mcp_blender._dev_ops as dev_ops
+    import meshy_dcc_blender._dev_ops as dev_ops
 
     original = dev_ops.shutil.rmtree
     dev_ops.shutil.rmtree = lambda *args, **kwargs: None

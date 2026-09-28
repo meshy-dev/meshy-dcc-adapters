@@ -10,7 +10,7 @@ import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
-SKILL_DIR = Path(__file__).parent.parent / "src" / "dcc_mcp_blender" / "skills" / "blender-uv-ops"
+SKILL_DIR = Path(__file__).parent.parent / "src" / "meshy_dcc_blender" / "skills" / "blender-uv-ops"
 
 
 class FakeVertex:

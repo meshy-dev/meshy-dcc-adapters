@@ -1,10 +1,10 @@
-"""Unit tests for the ``DCC_MCP_BLENDER_*`` env-var resolvers in ``_env``."""
+"""Unit tests for the ``MESHY_DCC_BLENDER_*`` env-var resolvers in ``_env``."""
 
 from __future__ import annotations
 
 import pytest
 
-from dcc_mcp_blender import _env
+from meshy_dcc_blender import _env
 
 
 @pytest.fixture(autouse=True)
@@ -51,12 +51,12 @@ class TestResolveExecutePythonOptOuts:
 
 class TestGuardArbitraryExecution:
     def test_returns_none_when_execution_allowed(self):
-        from dcc_mcp_blender._script_guard import guard_arbitrary_execution
+        from meshy_dcc_blender._script_guard import guard_arbitrary_execution
 
         assert guard_arbitrary_execution("execute_python") is None
 
     def test_returns_refusal_when_disabled(self, monkeypatch):
-        from dcc_mcp_blender._script_guard import (
+        from meshy_dcc_blender._script_guard import (
             ERROR_ARBITRARY_EXECUTION_DISABLED,
             guard_arbitrary_execution,
         )

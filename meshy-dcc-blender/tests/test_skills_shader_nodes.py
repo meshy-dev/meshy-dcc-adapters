@@ -11,7 +11,7 @@ import yaml
 from tests.conftest import load_and_call, make_mock_bpy
 
 SHADER_NODES_DIR = "blender-shader-nodes"
-SHADER_NODES_PATH = "src/dcc_mcp_blender/skills/blender-shader-nodes/tools.yaml"
+SHADER_NODES_PATH = "src/meshy_dcc_blender/skills/blender-shader-nodes/tools.yaml"
 
 
 class FakeSocket(SimpleNamespace):

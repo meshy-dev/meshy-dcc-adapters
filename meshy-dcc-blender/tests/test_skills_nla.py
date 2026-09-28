@@ -10,7 +10,7 @@ import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
-ANIMATION_PATH = "src/dcc_mcp_blender/skills/blender-animation/tools.yaml"
+ANIMATION_PATH = "src/meshy_dcc_blender/skills/blender-animation/tools.yaml"
 SKILL = "blender-animation"
 
 
@@ -457,7 +457,7 @@ def test_new_nla_tools_declare_required_contract_fields():
         tool = tools[name]
         assert tool["execution"] == "sync", name
         assert tool["affinity"] == "main", name
-        source = Path("src/dcc_mcp_blender/skills") / SKILL / tool["source_file"]
+        source = Path("src/meshy_dcc_blender/skills") / SKILL / tool["source_file"]
         assert source.is_file(), f"missing source script: {source}"
 
 

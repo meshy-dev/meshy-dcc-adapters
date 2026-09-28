@@ -11,7 +11,7 @@ from unittest.mock import patch
 def _builtin_skills_dir() -> str:
     from pathlib import Path
 
-    return str(Path(__file__).parent.parent / "src" / "dcc_mcp_blender" / "skills")
+    return str(Path(__file__).parent.parent / "src" / "meshy_dcc_blender" / "skills")
 
 
 # ── BlenderMcpServer unit tests ───────────────────────────────────────────────
@@ -19,50 +19,50 @@ def _builtin_skills_dir() -> str:
 
 class TestBlenderMcpServerBasic:
     def test_instantiation(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         assert server is not None
 
     def test_default_port(self):
-        from dcc_mcp_blender.server import DEFAULT_PORT, BlenderMcpServer
+        from meshy_dcc_blender.server import DEFAULT_PORT, BlenderMcpServer
 
         server = BlenderMcpServer()
         assert server.port == DEFAULT_PORT
 
     def test_explicit_zero_port_overrides_environment(self, monkeypatch):
-        from dcc_mcp_blender.server import BlenderServerOptions
+        from meshy_dcc_blender.server import BlenderServerOptions
 
-        monkeypatch.setenv("DCC_MCP_BLENDER_PORT", "18765")
+        monkeypatch.setenv("MESHY_DCC_BLENDER_PORT", "18765")
         assert BlenderServerOptions(port=0).to_core_options().port == 0
 
     def test_custom_port(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=19999)
         assert server.port == 19999
 
     def test_extra_skill_paths_stored(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(extra_skill_paths=["/tmp/extra"])
         assert "/tmp/extra" in server._extra_skill_paths
 
     def test_not_running_initially(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer()
         assert not server.is_running
 
     def test_mcp_url_none_when_not_running(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer()
         assert server.mcp_url is None
 
     def test_dispatcher_is_wrapped_as_execution_bridge(self):
-        from dcc_mcp_blender.host import BlenderCallableDispatcher, BlenderInlineCallableDispatcher
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.host import BlenderCallableDispatcher, BlenderInlineCallableDispatcher
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         dispatcher = BlenderCallableDispatcher()
         server = BlenderMcpServer(port=0, dispatcher=dispatcher)
@@ -74,8 +74,8 @@ class TestBlenderMcpServerBasic:
         assert mode.bridge.dispatch_callable(lambda: "ok") == "ok"
 
     def test_core_backed_ui_dispatcher_is_used_as_execution_bridge(self):
-        from dcc_mcp_blender.host import BlenderInlineCallableDispatcher, BlenderUiDispatcher
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.host import BlenderInlineCallableDispatcher, BlenderUiDispatcher
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         dispatcher = BlenderUiDispatcher()
         server = BlenderMcpServer(port=0, dispatcher=dispatcher)
@@ -89,10 +89,10 @@ class TestBlenderMcpServerBasic:
         assert mode.bridge.dispatch_callable(lambda: "ok", thread_affinity="main") == "ok"
 
     def test_explicit_execution_bridge_takes_precedence(self):
-        from dcc_mcp_core import HostExecutionBridge
+        from meshy_dcc_core import HostExecutionBridge
 
-        from dcc_mcp_blender.host import BlenderCallableDispatcher
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.host import BlenderCallableDispatcher
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         dispatcher = BlenderCallableDispatcher()
         bridge = HostExecutionBridge(dispatcher=dispatcher)
@@ -111,14 +111,14 @@ class TestSkillPathCollection:
     """_collect_skill_paths respects all path sources."""
 
     def test_builtin_always_included(self):
-        from dcc_mcp_blender.server import _BUILTIN_SKILLS_DIR, BlenderMcpServer
+        from meshy_dcc_blender.server import _BUILTIN_SKILLS_DIR, BlenderMcpServer
 
         server = BlenderMcpServer()
         paths = server._collect_skill_paths()
         assert str(_BUILTIN_SKILLS_DIR) in paths
 
     def test_extra_paths_take_priority(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         with tempfile.TemporaryDirectory() as tmp:
             server = BlenderMcpServer(extra_skill_paths=[tmp])
@@ -126,7 +126,7 @@ class TestSkillPathCollection:
             assert paths[0] == tmp
 
     def test_env_var_blender_skill_paths(self):
-        from dcc_mcp_blender.server import _ENV_EXTRA_SKILL_PATHS, BlenderMcpServer
+        from meshy_dcc_blender.server import _ENV_EXTRA_SKILL_PATHS, BlenderMcpServer
 
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict("os.environ", {_ENV_EXTRA_SKILL_PATHS: tmp}):
@@ -135,7 +135,7 @@ class TestSkillPathCollection:
                 assert tmp in paths
 
     def test_env_var_generic_skill_paths(self):
-        from dcc_mcp_blender.server import _ENV_GENERIC_SKILL_PATHS, BlenderMcpServer
+        from meshy_dcc_blender.server import _ENV_GENERIC_SKILL_PATHS, BlenderMcpServer
 
         with tempfile.TemporaryDirectory() as tmp:
             with patch.dict("os.environ", {_ENV_GENERIC_SKILL_PATHS: tmp}):
@@ -144,7 +144,7 @@ class TestSkillPathCollection:
                 assert tmp in paths
 
     def test_blender_env_before_generic_env(self):
-        from dcc_mcp_blender.server import (
+        from meshy_dcc_blender.server import (
             _ENV_EXTRA_SKILL_PATHS,
             _ENV_GENERIC_SKILL_PATHS,
             BlenderMcpServer,
@@ -165,14 +165,14 @@ class TestSkillPathCollection:
                 assert paths.index(app_tmp) < paths.index(global_tmp)
 
     def test_nonexistent_paths_excluded(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(extra_skill_paths=["/nonexistent/path/xyz"])
         paths = server._collect_skill_paths()
         assert "/nonexistent/path/xyz" not in paths
 
     def test_no_duplicates(self):
-        from dcc_mcp_blender.server import _BUILTIN_SKILLS_DIR, BlenderMcpServer
+        from meshy_dcc_blender.server import _BUILTIN_SKILLS_DIR, BlenderMcpServer
 
         builtin = str(_BUILTIN_SKILLS_DIR)
         server = BlenderMcpServer(extra_skill_paths=[builtin])
@@ -184,7 +184,7 @@ class TestServerLifecycle:
     """Start/stop lifecycle tests using a real McpHttpServer."""
 
     def test_start_and_stop(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.start()
@@ -196,7 +196,7 @@ class TestServerLifecycle:
         assert not server.is_running
 
     def test_start_idempotent(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.start()
@@ -206,14 +206,14 @@ class TestServerLifecycle:
         server.stop()
 
     def test_stop_noop_when_not_running(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.stop()  # should not raise
 
     def test_port_updated_after_start(self):
         """port is updated to the actual OS-assigned port when port=0."""
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.start()
@@ -224,7 +224,7 @@ class TestServerLifecycle:
             server.stop()
 
     def test_mcp_url_contains_port(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.start()
@@ -239,50 +239,50 @@ class TestProgressiveLoading:
     """Progressive skill loading API: discover_skills / load_skill / unload_skill."""
 
     def test_list_skills_returns_list_before_start(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         # Should return empty list when server not started (no crash)
         assert server.list_skills() == []
 
     def test_find_skills_returns_list_before_start(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         assert server.find_skills() == []
 
     def test_discover_skills_returns_zero_before_start(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         assert server.discover_skills() == 0
 
     def test_loaded_skill_count_before_start(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         assert server.loaded_skill_count() == 0
 
     def test_is_skill_loaded_before_start(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         assert not server.is_skill_loaded("blender-scene")
 
     def test_load_skill_returns_false_when_not_discovered(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         assert server.load_skill("blender-scene") is False
 
     def test_unload_skill_returns_false_when_not_discovered(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         assert server.unload_skill("blender-scene") is False
 
     def test_list_skills_after_start(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.start()
@@ -293,7 +293,7 @@ class TestProgressiveLoading:
             server.stop()
 
     def test_find_skills_after_start(self):
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.start()
@@ -307,7 +307,7 @@ class TestProgressiveLoading:
 
     def _make_server_with_mock(self, mock_inner):
         """Return a running BlenderMcpServer whose inner _server is mock_inner."""
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         server = BlenderMcpServer(port=0)
         server.start()
@@ -536,18 +536,18 @@ class TestModuleSingleton:
 
     def setup_method(self):
         # ensure clean state
-        from dcc_mcp_blender import server as srv_mod
+        from meshy_dcc_blender import server as srv_mod
 
         srv_mod._server_instance = None
 
     def teardown_method(self):
-        from dcc_mcp_blender import server as srv_mod
+        from meshy_dcc_blender import server as srv_mod
 
         if srv_mod._server_instance is not None:
             srv_mod.stop_server()
 
     def test_start_stop(self):
-        from dcc_mcp_blender.server import get_server, start_server, stop_server
+        from meshy_dcc_blender.server import get_server, start_server, stop_server
 
         server = start_server(port=0)
         assert server is not None
@@ -556,7 +556,7 @@ class TestModuleSingleton:
         assert get_server() is None
 
     def test_start_idempotent(self):
-        from dcc_mcp_blender.server import start_server, stop_server
+        from meshy_dcc_blender.server import start_server, stop_server
 
         s1 = start_server(port=0)
         s2 = start_server(port=0)
@@ -564,12 +564,12 @@ class TestModuleSingleton:
         stop_server()
 
     def test_get_server_none_when_not_running(self):
-        from dcc_mcp_blender.server import get_server
+        from meshy_dcc_blender.server import get_server
 
         assert get_server() is None
 
     def test_stop_noop_when_not_running(self):
-        from dcc_mcp_blender.server import stop_server
+        from meshy_dcc_blender.server import stop_server
 
         stop_server()  # should not raise
         stop_server()  # should not raise

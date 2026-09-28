@@ -1,4 +1,4 @@
-"""E2E test configuration for dcc-mcp-blender.
+"""E2E test configuration for meshy-dcc-blender.
 
 Requires a real Blender interpreter (``blender --background --python``).
 All tests in ``tests/e2e/`` are skipped automatically when ``bpy`` is not
@@ -47,7 +47,7 @@ def pytest_collection_modifyitems(items, config):
 
 # ── Shared helper for E2E test modules ────────────────────────────────────────
 
-SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "dcc_mcp_blender" / "skills"
+SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "meshy_dcc_blender" / "skills"
 _MOD_COUNTER = [0]
 
 

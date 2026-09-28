@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def test_hot_reload_enable_disable_round_trip():
-    from dcc_mcp_blender.server import BlenderMcpServer
+    from meshy_dcc_blender.server import BlenderMcpServer
 
     server = BlenderMcpServer(port=0)
     try:

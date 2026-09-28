@@ -45,36 +45,36 @@ class TestServerLifecycleE2E:
     """Start / stop the MCP server inside a real Blender session."""
 
     def test_start_and_stop(self):
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        server = dcc_mcp_blender.start_server(port=0)
+        server = meshy_dcc_blender.start_server(port=0)
         try:
             assert server.is_running
             url = server.mcp_url
             assert url is not None
             assert url.startswith("http://127.0.0.1:")
         finally:
-            dcc_mcp_blender.stop_server()
+            meshy_dcc_blender.stop_server()
             assert not server.is_running
 
     def test_start_idempotent(self):
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        s1 = dcc_mcp_blender.start_server(port=0)
+        s1 = meshy_dcc_blender.start_server(port=0)
         try:
-            s2 = dcc_mcp_blender.start_server(port=0)
+            s2 = meshy_dcc_blender.start_server(port=0)
             assert s1 is s2
         finally:
-            dcc_mcp_blender.stop_server()
+            meshy_dcc_blender.stop_server()
 
     def test_mcp_initialize_handshake(self):
         """Verify the server responds to an MCP initialize request."""
         import json
         import urllib.request
 
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        server = dcc_mcp_blender.start_server(port=0)
+        server = meshy_dcc_blender.start_server(port=0)
         try:
             url = server.mcp_url
             body = json.dumps(
@@ -97,9 +97,9 @@ class TestServerLifecycleE2E:
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read())
-            assert data["result"]["serverInfo"]["name"] == "dcc-mcp-blender"
+            assert data["result"]["serverInfo"]["name"] == "meshy-dcc-blender"
         finally:
-            dcc_mcp_blender.stop_server()
+            meshy_dcc_blender.stop_server()
 
 
 # ── Progressive skill loading ─────────────────────────────────────────────────
@@ -111,52 +111,52 @@ class TestProgressiveLoadingE2E:
     ``create_skill_manager()`` (called by ``start_server()``) may eagerly
     discover AND load all built-in skills at startup.  Every test in this
     class handles both states (already-loaded and not-yet-loaded) so the
-    tests are robust regardless of the dcc-mcp-core loading strategy.
+    tests are robust regardless of the meshy-dcc-core loading strategy.
     """
 
     def setup_method(self):
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        dcc_mcp_blender.stop_server()
+        meshy_dcc_blender.stop_server()
 
     def teardown_method(self):
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        dcc_mcp_blender.stop_server()
+        meshy_dcc_blender.stop_server()
 
     def test_list_skills_returns_skills(self):
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        server = dcc_mcp_blender.start_server(port=0)
+        server = meshy_dcc_blender.start_server(port=0)
         skills = server.list_skills()
         assert isinstance(skills, list)
         # create_skill_manager discovers all built-in skills at startup
         assert len(skills) > 0, "Expected at least one skill to be discovered"
 
     def test_find_skills_by_dcc(self):
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        server = dcc_mcp_blender.start_server(port=0)
+        server = meshy_dcc_blender.start_server(port=0)
         blender_skills = server.find_skills(dcc="blender")
         assert isinstance(blender_skills, list)
         assert len(blender_skills) > 0
 
     def test_loaded_skill_count_after_start(self):
         """After start(), at least one skill should be available (loaded or discovered)."""
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        server = dcc_mcp_blender.start_server(port=0)
+        server = meshy_dcc_blender.start_server(port=0)
         # Either eagerly loaded or just discovered — list_skills() covers both
         assert len(server.list_skills()) > 0
 
     def test_unload_and_reload_skill(self):
         """Unload a skill then reload it — verifies round-trip."""
-        import dcc_mcp_blender
-        from dcc_mcp_blender.host import BlenderCallableDispatcher, BlenderHost
+        import meshy_dcc_blender
+        from meshy_dcc_blender.host import BlenderCallableDispatcher, BlenderHost
 
         dispatcher = BlenderCallableDispatcher()
         host = BlenderHost(dispatcher)
-        server = dcc_mcp_blender.start_server(port=0, dispatcher=dispatcher)
+        server = meshy_dcc_blender.start_server(port=0, dispatcher=dispatcher)
         host.start()
         try:
             skill_name = "blender-scene"
@@ -177,9 +177,9 @@ class TestProgressiveLoadingE2E:
 
     def test_discover_extra_paths_no_crash(self):
         """Calling discover_skills() with no extra paths must not raise."""
-        import dcc_mcp_blender
+        import meshy_dcc_blender
 
-        server = dcc_mcp_blender.start_server(port=0)
+        server = meshy_dcc_blender.start_server(port=0)
         # May return 0 if all skills were already discovered at startup
         count = server.discover_skills()
         assert isinstance(count, int)
@@ -197,7 +197,7 @@ class TestMultiInstanceGatewayE2E:
         import json
         import urllib.request
 
-        from dcc_mcp_blender.server import BlenderMcpServer
+        from meshy_dcc_blender.server import BlenderMcpServer
 
         # This is an in-process HTTP isolation check. Gateway election is covered
         # by separate-process workflow smoke tests and can leave native threads
@@ -231,7 +231,7 @@ class TestMultiInstanceGatewayE2E:
                 )
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     data = json.loads(resp.read())
-                assert data["result"]["serverInfo"]["name"] == "dcc-mcp-blender"
+                assert data["result"]["serverInfo"]["name"] == "meshy-dcc-blender"
         finally:
             s1.stop()
             s2.stop()

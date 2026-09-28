@@ -44,17 +44,17 @@ def _make_urllib_patch(urllib_request_mock: MagicMock) -> dict:
 def _load_with_urllib_mock(
     rel_path: str,
     urllib_request_mock: MagicMock,
-    dcc_mcp_core_mock: MagicMock | None = None,
+    meshy_dcc_core_mock: MagicMock | None = None,
     bpy_mock: MagicMock | None = None,
     **kwargs,
 ):
-    """Load a skill script with urllib.request and optionally dcc_mcp_core mocked.
+    """Load a skill script with urllib.request and optionally meshy_dcc_core mocked.
 
     Args:
         rel_path: Script path relative to ``skills/``.
         urllib_request_mock: MagicMock replacing ``urllib.request``.
-        dcc_mcp_core_mock: If given, replaces ``dcc_mcp_core`` in sys.modules
-            so that ``from dcc_mcp_core import ...`` resolves to this mock.
+        meshy_dcc_core_mock: If given, replaces ``meshy_dcc_core`` in sys.modules
+            so that ``from meshy_dcc_core import ...`` resolves to this mock.
         bpy_mock: If given, uses this as ``bpy`` instead of auto-creating one.
         **kwargs: Keyword arguments forwarded to ``main()``.
     """
@@ -72,8 +72,8 @@ def _load_with_urllib_mock(
             "mathutils": MagicMock(),
         }
     )
-    if dcc_mcp_core_mock is not None:
-        patches["dcc_mcp_core"] = dcc_mcp_core_mock
+    if meshy_dcc_core_mock is not None:
+        patches["meshy_dcc_core"] = meshy_dcc_core_mock
     with patch.dict("sys.modules", patches):
         spec.loader.exec_module(mod)
         return mod.main(**kwargs)
@@ -376,14 +376,14 @@ class TestPriorityPassthrough:
 # ---------------------------------------------------------------------------
 
 
-def _make_dcc_mcp_core_mock(check_cancelled: MagicMock | None = None) -> MagicMock:
-    """Build a dcc_mcp_core mock with real skill helpers and a mock checkpoint.
+def _make_meshy_dcc_core_mock(check_cancelled: MagicMock | None = None) -> MagicMock:
+    """Build a meshy_dcc_core mock with real skill helpers and a mock checkpoint.
 
-    Scripts import ``from dcc_mcp_core.skill import ...`` and
-    ``from dcc_mcp_core import check_dcc_cancelled``.  We wire up the real
+    Scripts import ``from meshy_dcc_core.skill import ...`` and
+    ``from meshy_dcc_core import check_dcc_cancelled``.  We wire up the real
     skill module but replace the cancellation entry-point.
     """
-    import dcc_mcp_core.skill as real_skill  # noqa: PLC0415
+    import meshy_dcc_core.skill as real_skill  # noqa: PLC0415
 
     mock = MagicMock()
     mock.check_dcc_cancelled = check_cancelled or MagicMock()
@@ -411,7 +411,7 @@ class TestCooperativeCancelCheckpoint:
         bpy.data.libraries = []
 
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         _LOAD_COUNTER[0] += 1
         fpath = SKILLS_ROOT / "blender-render-farm/scripts/validate_scene_for_farm.py"
@@ -425,7 +425,7 @@ class TestCooperativeCancelCheckpoint:
             {
                 "bpy": bpy,
                 "mathutils": MagicMock(),
-                "dcc_mcp_core": dcc_mock,
+                "meshy_dcc_core": dcc_mock,
             },
         ):
             spec.loader.exec_module(mod)
@@ -455,13 +455,13 @@ class TestCooperativeCancelCheckpoint:
         urllib_mock.urlopen.return_value = resp_mock
 
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         result = _load_with_urllib_mock(
             "blender-render-farm/scripts/submit_render_job.py",
             urllib_mock,
             bpy_mock=bpy,
-            dcc_mcp_core_mock=dcc_mock,
+            meshy_dcc_core_mock=dcc_mock,
             farm="flamenco",
         )
 
@@ -480,12 +480,12 @@ class TestCooperativeCancelCheckpoint:
         urllib_mock.urlopen.return_value = resp_mock
 
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         result = _load_with_urllib_mock(
             "blender-render-farm/scripts/get_render_job_status.py",
             urllib_mock,
-            dcc_mcp_core_mock=dcc_mock,
+            meshy_dcc_core_mock=dcc_mock,
             job_id="job-1",
             farm="flamenco",
         )
@@ -503,12 +503,12 @@ class TestCooperativeCancelCheckpoint:
         urllib_mock.urlopen.return_value = resp_mock
 
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         result = _load_with_urllib_mock(
             "blender-render-farm/scripts/list_render_jobs.py",
             urllib_mock,
-            dcc_mcp_core_mock=dcc_mock,
+            meshy_dcc_core_mock=dcc_mock,
             farm="flamenco",
         )
 
@@ -525,12 +525,12 @@ class TestCooperativeCancelCheckpoint:
         urllib_mock.urlopen.return_value = resp_mock
 
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         result = _load_with_urllib_mock(
             "blender-render-farm/scripts/cancel_render_job.py",
             urllib_mock,
-            dcc_mcp_core_mock=dcc_mock,
+            meshy_dcc_core_mock=dcc_mock,
             job_id="job-c",
             farm="flamenco",
         )
@@ -548,12 +548,12 @@ class TestCooperativeCancelCheckpoint:
         urllib_mock.urlopen.return_value = resp_mock
 
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         result = _load_with_urllib_mock(
             "blender-render-farm/scripts/render_farm_status.py",
             urllib_mock,
-            dcc_mcp_core_mock=dcc_mock,
+            meshy_dcc_core_mock=dcc_mock,
         )
 
         assert result["success"] is True
@@ -576,7 +576,7 @@ def _load_deadline_script(
     subprocess_mock: MagicMock | None = None,
     **kwargs,
 ):
-    """Load a farm script with Deadline path mocked (subprocess + dcc_mcp_core)."""
+    """Load a farm script with Deadline path mocked (subprocess + meshy_dcc_core)."""
     _LOAD_COUNTER[0] += 1
     fpath = SKILLS_ROOT / rel_path
     mod_name = f"skill_rf_dl_{fpath.stem}_{_LOAD_COUNTER[0]}"
@@ -584,7 +584,7 @@ def _load_deadline_script(
 
     spec = importlib.util.spec_from_file_location(mod_name, str(fpath))
     mod = importlib.util.module_from_spec(spec)
-    patches = {"dcc_mcp_core": dcc_mock}
+    patches = {"meshy_dcc_core": dcc_mock}
     if bpy_mock is not None:
         patches["bpy"] = bpy_mock
         patches["mathutils"] = MagicMock()
@@ -601,7 +601,7 @@ class TestDeadlineCancelCheckpoint:
     def test_cancel_deadline_job_calls_check_dcc_cancelled(self):
         """cancel_render_job Deadline path should call check_dcc_cancelled()."""
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         subp_mock = MagicMock()
         proc_mock = MagicMock()
@@ -628,7 +628,7 @@ class TestDeadlineCancelCheckpoint:
     def test_get_render_job_status_deadline_calls_check_dcc_cancelled(self):
         """get_render_job_status Deadline path should call check_dcc_cancelled()."""
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         subp_mock = MagicMock()
         proc_mock = MagicMock()
@@ -655,7 +655,7 @@ class TestDeadlineCancelCheckpoint:
     def test_list_render_jobs_deadline_calls_check_dcc_cancelled(self):
         """list_render_jobs Deadline path should call check_dcc_cancelled()."""
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         subp_mock = MagicMock()
         proc_mock = MagicMock()
@@ -679,7 +679,7 @@ class TestDeadlineCancelCheckpoint:
     def test_render_farm_status_deadline_calls_check_dcc_cancelled(self):
         """render_farm_status Deadline path should call check_dcc_cancelled()."""
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         subp_mock = MagicMock()
         proc_mock = MagicMock()
@@ -705,7 +705,7 @@ class TestDeadlineCancelCheckpoint:
     def test_submit_deadline_calls_check_dcc_cancelled(self):
         """submit_render_job Deadline path should call check_dcc_cancelled()."""
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         subp_mock = MagicMock()
         proc_mock = MagicMock()
@@ -748,7 +748,7 @@ class TestGenericCancelCheckpoint:
     def test_submit_generic_calls_check_dcc_cancelled(self):
         """submit_render_job Generic path should call check_dcc_cancelled()."""
         mock_check = MagicMock()
-        dcc_mock = _make_dcc_mcp_core_mock(mock_check)
+        dcc_mock = _make_meshy_dcc_core_mock(mock_check)
 
         bpy = make_mock_bpy()
         bpy.data.filepath = "/tmp/scene.blend"

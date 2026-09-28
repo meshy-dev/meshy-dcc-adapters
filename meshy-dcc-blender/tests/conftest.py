@@ -1,4 +1,4 @@
-"""Shared test fixtures and helpers for dcc-mcp-blender tests.
+"""Shared test fixtures and helpers for meshy-dcc-blender tests.
 
 Provides:
 - ``load_skill_script(skill_dir, script_name)`` — load a skill script by path
@@ -17,16 +17,16 @@ from unittest.mock import MagicMock, patch
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_ROOT = REPO_ROOT / "src"
 
-SKILLS_ROOT = SRC_ROOT / "dcc_mcp_blender" / "skills"
+SKILLS_ROOT = SRC_ROOT / "meshy_dcc_blender" / "skills"
 
 _MOD_COUNTER = [0]
 
 
 def _assert_working_copy_import():
-    """Fail fast when ``dcc_mcp_blender`` is imported from outside ``REPO_ROOT/src``.
+    """Fail fast when ``meshy_dcc_blender`` is imported from outside ``REPO_ROOT/src``.
 
     This repository uses a src layout, so the package only lives under ``src/``.
-    If a released copy is installed in site-packages, ``import dcc_mcp_blender``
+    If a released copy is installed in site-packages, ``import meshy_dcc_blender``
     can silently resolve to that stale copy and the suite then reports failures
     that have nothing to do with the working tree (CI always does
     ``pip install -e .`` and never sees them).
@@ -34,19 +34,19 @@ def _assert_working_copy_import():
     Raising here turns that silent mismatch into one loud, obvious error.
     """
     try:
-        import dcc_mcp_blender
+        import meshy_dcc_blender
     except ImportError:
         # Not installed at all: let the individual tests report the real error.
         return
 
-    expected = (SRC_ROOT / "dcc_mcp_blender" / "__init__.py").resolve()
-    actual = Path(dcc_mcp_blender.__file__).resolve()
+    expected = (SRC_ROOT / "meshy_dcc_blender" / "__init__.py").resolve()
+    actual = Path(meshy_dcc_blender.__file__).resolve()
     if actual != expected:
         raise ImportError(
-            "dcc_mcp_blender was imported from {0!r} instead of the working copy at {1!r}. "
+            "meshy_dcc_blender was imported from {0!r} instead of the working copy at {1!r}. "
             "The test suite would run against a released package and report misleading "
             "failures. Fix it with `pip install -e .` from {2} (or uninstall the "
-            "non-editable dcc-mcp-blender from site-packages).".format(str(actual), str(expected), str(REPO_ROOT))
+            "non-editable meshy-dcc-blender from site-packages).".format(str(actual), str(expected), str(REPO_ROOT))
         )
 
 

@@ -165,7 +165,7 @@ def test_tools_yaml_declares_modern_contracts():
 
     import yaml
 
-    doc = yaml.safe_load(Path("src/dcc_mcp_blender/skills/blender-attributes/tools.yaml").read_text(encoding="utf-8"))
+    doc = yaml.safe_load(Path("src/meshy_dcc_blender/skills/blender-attributes/tools.yaml").read_text(encoding="utf-8"))
     tools = {tool["name"]: tool for tool in doc["tools"]}
     assert {"list_attributes", "get_attribute", "set_attribute", "delete_attribute", "rename_attribute"}.issubset(tools)
     for tool in tools.values():

@@ -17,7 +17,7 @@ def post_mcp(url, body):
 
 def test_progressive_loading():
     print("=== TEST 1: Progressive Loading (Blender) ===")
-    from dcc_mcp_blender.server import BlenderMcpServer
+    from meshy_dcc_blender.server import BlenderMcpServer
 
     server = BlenderMcpServer(port=0)
     server.start()
@@ -66,7 +66,7 @@ def test_progressive_loading():
 
 def test_gateway_competition():
     print("\n=== TEST 2: Gateway Competition (2 instances) ===")
-    from dcc_mcp_blender.server import BlenderMcpServer
+    from meshy_dcc_blender.server import BlenderMcpServer
 
     GATEWAY_PORT = 19901
 
@@ -93,7 +93,7 @@ def test_gateway_competition():
                 "params": {"protocolVersion": "2025-03-26", "capabilities": {},
                            "clientInfo": {"name": "test", "version": "1.0"}},
             })
-            assert r["result"]["serverInfo"]["name"] == "dcc-mcp-blender"
+            assert r["result"]["serverInfo"]["name"] == "meshy-dcc-blender"
             print(f"  Server{i} MCP initialize OK")
 
         gateways = [s for s in [s1, s2] if s.is_gateway]
@@ -117,9 +117,9 @@ def test_maya_progressive_loading():
     with patch.dict(sys.modules, modules):
         import importlib
         for mod in list(sys.modules):
-            if "dcc_mcp_maya" in mod:
+            if "meshy_dcc_maya" in mod:
                 del sys.modules[mod]
-        srv_mod = importlib.import_module("dcc_mcp_maya.server")
+        srv_mod = importlib.import_module("meshy_dcc_maya.server")
         server = srv_mod.MayaMcpServer(port=0)
         server.register_builtin_actions()
         handle = server.start()

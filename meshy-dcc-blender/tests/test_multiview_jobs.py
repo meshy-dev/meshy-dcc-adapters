@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dcc_mcp_blender import _render_job_ops as jobs
-from dcc_mcp_blender._multiview_receipt import multiview_context, png_evidence, write_receipt
+from meshy_dcc_blender import _render_job_ops as jobs
+from meshy_dcc_blender._multiview_receipt import multiview_context, png_evidence, write_receipt
 
 
 @pytest.fixture(autouse=True)
@@ -192,7 +192,7 @@ def test_completed_output_is_rechecked_not_just_file_exists(tmp_path):
     ],
 )
 def test_preflight_rejects_invalid_arguments_before_saving(tmp_path, monkeypatch, field, value):
-    from dcc_mcp_blender._multiview_ops import start_multiview_render_job
+    from meshy_dcc_blender._multiview_ops import start_multiview_render_job
 
     bpy = MagicMock()
     monkeypatch.setitem(__import__("sys").modules, "bpy", bpy)
@@ -208,7 +208,7 @@ def test_wire_contract_is_discoverable():
 
     import yaml
 
-    root = Path(__file__).resolve().parents[1] / "src/dcc_mcp_blender/skills/blender-render"
+    root = Path(__file__).resolve().parents[1] / "src/meshy_dcc_blender/skills/blender-render"
     contracts = {tool["name"]: tool for tool in yaml.safe_load((root / "tools.yaml").read_text())["tools"]}
     contract = contracts["start_multiview_render_job"]
     assert contract["job_strategy"] == "isolated"
@@ -254,7 +254,7 @@ def test_corrupt_earlier_image_does_not_claim_running_worker_stopped(tmp_path):
 def test_source_edge_budget_is_validated(tmp_path, monkeypatch, budget):
     import sys
 
-    from dcc_mcp_blender._multiview_ops import start_multiview_render_job
+    from meshy_dcc_blender._multiview_ops import start_multiview_render_job
 
     bpy = MagicMock()
     bpy.context.scene.objects.get.return_value.type = "CAMERA"

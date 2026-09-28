@@ -371,7 +371,7 @@ class TestSearchAssetsErrors:
 
     def test_permission_error_on_directory(self, tmp_path):
         """Permission error when scanning returns appropriate error."""
-        from dcc_mcp_blender._asset_source_ops import _scan_filesystem
+        from meshy_dcc_blender._asset_source_ops import _scan_filesystem
 
         with patch.object(Path, "iterdir", side_effect=PermissionError("denied")):
             results, error = _scan_filesystem(tmp_path)

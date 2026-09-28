@@ -30,9 +30,9 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, List, Optional
 
-_HELPER_MODULE_NAME = "_dcc_mcp_blender_path_doctor_helper"
-_HELPER_RELATIVE = Path("dcc_mcp_blender") / "_isolated_path.py"
-_PACKAGES = ("dcc_mcp_blender", "dcc_mcp_core", "dcc_mcp_server")
+_HELPER_MODULE_NAME = "_meshy_dcc_blender_path_doctor_helper"
+_HELPER_RELATIVE = Path("meshy_dcc_blender") / "_isolated_path.py"
+_PACKAGES = ("meshy_dcc_blender", "meshy_dcc_core", "meshy_dcc_server")
 
 
 def _pythonpath_entries() -> List[str]:
@@ -58,7 +58,7 @@ def locate_helper() -> Optional[ModuleType]:
     ``sys.path`` — the bootstrap case this probe exists to diagnose.
 
     The ``PYTHONPATH`` scan runs *before* any package import on purpose:
-    importing ``dcc_mcp_blender`` first would cache whichever copy the host
+    importing ``meshy_dcc_blender`` first would cache whichever copy the host
     happens to see (a stale user-level install, for example) and the repair
     could then no longer promote the resolved one.
     """
@@ -70,7 +70,7 @@ def locate_helper() -> Optional[ModuleType]:
                 return module
 
     try:
-        return importlib.import_module("dcc_mcp_blender._isolated_path")
+        return importlib.import_module("meshy_dcc_blender._isolated_path")
     except Exception:  # noqa: BLE001 - adapter not visible yet is the normal case here
         pass
 
@@ -99,12 +99,12 @@ def _import_report() -> Dict[str, Dict[str, Any]]:
 def _tool_surface(deep: bool = False) -> Dict[str, Any]:
     """Measure what the host can actually reach from the adapter package."""
     try:
-        module = importlib.import_module("dcc_mcp_blender")
+        module = importlib.import_module("meshy_dcc_blender")
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
     package_dir = Path(str(getattr(module, "__file__", ""))).parent
-    submodules = [name for _, name, _ in pkgutil.walk_packages([str(package_dir)], prefix="dcc_mcp_blender.")]
+    submodules = [name for _, name, _ in pkgutil.walk_packages([str(package_dir)], prefix="meshy_dcc_blender.")]
     skills_dir = package_dir / "skills"
     skill_dirs = (
         sorted(path.name for path in skills_dir.iterdir() if (path / "SKILL.md").is_file())
@@ -151,7 +151,7 @@ def probe(repair: bool = True, deep: bool = False) -> Dict[str, Any]:
     report: Dict[str, Any] = {"helper_loaded": helper is not None}
 
     if helper is None:
-        report["errors"] = ["could not locate dcc_mcp_blender/_isolated_path.py on PYTHONPATH"]
+        report["errors"] = ["could not locate meshy_dcc_blender/_isolated_path.py on PYTHONPATH"]
         report["environment"] = {
             "python_version": sys.version.split()[0],
             "isolated": bool(getattr(sys.flags, "isolated", 0) or getattr(sys.flags, "ignore_environment", 0)),
@@ -163,13 +163,13 @@ def probe(repair: bool = True, deep: bool = False) -> Dict[str, Any]:
 
     report["imports"] = _import_report()
     report["tool_surface"] = _tool_surface(deep=deep)
-    report["ok"] = bool(report["imports"]["dcc_mcp_blender"]["ok"] and report["imports"]["dcc_mcp_core"]["ok"])
+    report["ok"] = bool(report["imports"]["meshy_dcc_blender"]["ok"] and report["imports"]["meshy_dcc_core"]["ok"])
     return report
 
 
 def _print_human(report: Dict[str, Any]) -> None:
     environment = report.get("environment", {})
-    print("dcc-mcp-blender host path doctor")
+    print("meshy-dcc-blender host path doctor")
     print(f"  python          : {environment.get('python_version', 'unknown')}")
     print(f"  isolated        : {environment.get('isolated', 'unknown')} {environment.get('flags', '')}")
     if "pythonpath_entries" in environment:
@@ -202,7 +202,7 @@ def _print_human(report: Dict[str, Any]) -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Verify dcc-mcp-blender visibility inside a Blender host.")
+    parser = argparse.ArgumentParser(description="Verify meshy-dcc-blender visibility inside a Blender host.")
     parser.add_argument("--json", action="store_true", help="Emit the full report as JSON.")
     parser.add_argument("--no-repair", action="store_true", help="Report only; do not restore PYTHONPATH entries.")
     parser.add_argument("--deep", action="store_true", help="Import every adapter submodule and count callables.")
