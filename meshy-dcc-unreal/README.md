@@ -7,7 +7,8 @@ registers the editor with the local `meshy-dcc` registry; the C++ module adds
 the native bridge some tools need (PIE input, Chaos, Fab, automation tests,
 material-instance edits). Nothing is installed into the engine.
 
-Targets Unreal Engine 5.0 and later. Verified with Unreal Engine 5.7.2 on
+Targets Unreal Engine 5.0 and later; Unreal Engine 4 is not supported.
+Verified with Unreal Engine 5.7.2 on
 macOS arm64: install with the module build, `meshy-dcc start-instance`, GLB
 and FBX import with PBR readback, save and reopen, a rendered capture, native
 tools, safe stop, repair and uninstall. On macOS the editor needs Xcode with

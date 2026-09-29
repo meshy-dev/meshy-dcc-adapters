@@ -1,7 +1,7 @@
 """meshy-dcc-unreal — Unreal Engine plugin for the DCC Model Context Protocol ecosystem.
 
 Embeds a standards-compliant MCP Streamable HTTP server inside Unreal Engine
-using meshy-dcc-core. The native baseline supports Unreal Engine 4.18+; Python
+using meshy-dcc-core. It supports Unreal Engine 5.0 and later; Python
 skills activate when the engine's Python Editor Script Plugin is available.
 
 Quickstart (inside Unreal Engine's Python interpreter)::
@@ -22,7 +22,7 @@ Skill authoring helpers::
     from meshy_dcc_unreal import verified_effect_result
 
 Requirements:
-    - Unreal Engine 4.18+ for the native baseline
+    - Unreal Engine 5.0+
     - Python Editor Script Plugin for Python-backed skills
     - meshy-dcc-core 0.2.x
 """

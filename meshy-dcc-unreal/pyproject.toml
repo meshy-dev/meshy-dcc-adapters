@@ -52,7 +52,6 @@ unreal = "meshy_dcc_unreal:UnrealMcpServer"
 
 [project.scripts]
 meshy-dcc-unreal = "meshy_dcc_unreal.install_cli:main"
-meshy-dcc-unreal-standalone = "meshy_dcc_unreal._standalone_entry:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/meshy_dcc_unreal"]

@@ -13,15 +13,18 @@ def test_parse_unreal_version(version, expected):
     assert parse_unreal_version(version) == expected
 
 
-def test_ue418_reports_native_baseline_without_python():
-    compatibility = unreal_compatibility("4.18", has_embedded_python=False)
-    assert compatibility["supported"] is True
-    assert compatibility["integration_tier"] == "native-baseline"
-    assert compatibility["official_mcp_bridge"] is False
+def test_unreal_engine_4_is_not_supported():
+    compatibility = unreal_compatibility("4.27", has_embedded_python=False)
+    assert compatibility["supported"] is False
+    assert compatibility["integration_tier"] == "unsupported"
+    assert compatibility["minimum_version"] == "5.0"
+    with pytest.raises(ValueError, match="5.0 or newer"):
+        resolve_unreal_runtime("4.27.2", "auto")
 
 
-def test_ue426_auto_runtime_uses_the_standalone_sidecar():
-    assert resolve_unreal_runtime("4.26.2", "auto") == "sidecar"
+def test_ue5_auto_runtime_is_embedded_python():
+    assert resolve_unreal_runtime("5.0.3", "auto") == "python"
+    assert unreal_compatibility("5.7", has_embedded_python=True)["integration_tier"] == "meshy-dcc-python"
 
 
 def test_unreal_startup_resolves_runtime_before_importing_the_package():

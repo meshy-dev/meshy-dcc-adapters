@@ -4,7 +4,7 @@ description: >-
   Enable, discover, and call Unreal Engine 5.8+ built-in Unreal MCP tools
   through the Meshy DCC gateway. Use when the user asks to set up, include,
   compare, inspect, or use Epic's official MCP or Toolset Registry
-  capabilities. Not a replacement for Meshy DCC on Unreal 4.18-5.7.
+  capabilities. Not a replacement for Meshy DCC on Unreal 5.0-5.7.
 license: MIT
 compatibility: Meshy DCC Unreal 0.2+, optional Unreal Engine 5.8+ Unreal MCP plugin
 allowed-tools: Read Bash

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Tuple
 
-MINIMUM_UNREAL_VERSION = (4, 18)
+MINIMUM_UNREAL_VERSION = (5, 0)
 OFFICIAL_MCP_VERSION = (5, 8)
 
 
@@ -18,12 +18,13 @@ def parse_unreal_version(value: str) -> Tuple[int, int]:
 
 
 def resolve_unreal_runtime(engine_version: str, runtime_mode: str = "auto") -> str:
-    """Resolve ``auto`` to the supported embedded or sidecar runtime."""
+    """Resolve ``auto`` to the embedded Python runtime; Unreal Engine 4 is not supported."""
     mode = (runtime_mode or "auto").strip().lower()
     if mode != "auto":
         return mode
-    major, _ = parse_unreal_version(engine_version)
-    return "python" if major >= 5 else "sidecar"
+    if parse_unreal_version(engine_version) < MINIMUM_UNREAL_VERSION:
+        raise ValueError("Unreal Engine {} is not supported; 5.0 or newer is required".format(engine_version))
+    return "python"
 
 
 def unreal_compatibility(
@@ -56,7 +57,7 @@ def unreal_compatibility(
 
     return {
         "engine_version": engine_version,
-        "minimum_version": "4.18",
+        "minimum_version": "5.0",
         "supported": supported,
         "integration_tier": integration_tier,
         "native_baseline": supported,

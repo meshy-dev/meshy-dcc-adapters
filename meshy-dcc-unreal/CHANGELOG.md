@@ -9,6 +9,9 @@ adapter this one was forked from.
   - the Python package is `meshy_dcc_unreal`, the plugin is `MeshyDccUnreal`,
     and environment variables are `MESHY_DCC_UNREAL_*`;
   - the plugin runs on `meshy_dcc_core` 0.2.x.
+- Unreal Engine 5.0 or newer only. The Unreal Engine 4 standalone sidecar is
+  gone: its launcher, native tool discovery, PyOxidizer build and Windows
+  installer, and the `meshy-dcc-unreal-standalone` command.
 - The plugin keeps its C++ editor module and ships it as source; the
   installer builds it for each project. It depends on the Python Editor Script
   Plugin and Editor Scripting Utilities.
