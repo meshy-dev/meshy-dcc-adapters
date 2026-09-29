@@ -15,8 +15,7 @@ This script:
    Blender's extension package installer.
 
 Version strings in ``pyproject.toml``, ``src/meshy_dcc_blender/__version__.py``, and
-``packaging/addon_entry/blender_manifest.toml`` are maintained by **release-please**
-only; this script reads ``pyproject.toml`` for the ZIP filename, copies the manifest
+``packaging/addon_entry/blender_manifest.toml`` must match; this script reads ``pyproject.toml`` for the ZIP filename, copies the manifest
 from ``addon_entry/``, then appends the ``wheels = [...]`` and ``platforms = [...]``
 entries for the downloaded ``meshy-dcc-core`` wheel basename.
 
@@ -273,8 +272,8 @@ def _read_assigned_quoted_string(path: pathlib.Path, key: str) -> str:
     return m.group(1)
 
 
-def assert_release_please_versions_aligned() -> None:
-    """Fail fast when version sources drift (all bumps go through release-please)."""
+def assert_versions_aligned() -> None:
+    """Fail fast when the three version sources drift apart."""
     py_v = get_package_version()
     mod_v = _read_assigned_quoted_string(PACKAGE_ROOT / "src" / "meshy_dcc_blender" / "__version__.py", "__version__")
     man_v = _read_assigned_quoted_string(ADDON_ENTRY_DIR / "blender_manifest.toml", "version")
@@ -282,7 +281,7 @@ def assert_release_please_versions_aligned() -> None:
         return
     raise RuntimeError(
         "Version mismatch — keep pyproject.toml, __version__.py, and blender_manifest.toml "
-        "in sync via release-please only:\n"
+        "in sync:\n"
         f"  pyproject.toml:        {py_v!r}\n"
         f"  __version__.py:        {mod_v!r}\n"
         f"  blender_manifest.toml: {man_v!r}"
@@ -297,7 +296,7 @@ def assemble(platform: str, output_dir: pathlib.Path, core_wheel: pathlib.Path |
 
     Returns the path to the created ZIP file.
     """
-    assert_release_please_versions_aligned()
+    assert_versions_aligned()
     version = get_package_version()
     zip_name = f"meshy_dcc_blender_addon_{platform}_v{version}.zip"
     zip_path = output_dir / zip_name

@@ -1,11 +1,11 @@
 # Blender extension manifest (extensions / bundling).
 # https://docs.blender.org/manual/en/latest/advanced/extensions/getting_started.html
-# Version is bumped only by release-please (keep in sync with pyproject / wheel).
+# Keep version in sync with pyproject.toml and __version__.py.
 
 schema_version = "1.0.0"
 
 id = "meshy_dcc_blender"
-version = "0.2.11"
+version = "0.1.0"
 name = "Meshy DCC"
 tagline = "Lets AI agents work in Blender through Meshy DCC Core"
 maintainer = "Meshy <support@meshy.ai>"

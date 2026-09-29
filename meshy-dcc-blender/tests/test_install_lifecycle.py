@@ -96,7 +96,7 @@ def test_install_dry_run_emits_a_complete_non_mutating_plan(tmp_path, monkeypatc
     assert report["install_state"] == "fresh"
     assert report["host"]["path"] == str(blender.resolve())
     assert report["host"]["version"] == "4.5.13"
-    assert report["python"]["path"] == str(Path(sys.executable).resolve())
+    assert report["python"]["path"] == str(Path(sys.executable).absolute())
     assert [step["id"] for step in report["steps"]] == [
         "preflight",
         "stage",
@@ -141,7 +141,7 @@ def test_environment_selected_interpreter_reports_its_real_source(tmp_path, monk
 
     report = json.loads(capsys.readouterr().out)
     assert exit_code == install.INSTALL_EXIT_OK
-    assert report["python"]["path"] == str(Path(sys.executable).resolve())
+    assert report["python"]["path"] == str(Path(sys.executable).absolute())
     assert report["python"]["selection_source"] == "MESHY_DCC_INSTALL_PYTHON"
 
 

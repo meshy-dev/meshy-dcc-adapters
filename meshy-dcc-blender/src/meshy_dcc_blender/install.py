@@ -425,7 +425,9 @@ def _resolve_context(dcc_path, python_path, environ):
                 "Pass Blender's exact target interpreter with --python or MESHY_DCC_INSTALL_PYTHON.",
             )
         python_selection_source = "MESHY_DCC_INSTALL_PYTHON"
-    interpreter = Path(selected_python).expanduser().resolve()
+    # absolute(), not resolve(): a venv interpreter is a symlink, and following it
+    # leaves the venv and loses its site-packages.
+    interpreter = Path(selected_python).expanduser().absolute()
     python = _probe_python(interpreter)
     profile = (
         Path(environ.get("MESHY_DCC_BLENDER_USER_SCRIPTS") or _default_user_scripts(host_version)).expanduser().resolve()
@@ -461,7 +463,7 @@ def _resolve_context(dcc_path, python_path, environ):
                     state = "partial"
                     state_stage = "receipt"
                     state_reason = "receipt_invalid"
-                elif Path(recorded_python).expanduser().resolve() != interpreter:
+                elif Path(recorded_python).expanduser().absolute() != interpreter:
                     raise LifecycleError(
                         INSTALL_EXIT_PREFLIGHT,
                         "python",
