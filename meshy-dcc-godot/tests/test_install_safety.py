@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -1493,13 +1494,12 @@ def test_upgrade_cleanup_rejects_claim_replacement_after_second_validation(
     assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
-def test_upgrade_cleanup_never_deletes_a_validated_entry_by_path(
+def test_upgrade_carries_user_files_over_and_removes_the_backup(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    project_file = tmp_path / "project.godot"
-    project_file.write_text("[application]\n", encoding="utf-8")
+    (tmp_path / "project.godot").write_text("[application]\n", encoding="utf-8")
     godot = tmp_path / "godot"
     godot.touch()
     _allow_preflight(monkeypatch, godot)
@@ -1507,74 +1507,43 @@ def test_upgrade_cleanup_never_deletes_a_validated_entry_by_path(
     assert main(["install", *command]) == 50
     capsys.readouterr()
     destination = tmp_path / "addons" / "meshy_dcc_godot"
-    (destination / "USER_BACKUP_DATA.txt").write_text("USER_BACKUP_DATA", encoding="utf-8")
-    original_backup = {
-        path.relative_to(destination).as_posix(): path.read_bytes()
-        for path in destination.rglob("*")
-        if path.is_file()
-    }
-    cleanup_globals = install_module._defer_addon_backup.__globals__
-    real_assert_entry = cleanup_globals.get("_assert_bound_entry")
-    real_replace = install_module.os.replace
-    real_backup: Path | None = None
-    destructive_boundary_reached = False
+    (destination / "USER_DATA.txt").write_text("USER_DATA", encoding="utf-8")
 
-    def swap_after_entry_validation(path: Path, expected: tuple[object, ...]) -> None:
-        nonlocal destructive_boundary_reached, real_backup
-        real_assert_entry(path, expected)
-        if destructive_boundary_reached:
-            return
-        deleting_root = next(
-            parent
-            for parent in path.parents
-            if parent.parent == destination.parent
-            and ".cleanup-" in parent.name
-            and ".delete-" in parent.name
-        )
-        real_backup = deleting_root.with_name(f"{deleting_root.name}.reviewer-complete")
-        relative_claim = path.relative_to(deleting_root)
-        real_replace(deleting_root, real_backup)
-        moved_claim = real_backup / relative_claim
-        restored_entry = real_backup.joinpath(*Path(str(expected[0])).parts)
-        restored_entry.parent.mkdir(parents=True, exist_ok=True)
-        real_replace(moved_claim, restored_entry)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("USER_FOREIGN_DATA", encoding="utf-8")
-        destructive_boundary_reached = True
+    for _ in range(2):
+        assert main(["upgrade", *command]) == 50
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["verify"]["failure_reason"] == "restart_required"
+        assert (destination / "USER_DATA.txt").read_text(encoding="utf-8") == "USER_DATA"
+        assert not list(destination.parent.glob(".meshy_dcc_godot.*"))
 
-    if real_assert_entry is not None:
-        monkeypatch.setitem(cleanup_globals, "_assert_bound_entry", swap_after_entry_validation)
 
-    exit_code = main(["upgrade", *command])
-    output = capsys.readouterr().out
-    payload = json.loads(output)
+def test_upgrade_keeps_the_backup_when_the_new_addon_replaces_a_user_file(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "project.godot").write_text("[application]\n", encoding="utf-8")
+    godot = tmp_path / "godot"
+    godot.touch()
+    _allow_preflight(monkeypatch, godot)
+    command = [str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
+    assert main(["install", *command]) == 50
+    capsys.readouterr()
+    destination = tmp_path / "addons" / "meshy_dcc_godot"
+    (destination / "NOTES.md").write_text("USER_NOTES", encoding="utf-8")
+    newer = tmp_path / "newer-addon"
+    shutil.copytree(install_module.addon_source(), newer)
+    (newer / "NOTES.md").write_text("PACKAGED_NOTES", encoding="utf-8")
+    monkeypatch.setitem(install_module._stage_addon.__globals__, "addon_source", lambda: newer)
 
-    assert exit_code in {30, 50}
-    assert len(output.splitlines()) == 1
-    assert payload["status"] in {"failed", "requires_restart"}
-    if destructive_boundary_reached:
-        preserved_foreign = [
-            path
-            for path in destination.parent.rglob("*")
-            if path.is_file() and path.read_bytes() == b"USER_FOREIGN_DATA"
-        ]
-        assert len(preserved_foreign) == 1
-        assert real_backup is not None
-        recovered = {
-            path.relative_to(real_backup).as_posix(): path.read_bytes()
-            for path in real_backup.rglob("*")
-            if path.is_file()
-        }
-        assert recovered == original_backup
-    else:
-        pending = list(destination.parent.glob(".meshy_dcc_godot.cleanup-pending-*"))
-        assert len(pending) == 1
-        recovered = {
-            path.relative_to(pending[0]).as_posix(): path.read_bytes()
-            for path in pending[0].rglob("*")
-            if path.is_file()
-        }
-        assert recovered == original_backup
+    assert main(["upgrade", *command]) == 50
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["verify"]["failure_reason"] == "cleanup_deferred"
+    assert (destination / "NOTES.md").read_text(encoding="utf-8") == "PACKAGED_NOTES"
+    pending = list(destination.parent.glob(".meshy_dcc_godot.cleanup-pending-*"))
+    assert len(pending) == 1
+    assert (pending[0] / "NOTES.md").read_text(encoding="utf-8") == "USER_NOTES"
 
 
 def test_upgrade_deferred_backup_retry_is_bounded_and_idempotent(
@@ -1590,6 +1559,8 @@ def test_upgrade_deferred_backup_retry_is_bounded_and_idempotent(
     command = [str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(["install", *command]) == 50
     capsys.readouterr()
+    # A backup that may hold user files is kept; later runs must not pile up more.
+    monkeypatch.setattr(install_module, "_remove_committed_backup", lambda *_args: False)
 
     assert main(["upgrade", *command]) == 50
     first_output = capsys.readouterr().out

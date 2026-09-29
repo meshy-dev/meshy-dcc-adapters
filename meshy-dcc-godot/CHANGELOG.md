@@ -22,7 +22,14 @@ adapter this one was forked from.
   `uninstall` removes both files. Godot is found through `--dcc-path`,
   `MESHY_DCC_GODOT_EXECUTABLE`, `PATH` or the macOS app bundle.
 - Installing the same version again over a valid install leaves the addon in
-  place instead of parking the previous copy as a pending backup.
+  place.
+- Repair and upgrade delete the previous addon copy once it is proven to hold
+  nothing the project needs: the copy is unchanged since staging, and each of
+  its files was owned by the old receipt or sits byte-identical in the new
+  addon. Before, every repair or upgrade left the copy as a pending backup,
+  and every later install stopped at exit 50 until someone removed it. A copy
+  that fails the check (say, the new version replaced a user's file at one of
+  its paths) is still kept, and the report says to empty and delete it.
 - The EditorPlugin starts the recorded sidecar on a free bridge port per
   editor; `serve --watch-pid` makes the sidecar exit with the editor.
 - `meshy-godot` skill: session with unsaved scenes and scripts, GLB scan and

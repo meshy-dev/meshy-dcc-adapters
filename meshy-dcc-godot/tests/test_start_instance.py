@@ -43,7 +43,7 @@ def run(capsys, *argv: str) -> tuple[int, dict]:
 
 
 def test_files_only_install_records_launch_plan_then_uninstall_removes_it(
-    project: Path, tmp_path: Path, capsys
+    project: Path, tmp_path: Path, capsys, monkeypatch
 ):
     sidecar = executable(tmp_path / "meshy-dcc-godot-sidecar")
     install = ["install", str(project), "--yes", "--json", "--files-only", "--sidecar", str(sidecar)]
@@ -70,6 +70,13 @@ def test_files_only_install_records_launch_plan_then_uninstall_removes_it(
     code, report = run(capsys, *install)
     assert code == INSTALL_EXIT_OK, report
     assert report["install_mode"] == "current"
+    assert not list((project / "addons").glob(".meshy_dcc_godot.*"))
+
+    # A newer adapter over this one replaces the addon and removes the old copy.
+    monkeypatch.setattr(install_module, "__version__", "0.1.1")
+    code, report = run(capsys, *install)
+    assert code == INSTALL_EXIT_OK, report
+    assert report["install_mode"] == "repair"
     assert not list((project / "addons").glob(".meshy_dcc_godot.*"))
 
     code, _ = run(capsys, "uninstall", str(project), "--yes", "--json")

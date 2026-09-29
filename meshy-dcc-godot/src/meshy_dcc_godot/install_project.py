@@ -514,6 +514,38 @@ def defer_addon_backup(destination: Path, backup: Path, binding: dict[str, Any])
     return pending
 
 
+def remove_committed_backup(
+    destination: Path, pending: Path, binding: dict[str, Any], previously_owned: Iterable[Path]
+) -> bool:
+    """Delete a claimed backup that holds nothing the project still needs.
+
+    Staging carries every unowned file into the new addon, so a backup whose
+    tree is unchanged since staging, and whose every file was owned by the old
+    receipt or sits byte-identical in the new addon, can go. Otherwise it is
+    kept and False is returned: the new version replaced a file the user had
+    at one of its paths, or something wrote into the backup.
+    """
+    _, state = _addon_backup_binding(destination, pending)
+    if state != "cleanup_pending":
+        raise ReceiptError("addon_backup_state_invalid")
+    _assert_tree_binding(pending, binding)
+    owned = {path.relative_to(destination).as_posix() for path in previously_owned}
+    for path in pending.rglob("*"):
+        if path.is_dir():
+            continue
+        relative = path.relative_to(pending).as_posix()
+        if relative in owned:
+            continue
+        current = destination / relative
+        if not current.is_file() or _sha256(current) != _sha256(path):
+            return False
+    # ponytail: a same-user process writing into this hidden directory between the
+    # check and rmtree loses that write; rmtree does not follow symlinks, so nothing
+    # outside the backup is touched.
+    shutil.rmtree(pending)
+    return True
+
+
 def receipt_path(project: Path) -> Path:
     return project / ".meshy-dcc" / "receipts" / "godot.json"
 
@@ -721,6 +753,7 @@ __all__ = [
     "read_regular_bytes",
     "read_project_settings",
     "receipt_path",
+    "remove_committed_backup",
     "remove_empty_owned_directories",
     "rollback_addon",
     "stage_addon",

@@ -65,6 +65,9 @@ from .install_project import (
     receipt_path as _receipt_path,
 )
 from .install_project import (
+    remove_committed_backup as _remove_committed_backup,
+)
+from .install_project import (
     remove_empty_owned_directories as _remove_empty_owned_directories,
 )
 from .install_project import (
@@ -832,7 +835,10 @@ def _addon_cleanup_deferred_result(
         {
             "id": "cleanup_backup",
             "status": "requires_restart",
-            "message": "Committed addon backup is preserved for deferred cleanup.",
+            "message": (
+                "The previous addon copy is kept because it may hold files the new "
+                "addon lacks. Move out anything to keep, delete it, then install again."
+            ),
             "recovery": {"state": "preserved", "path": str(pending)},
         },
     ]
@@ -1179,14 +1185,21 @@ def _run_install(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 INSTALL_EXIT_REQUIRES_RESTART if locked else INSTALL_EXIT_INSTALL,
                 result,
             )
-        return _addon_cleanup_deferred_result(
-            project,
-            pending_addon,
-            install_state="installed",
-            install_mode=install_mode,
-            godot=godot,
-            python_info=python_info,
-        )
+        try:
+            removed = _remove_committed_backup(
+                destination, pending_addon, backup_binding, state["owned_files"]
+            )
+        except (OSError, ValueError):
+            removed = False
+        if not removed:
+            return _addon_cleanup_deferred_result(
+                project,
+                pending_addon,
+                install_state="installed",
+                install_mode=install_mode,
+                godot=godot,
+                python_info=python_info,
+            )
 
     return _installed_result(args, project, godot, python_info, receipt, install_mode)
 
