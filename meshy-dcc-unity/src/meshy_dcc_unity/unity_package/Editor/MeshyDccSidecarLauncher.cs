@@ -39,7 +39,20 @@ namespace MeshyDcc.Unity
                     return;
                 }
 
-                var bridgePort = Environment.GetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_PORT") ?? "13852";
+                var bridgePort = Environment.GetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_PORT");
+                if (string.IsNullOrEmpty(bridgePort) &&
+                    string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_URL")))
+                {
+                    // One bridge port per Editor, so several Editors can run at once. The
+                    // process environment keeps it across domain reloads, where the pid file
+                    // keeps the running sidecar.
+                    // ponytail: the port is free when probed, not reserved; a clash shows as
+                    // a bridge that never connects.
+                    bridgePort = FreeLoopbackPort().ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    Environment.SetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_PORT", bridgePort);
+                    Environment.SetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_URL", "ws://127.0.0.1:" + bridgePort);
+                }
+                if (string.IsNullOrEmpty(bridgePort)) bridgePort = "13852";
                 var pidFile = Path.Combine(
                     Path.GetTempPath(),
                     "meshy-dcc-unity-" + ComputeProjectHash(Application.dataPath) + ".pid");
@@ -60,6 +73,20 @@ namespace MeshyDcc.Unity
             {
                 MeshyDccBootstrapErrors.Capture("sidecar-launch", exception);
                 UnityEngine.Debug.LogWarning("Meshy DCC Unity sidecar failed to start: " + exception.Message);
+            }
+        }
+
+        private static int FreeLoopbackPort()
+        {
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+            try
+            {
+                return ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+            }
+            finally
+            {
+                listener.Stop();
             }
         }
 

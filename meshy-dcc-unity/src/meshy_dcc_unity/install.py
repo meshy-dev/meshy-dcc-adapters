@@ -29,6 +29,10 @@ MIN_UNITY_RELEASE = ("f", 1)
 MIN_CORE_VERSION = "0.2.0"
 SCHEMA_VERSION = "1"
 RECEIPT_RELATIVE_PATH = Path(".meshy-dcc") / "receipts" / "unity.json"
+# Read by `meshy-dcc start-instance`, and by the Editor package to find the sidecar.
+LAUNCH_PLAN_RELATIVE_PATH = Path(".meshy-dcc") / "launch-plan.json"
+SIDECAR_CONFIG_RELATIVE_PATH = Path(".meshy-dcc") / "unity.json"
+CONFIG_OWNER = "meshy-dcc-unity"
 EXIT_OK, EXIT_PREFLIGHT, EXIT_ACQUIRE = 0, 10, 20
 EXIT_INSTALL, EXIT_VERIFY, EXIT_REQUIRES_RESTART = 30, 40, 50
 
@@ -286,10 +290,22 @@ def plan(
     project_value: Path | None,
     python_value: Path | None,
     dcc_path: Path | None,
+    sidecar_value: Path | None = None,
 ) -> dict[str, Any]:
     project, python = _resolve_project(project_value), _resolve_python(python_value)
     version = read_unity_version(project)
     editor = _resolve_editor(dcc_path, version)
+    sidecar = None
+    if sidecar_value is not None and verb in {"install", "upgrade"}:
+        sidecar = sidecar_value.expanduser().absolute()
+        if not sidecar.is_file():
+            raise InstallFailure(EXIT_PREFLIGHT, "sidecar", f"sidecar not found: {sidecar}")
+        if editor is None:
+            raise InstallFailure(
+                EXIT_PREFLIGHT,
+                "unity_editor",
+                f"Unity Editor {version} was not found; pass --dcc-path or set UNITY_EDITOR_PATH.",
+            )
     source_files = _files_manifest(_source_package())
     state = _installation_state(project, source_files)
     target_versions = _target_versions(python)
@@ -305,6 +321,7 @@ def plan(
         "unity_version": version,
         "dcc_path": str(editor) if editor else None,
         "python": str(python),
+        "sidecar": str(sidecar) if sidecar else None,
         "installation_state": state,
         "steps": [
             {"id": "preflight", "status": "ok", "unity_version": version},
@@ -424,7 +441,9 @@ def _python_import_check(python: Path) -> dict[str, Any]:
     return {"success": bool(payload.get("importable")), **payload}
 
 
-def verify_install(project: Path, python: Path, timeout: float) -> dict[str, Any]:
+def verify_install(
+    project: Path, python: Path, timeout: float, files_only: bool = False
+) -> dict[str, Any]:
     target, receipt = project / "Packages" / PACKAGE_NAME, _read_receipt(project)
     result: dict[str, Any] = {
         "directly_usable": False,
@@ -459,6 +478,9 @@ def verify_install(project: Path, python: Path, timeout: float) -> dict[str, Any
     if not result["import"].get("success"):
         result.update(failure_stage="import", failure_reason=result["import"].get("reason"))
         return result
+    if files_only:
+        result["readiness"] = {"success": False, "skipped": True}
+        return result
     readiness = wait_for_sidecar_ready(
         dcc_type="unity",
         timeout_secs=timeout,
@@ -475,12 +497,71 @@ def verify_install(project: Path, python: Path, timeout: float) -> dict[str, Any
     return result
 
 
-def _execute_install(report: dict[str, Any], timeout: float) -> tuple[dict[str, Any], int]:
+def _write_launch_files(project: Path, report: dict[str, Any]) -> None:
+    """Record how start-instance opens this project and where the sidecar lives.
+
+    Rewritten on every install: a newer adapter package moves the sidecar.
+    The paths are machine-local, so `.meshy-dcc/` ignores itself for VCS.
+    """
+    state_dir = project / ".meshy-dcc"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    ignore = state_dir / ".gitignore"
+    if not ignore.exists():
+        ignore.write_text("*\n", encoding="utf-8")
+    _write_json_atomic(
+        project / LAUNCH_PLAN_RELATIVE_PATH,
+        {
+            "schema_version": 1,
+            "dcc_type": "unity",
+            "executable": report["dcc_path"],
+            "argv": ["{executable}", "-projectPath", "{project}"],
+            "version": report["unity_version"],
+            "project_markers": ["Assets", "ProjectSettings/ProjectVersion.txt"],
+        },
+    )
+    _write_json_atomic(
+        project / SIDECAR_CONFIG_RELATIVE_PATH,
+        {
+            "schema_version": 1,
+            "owner": CONFIG_OWNER,
+            "adapter_version": __version__,
+            "environment": {"MESHY_DCC_UNITY_SIDECAR_PATH": report["sidecar"]},
+        },
+    )
+
+
+def _remove_launch_files(project: Path) -> None:
+    """Remove the launch plan and sidecar config that install wrote."""
+    config = project / SIDECAR_CONFIG_RELATIVE_PATH
+    try:
+        owned = json.loads(config.read_text(encoding="utf-8")).get("owner") == CONFIG_OWNER
+    except (OSError, ValueError, AttributeError):
+        owned = False
+    if not owned:
+        return
+    plan_path = project / LAUNCH_PLAN_RELATIVE_PATH
+    try:
+        if json.loads(plan_path.read_text(encoding="utf-8")).get("dcc_type") == "unity":
+            plan_path.unlink()
+    except (OSError, ValueError, AttributeError):
+        pass
+    config.unlink()
+
+
+def _execute_install(
+    report: dict[str, Any], timeout: float, files_only: bool = False
+) -> tuple[dict[str, Any], int]:
     project, state = Path(report["project_path"]), report["installation_state"]
     if state != "current":
         _replace_package(project, report)
+    if report.get("sidecar"):
+        _write_launch_files(project, report)
     report["steps"][-1] = {"id": report["verb"], "status": "ok", "previous_state": state}
-    report["verify"] = verify_install(project, Path(report["python"]), timeout)
+    report["verify"] = verify_install(project, Path(report["python"]), timeout, files_only)
+    if files_only and report["verify"]["failure_stage"] is None:
+        # Readiness belongs to `meshy-dcc start-instance`, which opens the project.
+        report["status"] = "ok"
+        return report, EXIT_OK
     if report["verify"]["directly_usable"]:
         report["status"] = "ok"
         return report, EXIT_OK
@@ -520,6 +601,7 @@ def _execute_uninstall(report: dict[str, Any]) -> tuple[dict[str, Any], int]:
         if target.exists():
             os.replace(target, backup)
         receipt_path.unlink()
+        _remove_launch_files(project)
     except Exception as exc:
         if backup.exists():
             os.replace(backup, target)
@@ -545,6 +627,16 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--yes", action="store_true", help="Execute the planned mutation.")
         command.add_argument("--dry-run", action="store_true", help="Print plan without changes.")
         command.add_argument("--ready-timeout", type=float, default=0.0, help=argparse.SUPPRESS)
+        command.add_argument(
+            "--sidecar",
+            type=Path,
+            help="Sidecar executable to record for start-instance (install and upgrade).",
+        )
+        command.add_argument(
+            "--files-only",
+            action="store_true",
+            help="Verify files and import only; readiness is checked when the project opens.",
+        )
     return parser
 
 
@@ -580,13 +672,15 @@ def run(argv: Sequence[str]) -> tuple[dict[str, Any], int, bool]:
     mutating = args.verb in {"install", "upgrade", "uninstall"}
     report = None
     try:
-        report = plan(args.verb, args.project, args.python, args.dcc_path)
+        report = plan(args.verb, args.project, args.python, args.dcc_path, args.sidecar)
         if args.dry_run or (mutating and not args.yes):
             return report, EXIT_OK, args.as_json
         if args.verb in {"install", "upgrade"}:
             if args.verb == "upgrade" and report["installation_state"] == "fresh":
                 raise InstallFailure(EXIT_PREFLIGHT, "upgrade", "nothing is installed; use install")
-            report, code = _execute_install(report, max(0.0, args.ready_timeout))
+            report, code = _execute_install(
+                report, max(0.0, args.ready_timeout), args.files_only
+            )
         elif args.verb == "uninstall":
             report, code = _execute_uninstall(report)
         elif args.verb == "verify":

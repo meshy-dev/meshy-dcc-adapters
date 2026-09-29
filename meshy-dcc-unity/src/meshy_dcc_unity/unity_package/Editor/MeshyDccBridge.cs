@@ -112,6 +112,7 @@ namespace MeshyDcc.Unity
                 EditorApplication.update += OnEditorUpdate;
                 EditorApplication.quitting += Stop;
                 AssemblyReloadEvents.beforeAssemblyReload += Stop;
+                MeshyDccHandoff.Configure();
                 MeshyDccSidecarLauncher.StartIfConfigured();
                 _ = RunAsync(Lifetime.Token);
             }

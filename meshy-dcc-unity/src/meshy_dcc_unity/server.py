@@ -84,6 +84,9 @@ class UnityMcpServer(DccServerBase):
             self._host_driver.start()
             handle = super().start(**kwargs)
             self._start_readiness_monitor()
+            from ._safe_stop import attach_safe_stop
+
+            attach_safe_stop(self)
             return handle
         except Exception:
             try:

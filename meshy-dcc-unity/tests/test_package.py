@@ -168,6 +168,7 @@ def test_server_detects_blocked_host_while_transport_stays_ready(monkeypatch):
 def test_bundled_skills_and_upm_package_exist():
     skills = ROOT / "src" / "meshy_dcc_unity" / "skills"
     assert {path.name for path in skills.iterdir() if path.is_dir()} == {
+        "meshy-unity",
         "unity-diagnostics",
         "unity-project",
         "unity-scene",

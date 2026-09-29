@@ -33,6 +33,30 @@ namespace MeshyDcc.Unity
                     case "host.ping":
                         result = new JObject { ["host_dispatch_ready"] = true };
                         break;
+                    case "meshy.session":
+                        result = MeshyDccHandoff.Session();
+                        break;
+                    case "meshy.session.quit":
+                        result = MeshyDccHandoff.Quit(parameters);
+                        break;
+                    case "meshy.model.inspect":
+                        result = MeshyDccHandoff.Model(parameters, false);
+                        break;
+                    case "meshy.model.instantiate":
+                        result = MeshyDccHandoff.Model(parameters, true);
+                        break;
+                    case "meshy.object.inspect":
+                        result = MeshyDccHandoff.InspectObject(parameters);
+                        break;
+                    case "meshy.renderers.inspect":
+                        result = MeshyDccHandoff.InspectRenderers(parameters);
+                        break;
+                    case "meshy.scene.save":
+                        result = MeshyDccHandoff.SaveScene(parameters);
+                        break;
+                    case "meshy.scene.open":
+                        result = MeshyDccHandoff.OpenScene(parameters);
+                        break;
                     case "project.inspect":
                         result = InspectProject();
                         break;

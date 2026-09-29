@@ -12,3 +12,17 @@ adapter this one was forked from.
   - the Editor bridge defaults to port 13852.
 - `install --python` accepts a venv interpreter; it no longer follows the
   symlink out of the venv.
+- `packaging/build_package.py` builds the Meshy DCC package: a relocatable
+  CPython with `meshy_dcc_core`, this adapter and `websockets`, plus
+  `bin/meshy-dcc-unity-sidecar`. Unity needs no Python of its own.
+- `install --sidecar <path>` records the project's start-instance launch plan
+  (the Editor matching `ProjectVersion.txt`) and the sidecar in
+  `.meshy-dcc/`, which ignores itself for version control. `--files-only`
+  skips the live readiness check. `uninstall` removes both files.
+- The Editor package starts the recorded sidecar and gives each Editor its own
+  bridge port, so several Editors can run at once.
+- `meshy-unity` skill: session, model inspect and instantiate with a keyed PBR
+  texture set, object and renderer readback, save and open scene.
+- An Editor launched by `meshy-dcc start-instance` advertises a safe stop. It
+  exits when every scene is saved and refuses otherwise, unless the request
+  carries `discard_unsaved`.
