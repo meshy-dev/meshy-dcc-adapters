@@ -6,8 +6,10 @@ Editor with the local `meshy-dcc` registry, a loopback WebSocket bridge
 between the two, and typed project, scene, build and diagnostic tools.
 
 Targets Unity 2018.4.25f1 and later (the .NET 4.x Equivalent scripting runtime
-is required on 2018.4). **Not yet verified on a real Editor**; it is not in the
-Meshy DCC support matrix.
+is required on 2018.4). Verified with Unity 6000.4.10f1 on macOS arm64:
+per-project install, `meshy-dcc start-instance`, FBX import with a PBR
+material from a Meshy texture set, save and reopen, and safe stop. Other
+Editor versions are untested.
 
 ## Install
 
