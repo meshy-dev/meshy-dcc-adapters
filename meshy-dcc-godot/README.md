@@ -6,8 +6,38 @@ MCP and registers the editor with the local `meshy-dcc` registry, a loopback
 WebSocket bridge between the two, 163 on-demand tools and a tested 2D
 arena-roguelike skill.
 
-Targets Godot 4.0 and later. **Not yet verified on a real editor**; it is not
-in the Meshy DCC support matrix.
+Targets Godot 4.4 and later. Verified with Godot 4.7.2 on macOS arm64:
+install, `meshy-dcc start-instance`, GLB import with PBR readback, save and
+reopen, and safe stop.
+
+## With Meshy DCC
+
+`packaging/build_package.py` builds the Meshy DCC package: a relocatable
+CPython with `meshy_dcc_core`, this adapter and `websockets`, plus
+`bin/meshy-dcc-godot-sidecar`. Godot needs no Python of its own.
+
+```bash
+meshy-dcc install --dcc-type godot --project /path/to/project --execute
+meshy-dcc start-instance --dcc-type godot --project /path/to/project --wait-ready --yes
+```
+
+The first command extracts the package and runs its installer with
+`--sidecar <path> --files-only`: the addon goes into `addons/`, the plugin is
+enabled in `project.godot`, and `.meshy-dcc/` receives the start-instance
+launch plan and the sidecar path (it ignores itself for version control;
+Godot does not scan dot directories). The installer finds Godot through
+`--dcc-path`, `MESHY_DCC_GODOT_EXECUTABLE`, `godot4` or `godot` on `PATH`, or
+`Godot.app` in `/Applications` or `~/Applications`.
+
+When the editor loads the plugin it starts the recorded sidecar on a free
+bridge port, so several editors can run at once; the sidecar exits with the
+editor. An editor launched by `start-instance` advertises a safe stop: it
+exits when no scene or script is unsaved and refuses otherwise, unless the
+request carries `discard_unsaved`.
+
+The `meshy-godot` skill hands Meshy models over: scan a self-contained GLB
+below `res://assets/meshy/`, wait for the import, instance it through undo/redo
+and read back meshes, PBR materials and transforms.
 
 ## Install
 

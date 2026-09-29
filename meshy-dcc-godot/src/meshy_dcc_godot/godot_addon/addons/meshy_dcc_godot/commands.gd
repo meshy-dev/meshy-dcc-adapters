@@ -4,18 +4,31 @@ extends RefCounted
 const TEMPLATE_ROOT := "res://addons/meshy_dcc_godot/templates/roguelike"
 const ROGUELIKE_ROOT := "res://roguelike"
 const Capabilities = preload("res://addons/meshy_dcc_godot/capabilities.gd")
+const MeshyDcc = preload("res://addons/meshy_dcc_godot/meshy_dcc.gd")
 
 var _plugin: EditorPlugin
 var _capabilities
+var _meshy
 
 
 func _init(plugin: EditorPlugin) -> void:
 	_plugin = plugin
 	_capabilities = Capabilities.new(plugin)
+	_meshy = MeshyDcc.new(plugin)
 
 
 func execute(method: String, params: Dictionary) -> Dictionary:
 	match method:
+		"meshy.session":
+			return _meshy.session(params)
+		"meshy.prepare_asset":
+			return _meshy.prepare_asset(params)
+		"meshy.import_model":
+			return _meshy.import_model(params)
+		"meshy.inspect_model":
+			return _meshy.inspect_model(params)
+		"meshy.quit":
+			return _meshy.quit(params)
 		"context.snapshot":
 			return _context_snapshot()
 		"project.inspect":

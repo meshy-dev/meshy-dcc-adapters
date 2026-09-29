@@ -71,6 +71,9 @@ class GodotMcpServer(DccServerBase):
             self._readiness_monitor.start()
             handle = super().start(**kwargs)
             self._context_monitor.start()
+            from ._safe_stop import attach_safe_stop
+
+            attach_safe_stop(self)
             return handle
         except Exception:
             self._context_monitor.stop()
@@ -115,13 +118,25 @@ def stop_server() -> None:
         _server = None
 
 
-def main() -> None:
-    """Run the standalone adapter until interrupted."""
+def _watch_host(pid: int, stopped: threading.Event) -> None:
+    from meshy_dcc_core._install_lifecycle_process import is_pid_alive
+
+    while not stopped.wait(1.0):
+        if not is_pid_alive(pid):
+            stopped.set()
+
+
+def main(watch_pid: Optional[int] = None) -> None:
+    """Run the standalone adapter until interrupted or ``watch_pid`` exits."""
     stopped = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stopped.set())
     if hasattr(signal, "SIGTERM"):
         signal.signal(signal.SIGTERM, lambda *_: stopped.set())
     start_server()
+    if watch_pid:
+        threading.Thread(
+            target=_watch_host, args=(watch_pid, stopped), name="meshy-dcc-godot-watch", daemon=True
+        ).start()
     try:
         stopped.wait()
     finally:

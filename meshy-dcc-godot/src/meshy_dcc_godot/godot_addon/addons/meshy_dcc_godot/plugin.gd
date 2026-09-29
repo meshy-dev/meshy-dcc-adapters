@@ -5,6 +5,9 @@ const Commands = preload("res://addons/meshy_dcc_godot/commands.gd")
 const RUNTIME_AUTOLOAD_NAME := "MeshyDccRuntimePeer"
 const RUNTIME_AUTOLOAD_PATH := "res://addons/meshy_dcc_godot/runtime_peer.gd"
 const BOOTSTRAP_STATUS_PATH := "res://.godot/meshy_dcc_godot_bootstrap.json"
+# Written by `meshy-dcc install --project`; Godot does not scan dot directories.
+const SIDECAR_CONFIG_PATH := "res://.meshy-dcc/godot.json"
+const SIDECAR_STATE_ENV := "MESHY_DCC_GODOT_SIDECAR"
 
 
 class RuntimeDebugger extends EditorDebuggerPlugin:
@@ -52,6 +55,7 @@ func _enter_tree() -> void:
 		add_autoload_singleton(RUNTIME_AUTOLOAD_NAME, RUNTIME_AUTOLOAD_PATH)
 		ProjectSettings.save()
 	set_process(true)
+	_start_meshy_sidecar()
 	_connect_bridge()
 	_write_bootstrap_status("ready")
 
@@ -81,6 +85,47 @@ func _write_bootstrap_status(status: String, message := "") -> void:
 		"message": message,
 		"engine_version": Engine.get_version_info().get("string", "unknown"),
 	}))
+
+
+func _start_meshy_sidecar() -> void:
+	if not FileAccess.file_exists(SIDECAR_CONFIG_PATH):
+		return
+	# "<editor pid>:<sidecar pid>:<bridge port>" keeps one sidecar across plugin
+	# reloads. An editor restarted in place inherits it under another pid.
+	var state := OS.get_environment(SIDECAR_STATE_ENV).split(":")
+	if state.size() == 3 and state[0].to_int() == OS.get_process_id() \
+		and OS.is_process_running(state[1].to_int()):
+		OS.set_environment("MESHY_DCC_GODOT_BRIDGE_URL", "ws://127.0.0.1:%s" % state[2])
+		return
+	var config = JSON.parse_string(FileAccess.get_file_as_string(SIDECAR_CONFIG_PATH))
+	if not config is Dictionary or str(config.get("owner", "")) != "meshy-dcc-godot":
+		push_error("Meshy DCC: %s is not a Meshy DCC sidecar config" % SIDECAR_CONFIG_PATH)
+		return
+	var sidecar := str(config.get("sidecar", ""))
+	if not sidecar.is_absolute_path() or not FileAccess.file_exists(sidecar):
+		push_error("Meshy DCC: sidecar not found: %s" % sidecar)
+		return
+	# One bridge port per editor, so several editors can run at once.
+	# ponytail: the port is free when probed, not reserved; a clash shows as a
+	# bridge that never connects.
+	var listener := TCPServer.new()
+	if listener.listen(0, "127.0.0.1") != OK:
+		push_error("Meshy DCC: no free loopback port for the bridge")
+		return
+	var port := listener.get_local_port()
+	listener.stop()
+	var pid := OS.create_process(sidecar, [
+		"serve", "--watch-pid", str(OS.get_process_id()), "--bridge-port", str(port),
+	])
+	if pid <= 0:
+		push_error("Meshy DCC: the sidecar could not be started: %s" % sidecar)
+		return
+	OS.set_environment(SIDECAR_STATE_ENV, "%d:%d:%d" % [OS.get_process_id(), pid, port])
+	OS.set_environment("MESHY_DCC_GODOT_BRIDGE_URL", "ws://127.0.0.1:%d" % port)
+
+
+func _meshy_core_quit() -> void:
+	get_tree().quit()
 
 
 func _disable_plugin() -> void:
@@ -121,9 +166,10 @@ func _connect_bridge() -> void:
 	var url := OS.get_environment("MESHY_DCC_GODOT_BRIDGE_URL")
 	if url.is_empty():
 		url = "ws://127.0.0.1:13847"
-	var error := _socket.connect_to_url(url)
-	if error != OK:
-		_next_reconnect_ms = Time.get_ticks_msec() + 1000
+	# connect_to_url can return OK before the TCP connect is refused, so always
+	# wait before the next attempt.
+	_next_reconnect_ms = Time.get_ticks_msec() + 1000
+	_socket.connect_to_url(url)
 
 
 func _handle_packet(text: String) -> void:

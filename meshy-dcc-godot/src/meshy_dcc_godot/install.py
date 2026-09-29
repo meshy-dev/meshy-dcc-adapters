@@ -77,10 +77,17 @@ from .install_project import (
     write_receipt as _write_receipt,
 )
 from .install_verify import verify as _run_verify
+from .__version__ import __version__
 
-MIN_GODOT_VERSION = (4, 0, 0)
+MIN_GODOT_VERSION = (4, 4, 0)
 MIN_CORE_VERSION = (0, 2, 0)
 MAX_CORE_VERSION = (0, 3, 0)
+GODOT_EXECUTABLE_ENV = "MESHY_DCC_GODOT_EXECUTABLE"
+ADDON_RELATIVE_PATH = Path("addons") / "meshy_dcc_godot"
+# Read by `meshy-dcc start-instance`, and by the EditorPlugin to find the sidecar.
+LAUNCH_PLAN_RELATIVE_PATH = Path(".meshy-dcc") / "launch-plan.json"
+SIDECAR_CONFIG_RELATIVE_PATH = Path(".meshy-dcc") / "godot.json"
+CONFIG_OWNER = "meshy-dcc-godot"
 _CONFIG_BACKUP_MARKER = ".meshy-dcc-backup-"
 _CONFIG_RECOVERY_SCHEMA_VERSION = 1
 _CONFIG_RECOVERY_TYPE = "meshy-dcc-godot-config-recovery"
@@ -640,7 +647,7 @@ def _probe_godot(path: Path) -> dict[str, Any]:
     if completed.returncode != 0 or version is None:
         raise ValueError("Godot version probe failed")
     if version < MIN_GODOT_VERSION:
-        raise ValueError(f"Godot 4.0 or newer is required; found {output}")
+        raise ValueError(f"Godot 4.4 or newer is required; found {output}")
     return {"path": str(executable), "version": output, "version_tuple": version}
 
 
@@ -686,11 +693,32 @@ def _preflight_install(
         raise ValueError(f"Python interpreter not found: {python}")
     python_info = _probe_python(python)
     if args.dcc_path is None:
-        discovered = shutil.which("godot4") or shutil.which("godot")
+        discovered = _discover_godot()
         if discovered is None:
-            raise ValueError("Godot executable was not found; pass --dcc-path")
-        args.dcc_path = Path(discovered)
+            raise ValueError(
+                f"Godot executable was not found; pass --dcc-path or set {GODOT_EXECUTABLE_ENV}"
+            )
+        args.dcc_path = discovered
+    if getattr(args, "sidecar", None) is not None:
+        args.sidecar = args.sidecar.expanduser().absolute()
+        if not args.sidecar.is_file():
+            raise ValueError(f"sidecar not found: {args.sidecar}")
     return project, _probe_godot(args.dcc_path), python_info
+
+
+def _discover_godot() -> Path | None:
+    """The configured Godot, then Godot on PATH, then the usual macOS app bundle."""
+    configured = os.environ.get(GODOT_EXECUTABLE_ENV)
+    if configured:
+        return Path(configured)
+    discovered = shutil.which("godot4") or shutil.which("godot")
+    if discovered:
+        return Path(discovered)
+    for app in (Path("/Applications"), Path.home() / "Applications"):
+        candidate = app / "Godot.app" / "Contents" / "MacOS" / "Godot"
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _run_dry_run(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
@@ -977,6 +1005,12 @@ def _run_install(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             "failure_reason": "ownership_conflict",
         }
         return INSTALL_EXIT_INSTALL, result
+    if (
+        args.verb == "install"
+        and before == "installed"
+        and _install_is_current(state, godot, args.python)
+    ):
+        return _installed_result(args, project, godot, python_info, previous_receipt, "current")
     install_mode = (
         "upgrade" if args.verb == "upgrade" else ("fresh" if before == "absent" else "repair")
     )
@@ -1154,6 +1188,19 @@ def _run_install(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
             python_info=python_info,
         )
 
+    return _installed_result(args, project, godot, python_info, receipt, install_mode)
+
+
+def _installed_result(
+    args: argparse.Namespace,
+    project: Path,
+    godot: dict[str, Any],
+    python_info: dict[str, str],
+    receipt: Path,
+    install_mode: str,
+) -> tuple[int, dict[str, Any]]:
+    if args.sidecar is not None:
+        _write_launch_files(project, godot, args.sidecar)
     result = _plan_result(project)
     result.update(
         status="requires_restart",
@@ -1168,6 +1215,17 @@ def _run_install(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         {"id": "enable_plugin", "status": "ok"},
         {"id": "verify", "status": "requires_restart"},
     ]
+    if args.files_only:
+        # Readiness belongs to `meshy-dcc start-instance`, which opens the project.
+        result["status"] = "ok"
+        result["steps"][-1] = {"id": "verify", "status": "skipped"}
+        result["verify"] = {
+            "directly_usable": False,
+            "failure_stage": None,
+            "failure_reason": None,
+            "readiness": {"success": False, "skipped": True},
+        }
+        return INSTALL_EXIT_OK, result
     result["next_steps"] = [
         {
             "id": "start_adapter",
@@ -1188,6 +1246,77 @@ def _run_install(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         "failure_reason": "restart_required",
     }
     return INSTALL_EXIT_REQUIRES_RESTART, result
+
+
+def _install_is_current(state: dict[str, Any], godot: dict[str, Any], python: Path) -> bool:
+    """A valid receipt of this version whose files match the packaged addon."""
+    receipt = state["receipt"]
+    if (
+        receipt is None
+        or receipt["adapter_version"] != __version__
+        or receipt["godot"]["path"] != str(godot["path"])
+        or receipt["python"] != str(python.absolute())
+    ):
+        return False
+    source = addon_source()
+    packaged = {
+        path.relative_to(source).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in source.rglob("*")
+        if path.is_file()
+    }
+    owned = {
+        Path(entry["path"]).relative_to(ADDON_RELATIVE_PATH).as_posix(): entry["sha256"]
+        for entry in receipt["owned_files"]
+    }
+    return owned == packaged
+
+
+def _write_launch_files(project: Path, godot: dict[str, Any], sidecar: Path) -> None:
+    """Record how start-instance opens this project and where the sidecar lives.
+
+    Rewritten on every install: a newer adapter package moves the sidecar.
+    The paths are machine-local, so `.meshy-dcc/` ignores itself for VCS.
+    Godot skips dot directories when it scans `res://`.
+    """
+    state_dir = project / ".meshy-dcc"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    ignore = state_dir / ".gitignore"
+    if not ignore.exists():
+        ignore.write_text("*\n", encoding="utf-8")
+    plan = {
+        "schema_version": 1,
+        "dcc_type": "godot",
+        "executable": str(godot["path"]),
+        "argv": ["{executable}", "--editor", "--path", "{project}"],
+        "version": str(godot["version"]),
+        "project_markers": ["project.godot"],
+    }
+    config = {
+        "schema_version": 1,
+        "owner": CONFIG_OWNER,
+        "adapter_version": __version__,
+        "sidecar": str(sidecar),
+    }
+    _atomic_write(project / LAUNCH_PLAN_RELATIVE_PATH, json.dumps(plan, indent=2) + "\n")
+    _atomic_write(project / SIDECAR_CONFIG_RELATIVE_PATH, json.dumps(config, indent=2) + "\n")
+
+
+def _remove_launch_files(project: Path) -> None:
+    """Remove the launch plan and sidecar config that install wrote."""
+    config = project / SIDECAR_CONFIG_RELATIVE_PATH
+    try:
+        owned = json.loads(config.read_text(encoding="utf-8")).get("owner") == CONFIG_OWNER
+    except (OSError, ValueError, AttributeError):
+        owned = False
+    if not owned:
+        return
+    plan_path = project / LAUNCH_PLAN_RELATIVE_PATH
+    try:
+        if json.loads(plan_path.read_text(encoding="utf-8")).get("dcc_type") == "godot":
+            plan_path.unlink()
+    except (OSError, ValueError, AttributeError):
+        pass
+    config.unlink()
 
 
 def _run_status(project: Path) -> tuple[int, dict[str, Any]]:
@@ -1383,6 +1512,7 @@ def _run_uninstall(project: Path) -> tuple[int, dict[str, Any]]:
             "failure_reason": "cleanup_locked",
         }
         return INSTALL_EXIT_REQUIRES_RESTART, result
+    _remove_launch_files(project)
     result = _plan_result(project)
     result.update(status="ok", receipt_path=None, install_state="absent")
     result["steps"] = [
@@ -1407,6 +1537,16 @@ def _standard_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dcc-path", type=Path)
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument("--instance-id")
+    parser.add_argument(
+        "--sidecar",
+        type=Path,
+        help="Sidecar executable to record for meshy-dcc start-instance (install and upgrade).",
+    )
+    parser.add_argument(
+        "--files-only",
+        action="store_true",
+        help="Report success once files are installed; start-instance checks readiness.",
+    )
     return parser
 
 

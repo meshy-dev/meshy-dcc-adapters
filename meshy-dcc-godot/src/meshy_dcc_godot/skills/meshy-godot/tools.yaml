@@ -1,0 +1,65 @@
+tools:
+  - name: session
+    description: Read the editor PID, project, open scene, engine version, unsaved scenes and scripts (dirty is null when Godot cannot report them) and, with asset_path, whether that GLB has finished importing. Read-only.
+    input_schema:
+      type: object
+      properties:
+        asset_path: {type: string, pattern: "^res://assets/meshy/", maxLength: 500}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 60
+    source_file: scripts/session.py
+  - name: prepare_asset
+    description: Ask Godot to scan the project so a GLB copied below res://assets/meshy/ gets imported. Reports scan_started false while the editor is already scanning or importing. Does not change scenes.
+    input_schema:
+      type: object
+      required: [path]
+      properties:
+        path: {type: string, pattern: "^res://assets/meshy/.+\\.[gG][lL][bB]$", maxLength: 500}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 60
+    source_file: scripts/prepare_asset.py
+  - name: import_model
+    description: Instance one imported GLB below the active scene root through editor undo/redo and read it back. One-shot and unsaved; wait for session asset_ready first, never repeat on an unknown outcome.
+    input_schema:
+      type: object
+      required: [path]
+      properties:
+        path: {type: string, pattern: "^res://assets/meshy/.+\\.[gG][lL][bB]$", maxLength: 500}
+        name: {type: string, maxLength: 128}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: false
+    destructive: false
+    idempotent: false
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 120
+    source_file: scripts/import_model.py
+  - name: inspect_model
+    description: Read back a model node in the active scene (node_path, relative to the scene root) or an imported GLB (path) - meshes, surface, vertex and triangle counts, PBR materials, texture bindings, bounds and transforms. Read-only.
+    input_schema:
+      type: object
+      properties:
+        node_path: {type: string, maxLength: 500}
+        path: {type: string, pattern: "^res://assets/meshy/.+\\.[gG][lL][bB]$", maxLength: 500}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 120
+    source_file: scripts/inspect_model.py

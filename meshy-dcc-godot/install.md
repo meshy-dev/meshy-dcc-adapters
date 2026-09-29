@@ -3,7 +3,7 @@
 ## Requirements
 
 - Windows 10/11, macOS 12+, or a current Linux distribution.
-- Godot 4.0 or newer. The adapter does not download or cache Godot; install it
+- Godot 4.4 or newer. The adapter does not download or cache Godot; install it
   from the official Godot distribution or your operating-system package manager.
 - Python 3.9 or newer and `meshy-dcc-core` 0.2.x.
 - A Godot project containing `project.godot`.
@@ -56,6 +56,16 @@ never reported as directly usable.
 When several Godot editors are registered, `verify` probes them independently
 and accepts only the matching project. An operator may narrow the same check
 with `--instance-id <uuid>`; project-path readback is still mandatory.
+
+## With Meshy DCC
+
+`meshy-dcc install --dcc-type godot --project <root> --execute` runs this
+installer from the Meshy DCC package with `--sidecar <path> --files-only`.
+`--sidecar` records `.meshy-dcc/launch-plan.json` (read by `meshy-dcc
+start-instance`) and `.meshy-dcc/godot.json` (read by the EditorPlugin to
+start the sidecar); `--files-only` returns exit 0 once files are in place and
+leaves readiness to `start-instance`. Set `MESHY_DCC_GODOT_EXECUTABLE` when
+Godot is neither on `PATH` nor in `/Applications`.
 
 ## Manual path
 
