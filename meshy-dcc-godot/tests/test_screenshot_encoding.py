@@ -4,14 +4,14 @@ import zlib
 
 import pytest
 
-from dcc_mcp_godot import capability_dispatch, screenshot
-from dcc_mcp_godot.screenshot import finalize_screenshot, finalize_screenshot_batch
+from meshy_dcc_godot import capability_dispatch, screenshot
+from meshy_dcc_godot.screenshot import finalize_screenshot, finalize_screenshot_batch
 
 
 def test_game_screenshot_encodes_immutable_host_snapshot_off_the_godot_thread(
     monkeypatch, tmp_path
 ):
-    raw_path = tmp_path / "game.png.dcc-mcp-1.raw"
+    raw_path = tmp_path / "game.png.meshy-dcc-1.raw"
     output_path = tmp_path / "game.png"
     pixels = bytes((255, 0, 0, 255, 0, 255, 0, 128))
     raw_path.write_bytes(pixels)
@@ -20,7 +20,7 @@ def test_game_screenshot_encodes_immutable_host_snapshot_off_the_godot_thread(
     def call_host(method, params):
         host_calls.append((method, params))
         return {
-            "path": "res://.dcc-mcp/game.png",
+            "path": "res://.meshy-dcc/game.png",
             "width": 2,
             "height": 1,
             "__raw_snapshot__": {
@@ -34,12 +34,12 @@ def test_game_screenshot_encodes_immutable_host_snapshot_off_the_godot_thread(
     monkeypatch.setattr(capability_dispatch, "call_host", call_host)
 
     result = capability_dispatch.dispatch(
-        "get_game_screenshot", {"path": "res://.dcc-mcp/game.png"}
+        "get_game_screenshot", {"path": "res://.meshy-dcc/game.png"}
     )
 
-    assert host_calls == [("capability.get_game_screenshot", {"path": "res://.dcc-mcp/game.png"})]
+    assert host_calls == [("capability.get_game_screenshot", {"path": "res://.meshy-dcc/game.png"})]
     assert result["context"] == {
-        "path": "res://.dcc-mcp/game.png",
+        "path": "res://.meshy-dcc/game.png",
         "width": 2,
         "height": 1,
     }
@@ -52,14 +52,14 @@ def test_game_screenshot_encodes_immutable_host_snapshot_off_the_godot_thread(
 
 
 def test_game_screenshot_base64_is_derived_from_the_off_thread_png(monkeypatch, tmp_path):
-    raw_path = tmp_path / "game.png.dcc-mcp-2.raw"
+    raw_path = tmp_path / "game.png.meshy-dcc-2.raw"
     output_path = tmp_path / "game.png"
     raw_path.write_bytes(bytes((10, 20, 30)))
     monkeypatch.setattr(
         capability_dispatch,
         "call_host",
         lambda _method, _params: {
-            "path": "res://.dcc-mcp/game.png",
+            "path": "res://.meshy-dcc/game.png",
             "width": 1,
             "height": 1,
             "__raw_snapshot__": {
@@ -78,14 +78,14 @@ def test_game_screenshot_base64_is_derived_from_the_off_thread_png(monkeypatch, 
 
 
 def test_editor_screenshot_uses_the_same_off_thread_finalizer(monkeypatch, tmp_path):
-    raw_path = tmp_path / "editor.png.dcc-mcp-1.raw"
+    raw_path = tmp_path / "editor.png.meshy-dcc-1.raw"
     output_path = tmp_path / "editor.png"
     raw_path.write_bytes(bytes((9, 8, 7)))
     monkeypatch.setattr(
         capability_dispatch,
         "call_host",
         lambda _method, _params: {
-            "path": "res://.dcc-mcp/editor.png",
+            "path": "res://.meshy-dcc/editor.png",
             "width": 1,
             "height": 1,
             "__raw_snapshot__": {
@@ -99,20 +99,20 @@ def test_editor_screenshot_uses_the_same_off_thread_finalizer(monkeypatch, tmp_p
 
     result = capability_dispatch.dispatch("get_editor_screenshot", {})
 
-    assert result["context"]["path"] == "res://.dcc-mcp/editor.png"
+    assert result["context"]["path"] == "res://.meshy-dcc/editor.png"
     assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     assert not raw_path.exists()
 
 
 def test_screenshot_snapshot_size_mismatch_fails_closed_and_removes_staging_file(tmp_path):
-    raw_path = tmp_path / "game.png.dcc-mcp-3.raw"
+    raw_path = tmp_path / "game.png.meshy-dcc-3.raw"
     output_path = tmp_path / "game.png"
     raw_path.write_bytes(b"too-short")
 
     with pytest.raises(ValueError, match="byte length"):
         finalize_screenshot(
             {
-                "path": "res://.dcc-mcp/game.png",
+                "path": "res://.meshy-dcc/game.png",
                 "width": 2,
                 "height": 2,
                 "__raw_snapshot__": {
@@ -129,8 +129,8 @@ def test_screenshot_snapshot_size_mismatch_fails_closed_and_removes_staging_file
 
 
 def test_same_path_screenshot_error_does_not_poison_the_next_call(monkeypatch, tmp_path):
-    failed_raw_path = tmp_path / "game.png.dcc-mcp-failed.raw"
-    next_raw_path = tmp_path / "game.png.dcc-mcp-next.raw"
+    failed_raw_path = tmp_path / "game.png.meshy-dcc-failed.raw"
+    next_raw_path = tmp_path / "game.png.meshy-dcc-next.raw"
     output_path = tmp_path / "game.png"
     failed_raw_path.write_bytes(b"in")
     next_pixels = bytes((7, 11, 13))
@@ -138,7 +138,7 @@ def test_same_path_screenshot_error_does_not_poison_the_next_call(monkeypatch, t
     snapshots = iter(
         (
             {
-                "path": "res://.dcc-mcp/game.png",
+                "path": "res://.meshy-dcc/game.png",
                 "width": 1,
                 "height": 1,
                 "__raw_snapshot__": {
@@ -149,7 +149,7 @@ def test_same_path_screenshot_error_does_not_poison_the_next_call(monkeypatch, t
                 },
             },
             {
-                "path": "res://.dcc-mcp/game.png",
+                "path": "res://.meshy-dcc/game.png",
                 "width": 1,
                 "height": 1,
                 "__raw_snapshot__": {
@@ -174,8 +174,8 @@ def test_same_path_screenshot_error_does_not_poison_the_next_call(monkeypatch, t
 
 
 def test_capture_frames_finalizes_each_immutable_snapshot_off_the_godot_thread(tmp_path):
-    first_raw = tmp_path / "frame_000.png.dcc-mcp-1.raw"
-    second_raw = tmp_path / "frame_001.png.dcc-mcp-2.raw"
+    first_raw = tmp_path / "frame_000.png.meshy-dcc-1.raw"
+    second_raw = tmp_path / "frame_001.png.meshy-dcc-2.raw"
     first_output = tmp_path / "frame_000.png"
     second_output = tmp_path / "frame_001.png"
     first_raw.write_bytes(bytes((1, 2, 3)))
@@ -185,7 +185,7 @@ def test_capture_frames_finalizes_each_immutable_snapshot_off_the_godot_thread(t
 
     result = finalize_screenshot_batch(
         {
-            "paths": ["res://.dcc-mcp/frame_000.png", "res://.dcc-mcp/frame_001.png"],
+            "paths": ["res://.meshy-dcc/frame_000.png", "res://.meshy-dcc/frame_001.png"],
             "count": 2,
             "__raw_snapshots__": [
                 {
@@ -208,7 +208,7 @@ def test_capture_frames_finalizes_each_immutable_snapshot_off_the_godot_thread(t
         }
     )
 
-    assert result["paths"] == ["res://.dcc-mcp/frame_000.png", "res://.dcc-mcp/frame_001.png"]
+    assert result["paths"] == ["res://.meshy-dcc/frame_000.png", "res://.meshy-dcc/frame_001.png"]
     assert first_output.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     assert second_output.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     assert not first_raw.exists()
@@ -216,8 +216,8 @@ def test_capture_frames_finalizes_each_immutable_snapshot_off_the_godot_thread(t
 
 
 def test_capture_frames_batch_failure_is_atomic_and_cleans_all_staging(tmp_path):
-    first_raw = tmp_path / "frame_000.png.dcc-mcp-1.raw"
-    second_raw = tmp_path / "frame_001.png.dcc-mcp-2.raw"
+    first_raw = tmp_path / "frame_000.png.meshy-dcc-1.raw"
+    second_raw = tmp_path / "frame_001.png.meshy-dcc-2.raw"
     first_output = tmp_path / "frame_000.png"
     second_output = tmp_path / "frame_001.png"
     first_raw.write_bytes(bytes((1, 2, 3)))
@@ -254,8 +254,8 @@ def test_capture_frames_batch_failure_is_atomic_and_cleans_all_staging(tmp_path)
 
 
 def test_capture_frames_batch_publish_failure_rolls_back_outputs_and_staging(monkeypatch, tmp_path):
-    first_raw = tmp_path / "frame_000.png.dcc-mcp-1.raw"
-    second_raw = tmp_path / "frame_001.png.dcc-mcp-2.raw"
+    first_raw = tmp_path / "frame_000.png.meshy-dcc-1.raw"
+    second_raw = tmp_path / "frame_001.png.meshy-dcc-2.raw"
     first_output = tmp_path / "frame_000.png"
     second_output = tmp_path / "frame_001.png"
     first_raw.write_bytes(bytes((1, 2, 3)))

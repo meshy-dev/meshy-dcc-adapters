@@ -1,7 +1,7 @@
 extends SceneTree
 
-const MANIFEST_PATH := "res://.dcc-mcp/playtest-actions.v1.json"
-const RuntimePeer = preload("res://addons/dcc_mcp_godot/runtime_peer.gd")
+const MANIFEST_PATH := "res://.meshy-dcc/playtest-actions.v1.json"
+const RuntimePeer = preload("res://addons/meshy_dcc_godot/runtime_peer.gd")
 const TypedActionTarget = preload("res://typed_action_target.gd")
 
 var _failures: Array[String] = []
@@ -12,9 +12,9 @@ func _init() -> void:
 
 
 func _run() -> void:
-	ProjectSettings.set_setting("dcc_mcp/playtest/project_id", "dcc-mcp-godot-ci")
-	ProjectSettings.set_setting("dcc_mcp/playtest/session_id", "typed-action-smoke")
-	ProjectSettings.set_setting("dcc_mcp/playtest/authority_id", "ci-playtest-owner")
+	ProjectSettings.set_setting("meshy_dcc/playtest/project_id", "meshy-dcc-godot-ci")
+	ProjectSettings.set_setting("meshy_dcc/playtest/session_id", "typed-action-smoke")
+	ProjectSettings.set_setting("meshy_dcc/playtest/authority_id", "ci-playtest-owner")
 	var scene := Node.new()
 	scene.name = "TypedActionRoot"
 	root.add_child(scene)
@@ -65,12 +65,12 @@ func _run() -> void:
 	var wrong_authority := _request(identity, _set_speed_action(2.0))
 	wrong_authority["authority_id"] = "other-owner"
 	_expect_error(peer._execute("execute_typed_action", wrong_authority), "authority_mismatch")
-	ProjectSettings.set_setting("dcc_mcp/playtest/session_id", "replacement-session")
+	ProjectSettings.set_setting("meshy_dcc/playtest/session_id", "replacement-session")
 	_expect_error(
 		peer._execute("execute_typed_action", _request(identity, _set_speed_action(2.0))),
 		"session_identity_mismatch",
 	)
-	ProjectSettings.set_setting("dcc_mcp/playtest/session_id", "typed-action-smoke")
+	ProjectSettings.set_setting("meshy_dcc/playtest/session_id", "typed-action-smoke")
 	_expect_error(
 		peer._execute("execute_typed_action", _request(identity, _input_action("physics_only", "ui_cancel", true))),
 		"physics_thread_unavailable",

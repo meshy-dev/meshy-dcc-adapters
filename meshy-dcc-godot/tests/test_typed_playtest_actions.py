@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 GENERATOR_PATH = ROOT / "tools" / "generate_capability_skills.py"
 GENERATOR_SPEC = importlib.util.spec_from_file_location(
-    "dcc_mcp_godot_typed_action_generator", GENERATOR_PATH
+    "meshy_dcc_godot_typed_action_generator", GENERATOR_PATH
 )
 assert GENERATOR_SPEC is not None and GENERATOR_SPEC.loader is not None
 GENERATOR = importlib.util.module_from_spec(GENERATOR_SPEC)
@@ -14,7 +14,7 @@ GENERATOR_SPEC.loader.exec_module(GENERATOR)
 
 
 def _tool_block(action_name: str) -> str:
-    text = (ROOT / "src" / "dcc_mcp_godot" / "skills" / "godot-runtime" / "tools.yaml").read_text(
+    text = (ROOT / "src" / "meshy_dcc_godot" / "skills" / "godot-runtime" / "tools.yaml").read_text(
         encoding="utf-8"
     )
     match = re.search(
@@ -77,7 +77,7 @@ def test_typed_action_schema_is_closed_discriminated_and_generated() -> None:
 
 def test_project_manifest_schema_is_closed_versioned_and_bounded() -> None:
     schema_path = (
-        ROOT / "src" / "dcc_mcp_godot" / "schemas" / "playtest_actions_manifest_v1.schema.json"
+        ROOT / "src" / "meshy_dcc_godot" / "schemas" / "playtest_actions_manifest_v1.schema.json"
     )
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
@@ -107,10 +107,10 @@ def test_runtime_enforces_identity_drift_manifest_links_and_main_thread() -> Non
     runtime = (
         ROOT
         / "src"
-        / "dcc_mcp_godot"
+        / "meshy_dcc_godot"
         / "godot_addon"
         / "addons"
-        / "dcc_mcp_godot"
+        / "meshy_dcc_godot"
         / "runtime_peer.gd"
     ).read_text(encoding="utf-8")
     body = runtime.split("func _execute_typed_action", 1)[1].split("\nfunc ", 1)[0]
@@ -138,10 +138,10 @@ def test_bridge_exposes_only_the_cancellation_bound_typed_action_protocol() -> N
     capabilities = (
         ROOT
         / "src"
-        / "dcc_mcp_godot"
+        / "meshy_dcc_godot"
         / "godot_addon"
         / "addons"
-        / "dcc_mcp_godot"
+        / "meshy_dcc_godot"
         / "capabilities.gd"
     ).read_text(encoding="utf-8")
     runtime_actions = capabilities.split("const RUNTIME_ACTIONS := [", 1)[1].split("]", 1)[0]
@@ -158,7 +158,7 @@ def test_bridge_exposes_only_the_cancellation_bound_typed_action_protocol() -> N
 
 def test_editor_plugin_fences_commit_before_runtime_forwarding() -> None:
     plugin = (
-        ROOT / "src" / "dcc_mcp_godot" / "godot_addon" / "addons" / "dcc_mcp_godot" / "plugin.gd"
+        ROOT / "src" / "meshy_dcc_godot" / "godot_addon" / "addons" / "meshy_dcc_godot" / "plugin.gd"
     ).read_text(encoding="utf-8")
     packet_handler = plugin.split("func _handle_packet", 1)[1].split("\nfunc ", 1)[0]
     staging = plugin.split("func _stage_guarded_commit", 1)[1].split("\nfunc ", 1)[0]
@@ -166,7 +166,7 @@ def test_editor_plugin_fences_commit_before_runtime_forwarding() -> None:
 
     assert '"capability.commit_typed_action"' in packet_handler
     assert "_stage_guarded_commit(message)" in packet_handler
-    assert "__dcc_mcp_commit_fence" in staging
+    assert "__meshy_dcc_commit_fence" in staging
     assert '"type": "commit_intent"' in staging
     assert "_debugger.send_request" not in staging
     assert 'str(message.reason) != "authorized"' in authorization
@@ -178,7 +178,7 @@ def test_editor_plugin_fences_commit_before_runtime_forwarding() -> None:
 def test_broad_method_tool_is_truthful_compatibility_only() -> None:
     readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").lower().split())
     skill = (
-        (ROOT / "src" / "dcc_mcp_godot" / "skills" / "godot-runtime" / "SKILL.md")
+        (ROOT / "src" / "meshy_dcc_godot" / "skills" / "godot-runtime" / "SKILL.md")
         .read_text(encoding="utf-8")
         .lower()
     )

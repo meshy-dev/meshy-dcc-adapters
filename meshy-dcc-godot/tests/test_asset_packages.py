@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_godot.asset_packages import (
+from meshy_dcc_godot.asset_packages import (
     AssetPackageError,
     install_asset_package,
     plan_asset_install,

@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_godot import install as install_module
-from dcc_mcp_godot import install_verify
-from dcc_mcp_godot.install import PLUGIN_PATH, install_addon, main
-from dcc_mcp_godot.install_contract import INSTALL_SOP_SCHEMA_VERSION
+from meshy_dcc_godot import install as install_module
+from meshy_dcc_godot import install_verify
+from meshy_dcc_godot.install import PLUGIN_PATH, install_addon, main
+from meshy_dcc_godot.install_contract import INSTALL_SOP_SCHEMA_VERSION
 
 
 def test_standard_install_dry_run_returns_plan_without_writing(
@@ -39,17 +39,17 @@ def test_standard_install_dry_run_returns_plan_without_writing(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    # The SOP schema version tracks the installed dcc-mcp-core, so assert
+    # The SOP schema version tracks the installed meshy-dcc-core, so assert
     # against the same constant the adapter resolves instead of a literal.
     assert payload["schema_version"] == INSTALL_SOP_SCHEMA_VERSION
     assert payload["dcc_type"] == "godot"
     assert payload["status"] == "planned"
     assert payload["verify"]["directly_usable"] is False
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
 
 
 def test_canonical_console_routes_standard_lifecycle_verbs(monkeypatch: pytest.MonkeyPatch):
-    cli = importlib.import_module("dcc_mcp_godot.cli")
+    cli = importlib.import_module("meshy_dcc_godot.cli")
     received: list[list[str]] = []
 
     def run_install(arguments: list[str]) -> int:
@@ -84,8 +84,8 @@ def test_standard_install_enables_plugin_and_records_receipt(
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "requires_restart"
     assert payload["verify"]["directly_usable"] is False
-    assert (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").is_file()
-    assert "res://addons/dcc_mcp_godot/plugin.cfg" in project_file.read_text(encoding="utf-8")
+    assert (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").is_file()
+    assert "res://addons/meshy_dcc_godot/plugin.cfg" in project_file.read_text(encoding="utf-8")
     assert Path(payload["receipt_path"]).is_file()
 
 
@@ -313,8 +313,8 @@ def test_uninstall_consumes_receipt_and_preserves_unowned_project_content(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "ok"
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
     assert unrelated.is_file()
     config = project_file.read_text(encoding="utf-8")
     assert 'config/name="Keep me"' in config
@@ -337,7 +337,7 @@ def test_upgrade_replaces_owned_files_while_preserving_unowned_extras(
     command = [str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     main(["install", *command])
     capsys.readouterr()
-    stale = tmp_path / "addons" / "dcc_mcp_godot" / "removed_in_upgrade.gd"
+    stale = tmp_path / "addons" / "meshy_dcc_godot" / "removed_in_upgrade.gd"
     stale.write_text("stale", encoding="utf-8")
 
     exit_code = main(["upgrade", *command])
@@ -346,7 +346,7 @@ def test_upgrade_replaces_owned_files_while_preserving_unowned_extras(
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "requires_restart"
     assert stale.read_text(encoding="utf-8") == "stale"
-    assert (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").is_file()
 
 
 def test_mutating_lifecycle_requires_explicit_yes(
@@ -360,7 +360,7 @@ def test_mutating_lifecycle_requires_explicit_yes(
     assert exit_code == 10
     payload = json.loads(capsys.readouterr().out)
     assert payload["verify"]["failure_reason"] == "confirmation_required"
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
 
 
 def test_uninstall_dry_run_is_zero_write(
@@ -384,8 +384,8 @@ def test_uninstall_dry_run_is_zero_write(
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "planned"
-    assert (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").is_file()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").is_file()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_unowned_partial_install_fails_closed_without_overwrite(
@@ -394,7 +394,7 @@ def test_unowned_partial_install_fails_closed_without_overwrite(
     monkeypatch: pytest.MonkeyPatch,
 ):
     (tmp_path / "project.godot").write_text("[application]\n", encoding="utf-8")
-    partial = tmp_path / "addons" / "dcc_mcp_godot"
+    partial = tmp_path / "addons" / "meshy_dcc_godot"
     partial.mkdir(parents=True)
     (partial / "stale.gd").write_text("stale", encoding="utf-8")
     godot = tmp_path / "godot"
@@ -454,7 +454,7 @@ def test_preflight_checks_the_selected_python_floor_before_writing(
     payload = json.loads(capsys.readouterr().out)
     assert payload["verify"]["failure_reason"] == "preflight_failed"
     assert payload["steps"][0]["error_type"] == "ValueError"
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
 
 
 def test_failed_receipt_commit_rolls_back_addon_and_project_settings(
@@ -465,7 +465,7 @@ def test_failed_receipt_commit_rolls_back_addon_and_project_settings(
     project_file = tmp_path / "project.godot"
     original = '[application]\nconfig/name="Rollback"\n'
     project_file.write_text(original, encoding="utf-8")
-    destination = tmp_path / "addons" / "dcc_mcp_godot"
+    destination = tmp_path / "addons" / "meshy_dcc_godot"
     destination.mkdir(parents=True)
     legacy = destination / "legacy.gd"
     legacy.write_text("keep", encoding="utf-8")

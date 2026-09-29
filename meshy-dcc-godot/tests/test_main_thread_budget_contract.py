@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 GENERATOR_PATH = ROOT / "tools" / "generate_capability_skills.py"
 GENERATOR_SPEC = importlib.util.spec_from_file_location(
-    "dcc_mcp_godot_capability_skill_generator", GENERATOR_PATH
+    "meshy_dcc_godot_capability_skill_generator", GENERATOR_PATH
 )
 assert GENERATOR_SPEC is not None and GENERATOR_SPEC.loader is not None
 GENERATOR = importlib.util.module_from_spec(GENERATOR_SPEC)
@@ -13,7 +13,7 @@ GENERATOR_SPEC.loader.exec_module(GENERATOR)
 
 
 def _tool_block(skill_name: str, action_name: str) -> str:
-    text = (ROOT / "src" / "dcc_mcp_godot" / "skills" / skill_name / "tools.yaml").read_text(
+    text = (ROOT / "src" / "meshy_dcc_godot" / "skills" / skill_name / "tools.yaml").read_text(
         encoding="utf-8"
     )
     tool = re.search(
@@ -73,7 +73,7 @@ def test_budgeted_builtin_schemas_expose_a_fail_closed_time_contract() -> None:
 
 def test_godot_host_keeps_png_encoding_off_the_editor_and_runtime_threads() -> None:
     capabilities = (
-        ROOT / "src/dcc_mcp_godot/godot_addon/addons/dcc_mcp_godot/capabilities.gd"
+        ROOT / "src/meshy_dcc_godot/godot_addon/addons/meshy_dcc_godot/capabilities.gd"
     ).read_text(encoding="utf-8")
     editor_screenshot = capabilities.split("func _get_editor_screenshot", 1)[1].split(
         "func _execute_editor_script", 1
@@ -86,7 +86,7 @@ def test_godot_host_keeps_png_encoding_off_the_editor_and_runtime_threads() -> N
     )
 
     runtime = (
-        ROOT / "src/dcc_mcp_godot/godot_addon/addons/dcc_mcp_godot/runtime_peer.gd"
+        ROOT / "src/meshy_dcc_godot/godot_addon/addons/meshy_dcc_godot/runtime_peer.gd"
     ).read_text(encoding="utf-8")
     capture_frames = runtime.split("func _capture_frames", 1)[1].split(
         "func _monitor_properties", 1

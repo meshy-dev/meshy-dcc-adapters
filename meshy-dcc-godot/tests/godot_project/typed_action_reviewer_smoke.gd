@@ -1,7 +1,7 @@
 extends SceneTree
 
-const MANIFEST_PATH := "res://.dcc-mcp/playtest-actions.v1.json"
-const RuntimePeer = preload("res://addons/dcc_mcp_godot/runtime_peer.gd")
+const MANIFEST_PATH := "res://.meshy-dcc/playtest-actions.v1.json"
+const RuntimePeer = preload("res://addons/meshy_dcc_godot/runtime_peer.gd")
 const IgnoredTarget = preload("res://typed_action_ignored_target.gd")
 const DriftTarget = preload("res://typed_action_drift_target.gd")
 const GetterReplacingTarget = preload("res://typed_action_getter_replacing_target.gd")
@@ -20,9 +20,9 @@ func _init() -> void:
 
 
 func _run() -> void:
-	ProjectSettings.set_setting("dcc_mcp/playtest/project_id", "dcc-mcp-godot-ci")
-	ProjectSettings.set_setting("dcc_mcp/playtest/session_id", "typed-action-review")
-	ProjectSettings.set_setting("dcc_mcp/playtest/authority_id", "ci-playtest-owner")
+	ProjectSettings.set_setting("meshy_dcc/playtest/project_id", "meshy-dcc-godot-ci")
+	ProjectSettings.set_setting("meshy_dcc/playtest/session_id", "typed-action-review")
+	ProjectSettings.set_setting("meshy_dcc/playtest/authority_id", "ci-playtest-owner")
 	_original_manifest = FileAccess.get_file_as_string(MANIFEST_PATH)
 	_original_drift_script = FileAccess.get_file_as_string(
 		"res://typed_action_drift_target.gd"
@@ -560,8 +560,8 @@ func _write_manifest(actions: Array, max_actions: int, rate_actions: int) -> voi
 func _manifest(actions: Array, max_actions: int, rate_actions: int) -> Dictionary:
 	return {
 		"schema_version": 1,
-		"manifest_id": "dcc-mcp-godot-review-v1",
-		"project_id": "dcc-mcp-godot-ci",
+		"manifest_id": "meshy-dcc-godot-review-v1",
+		"project_id": "meshy-dcc-godot-ci",
 		"session_id": "typed-action-review",
 		"authority": {
 			"id": "ci-playtest-owner",

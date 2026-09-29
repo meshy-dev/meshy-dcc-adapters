@@ -1,6 +1,6 @@
 import logging
 
-from dcc_mcp_godot.readiness import BridgeReadinessMonitor
+from meshy_dcc_godot.readiness import BridgeReadinessMonitor
 
 
 class RecordingBinder:
@@ -38,7 +38,7 @@ def test_bridge_readiness_logs_only_transitions_with_failing_bits(caplog):
     connected = [False]
     monitor = BridgeReadinessMonitor(RecordingBinder(), lambda: connected[0])
 
-    with caplog.at_level(logging.INFO, logger="dcc_mcp_godot.readiness"):
+    with caplog.at_level(logging.INFO, logger="meshy_dcc_godot.readiness"):
         monitor.refresh()
         monitor.refresh()
         connected[0] = True

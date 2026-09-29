@@ -6,23 +6,23 @@ playtest or RL episode APIs. It does not create an episode API itself.
 ## Trust boundary
 
 The project owner places a Draft 2020-12 manifest at the fixed path
-`res://.dcc-mcp/playtest-actions.v1.json`. The committed schema is
-[`playtest_actions_manifest_v1.schema.json`](../src/dcc_mcp_godot/schemas/playtest_actions_manifest_v1.schema.json).
+`res://.meshy-dcc/playtest-actions.v1.json`. The committed schema is
+[`playtest_actions_manifest_v1.schema.json`](../src/meshy_dcc_godot/schemas/playtest_actions_manifest_v1.schema.json).
 The runtime rejects an absent, oversized, invalid, replaced, linked, junction-backed, or otherwise
 drifted manifest. The caller cannot select another manifest path.
 
 Configure the exact project identity in `project.godot`:
 
 ```ini
-[dcc_mcp]
+[meshy_dcc]
 
 playtest/project_id="studio-game"
 playtest/session_id="manual-smoke-001"
 playtest/authority_id="playtest-owner"
 ```
 
-An operator may set `DCC_MCP_GODOT_PLAYTEST_SESSION_ID` and
-`DCC_MCP_GODOT_PLAYTEST_AUTHORITY_ID` before launching Godot to narrow the two runtime values.
+An operator may set `MESHY_DCC_GODOT_PLAYTEST_SESSION_ID` and
+`MESHY_DCC_GODOT_PLAYTEST_AUTHORITY_ID` before launching Godot to narrow the two runtime values.
 These values are coordination identities, not credentials.
 
 Call `get_runtime_status` after the game starts. Its `typed_actions` object returns the current

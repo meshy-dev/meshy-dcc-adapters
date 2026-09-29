@@ -1,6 +1,6 @@
 {
   "asset": {
-    "generator": "dcc-mcp-godot live smoke",
+    "generator": "meshy-dcc-godot live smoke",
     "version": "2.0"
   },
   "scene": 0,

@@ -1,6 +1,6 @@
 import threading
 
-from dcc_mcp_godot.context import GodotContextMonitor, GodotContextPublisher
+from meshy_dcc_godot.context import GodotContextMonitor, GodotContextPublisher
 
 
 def test_context_publisher_reads_typed_host_snapshot_and_updates_gateway_metadata():

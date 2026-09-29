@@ -18,9 +18,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable, NoReturn
 
-from dcc_mcp_godot import bridge
-from dcc_mcp_godot.install import main as install_main
-from dcc_mcp_godot.server import GodotMcpServer
+from meshy_dcc_godot import bridge
+from meshy_dcc_godot.install import main as install_main
+from meshy_dcc_godot.server import GodotMcpServer
 
 ROOT = Path(__file__).parents[1]
 
@@ -197,7 +197,7 @@ def _wait_for_runtime_peer(
 
 
 def run_smoke(godot: Path) -> None:
-    with tempfile.TemporaryDirectory(prefix="dcc-mcp-godot-") as directory:
+    with tempfile.TemporaryDirectory(prefix="meshy-dcc-godot-") as directory:
         project = Path(directory)
         shutil.copy2(ROOT / "tests" / "godot_project" / "project.godot", project)
         shutil.copy2(ROOT / "tests" / "godot_project" / "imported_scene.gltf", project)
@@ -217,7 +217,7 @@ def run_smoke(godot: Path) -> None:
         shutil.copy2(ROOT / "tests" / "godot_project" / "typed_action_smoke.gd", project)
         shutil.copy2(ROOT / "tests" / "godot_project" / "typed_action_reviewer_smoke.gd", project)
         shutil.copy2(ROOT / "tests" / "godot_project" / "typed_action_link_smoke.gd", project)
-        manifest_dir = project / ".dcc-mcp"
+        manifest_dir = project / ".meshy-dcc"
         manifest_dir.mkdir()
         target_digest = hashlib.sha256(
             (project / "typed_action_target.gd").read_bytes()
@@ -251,8 +251,8 @@ def run_smoke(godot: Path) -> None:
             with socket.socket() as probe:
                 probe.bind(("127.0.0.1", 0))
                 bridge_port = probe.getsockname()[1]
-            os.environ["DCC_MCP_GODOT_BRIDGE_PORT"] = str(bridge_port)
-            os.environ["DCC_MCP_GODOT_BRIDGE_URL"] = f"ws://127.0.0.1:{bridge_port}"
+            os.environ["MESHY_DCC_GODOT_BRIDGE_PORT"] = str(bridge_port)
+            os.environ["MESHY_DCC_GODOT_BRIDGE_URL"] = f"ws://127.0.0.1:{bridge_port}"
             server = GodotMcpServer(port=0)
             server.register_builtin_actions()
             server.start(install_atexit_hook=False)
@@ -289,7 +289,7 @@ def run_smoke(godot: Path) -> None:
                 raise RuntimeError(
                     f"Godot plugin did not connect.\n{log_path.read_text(encoding='utf-8')}"
                 )
-            bootstrap_path = project / ".godot" / "dcc_mcp_godot_bootstrap.json"
+            bootstrap_path = project / ".godot" / "meshy_dcc_godot_bootstrap.json"
             if not bootstrap_path.is_file():
                 raise RuntimeError("Godot plugin did not publish bootstrap diagnostics")
             bootstrap = json.loads(bootstrap_path.read_text(encoding="utf-8"))
@@ -317,7 +317,7 @@ def run_smoke(godot: Path) -> None:
                 context = _get_context(mcp_url)
                 if (
                     context.get("version") not in {None, "", "unknown"}
-                    and context.get("display_name") == "DCC-MCP Godot CI"
+                    and context.get("display_name") == "Meshy DCC Godot CI"
                 ):
                     break
                 time.sleep(0.1)
@@ -361,7 +361,7 @@ def run_smoke(godot: Path) -> None:
                 stop_scene_tool = _resolve_tool_name(mcp_url, "stop_scene")
                 reload_plugin_tool = _resolve_tool_name(mcp_url, "reload_plugin")
                 project_info = _tool_context(_call_tool(mcp_url, project_info_tool))
-                if project_info.get("name") != "DCC-MCP Godot CI":
+                if project_info.get("name") != "Meshy DCC Godot CI":
                     raise RuntimeError(f"Unexpected project metadata: {project_info!r}")
                 _call_tool(
                     mcp_url,
@@ -414,7 +414,7 @@ def run_smoke(godot: Path) -> None:
                 if not nested_editor_screenshot.get("headless_viewport_unavailable") and (
                     nested_editor_screenshot.get("path") != "res://captures/editor/frame.png"
                     or not nested_editor_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
-                    or list(nested_editor_path.parent.glob("frame.png.dcc-mcp-*.raw"))
+                    or list(nested_editor_path.parent.glob("frame.png.meshy-dcc-*.raw"))
                 ):
                     raise RuntimeError(
                         f"Nested editor screenshot was not finalized: {nested_editor_screenshot!r}"
@@ -535,9 +535,9 @@ def run_smoke(godot: Path) -> None:
                 ]:
                     raise RuntimeError(f"Runtime UI cursor did not advance: {ui_page!r}")
                 screenshot = _tool_context(_call_tool(mcp_url, game_screenshot_tool))
-                screenshot_path = project / ".dcc-mcp" / "game.png"
+                screenshot_path = project / ".meshy-dcc" / "game.png"
                 if (
-                    screenshot.get("path") != "res://.dcc-mcp/game.png"
+                    screenshot.get("path") != "res://.meshy-dcc/game.png"
                     or screenshot.get("width", 0) <= 0
                     or screenshot.get("height", 0) <= 0
                     or not screenshot_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
@@ -593,7 +593,7 @@ def run_smoke(godot: Path) -> None:
                         raise RuntimeError("Godot editor exited during plugin reload")
                     try:
                         reloaded_info = _tool_context(_call_tool(mcp_url, project_info_tool))
-                        if reloaded_info.get("name") == "DCC-MCP Godot CI":
+                        if reloaded_info.get("name") == "Meshy DCC Godot CI":
                             break
                     except RuntimeError as error:
                         reload_error = error
@@ -676,10 +676,10 @@ def run_smoke(godot: Path) -> None:
             )
         print(reviewer_output.strip())
 
-        with tempfile.TemporaryDirectory(prefix="dcc-mcp-godot-manifest-") as external:
+        with tempfile.TemporaryDirectory(prefix="meshy-dcc-godot-manifest-") as external:
             external_manifest = Path(external) / "playtest-actions.v1.json"
             shutil.copy2(manifest_dir / "playtest-actions.v1.json", external_manifest)
-            preserved_manifest_dir = project / ".dcc-mcp-real"
+            preserved_manifest_dir = project / ".meshy-dcc-real"
             manifest_dir.rename(preserved_manifest_dir)
             try:
                 try:

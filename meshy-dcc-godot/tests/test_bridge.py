@@ -7,10 +7,10 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor
 
 import pytest
-from dcc_mcp_core.bridge import BridgeConnectionError, BridgeTimeoutError
+from meshy_dcc_core.bridge import BridgeConnectionError, BridgeTimeoutError
 
-from dcc_mcp_godot import bridge
-from dcc_mcp_godot.readiness import BridgeReadinessMonitor
+from meshy_dcc_godot import bridge
+from meshy_dcc_godot.readiness import BridgeReadinessMonitor
 
 
 class FakeBridge:
@@ -66,7 +66,7 @@ def test_call_host_uses_the_bridge_commit_boundary_for_guarded_mutations(monkeyp
 
 
 def test_typed_action_observes_cancellation_before_host_dispatch(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     host_calls = []
 
@@ -86,7 +86,7 @@ def test_typed_action_observes_cancellation_before_host_dispatch(monkeypatch):
 
 
 def test_typed_action_rechecks_cancellation_before_reserved_mutation(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     checks = 0
     host_methods = []
@@ -118,7 +118,7 @@ def test_typed_action_rechecks_cancellation_before_reserved_mutation(monkeypatch
 
 
 def test_typed_action_rechecks_cancellation_before_parsing_host_boundary_result(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     cancelled = False
     host_methods = []
@@ -147,7 +147,7 @@ def test_typed_action_rechecks_cancellation_before_parsing_host_boundary_result(
 
 
 def test_typed_action_rolls_back_when_cancelled_during_reserved_mutation(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     checks = 0
     host_methods = []
@@ -193,7 +193,7 @@ def test_typed_action_rolls_back_when_cancelled_during_reserved_mutation(monkeyp
 def test_typed_action_cancelled_while_commit_is_queued_never_reaches_host_mutation(
     monkeypatch,
 ):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     cancelled = threading.Event()
     commit_queued = threading.Event()
@@ -256,14 +256,14 @@ def test_typed_action_cancelled_while_commit_is_queued_never_reaches_host_mutati
 
 
 def test_typed_action_commit_guard_keeps_the_originating_cancellation_probe():
-    from dcc_mcp_core.cancellation import (
+    from meshy_dcc_core.cancellation import (
         CancelToken,
-        DccMcpCancelledError,
+        MeshyDccCancelledError,
         reset_cancel_token,
         set_cancel_token,
     )
 
-    from dcc_mcp_godot.capability_dispatch import _TypedActionCommitGuard
+    from meshy_dcc_godot.capability_dispatch import _TypedActionCommitGuard
 
     token = CancelToken(job_id="server-job-17")
     reset = set_cancel_token(token)
@@ -275,12 +275,12 @@ def test_typed_action_commit_guard_keeps_the_originating_cancellation_probe():
 
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(guard.claim)
-        with pytest.raises(DccMcpCancelledError, match="Request cancelled by client"):
+        with pytest.raises(MeshyDccCancelledError, match="Request cancelled by client"):
             future.result(timeout=2.0)
 
 
 def test_typed_action_finalizes_one_claimed_host_mutation(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     host_methods = []
 
@@ -310,7 +310,7 @@ def test_typed_action_finalizes_one_claimed_host_mutation(monkeypatch):
 
 
 def test_typed_action_host_commit_claim_binds_job_and_runtime_authority(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     request = {
         "project_id": "project-1",
@@ -371,7 +371,7 @@ def test_typed_action_host_commit_claim_binds_job_and_runtime_authority(monkeypa
 
 
 def test_typed_action_host_loss_during_commit_is_terminal_and_not_retried(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     host_methods = []
 
@@ -395,7 +395,7 @@ def test_typed_action_host_loss_during_commit_is_terminal_and_not_retried(monkey
 
 
 def test_typed_action_host_loss_is_terminal_and_not_retried(monkeypatch):
-    from dcc_mcp_godot import capability_dispatch
+    from meshy_dcc_godot import capability_dispatch
 
     host_calls = []
 
@@ -1022,13 +1022,13 @@ def test_guarded_bridge_real_websocket_denies_commit_received_after_terminal_tim
 
 def test_bridge_uses_default_port_and_publishes_default_url(monkeypatch):
     monkeypatch.setattr(bridge, "_bridge", None)
-    monkeypatch.delenv("DCC_MCP_GODOT_BRIDGE_PORT", raising=False)
-    monkeypatch.delenv("DCC_MCP_GODOT_BRIDGE_URL", raising=False)
+    monkeypatch.delenv("MESHY_DCC_GODOT_BRIDGE_PORT", raising=False)
+    monkeypatch.delenv("MESHY_DCC_GODOT_BRIDGE_URL", raising=False)
 
     running_bridge = bridge.get_bridge()
 
-    assert running_bridge.endpoint == "ws://127.0.0.1:3847"
-    assert os.environ["DCC_MCP_GODOT_BRIDGE_URL"] == "ws://127.0.0.1:3847"
+    assert running_bridge.endpoint == "ws://127.0.0.1:13847"
+    assert os.environ["MESHY_DCC_GODOT_BRIDGE_URL"] == "ws://127.0.0.1:13847"
 
 
 def test_bridge_honors_explicit_dynamic_port_and_preserves_explicit_url(monkeypatch):
@@ -1038,13 +1038,13 @@ def test_bridge_honors_explicit_dynamic_port_and_preserves_explicit_url(monkeypa
 
     explicit_url = f"ws://127.0.0.1:{port}?owner=operator"
     monkeypatch.setattr(bridge, "_bridge", None)
-    monkeypatch.setenv("DCC_MCP_GODOT_BRIDGE_PORT", str(port))
-    monkeypatch.setenv("DCC_MCP_GODOT_BRIDGE_URL", explicit_url)
+    monkeypatch.setenv("MESHY_DCC_GODOT_BRIDGE_PORT", str(port))
+    monkeypatch.setenv("MESHY_DCC_GODOT_BRIDGE_URL", explicit_url)
 
     running_bridge = bridge.get_bridge()
 
     assert running_bridge.endpoint == f"ws://127.0.0.1:{port}"
-    assert os.environ["DCC_MCP_GODOT_BRIDGE_URL"] == explicit_url
+    assert os.environ["MESHY_DCC_GODOT_BRIDGE_URL"] == explicit_url
 
 
 def bridge_client(endpoint):

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "manifest_id": "dcc-mcp-godot-ci-v1",
-  "project_id": "dcc-mcp-godot-ci",
+  "manifest_id": "meshy-dcc-godot-ci-v1",
+  "project_id": "meshy-dcc-godot-ci",
   "session_id": "typed-action-smoke",
   "authority": {
     "id": "ci-playtest-owner",

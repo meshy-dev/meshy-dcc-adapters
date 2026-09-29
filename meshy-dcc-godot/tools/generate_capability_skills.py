@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_godot" / "skills"
+ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_godot" / "skills"
 
 # Public capability vocabulary. Implementations are original and live in this package.
 CATEGORIES = {
@@ -56,7 +56,7 @@ CATEGORIES = {
         ("search_in_files", "Search bounded text files under res://."),
     ],
     "editor": [
-        ("get_editor_errors", "Return errors captured by the DCC-MCP editor plugin."),
+        ("get_editor_errors", "Return errors captured by the Meshy DCC editor plugin."),
         ("get_editor_screenshot", "Capture the selected editor viewport to a PNG."),
         (
             "get_game_screenshot",
@@ -66,11 +66,11 @@ CATEGORIES = {
             "execute_editor_script",
             "Run one @tool method with an observational budget and optional caller-driven chunks.",
         ),
-        ("clear_output", "Clear errors captured by the DCC-MCP editor plugin."),
+        ("clear_output", "Clear errors captured by the Meshy DCC editor plugin."),
         ("get_signals", "Return node signals and their connections."),
-        ("reload_plugin", "Reload the DCC-MCP editor plugin."),
+        ("reload_plugin", "Reload the Meshy DCC editor plugin."),
         ("reload_project", "Rescan project files and reload changed scripts."),
-        ("get_output_log", "Return recent DCC-MCP editor and runtime messages."),
+        ("get_output_log", "Return recent Meshy DCC editor and runtime messages."),
     ],
     "input": [
         ("simulate_key", "Send a keyboard event to the running game."),
@@ -691,9 +691,9 @@ CATEGORY_PROPERTIES = {
     },
 }
 
-SCRIPT = """from dcc_mcp_core.skill import skill_entry
+SCRIPT = """from meshy_dcc_core.skill import skill_entry
 
-from dcc_mcp_godot.capability_dispatch import dispatch
+from meshy_dcc_godot.capability_dispatch import dispatch
 
 
 @skill_entry
@@ -702,7 +702,7 @@ def main(_action_name: str = "", **params):
 
 
 if __name__ == "__main__":
-    from dcc_mcp_core.skill import run_main
+    from meshy_dcc_core.skill import run_main
 
     run_main(main)
 """
@@ -785,10 +785,10 @@ name: {skill_name}
 description: >-
   Domain skill — {descriptions}
 license: MIT
-compatibility: "Godot 4.4+; dcc-mcp-core 0.19+"
+compatibility: "Godot 4.4+; meshy-dcc-core 0.2.x"
 allowed-tools: "python"
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: godot
     layer: domain
     version: "0.1.0"
@@ -810,10 +810,10 @@ description: >-
   font, signing, and hosting failures. Use for export planning and release
   preflight, not for editing gameplay or scene content.
 license: MIT
-compatibility: "Godot 4.4+; dcc-mcp-core 0.19+"
+compatibility: "Godot 4.4+; meshy-dcc-core 0.2.x"
 allowed-tools: "python"
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: godot
     layer: domain
     version: "0.2.0"

@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_godot import install as install_module
-from dcc_mcp_godot.install import PLUGIN_PATH, main
-from dcc_mcp_godot.install_project import plugin_enabled
+from meshy_dcc_godot import install as install_module
+from meshy_dcc_godot.install import PLUGIN_PATH, main
+from meshy_dcc_godot.install_project import plugin_enabled
 
 
 def _allow_preflight(monkeypatch: pytest.MonkeyPatch, godot: Path) -> None:
@@ -34,7 +34,7 @@ def test_install_and_uninstall_edit_only_editor_plugins_enabled(
 ) -> None:
     project_file = tmp_path / "project.godot"
     original = (
-        "; res://addons/dcc_mcp_godot/plugin.cfg is documentation only\r\n"
+        "; res://addons/meshy_dcc_godot/plugin.cfg is documentation only\r\n"
         "[application]\r\n"
         'config/name="Keep"\r\n'
         "\r\n"
@@ -136,7 +136,7 @@ def test_uninstall_removes_only_receipt_owned_files_and_preserves_extras(
     _allow_preflight(monkeypatch, godot)
     assert main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]) == 50
     capsys.readouterr()
-    extra = tmp_path / "addons" / "dcc_mcp_godot" / "user_notes.txt"
+    extra = tmp_path / "addons" / "meshy_dcc_godot" / "user_notes.txt"
     extra.write_text("not owned by the adapter", encoding="utf-8")
 
     exit_code = main(["uninstall", str(tmp_path), "--yes", "--json"])
@@ -160,7 +160,7 @@ def test_uninstall_dry_run_rejects_traversal_receipt_without_writing(
     _allow_preflight(monkeypatch, godot)
     assert main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]) == 50
     capsys.readouterr()
-    receipt = tmp_path / ".dcc-mcp" / "receipts" / "godot.json"
+    receipt = tmp_path / ".meshy-dcc" / "receipts" / "godot.json"
     payload = json.loads(receipt.read_text(encoding="utf-8"))
     payload["owned_files"][0]["path"] = "../../foreign.txt"
     receipt.write_text(json.dumps(payload), encoding="utf-8")
@@ -247,7 +247,7 @@ def test_uninstall_fails_closed_for_typed_stale_or_tampered_receipt(
     _allow_preflight(monkeypatch, godot)
     assert main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]) == 50
     capsys.readouterr()
-    receipt = tmp_path / ".dcc-mcp" / "receipts" / "godot.json"
+    receipt = tmp_path / ".meshy-dcc" / "receipts" / "godot.json"
     data = json.loads(receipt.read_text(encoding="utf-8"))
     owned = tmp_path / Path(data["owned_files"][0]["path"])
     if corruption == "schema_type":
@@ -374,14 +374,14 @@ def test_uninstall_rejects_receipt_symlink_without_mutation(
     _allow_preflight(monkeypatch, godot)
     assert main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]) == 50
     capsys.readouterr()
-    receipt = tmp_path / ".dcc-mcp" / "receipts" / "godot.json"
+    receipt = tmp_path / ".meshy-dcc" / "receipts" / "godot.json"
     foreign = tmp_path / "foreign-receipt.json"
     receipt.replace(foreign)
     try:
         os.symlink(foreign, receipt)
     except OSError as exc:
         pytest.skip(f"symlink creation is unavailable: {exc}")
-    addon = tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg"
+    addon = tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg"
 
     exit_code = main(["uninstall", str(tmp_path), "--yes", "--json"])
     payload = json.loads(capsys.readouterr().out)
@@ -403,14 +403,14 @@ def test_uninstall_rejects_destination_symlink_without_mutation(
     _allow_preflight(monkeypatch, godot)
     assert main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]) == 50
     capsys.readouterr()
-    destination = tmp_path / "addons" / "dcc_mcp_godot"
+    destination = tmp_path / "addons" / "meshy_dcc_godot"
     foreign = tmp_path / "foreign-addon"
     destination.replace(foreign)
     try:
         os.symlink(foreign, destination, target_is_directory=True)
     except OSError as exc:
         pytest.skip(f"directory symlink creation is unavailable: {exc}")
-    receipt = tmp_path / ".dcc-mcp" / "receipts" / "godot.json"
+    receipt = tmp_path / ".meshy-dcc" / "receipts" / "godot.json"
     before_receipt = receipt.read_bytes()
 
     exit_code = main(["uninstall", str(tmp_path), "--yes", "--json"])
@@ -460,7 +460,7 @@ def test_uninstall_detects_owned_file_swap_before_delete_and_preserves_foreign_t
     assert exit_code == 30
     assert payload["steps"][0]["error_type"] == "ReceiptError"
     assert foreign.read_text(encoding="utf-8") == "must survive"
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_upgrade_dry_run_runs_preflight_and_ownership_with_zero_writes(
@@ -551,9 +551,9 @@ def test_install_rollback_failure_is_structured_and_does_not_mask_primary_error(
     assert payload["steps"][1]["rollback"] == "restored"
     assert payload["verify"]["failure_reason"] == "filesystem_error"
     assert project_file.read_text(encoding="utf-8") == original
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
-    assert not list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
+    assert not list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
 
 
 def test_install_locked_config_restore_is_deferred_with_recoverable_original(
@@ -599,9 +599,9 @@ def test_install_locked_config_restore_is_deferred_with_recoverable_original(
     assert payload["steps"][1]["rollback"] == "deferred"
     assert payload["verify"]["failure_reason"] == "rollback_locked"
     assert PLUGIN_PATH in project_file.read_text(encoding="utf-8")
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
-    backups = list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
+    backups = list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     assert len(backups) == 1
     assert _recovery_original(backups[0]) == original_on_disk
 
@@ -609,8 +609,8 @@ def test_install_locked_config_restore_is_deferred_with_recoverable_original(
     monkeypatch.setattr(install_module, "_write_receipt", real_write_receipt)
     assert main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]) == 50
     capsys.readouterr()
-    assert not list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert not list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_install_config_backup_cleanup_lock_converges_on_retry(
@@ -630,7 +630,7 @@ def test_install_config_backup_cleanup_lock_converges_on_retry(
 
     def lock_config_backup_cleanup(path: Path, *args: object, **kwargs: object) -> None:
         candidate = Path(path)
-        if locked and candidate.name.startswith(".project.godot.dcc-mcp-backup-"):
+        if locked and candidate.name.startswith(".project.godot.meshy-dcc-backup-"):
             raise PermissionError("config backup cleanup locked")
         real_unlink(candidate, *args, **kwargs)
 
@@ -645,15 +645,15 @@ def test_install_config_backup_cleanup_lock_converges_on_retry(
     assert first["status"] == "requires_restart"
     assert first.get("install_state") == "installed", first
     assert first["verify"]["failure_reason"] == "cleanup_locked"
-    backups = list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backups = list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     assert len(backups) == 1
     assert _recovery_original(backups[0]) == original_on_disk
 
     locked = False
     assert main(command) == 50
     capsys.readouterr()
-    assert not list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert not list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_install_rejects_unbound_foreign_config_backup_without_mutation(
@@ -667,7 +667,7 @@ def test_install_rejects_unbound_foreign_config_backup_without_mutation(
     godot = tmp_path / "godot"
     godot.touch()
     _allow_preflight(monkeypatch, godot)
-    foreign = tmp_path / f".project.godot.dcc-mcp-backup-{'a' * 32}"
+    foreign = tmp_path / f".project.godot.meshy-dcc-backup-{'a' * 32}"
     foreign.write_text("USER_FOREIGN_DATA", encoding="utf-8")
 
     exit_code = main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"])
@@ -681,8 +681,8 @@ def test_install_rejects_unbound_foreign_config_backup_without_mutation(
     assert payload["verify"]["failure_reason"] == "config_recovery_failed"
     assert project_file.read_text(encoding="utf-8") == original
     assert foreign.read_text(encoding="utf-8") == "USER_FOREIGN_DATA"
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
 
 
 def test_install_rejects_self_consistent_foreign_recovery_capsule_without_provenance(
@@ -701,7 +701,7 @@ def test_install_rejects_self_consistent_foreign_recovery_capsule_without_proven
     root_stat = os.lstat(tmp_path)
     payload = {
         "schema_version": 1,
-        "type": "dcc-mcp-godot-config-recovery",
+        "type": "meshy-dcc-godot-config-recovery",
         "phase": "project_config_pending",
         "token": token,
         "project_identity": {"device": root_stat.st_dev, "inode": root_stat.st_ino},
@@ -712,7 +712,7 @@ def test_install_rejects_self_consistent_foreign_recovery_capsule_without_proven
         },
         "updated_sha256": hashlib.sha256(current).hexdigest(),
     }
-    capsule = tmp_path / f".project.godot.dcc-mcp-backup-{token}"
+    capsule = tmp_path / f".project.godot.meshy-dcc-backup-{token}"
     capsule.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")), encoding="utf-8")
 
     exit_code = main(["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"])
@@ -728,9 +728,9 @@ def test_install_rejects_self_consistent_foreign_recovery_capsule_without_proven
     assert capsule.read_text(encoding="utf-8") == json.dumps(
         payload, sort_keys=True, separators=(",", ":")
     )
-    assert not list((tmp_path / ".dcc-mcp" / "config-recovery").glob("godot-*.json"))
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert not list((tmp_path / ".meshy-dcc" / "config-recovery").glob("godot-*.json"))
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
 
 
 @pytest.mark.parametrize("swap_after_validation", [False, True])
@@ -767,7 +767,7 @@ def test_install_rejects_changed_bound_config_backup_without_restoring_it(
 
     assert main(command) == 50
     capsys.readouterr()
-    backup = next(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backup = next(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     locked = False
     monkeypatch.setattr(install_module, "_write_receipt", real_write_receipt)
     if swap_after_validation:
@@ -798,8 +798,8 @@ def test_install_rejects_changed_bound_config_backup_without_restoring_it(
     assert PLUGIN_PATH in project_file.read_text(encoding="utf-8")
     assert "ATTACKER" not in project_file.read_text(encoding="utf-8")
     assert backup.read_text(encoding="utf-8") == "ATTACKER"
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
 
 
 @pytest.mark.parametrize("tamper", ["project_identity", "phase", "backup_digest"])
@@ -829,7 +829,7 @@ def test_install_rejects_config_recovery_metadata_binding_tamper(
     command = ["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(command) == 50
     capsys.readouterr()
-    backup = next(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backup = next(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     payload = json.loads(backup.read_text(encoding="utf-8"))
     if tamper == "project_identity":
         payload["project_identity"]["inode"] += 1
@@ -852,8 +852,8 @@ def test_install_rejects_config_recovery_metadata_binding_tamper(
     assert result["verify"]["failure_reason"] == "config_recovery_failed"
     assert PLUGIN_PATH in project_file.read_text(encoding="utf-8")
     assert backup.is_file()
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
 
 
 def test_install_revalidates_project_content_at_recovery_mutation_boundary(
@@ -881,7 +881,7 @@ def test_install_revalidates_project_content_at_recovery_mutation_boundary(
     command = ["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(command) == 50
     capsys.readouterr()
-    backup = next(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backup = next(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     monkeypatch.setattr(install_module, "_restore_config_backup", real_restore)
     monkeypatch.setattr(install_module, "_write_receipt", real_write_receipt)
     real_read = install_module._read_regular_bytes
@@ -908,8 +908,8 @@ def test_install_revalidates_project_content_at_recovery_mutation_boundary(
     assert payload["verify"]["failure_reason"] == "config_recovery_failed"
     assert project_file.read_text(encoding="utf-8") == "USER_FOREIGN_PROJECT"
     assert backup.is_file()
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
 
 
 def test_install_rejects_same_bytes_project_identity_swap_after_backup_stage(
@@ -944,9 +944,9 @@ def test_install_rejects_same_bytes_project_identity_swap_after_backup_stage(
     assert len(output) < 4096
     assert payload["status"] == "failed"
     assert project_file.read_bytes() == original
-    assert len(list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))) == 1
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert len(list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))) == 1
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
 
 
 def test_install_rejects_same_bytes_project_identity_swap_before_restore_write(
@@ -975,7 +975,7 @@ def test_install_rejects_same_bytes_project_identity_swap_before_restore_write(
     assert main(command) == 50
     capsys.readouterr()
     updated = project_file.read_bytes()
-    backup = next(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backup = next(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     monkeypatch.setattr(install_module, "_write_receipt", real_write_receipt)
     real_replace = install_module.os.replace
 
@@ -998,8 +998,8 @@ def test_install_rejects_same_bytes_project_identity_swap_before_restore_write(
     assert payload["verify"]["failure_reason"] == "config_recovery_failed"
     assert project_file.read_bytes() == updated
     assert backup.is_file()
-    assert not (tmp_path / "addons" / "dcc_mcp_godot").exists()
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
 
 
 def test_install_cleanup_claim_rejects_swap_after_validation_without_deleting_foreign_data(
@@ -1016,7 +1016,7 @@ def test_install_cleanup_claim_rejects_swap_after_validation_without_deleting_fo
     cleanup_locked = True
 
     def lock_initial_cleanup(path: Path, *args: object, **kwargs: object) -> None:
-        if cleanup_locked and path.name.startswith(".project.godot.dcc-mcp-backup-"):
+        if cleanup_locked and path.name.startswith(".project.godot.meshy-dcc-backup-"):
             raise PermissionError("config backup cleanup locked")
         real_unlink(path, *args, **kwargs)
 
@@ -1024,7 +1024,7 @@ def test_install_cleanup_claim_rejects_swap_after_validation_without_deleting_fo
     command = ["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(command) == 50
     capsys.readouterr()
-    backup = next(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backup = next(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     cleanup_locked = False
     real_replace = install_module.os.replace
     swapped = False
@@ -1051,8 +1051,8 @@ def test_install_cleanup_claim_rejects_swap_after_validation_without_deleting_fo
     assert payload["verify"]["failure_reason"] == "config_recovery_failed"
     assert PLUGIN_PATH in project_file.read_text(encoding="utf-8")
     assert backup.read_text(encoding="utf-8") == "USER_FOREIGN_DATA"
-    assert (tmp_path / "addons" / "dcc_mcp_godot").is_dir()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot").is_dir()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
     assert not list(tmp_path.glob("*.claim-*"))
 
 
@@ -1070,7 +1070,7 @@ def test_install_cleanup_recaptures_claim_before_unlink(
     cleanup_locked = True
 
     def lock_initial_cleanup(path: Path, *args: object, **kwargs: object) -> None:
-        if cleanup_locked and path.name.startswith(".project.godot.dcc-mcp-backup-"):
+        if cleanup_locked and path.name.startswith(".project.godot.meshy-dcc-backup-"):
             raise PermissionError("config backup cleanup locked")
         real_unlink(path, *args, **kwargs)
 
@@ -1078,7 +1078,7 @@ def test_install_cleanup_recaptures_claim_before_unlink(
     command = ["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(command) == 50
     capsys.readouterr()
-    backup = next(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backup = next(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     cleanup_locked = False
     real_load = install_module._load_config_recovery
     swapped = False
@@ -1105,8 +1105,8 @@ def test_install_cleanup_recaptures_claim_before_unlink(
     assert payload["verify"]["failure_reason"] == "config_recovery_failed"
     assert backup.read_text(encoding="utf-8") == "USER_FOREIGN_DATA"
     assert not list(tmp_path.glob("*.claim-*"))
-    assert (tmp_path / "addons" / "dcc_mcp_godot").is_dir()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot").is_dir()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_install_cleanup_claim_preserves_exact_hostile_base_exception(
@@ -1127,7 +1127,7 @@ def test_install_cleanup_claim_preserves_exact_hostile_base_exception(
     cleanup_locked = True
 
     def cleanup_boundary(path: Path, *args: object, **kwargs: object) -> None:
-        if path.name.startswith(".project.godot.dcc-mcp-backup-"):
+        if path.name.startswith(".project.godot.meshy-dcc-backup-"):
             if cleanup_locked:
                 raise PermissionError("config backup cleanup locked")
             raise primary
@@ -1137,7 +1137,7 @@ def test_install_cleanup_claim_preserves_exact_hostile_base_exception(
     command = ["install", str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(command) == 50
     capsys.readouterr()
-    backup = next(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    backup = next(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     cleanup_locked = False
     primary = HostileSystemExit()
     real_replace = install_module.os.replace
@@ -1154,18 +1154,18 @@ def test_install_cleanup_claim_preserves_exact_hostile_base_exception(
 
     assert raised.value is primary
     assert capsys.readouterr().out == ""
-    claims = list(tmp_path.glob(".project.godot.dcc-mcp-backup-*.claim-*"))
+    claims = list(tmp_path.glob(".project.godot.meshy-dcc-backup-*.claim-*"))
     assert len(claims) == 1
     assert not backup.exists()
-    provenance = list((tmp_path / ".dcc-mcp" / "config-recovery").glob("godot-*.json"))
+    provenance = list((tmp_path / ".meshy-dcc" / "config-recovery").glob("godot-*.json"))
     assert len(provenance) == 1
 
     monkeypatch.setattr(install_module.Path, "unlink", real_unlink)
     monkeypatch.setattr(install_module.os, "replace", real_replace)
     assert main(command) == 50
     capsys.readouterr()
-    assert not list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
-    assert not list((tmp_path / ".dcc-mcp" / "config-recovery").glob("godot-*.json"))
+    assert not list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
+    assert not list((tmp_path / ".meshy-dcc" / "config-recovery").glob("godot-*.json"))
 
 
 def test_uninstall_rejects_user_project_save_before_disable_write(
@@ -1201,8 +1201,8 @@ def test_uninstall_rejects_user_project_save_before_disable_write(
     assert payload["status"] == "failed"
     assert project_file.read_text(encoding="utf-8") == user_saved
     assert plugin_enabled(user_saved)
-    assert (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").is_file()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").is_file()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_uninstall_rejects_user_save_after_validation_before_replace(
@@ -1241,8 +1241,8 @@ def test_uninstall_rejects_user_save_after_validation_before_replace(
     assert len(output.splitlines()) == 1
     assert payload["status"] == "failed"
     assert project_file.read_text(encoding="utf-8") == user_saved
-    assert (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").is_file()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").is_file()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_uninstall_rollback_preserves_user_project_save_after_disable_write(
@@ -1258,7 +1258,7 @@ def test_uninstall_rollback_preserves_user_project_save_after_disable_write(
     command = [str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(["install", *command]) == 50
     capsys.readouterr()
-    receipt = tmp_path / ".dcc-mcp" / "receipts" / "godot.json"
+    receipt = tmp_path / ".meshy-dcc" / "receipts" / "godot.json"
     real_replace = install_module.os.replace
     user_saved = ""
 
@@ -1285,7 +1285,7 @@ def test_uninstall_rollback_preserves_user_project_save_after_disable_write(
     assert payload["steps"][0]["rollback"] == "incomplete"
     assert project_file.read_text(encoding="utf-8") == user_saved
     assert receipt.is_file()
-    assert (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").is_file()
 
 
 def test_upgrade_rollback_preserves_user_file_created_after_staging(
@@ -1301,7 +1301,7 @@ def test_upgrade_rollback_preserves_user_file_created_after_staging(
     command = [str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(["install", *command]) == 50
     capsys.readouterr()
-    destination = tmp_path / "addons" / "dcc_mcp_godot"
+    destination = tmp_path / "addons" / "meshy_dcc_godot"
     late_file = destination / "USER_LATE_NOTES.txt"
 
     def fail_receipt_after_user_file(*_args: object, **_kwargs: object) -> Path:
@@ -1320,7 +1320,7 @@ def test_upgrade_rollback_preserves_user_file_created_after_staging(
     assert payload["steps"][1]["rollback"] == "restored"
     assert late_file.read_text(encoding="utf-8") == "USER_LATE_DATA"
     assert (destination / "plugin.cfg").is_file()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_committed_install_cleanup_preserves_later_user_project_save(
@@ -1337,7 +1337,7 @@ def test_committed_install_cleanup_preserves_later_user_project_save(
     cleanup_locked = True
 
     def lock_config_capsule(path: Path, *args: object, **kwargs: object) -> None:
-        if cleanup_locked and path.name.startswith(".project.godot.dcc-mcp-backup-"):
+        if cleanup_locked and path.name.startswith(".project.godot.meshy-dcc-backup-"):
             raise PermissionError("config cleanup locked")
         real_unlink(path, *args, **kwargs)
 
@@ -1346,7 +1346,7 @@ def test_committed_install_cleanup_preserves_later_user_project_save(
     assert main(command) == 50
     first = json.loads(capsys.readouterr().out)
     assert first["verify"]["failure_reason"] == "cleanup_locked"
-    assert list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
+    assert list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
     user_saved = (
         project_file.read_text(encoding="utf-8") + "\n[display]\nwindow/size/viewport_width=1600\n"
     )
@@ -1361,9 +1361,9 @@ def test_committed_install_cleanup_preserves_later_user_project_save(
     assert len(output.splitlines()) == 1
     assert payload["status"] == "requires_restart"
     assert project_file.read_text(encoding="utf-8") == user_saved
-    assert not list(tmp_path.glob(".project.godot.dcc-mcp-backup-*"))
-    assert not list((tmp_path / ".dcc-mcp" / "config-recovery").glob("godot-*.json"))
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert not list(tmp_path.glob(".project.godot.meshy-dcc-backup-*"))
+    assert not list((tmp_path / ".meshy-dcc" / "config-recovery").glob("godot-*.json"))
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_upgrade_cleanup_rejects_same_name_backup_replacement(
@@ -1430,7 +1430,7 @@ def test_upgrade_cleanup_rejects_same_name_backup_replacement(
         "USER_FOREIGN_DATA"
     )
     assert real_backup is not None and (real_backup / "plugin.cfg").is_file()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_upgrade_cleanup_rejects_claim_replacement_after_second_validation(
@@ -1490,7 +1490,7 @@ def test_upgrade_cleanup_rejects_claim_replacement_after_second_validation(
         encoding="utf-8"
     ) == "USER_FOREIGN_DATA"
     assert real_backup is not None and (real_backup / "plugin.cfg").is_file()
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
 
 
 def test_upgrade_cleanup_never_deletes_a_validated_entry_by_path(
@@ -1506,7 +1506,7 @@ def test_upgrade_cleanup_never_deletes_a_validated_entry_by_path(
     command = [str(tmp_path), "--dcc-path", str(godot), "--yes", "--json"]
     assert main(["install", *command]) == 50
     capsys.readouterr()
-    destination = tmp_path / "addons" / "dcc_mcp_godot"
+    destination = tmp_path / "addons" / "meshy_dcc_godot"
     (destination / "USER_BACKUP_DATA.txt").write_text("USER_BACKUP_DATA", encoding="utf-8")
     original_backup = {
         path.relative_to(destination).as_posix(): path.read_bytes()
@@ -1567,7 +1567,7 @@ def test_upgrade_cleanup_never_deletes_a_validated_entry_by_path(
         }
         assert recovered == original_backup
     else:
-        pending = list(destination.parent.glob(".dcc_mcp_godot.cleanup-pending-*"))
+        pending = list(destination.parent.glob(".meshy_dcc_godot.cleanup-pending-*"))
         assert len(pending) == 1
         recovered = {
             path.relative_to(pending[0]).as_posix(): path.read_bytes()
@@ -1600,7 +1600,7 @@ def test_upgrade_deferred_backup_retry_is_bounded_and_idempotent(
         for path in tmp_path.rglob("*")
         if path.is_file()
     }
-    pending_before = list((tmp_path / "addons").glob(".dcc_mcp_godot.cleanup-pending-*"))
+    pending_before = list((tmp_path / "addons").glob(".meshy_dcc_godot.cleanup-pending-*"))
     assert len(pending_before) == 1
 
     monkeypatch.setattr(
@@ -1617,7 +1617,7 @@ def test_upgrade_deferred_backup_retry_is_bounded_and_idempotent(
         for path in tmp_path.rglob("*")
         if path.is_file()
     }
-    pending_after = list((tmp_path / "addons").glob(".dcc_mcp_godot.cleanup-pending-*"))
+    pending_after = list((tmp_path / "addons").glob(".meshy_dcc_godot.cleanup-pending-*"))
 
     assert len(first_output.splitlines()) == 1
     assert len(second_output.splitlines()) == 1
@@ -1695,9 +1695,9 @@ def test_uninstall_cleanup_lock_reports_committed_absent_state(
     assert payload["status"] == "requires_restart"
     assert payload["install_state"] == "absent"
     assert payload["verify"]["failure_reason"] == "cleanup_locked"
-    assert not (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").exists()
-    assert not (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").exists()
-    assert list((tmp_path / "addons").glob(".dcc_mcp_godot.uninstall-*"))
+    assert not (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").exists()
+    assert not (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").exists()
+    assert list((tmp_path / "addons").glob(".meshy_dcc_godot.uninstall-*"))
 
 
 def test_upgrade_cleanup_lock_reports_committed_installed_state(
@@ -1728,6 +1728,6 @@ def test_upgrade_cleanup_lock_reports_committed_installed_state(
     assert payload["status"] == "requires_restart"
     assert payload["install_state"] == "installed"
     assert payload["verify"]["failure_reason"] == "cleanup_locked"
-    assert (tmp_path / ".dcc-mcp" / "receipts" / "godot.json").is_file()
-    assert (tmp_path / "addons" / "dcc_mcp_godot" / "plugin.cfg").is_file()
-    assert list((tmp_path / "addons").glob(".dcc_mcp_godot.backup-*"))
+    assert (tmp_path / ".meshy-dcc" / "receipts" / "godot.json").is_file()
+    assert (tmp_path / "addons" / "meshy_dcc_godot" / "plugin.cfg").is_file()
+    assert list((tmp_path / "addons").glob(".meshy_dcc_godot.backup-*"))

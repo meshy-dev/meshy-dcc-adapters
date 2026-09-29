@@ -1,4 +1,4 @@
-from dcc_mcp_godot.server import GodotMcpServer
+from meshy_dcc_godot.server import GodotMcpServer
 
 
 def test_server_wires_http_main_affinity_dispatcher():
@@ -23,7 +23,7 @@ def test_server_starts_with_disconnected_godot_bridge_not_ready():
 
 
 def test_server_context_publisher_routes_typed_editor_snapshot_to_core(monkeypatch):
-    from dcc_mcp_godot import server as server_module
+    from meshy_dcc_godot import server as server_module
 
     published = []
     monkeypatch.setattr(
@@ -62,7 +62,7 @@ def test_server_context_publisher_routes_typed_editor_snapshot_to_core(monkeypat
 def test_start_server_defers_port_resolution_to_core(monkeypatch):
     from types import SimpleNamespace
 
-    from dcc_mcp_godot import server as server_module
+    from meshy_dcc_godot import server as server_module
 
     ports = []
     stub = SimpleNamespace(
@@ -76,7 +76,7 @@ def test_start_server_defers_port_resolution_to_core(monkeypatch):
     monkeypatch.setattr(
         server_module, "GodotMcpServer", lambda port=None: ports.append(port) or stub
     )
-    monkeypatch.setenv("DCC_MCP_GODOT_PORT", "8765")
+    monkeypatch.setenv("MESHY_DCC_GODOT_PORT", "8765")
 
     server_module.start_server(0)
     server_module.stop_server()

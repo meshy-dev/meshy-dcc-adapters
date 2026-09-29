@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from dcc_mcp_godot.build_optimization import make_plan, measure_artifacts, scan_project, write_plan
+from meshy_dcc_godot.build_optimization import make_plan, measure_artifacts, scan_project, write_plan
 
 
 def _project(tmp_path: Path, *, body: str, features: str = "4.5") -> Path:

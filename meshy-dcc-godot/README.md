@@ -1,122 +1,52 @@
-# dcc-mcp-godot
+# meshy-dcc-godot
 
-<p align="center">
-  <img src="docs/assets/dcc-mcp-godot.svg" alt="DCC-MCP · GODOT" width="600">
-</p>
+The Meshy DCC Core adapter for the Godot 4 editor. It ships a GDScript
+`EditorPlugin`, an `EngineDebugger` runtime peer, a Python sidecar that serves
+MCP and registers the editor with the local `meshy-dcc` registry, a loopback
+WebSocket bridge between the two, 163 on-demand tools and a tested 2D
+arena-roguelike skill.
 
-<!-- dcc-mcp-agent-quickstart:start -->
-## Use Godot with AI agents
+Targets Godot 4.0 and later. **Not yet verified on a real editor**; it is not
+in the Meshy DCC support matrix.
 
-Install the official DCC-MCP Agent Skill. Codex users can use the native plugin
-marketplace:
+## Install
 
-```powershell
-codex plugin marketplace add dcc-mcp/dcc-mcp-agent-plugins
-codex plugin add dcc-mcp@dcc-mcp
-```
-
-For Claude Code, CodeBuddy, Cursor, Gemini CLI, and other supported agents, use
-the [official installation guide](https://github.com/dcc-mcp/dcc-mcp-agent-plugins#install). Start Godot,
-enable this adapter, and verify that the running instance is registered:
-
-```powershell
-dcc-mcp-cli list
-```
-
-Then ask your agent:
-
-```text
-Use dcc-mcp to inspect the current Godot project.
-```
-
-The list must include `dcc_type=godot`. If it does not, follow the
-[connection troubleshooting guide](https://github.com/dcc-mcp/dcc-mcp-agent-plugins#adapter-connection-troubleshooting).
-<!-- dcc-mcp-agent-quickstart:end -->
-
-## Agent workflow
-
-AI agents should use the shared gateway through `dcc-mcp-cli`; IDE users may
-continue to use the MCP endpoint. Prefer typed skills and tools over raw scripts.
-
-### Install or update the CLI
-
-`dcc-mcp-cli` is the preferred control path for every shell-capable agent. If
-it is missing, ask the user before installing the latest official release:
+The lifecycle is documented in [`install.md`](install.md): plan-first JSON,
+staged project updates, receipts, repair, live verification, upgrade and
+receipt-owned uninstall.
 
 ```bash
-# Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.sh | sh
-
-# Windows PowerShell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.ps1 | iex"
+pip install meshy-dcc-godot
+meshy-dcc-godot install /path/to/project --dcc-path /path/to/godot --dry-run --json
+meshy-dcc-godot install /path/to/project --dcc-path /path/to/godot --yes --json
 ```
 
-Keep an official build current through the release manifest:
+Start the adapter, then open the project in Godot:
 
 ```bash
-dcc-mcp-cli update check
-dcc-mcp-cli update apply
+meshy-dcc-godot serve
 ```
 
-`update apply` downloads and stages the latest CLI for the next launch. It
-does not update a running `dcc-mcp-server`; update that server in its own
-environment.
+Each adapter instance uses an OS-assigned MCP port and registers it for
+`meshy-dcc` discovery through the gateway at `http://127.0.0.1:19765/mcp`; set
+`MESHY_DCC_GODOT_PORT` only when a fixed direct endpoint is required. The plugin
+connects to the loopback bridge at `ws://127.0.0.1:13847`; override the bridge
+port with `MESHY_DCC_GODOT_BRIDGE_PORT` before starting both processes.
+
+Agents drive the editor through the `meshy-dcc` CLI:
 
 ```bash
-dcc-mcp-cli dcc-types
-dcc-mcp-cli list
-dcc-mcp-cli search --query "<task>" --dcc-type godot
-dcc-mcp-cli describe <tool-slug>
-dcc-mcp-cli call <tool-slug> --json '{"key":"value"}'
+meshy-dcc list
+meshy-dcc search --query "<task>" --dcc-type godot
+meshy-dcc load-skill <skill-name> --dcc-type godot
+meshy-dcc call <tool-slug> --json '{"key":"value"}'
 ```
-
-`dcc-types` reports release-catalog support; `list` reports live sessions. If a
-tool belongs to an inactive progressive skill, call `dcc-mcp-cli load-skill <skill-name> --dcc-type godot` before retrying. For post-task improvement,
-attach a stable session id with `--meta-json`, query `dcc-mcp-cli stats --range 24h --session-id <task-id>`, then pass the bounded evidence to the
-`review_skill_improvement` prompt from `dcc-mcp-skills-creator`.
 
 For release packaging, load `godot-build-optimization` after choosing the
 target export preset. It scans the project, generates a version-aware
 `custom.py` and optional `.gdbuild` profile in a staging directory, and records
 artifact sizes and SHA-256 digests. Generated disable flags remain hypotheses
 until the packaged build is launched and smoke-tested.
-
-
-Godot 4 editor adapter for the DCC Model Context Protocol ecosystem. It ships a GDScript
-`EditorPlugin`, an `EngineDebugger` runtime peer, 163 on-demand tools, and a tested 2D
-arena-roguelike skill.
-
-## Install
-
-The canonical agent-first, three-platform lifecycle is documented in
-[`install.md`](install.md). It provides plan-first JSON, staged project updates,
-receipts, repair, live verification, upgrade, and receipt-owned uninstall.
-
-```bash
-pip install dcc-mcp-godot
-dcc-mcp-godot install /path/to/project --dcc-path /path/to/godot --dry-run --json
-dcc-mcp-godot install /path/to/project --dcc-path /path/to/godot --yes --json
-```
-
-The legacy install-only alias remains compatible:
-
-```bash
-dcc-mcp-godot-install /path/to/project
-```
-
-When using only that legacy alias, enable **DCC-MCP Godot** under **Project
-Settings > Plugins**. Start the adapter with either compatible form:
-
-```bash
-dcc-mcp-godot
-dcc-mcp-godot serve
-```
-
-Each adapter instance uses an OS-assigned MCP port and registers it for CLI discovery.
-Connect through the stable gateway at `http://127.0.0.1:9765/mcp`; set
-`DCC_MCP_GODOT_PORT` only when a fixed direct endpoint is required. The plugin connects
-to the loopback bridge at `ws://127.0.0.1:3847`; override the bridge port with
-`DCC_MCP_GODOT_BRIDGE_PORT` before starting both processes.
 
 ## Agent workflow
 
@@ -154,7 +84,7 @@ tool accepts raw source for immediate evaluation.
 
 For bounded playtest control, use `execute_typed_action`. It accepts only the strict
 `input_action` and exact script-digest-bound `set_property` variants declared in the fixed
-`res://.dcc-mcp/playtest-actions.v1.json` project manifest. Calls bind the project, session,
+`res://.meshy-dcc/playtest-actions.v1.json` project manifest. Calls bind the project, session,
 process-unique redacted runtime ID, authority, manifest ID, and manifest SHA-256; replacement,
 identity drift, reparse points, extra fields, exhausted budgets, and rate limits fail closed.
 The host verifies the exact setter effect and script digest on both sides of mutation. Rejected or
@@ -189,29 +119,31 @@ requested when its budget is exhausted; resume with `start_index=next_index`.
 chunk returns a machine-executable `next_step` that calls the same path and method with the next
 cursor. The adapter does not add a script executor, timer, thread, or job registry.
 
-## Real Godot CI
+## Live smoke
 
-CI resolves the official `godotengine/godot` latest stable GitHub release and downloads the Linux
-editor (reusing the existing cache when present). It starts the packaged MCP server and EditorPlugin, sends real JSON-RPC `load_skill`,
-paginated `tools/list`, `tools/call`, and `jobs_get_status` requests, creates and edits a scene,
-starts the game, verifies the runtime scene tree, then runs the generated gameplay simulation and
+`tests/live_godot_smoke.py` starts the packaged MCP server and EditorPlugin
+against a real Godot editor, sends `load_skill`, paginated `tools/list`,
+`tools/call` and `jobs_get_status`, creates and edits a scene, starts the game,
+verifies the runtime scene tree, then runs the generated gameplay simulation and
 requires `ROGUELIKE_SMOKE_OK`.
 
-Run the same smoke locally:
-
 ```bash
-python tools/download_latest_godot.py --output .godot-bin
+python tools/download_latest_godot.py --output .godot-bin   # optional
 python tests/live_godot_smoke.py --godot /path/to/Godot
 ```
 
 ## Development
 
 ```bash
-python -m pip install -e ".[dev]"
-pytest
-ruff check src tests tools
-ruff format --check src tests tools
+python -m pip install --no-deps <meshy_dcc_core wheel> -e .
+python -m pip install "websockets>=12" "pytest>=8"
+PYTHONPATH=src:. python -m pytest tests
 python tools/lint_skills.py
-python -m build
-python -m twine check dist/*
 ```
+
+Godot and the Godot logo are trademarks of the Godot Foundation. This
+independent adapter is not affiliated with or endorsed by the Godot Foundation.
+
+## License
+
+MIT; see [LICENSE](LICENSE) and [NOTICE](NOTICE).

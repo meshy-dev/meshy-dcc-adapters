@@ -1,11 +1,11 @@
-# Install DCC-MCP for Godot
+# Install Meshy DCC for Godot
 
 ## Requirements
 
 - Windows 10/11, macOS 12+, or a current Linux distribution.
 - Godot 4.0 or newer. The adapter does not download or cache Godot; install it
   from the official Godot distribution or your operating-system package manager.
-- Python 3.9 or newer and `dcc-mcp-core` 0.19.45 or newer.
+- Python 3.9 or newer and `meshy-dcc-core` 0.2.x.
 - A Godot project containing `project.godot`.
 
 The Python interpreter runs the adapter outside Godot. The bundled GDScript
@@ -27,25 +27,25 @@ Install the released wheel into the Python environment that will run the
 adapter:
 
 ```bash
-python -m pip install dcc-mcp-godot
+python -m pip install meshy-dcc-godot
 ```
 
 Plan first. Replace the example paths with the target project, Godot executable,
 and Python interpreter:
 
 ```bash
-dcc-mcp-godot install /path/to/project --dcc-path /path/to/godot --python /path/to/python --dry-run --json
-dcc-mcp-godot install /path/to/project --dcc-path /path/to/godot --python /path/to/python --yes --json
+meshy-dcc-godot install /path/to/project --dcc-path /path/to/godot --python /path/to/python --dry-run --json
+meshy-dcc-godot install /path/to/project --dcc-path /path/to/godot --python /path/to/python --yes --json
 ```
 
 The installer validates the host, Python, Core, and project before mutation. It
 stages a complete addon replacement, updates the `[editor_plugins]` entry, and
-writes `.dcc-mcp/receipts/godot.json`. Exit 50 is expected until the adapter and
+writes `.meshy-dcc/receipts/godot.json`. Exit 50 is expected until the adapter and
 Godot editor are running. Follow the JSON `next_steps` exactly, then verify:
 
 ```bash
-dcc-mcp-godot serve
-dcc-mcp-godot verify /path/to/project --json
+meshy-dcc-godot serve
+meshy-dcc-godot verify /path/to/project --json
 ```
 
 `verify` imports the adapter in the recorded interpreter, waits for Godot/Core
@@ -60,18 +60,18 @@ with `--instance-id <uuid>`; project-path readback is still mandatory.
 ## Manual path
 
 The supported agent path above is preferred. If policy requires manual file
-placement, copy the packaged `godot_addon/addons/dcc_mcp_godot` directory to
-`<project>/addons/dcc_mcp_godot`, enable
-`res://addons/dcc_mcp_godot/plugin.cfg` in the project's `[editor_plugins]`
-section, start `dcc-mcp-godot serve`, and run `verify`. Manual installs have no
+placement, copy the packaged `godot_addon/addons/meshy_dcc_godot` directory to
+`<project>/addons/meshy_dcc_godot`, enable
+`res://addons/meshy_dcc_godot/plugin.cfg` in the project's `[editor_plugins]`
+section, start `meshy-dcc-godot serve`, and run `verify`. Manual installs have no
 receipt and therefore cannot use the receipt-owned uninstall command; repair
 with the standard installer first.
 
 ## Status and repair
 
 ```bash
-dcc-mcp-godot status /path/to/project --json
-dcc-mcp-godot install /path/to/project --dcc-path /path/to/godot --python /path/to/python --yes --json
+meshy-dcc-godot status /path/to/project --json
+meshy-dcc-godot install /path/to/project --dcc-path /path/to/godot --python /path/to/python --yes --json
 ```
 
 `status` distinguishes absent, partial, and receipt-complete installs without
@@ -81,7 +81,7 @@ root fails closed instead of being overwritten. Locked files fail closed; exit
 50 means close or restart Godot and repeat the same command.
 
 The plugin writes bounded startup state to
-`<project>/.godot/dcc_mcp_godot_bootstrap.json`. `starting` without `ready`, a
+`<project>/.godot/meshy_dcc_godot_bootstrap.json`. `starting` without `ready`, a
 missing file, or an editor error indicates a bootstrap failure. This file is a
 diagnostic only; live typed readiness remains authoritative.
 
@@ -90,9 +90,9 @@ diagnostic only; live typed readiness remains authoritative.
 Upgrade the wheel, then transactionally replace the project addon:
 
 ```bash
-python -m pip install --upgrade dcc-mcp-godot
-dcc-mcp-godot upgrade /path/to/project --dcc-path /path/to/godot --python /path/to/python --dry-run --json
-dcc-mcp-godot upgrade /path/to/project --dcc-path /path/to/godot --python /path/to/python --yes --json
+python -m pip install --upgrade meshy-dcc-godot
+meshy-dcc-godot upgrade /path/to/project --dcc-path /path/to/godot --python /path/to/python --dry-run --json
+meshy-dcc-godot upgrade /path/to/project --dcc-path /path/to/godot --python /path/to/python --yes --json
 ```
 
 The staged replacement removes previously owned files no longer shipped by the
@@ -102,9 +102,9 @@ the previous tree if the transaction fails.
 ## Uninstall
 
 ```bash
-dcc-mcp-godot uninstall /path/to/project --dry-run --yes --json
-dcc-mcp-godot uninstall /path/to/project --yes --json
-python -m pip uninstall dcc-mcp-godot
+meshy-dcc-godot uninstall /path/to/project --dry-run --yes --json
+meshy-dcc-godot uninstall /path/to/project --yes --json
+python -m pip uninstall meshy-dcc-godot
 ```
 
 Uninstall requires the project receipt, validates its version, project and
@@ -136,15 +136,15 @@ follow Install SOP schema version 1 and use these stable exits:
 - **Godot was not found:** pass the real editor binary with `--dcc-path`; the
   adapter never scrapes or downloads a latest host build.
 - **Exit 10 for Core or Python:** run the command from the intended Python
-  environment and upgrade `dcc-mcp-core` before retrying.
+  environment and upgrade `meshy-dcc-core` before retrying.
 - **Status is partial:** keep the project closed and rerun `install --yes`; the
   staged transaction converges the addon, plugin entry, and receipt.
-- **Exit 40 at readiness:** start `dcc-mcp-godot serve` and the target Godot
-  project with the same `DCC_MCP_GODOT_BRIDGE_PORT`, then rerun `verify`.
+- **Exit 40 at readiness:** start `meshy-dcc-godot serve` and the target Godot
+  project with the same `MESHY_DCC_GODOT_BRIDGE_PORT`, then rerun `verify`.
 - **Target binding failed:** more than one Godot editor may be registered. Stop
   unrelated instances and verify the requested project again.
 - **Bootstrap did not become ready:** inspect
-  `.godot/dcc_mcp_godot_bootstrap.json` and the Godot editor Output panel. Fix
+  `.godot/meshy_dcc_godot_bootstrap.json` and the Godot editor Output panel. Fix
   the reported script/import problem, reload the plugin, and rerun `verify`.
 - **Exit 50 for locked files:** close Godot, repeat the exact lifecycle command,
   then restart the editor. The previous addon remains recoverable until the

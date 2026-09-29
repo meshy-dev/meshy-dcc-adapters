@@ -5,7 +5,7 @@ config_version=5
 
 [application]
 
-config/name="DCC-MCP Godot CI"
+config/name="Meshy DCC Godot CI"
 
 [display]
 
@@ -14,11 +14,11 @@ window/size/viewport_height=540
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/dcc_mcp_godot/plugin.cfg")
+enabled=PackedStringArray("res://addons/meshy_dcc_godot/plugin.cfg")
 
-[dcc_mcp]
+[meshy_dcc]
 
-playtest/project_id="dcc-mcp-godot-ci"
+playtest/project_id="meshy-dcc-godot-ci"
 playtest/session_id="typed-action-smoke"
 playtest/authority_id="ci-playtest-owner"
 

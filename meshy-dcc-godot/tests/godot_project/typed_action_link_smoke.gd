@@ -1,6 +1,6 @@
 extends SceneTree
 
-const RuntimePeer = preload("res://addons/dcc_mcp_godot/runtime_peer.gd")
+const RuntimePeer = preload("res://addons/meshy_dcc_godot/runtime_peer.gd")
 
 
 func _init() -> void:
@@ -8,9 +8,9 @@ func _init() -> void:
 
 
 func _run() -> void:
-	ProjectSettings.set_setting("dcc_mcp/playtest/project_id", "dcc-mcp-godot-ci")
-	ProjectSettings.set_setting("dcc_mcp/playtest/session_id", "typed-action-smoke")
-	ProjectSettings.set_setting("dcc_mcp/playtest/authority_id", "ci-playtest-owner")
+	ProjectSettings.set_setting("meshy_dcc/playtest/project_id", "meshy-dcc-godot-ci")
+	ProjectSettings.set_setting("meshy_dcc/playtest/session_id", "typed-action-smoke")
+	ProjectSettings.set_setting("meshy_dcc/playtest/authority_id", "ci-playtest-owner")
 	var peer = RuntimePeer.new()
 	root.add_child(peer)
 	await process_frame

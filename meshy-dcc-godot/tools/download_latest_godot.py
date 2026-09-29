@@ -49,7 +49,7 @@ def download_latest(output: Path) -> Path:
             existing = [path for path in existing if "Godot.app/Contents/MacOS/Godot" in str(path)]
         if existing:
             return existing[0].resolve()
-    headers = {"User-Agent": "dcc-mcp-godot-ci", "Accept": "application/vnd.github+json"}
+    headers = {"User-Agent": "meshy-dcc-godot-ci", "Accept": "application/vnd.github+json"}
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
