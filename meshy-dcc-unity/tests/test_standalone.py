@@ -6,9 +6,9 @@ import sys
 import threading
 from pathlib import Path
 
-import dcc_mcp_unity.install as install_module
-from dcc_mcp_unity import _standalone_entry
-from dcc_mcp_unity._standalone_entry import (
+import meshy_dcc_unity.install as install_module
+from meshy_dcc_unity import _standalone_entry
+from meshy_dcc_unity._standalone_entry import (
     _claim_pid_file,
     _parse_args,
     _process_is_alive,
@@ -18,7 +18,7 @@ from dcc_mcp_unity._standalone_entry import (
 
 def test_standalone_options_are_explicit() -> None:
     options = _parse_args(
-        ["dcc-mcp-unity", "--bridge-port", "4000", "--mcp-port", "4100", "--watch-pid", "12"]
+        ["meshy-dcc-unity", "--bridge-port", "4000", "--mcp-port", "4100", "--watch-pid", "12"]
     )
     assert options.bridge_port == 4000
     assert options.mcp_port == 4100
@@ -27,13 +27,13 @@ def test_standalone_options_are_explicit() -> None:
 
 def test_default_cli_uses_the_lifecycle_entrypoint() -> None:
     pyproject = (Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'dcc-mcp-unity = "dcc_mcp_unity._standalone_entry:main"' in pyproject
+    assert 'meshy-dcc-unity = "meshy_dcc_unity._standalone_entry:main"' in pyproject
 
 
 def test_standard_install_verbs_dispatch_without_starting_sidecar(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(install_module, "main", lambda arguments: calls.append(arguments))
-    _standalone_entry.main(["dcc-mcp-unity", "status", "--json"])
+    _standalone_entry.main(["meshy-dcc-unity", "status", "--json"])
     assert calls == [["status", "--json"]]
 
 

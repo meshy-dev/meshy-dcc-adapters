@@ -1,9 +1,9 @@
 {
   "dependencies": {
-    "com.dcc-mcp.unity": "file:../../../src/dcc_mcp_unity/unity_package",
+    "ai.meshy.dcc": "file:../../../src/meshy_dcc_unity/unity_package",
     "com.unity.test-framework": "1.4.6"
   },
   "testables": [
-    "com.dcc-mcp.unity"
+    "ai.meshy.dcc"
   ]
 }

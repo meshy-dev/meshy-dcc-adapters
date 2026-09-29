@@ -9,10 +9,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-from dcc_mcp_core import BridgeConnectionError
-from dcc_mcp_core.bridge import BridgeRpcError
+from meshy_dcc_core import BridgeConnectionError
+from meshy_dcc_core.bridge import BridgeRpcError
 
-from dcc_mcp_unity.bridge import (
+from meshy_dcc_unity.bridge import (
     call_host,
     probe_host_dispatch,
     set_host_dispatch_ready,

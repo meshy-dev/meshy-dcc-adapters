@@ -1,0 +1,6 @@
+{
+  "name": "MeshyDcc.TypedRunner.PlayMode.Probe.Tests",
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

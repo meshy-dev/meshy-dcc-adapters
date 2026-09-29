@@ -4,14 +4,14 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from dcc_mcp_unity import server
+from meshy_dcc_unity import server
 
 
 def _load_inspect_scene_module():
     path = (
         Path(__file__).parents[1]
         / "src"
-        / "dcc_mcp_unity"
+        / "meshy_dcc_unity"
         / "skills"
         / "unity-scene"
         / "scripts"
@@ -56,10 +56,10 @@ def test_module_entrypoint_registers_canonical_server_module(monkeypatch) -> Non
     called = []
     monkeypatch.setattr(server, "__name__", "__main__")
     monkeypatch.setitem(sys.modules, "__main__", server)
-    monkeypatch.delitem(sys.modules, "dcc_mcp_unity.server", raising=False)
+    monkeypatch.delitem(sys.modules, "meshy_dcc_unity.server", raising=False)
     monkeypatch.setattr(server, "main", lambda: called.append(True))
 
     server._run_module_entrypoint()
 
-    assert sys.modules["dcc_mcp_unity.server"] is server
+    assert sys.modules["meshy_dcc_unity.server"] is server
     assert called == [True]

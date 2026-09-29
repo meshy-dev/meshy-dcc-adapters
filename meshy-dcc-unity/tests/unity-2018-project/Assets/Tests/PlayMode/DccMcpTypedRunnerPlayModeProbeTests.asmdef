@@ -1,6 +1,0 @@
-{
-  "name": "DccMcp.TypedRunner.PlayMode.Probe.Tests",
-  "optionalUnityReferences": [
-    "TestAssemblies"
-  ]
-}

@@ -1,4 +1,4 @@
-from dcc_mcp_unity.dispatcher import UnityBridgeDispatcher
+from meshy_dcc_unity.dispatcher import UnityBridgeDispatcher
 
 
 def test_dispatcher_removes_core_metadata():

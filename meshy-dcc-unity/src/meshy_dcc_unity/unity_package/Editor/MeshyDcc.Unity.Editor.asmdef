@@ -1,0 +1,8 @@
+{
+  "name": "MeshyDcc.Unity.Editor",
+  "references": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}

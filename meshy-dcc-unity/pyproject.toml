@@ -3,13 +3,13 @@ requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dcc-mcp-unity"
-version = "0.13.0"
-description = "Unity Editor adapter and typed game-authoring skills for DCC-MCP"
+name = "meshy-dcc-unity"
+version = "0.1.0"
+description = "Unity Editor adapter and typed game-authoring skills for Meshy DCC"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "loonghao", email = "hal.long@outlook.com" }]
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 keywords = ["unity", "mcp", "game-development", "ai", "model-context-protocol"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -21,40 +21,37 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Games/Entertainment",
 ]
-dependencies = ["dcc-mcp-core>=0.19.90,<1.0.0", "websockets>=12"]
+dependencies = ["meshy-dcc-core>=0.2.0,<0.3.0", "websockets>=12"]
 
 [project.urls]
-Homepage = "https://github.com/dcc-mcp/dcc-mcp-unity"
-Repository = "https://github.com/dcc-mcp/dcc-mcp-unity"
-Issues = "https://github.com/dcc-mcp/dcc-mcp-unity/issues"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-unity"
+Repository = "https://github.com/meshy-dev/meshy-dcc-unity"
+Issues = "https://github.com/meshy-dev/meshy-dcc-unity/issues"
 
 [project.optional-dependencies]
 dev = ["build>=1.2", "jsonschema>=4", "pytest>=8", "pyyaml>=6", "ruff>=0.8", "twine>=6"]
 
 [project.scripts]
-dcc-mcp-unity = "dcc_mcp_unity._standalone_entry:main"
-dcc-mcp-unity-standalone = "dcc_mcp_unity._standalone_entry:main"
-dcc-mcp-unity-install = "dcc_mcp_unity.install:main"
+meshy-dcc-unity = "meshy_dcc_unity._standalone_entry:main"
+meshy-dcc-unity-standalone = "meshy_dcc_unity._standalone_entry:main"
+meshy-dcc-unity-install = "meshy_dcc_unity.install:main"
 
-[project.entry-points."dcc_mcp.adapters"]
-unity = "dcc_mcp_unity:UnityMcpServer"
+[project.entry-points."meshy_dcc.adapters"]
+unity = "meshy_dcc_unity:UnityMcpServer"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dcc_mcp_unity"]
-artifacts = ["src/dcc_mcp_unity/skills/**", "src/dcc_mcp_unity/unity_package/**"]
+packages = ["src/meshy_dcc_unity"]
+artifacts = ["src/meshy_dcc_unity/skills/**", "src/meshy_dcc_unity/unity_package/**"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "src/dcc_mcp_unity",
+  "src/meshy_dcc_unity",
   "tests",
   "tools",
-  "docs",
   "README.md",
   "install.md",
   "CHANGELOG.md",
   "LICENSE",
-  "release-please-config.json",
-  ".release-please-manifest.json",
 ]
 
 [tool.pytest.ini_options]

@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build"
 OUTPUT = ROOT / "dist" / "standalone"
-NAME = "dcc-mcp-unity" + (".exe" if sys.platform == "win32" else "")
+NAME = "meshy-dcc-unity" + (".exe" if sys.platform == "win32" else "")
 
 
 def _run(command: list[str]) -> None:

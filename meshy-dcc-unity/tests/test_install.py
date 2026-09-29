@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-import dcc_mcp_unity.install as installer
-from dcc_mcp_unity.install import (
+import meshy_dcc_unity.install as installer
+from meshy_dcc_unity.install import (
     EXIT_INSTALL,
     EXIT_OK,
     EXIT_REQUIRES_RESTART,
@@ -30,8 +30,8 @@ def test_install_copies_bundled_upm_package(tmp_path: Path):
     target = install_package(tmp_path)
     assert target == tmp_path / "Packages" / PACKAGE_NAME
     assert (target / "package.json").is_file()
-    assert (target / "Editor" / "DccMcpBridge.cs").is_file()
-    assert (target / "Editor" / "DccMcpConsole.cs").is_file()
+    assert (target / "Editor" / "MeshyDccBridge.cs").is_file()
+    assert (target / "Editor" / "MeshyDccConsole.cs").is_file()
 
 
 def test_install_supports_unity_2018_4_lts(tmp_path: Path):

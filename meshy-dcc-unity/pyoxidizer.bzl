@@ -10,11 +10,11 @@ def make_exe():
     python_config.oxidized_importer = False
     python_config.filesystem_importer = True
     python_config.module_search_paths = ["$ORIGIN/lib"]
-    python_config.run_module = "dcc_mcp_unity._standalone_entry"
+    python_config.run_module = "meshy_dcc_unity._standalone_entry"
     python_config.parse_argv = False
 
     exe = dist.to_python_executable(
-        name="dcc-mcp-unity",
+        name="meshy-dcc-unity",
         packaging_policy=policy,
         config=python_config,
     )

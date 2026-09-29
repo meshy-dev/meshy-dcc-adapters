@@ -5,16 +5,16 @@ from pathlib import Path
 
 import pytest
 import yaml
-from dcc_mcp_core import DeferredToolResult
-from dcc_mcp_core.bridge import BridgeRpcError
-from dcc_mcp_core.skill import skill_error
+from meshy_dcc_core import DeferredToolResult
+from meshy_dcc_core.bridge import BridgeRpcError
+from meshy_dcc_core.skill import skill_error
 from jsonschema import Draft7Validator
 
-import dcc_mcp_unity.job_result as job_results
-from dcc_mcp_unity.job_result import job_state_result
+import meshy_dcc_unity.job_result as job_results
+from meshy_dcc_unity.job_result import job_state_result
 
 ROOT = Path(__file__).parents[1]
-SKILLS = ROOT / "src" / "dcc_mcp_unity" / "skills"
+SKILLS = ROOT / "src" / "meshy_dcc_unity" / "skills"
 
 
 def _load_script(skill: str, name: str):
@@ -179,7 +179,7 @@ def test_game_authoring_manifests_declare_the_bounded_surface():
         assert f"- name: {name}" in diagnostics
 
     assert "maxLength: 262144" in project
-    assert "DCC_MCP_UNITY_ALLOW_SOURCE_WRITES=1" in project
+    assert "MESHY_DCC_UNITY_ALLOW_SOURCE_WRITES=1" in project
     assert "enum: [absent]" not in project
     assert project.count("pattern: '") >= 5
     assert "deferred_hint: true" not in project + diagnostics
@@ -208,11 +208,11 @@ def test_project_asset_schemas_reject_traversal_and_backslashes():
 
 
 def test_sprite_importer_reuses_the_project_reparse_boundary():
-    package = ROOT / "src" / "dcc_mcp_unity" / "unity_package"
-    commands = (package / "Editor" / "DccMcpCommands.cs").read_text(encoding="utf-8")
-    jobs = (package / "Editor" / "DccMcpJobs.cs").read_text(encoding="utf-8")
+    package = ROOT / "src" / "meshy_dcc_unity" / "unity_package"
+    commands = (package / "Editor" / "MeshyDccCommands.cs").read_text(encoding="utf-8")
+    jobs = (package / "Editor" / "MeshyDccJobs.cs").read_text(encoding="utf-8")
 
-    assert "DccMcpJobs.EnsureProjectAssetPathSafe(path);" in commands
+    assert "MeshyDccJobs.EnsureProjectAssetPathSafe(path);" in commands
     assert "internal static void EnsureProjectAssetPathSafe" in jobs
     assert "EnsureNoReparsePoints(fullPath);" in jobs
 
@@ -386,9 +386,9 @@ def test_submit_wrapper_preserves_terminal_job_state(monkeypatch, state, expecte
 
 
 def test_editor_job_protocol_is_persistent_fail_closed_and_bounded():
-    editor = ROOT / "src" / "dcc_mcp_unity" / "unity_package" / "Editor"
-    commands = (editor / "DccMcpCommands.cs").read_text(encoding="utf-8")
-    jobs = (editor / "DccMcpJobs.cs").read_text(encoding="utf-8")
+    editor = ROOT / "src" / "meshy_dcc_unity" / "unity_package" / "Editor"
+    commands = (editor / "MeshyDccCommands.cs").read_text(encoding="utf-8")
+    jobs = (editor / "MeshyDccJobs.cs").read_text(encoding="utf-8")
 
     for method in (
         "assets.read_text",
@@ -412,7 +412,7 @@ def test_editor_job_protocol_is_persistent_fail_closed_and_bounded():
     assert "Guid.TryParseExact" in jobs
     assert "same request_id was already used with different parameters" in jobs
     assert "another mutating unity job is queued or running" in jobs.lower()
-    assert '"DCC_MCP_UNITY_ALLOW_SOURCE_WRITES"' in jobs
+    assert '"MESHY_DCC_UNITY_ALLOW_SOURCE_WRITES"' in jobs
     assert '"1"' in jobs
     assert "MaxTextAssetBytes = 256 * 1024" in jobs
     assert "AcquireAssetWriteLock" in jobs
@@ -424,7 +424,7 @@ def test_editor_job_protocol_is_persistent_fail_closed_and_bounded():
     assert "SwitchActiveBuildTarget" in jobs
     assert "activeBuildTarget" in jobs
     assert "openScene.isDirty" in jobs
-    assert '"Builds", "DccMcp"' in jobs
+    assert '"Builds", "MeshyDcc"' in jobs
     assert "BuildTarget.StandaloneWindows64" in jobs
     assert "BuildTarget.Android" in jobs
     assert "BuildPipeline.IsBuildTargetSupported" in jobs
@@ -432,7 +432,7 @@ def test_editor_job_protocol_is_persistent_fail_closed_and_bounded():
     assert 'ReadAndroidSigningSetting("useCustomKeystore")' in jobs
     assert "signing secrets are never accepted" in jobs
     assert "HashFile(outputPath)" in jobs
-    assert '"DccMcpGame_Data"' in jobs
+    assert '"MeshyDccGame_Data"' in jobs
     assert "ScreenCapture.CaptureScreenshot" in jobs
     assert 'GetType("UnityEditor.GameView")' in jobs
     assert "capture_after_frame" in jobs
@@ -466,16 +466,16 @@ def test_android_build_contract_is_typed_and_never_accepts_signing_secrets():
 
 
 def test_typed_test_runner_uses_bounded_exact_filters_and_native_nunit_evidence():
-    editor = ROOT / "src" / "dcc_mcp_unity" / "unity_package" / "Editor"
+    editor = ROOT / "src" / "meshy_dcc_unity" / "unity_package" / "Editor"
     runner = "\n".join(
         (editor / name).read_text(encoding="utf-8")
-        for name in ("DccMcpTestRunner.cs", "DccMcpTestFrameworkBridge.cs")
+        for name in ("MeshyDccTestRunner.cs", "MeshyDccTestFrameworkBridge.cs")
     )
-    jobs = (editor / "DccMcpJobs.cs").read_text(encoding="utf-8")
+    jobs = (editor / "MeshyDccJobs.cs").read_text(encoding="utf-8")
 
     assert "UnityEditor.TestTools.TestRunner.Api.TestRunnerApi" in runner
     assert "UnityEditor.TestTools.TestRunner.CommandLineTest.ResultsSavingCallbacks" in runner
-    assert '"Builds"' in runner and '"DccMcp"' in runner and '"Tests"' in runner
+    assert '"Builds"' in runner and '"MeshyDcc"' in runner and '"Tests"' in runner
     assert "MaxTestNames = 128" in runner
     assert "test_names" in runner
     assert "edit_mode" in runner
@@ -490,14 +490,13 @@ def test_typed_test_runner_uses_bounded_exact_filters_and_native_nunit_evidence(
 
 def test_source_write_security_contract_bounds_external_writer_and_reparse_races():
     jobs = (
-        ROOT / "src" / "dcc_mcp_unity" / "unity_package" / "Editor" / "DccMcpJobs.cs"
+        ROOT / "src" / "meshy_dcc_unity" / "unity_package" / "Editor" / "MeshyDccJobs.cs"
     ).read_text(encoding="utf-8")
     documentation = "\n".join(
         path.read_text(encoding="utf-8")
         for path in (
             ROOT / "README.md",
-            ROOT / "docs" / "architecture-benchmark.md",
-            ROOT / "src" / "dcc_mcp_unity" / "unity_package" / "README.md",
+            ROOT / "src" / "meshy_dcc_unity" / "unity_package" / "README.md",
         )
     ).lower()
 

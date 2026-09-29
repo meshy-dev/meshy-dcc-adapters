@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 
 import pytest
-from dcc_mcp_core import BridgeConnectionError
-from dcc_mcp_core.bridge import BridgeRpcError
+from meshy_dcc_core import BridgeConnectionError
+from meshy_dcc_core.bridge import BridgeRpcError
 
 from tools import unity_bridge_smoke
 

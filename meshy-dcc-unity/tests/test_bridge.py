@@ -1,7 +1,7 @@
 import pytest
-from dcc_mcp_core.bridge import BridgeConnectionError
+from meshy_dcc_core.bridge import BridgeConnectionError
 
-from dcc_mcp_unity import bridge
+from meshy_dcc_unity import bridge
 
 
 class FakeBridge:
@@ -14,12 +14,12 @@ def test_call_host_forwards_typed_method_and_parameters(monkeypatch):
     monkeypatch.setattr(bridge.time, "time", lambda: 1_000.0)
     assert bridge.call_host("scene.inspect", {"depth": 4}) == {
         "method": "scene.inspect",
-        "params": {"depth": 4, "_dcc_mcp_deadline_unix_ms": 1_055_000},
+        "params": {"depth": 4, "_meshy_dcc_deadline_unix_ms": 1_055_000},
     }
 
 
 def test_bridge_timeout_rejects_stale_mutation_window(monkeypatch):
-    monkeypatch.setenv("DCC_MCP_UNITY_BRIDGE_TIMEOUT", "30")
+    monkeypatch.setenv("MESHY_DCC_UNITY_BRIDGE_TIMEOUT", "30")
     with pytest.raises(ValueError, match="at least 60 seconds"):
         bridge._bridge_timeout()
 
