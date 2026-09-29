@@ -9,25 +9,33 @@ adapter this one was forked from.
   - the Python package is `meshy_dcc_unreal`, the plugin is `MeshyDccUnreal`,
     and environment variables are `MESHY_DCC_UNREAL_*`;
   - the plugin runs on `meshy_dcc_core` 0.2.x.
-- The plugin is Python only. Its descriptor declares no module, so the editor
-  loads it without compiling anything; the C++ module stays in
-  `unreal/plugin/Source`, unbuilt. It depends on the Python Editor Script
+- The plugin keeps its C++ editor module and ships it as source; the
+  installer builds it for each project. It depends on the Python Editor Script
   Plugin and Editor Scripting Utilities.
-- `packaging/build_package.py` builds the Meshy DCC package: the plugin with
-  this adapter and `meshy_dcc_core` in its `python/` folder, and a
-  relocatable CPython for `bin/meshy-dcc-unreal`, the installer. Nothing is
-  installed into the engine. The package leaves out `direct_url.json`, which
-  would record local build paths.
+- `packaging/build_package.py` builds the Meshy DCC package: the plugin, with
+  this adapter and `meshy_dcc_core` in its `python/` folder, and a relocatable
+  CPython for `bin/meshy-dcc-unreal`, the installer. Nothing is installed into
+  the engine. The package leaves out `direct_url.json`, which would record
+  local build paths.
 - New installer (`meshy-dcc-unreal install | uninstall | status`): copies the
-  plugin into `Plugins/MeshyDccUnreal`, records the start-instance launch plan
-  and a file receipt in `.meshy-dcc/`, and leaves the `.uproject` alone. The
-  engine comes from `--engine`, `MESHY_DCC_UNREAL_ENGINE` or the project's
-  `EngineAssociation` in the Epic Games Launcher's install list. Repair,
-  upgrade and uninstall touch only receipted files and refuse while the plugin
-  folder holds anything else, apart from `__pycache__`. It replaces the
-  upstream installer, which installed wheels into the engine's Python.
+  plugin into `Plugins/MeshyDccUnreal`, builds the module with the engine's
+  build script as the editor's rebuild prompt would (exit 20 and a rollback
+  when the toolchain cannot), records the start-instance launch plan, the
+  build log and a file receipt in `.meshy-dcc/`, and leaves the `.uproject`
+  alone. The engine comes from `--engine`, `MESHY_DCC_UNREAL_ENGINE` or the
+  project's `EngineAssociation` in the Epic Games Launcher's install list.
+  Repair, upgrade and uninstall touch only receipted files and refuse while
+  the plugin folder holds anything else, apart from build output and
+  `__pycache__`. It replaces the upstream installer, which installed wheels
+  into the engine's Python.
 - The startup script no longer adds a project's `src/` or a sibling
   `meshy-dcc-core` checkout to the editor's `sys.path`.
+- The startup script registers itself as `meshy_dcc_unreal_init`. Unreal runs
+  `init_unreal.py` rather than importing it, so `import init_unreal` (the
+  menu commands, `mcp_self_check`) ran the file again: a second tick callback
+  and server start, and from `mcp_self_check`'s worker thread an engine
+  assertion that crashed the editor. `mcp_self_check` also reads the engine's
+  identity on the editor thread now.
 - An editor launched by `meshy-dcc start-instance` advertises a safe stop.
   Unreal quits without asking to save, so the stop refuses while any map or
   asset of the project is unsaved, or when the editor cannot tell, unless the

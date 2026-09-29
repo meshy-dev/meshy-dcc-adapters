@@ -58,24 +58,37 @@ def _start(unreal, actor: str, view: str, width: int, height: int):
         camera, rotation = camera_for(unreal, found, view, width, height)
     else:
         camera, rotation = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_level_viewport_camera_info()
+    for texture in _actor_textures(unreal, found) if found is not None else []:
+        texture.set_force_mip_levels_to_be_resident(30.0, 0)
     world = editor_world(unreal)
     target = unreal.RenderingLibrary.create_render_target2d(world, width, height, unreal.TextureRenderTargetFormat.RTF_RGBA8)
-    capture = unreal.get_editor_subsystem(unreal.EditorActorSubsystem).spawn_actor_from_class(
-        unreal.SceneCapture2D, camera, rotation, transient=True
-    )
-    component = capture.get_component_by_class(unreal.SceneCaptureComponent2D)
-    component.set_editor_property("texture_target", target)
-    component.set_editor_property("capture_source", unreal.SceneCaptureSource.SCS_FINAL_COLOR_LDR)
-    component.set_editor_property("fov_angle", FIELD_OF_VIEW)
-    component.set_editor_property("capture_every_frame", False)
-    if found is not None:
-        mesh = found.get_component_by_class(unreal.StaticMeshComponent)
-        for index in range(mesh.get_num_materials() if mesh else 0):
-            material = mesh.get_material(index)
-            for texture in unreal.MaterialEditingLibrary.get_used_textures(material) if material else []:
-                if isinstance(texture, unreal.Texture2D):
-                    texture.set_force_mip_levels_to_be_resident(30.0, 0)
+    actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    capture = actors.spawn_actor_from_class(unreal.SceneCapture2D, camera, rotation, transient=True)
+    try:
+        component = capture.get_component_by_class(unreal.SceneCaptureComponent2D)
+        component.set_editor_property("texture_target", target)
+        component.set_editor_property("capture_source", unreal.SceneCaptureSource.SCS_FINAL_COLOR_LDR)
+        component.set_editor_property("fov_angle", FIELD_OF_VIEW)
+        component.set_editor_property("capture_every_frame", False)
+    except Exception:
+        actors.destroy_actor(capture)
+        raise
     return world, target, capture, component
+
+
+def _actor_textures(unreal, found) -> list:
+    """Textures the actor's materials sample: instance parameters, or a material's own samplers."""
+    library = unreal.MaterialEditingLibrary
+    mesh = found.get_component_by_class(unreal.StaticMeshComponent)
+    textures = []
+    for index in range(mesh.get_num_materials() if mesh else 0):
+        material = mesh.get_material(index)
+        if isinstance(material, unreal.MaterialInstance):
+            names = library.get_texture_parameter_names(material)
+            textures += [library.get_material_instance_texture_parameter_value(material, name) for name in names]
+        elif isinstance(material, unreal.Material):
+            textures += list(library.get_used_textures(material))
+    return [texture for texture in textures if isinstance(texture, unreal.Texture2D)]
 
 
 def _finish(unreal, world, target, capture, component, directory: str, name: str) -> bool:

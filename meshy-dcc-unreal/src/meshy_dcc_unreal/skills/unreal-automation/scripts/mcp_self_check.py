@@ -50,13 +50,14 @@ def _module_origin(module, package: str) -> str:
 
 def _install_identity(server) -> dict:
     import meshy_dcc_core  # noqa: PLC0415
-    import init_unreal  # noqa: PLC0415
 
     import meshy_dcc_unreal  # noqa: PLC0415
     import unreal  # noqa: PLC0415
 
     instance_id = str(uuid.UUID(str(getattr(server, "instance_id", ""))))
-    process_start_token = getattr(init_unreal, "PROCESS_START_TOKEN", None)
+    # The plugin's startup run registers itself under this name; importing init_unreal would run a file again.
+    startup = sys.modules.get("meshy_dcc_unreal_init")
+    process_start_token = getattr(startup, "PROCESS_START_TOKEN", None)
     if not isinstance(process_start_token, str) or re.fullmatch(r"[A-Fa-f0-9]{32}", process_start_token) is None:
         raise ValueError("Unreal bootstrap process token is missing or invalid")
     editor = Path(sys.executable).resolve()
@@ -147,7 +148,10 @@ def mcp_self_check(check_http: bool = True, **kwargs) -> dict:
             tool_count=len(tool_names),
             sample_tools=tool_names[:20],
             http_status=http_status,
-            install_identity=_install_identity(server),
+            # This tool runs off the editor thread for the HTTP checks; Unreal APIs must not.
+            install_identity=server._main_thread_dispatcher.dispatch_callable(
+                _install_identity, server, affinity="main", timeout_hint_secs=30
+            ),
         )
     except Exception as exc:
         return unreal_from_exception(exc, "MCP server self-check failed")

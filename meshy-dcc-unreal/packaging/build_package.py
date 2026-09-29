@@ -1,11 +1,13 @@
 """Build the Meshy DCC Unreal package: the project plugin and its installer.
 
 The plugin runs on the editor's own Python and carries its dependencies, so
-it needs nothing installed into the engine. The installer runs before any
+it needs nothing installed into the engine; its C++ editor module ships as
+source and the installer builds it per project. The installer runs before any
 editor is involved, so the package brings a relocatable CPython
 (python-build-standalone, the kind uv installs) for it::
 
     plugin/MeshyDccUnreal/           copied into <project>/Plugins/
+      Source/                        the C++ editor module
       python/                        this adapter and meshy_dcc_core
     python/                          CPython for the installer
     bin/meshy-dcc-unreal             runs the installer from the plugin copy
@@ -54,8 +56,8 @@ EXCLUDED = shutil.ignore_patterns(
     "share",
     "EXTERNALLY-MANAGED",
 )
-# The C++ module under Source/ is not built: the plugin is Python only.
-PLUGIN_EXCLUDED = shutil.ignore_patterns("__pycache__", "Source", "Binaries", "Intermediate", "*.pyc")
+# The C++ module ships as source; the installer builds it for each project with the local toolchain.
+PLUGIN_EXCLUDED = shutil.ignore_patterns("__pycache__", "Binaries", "Intermediate", "*.pyc")
 INSTALLER_SCRIPT = """#!/bin/sh
 here=$(cd "$(dirname "$0")" && pwd)
 PYTHONPATH="$here/../plugin/{plugin}/python" exec "$here/../python/bin/python{version}" -m meshy_dcc_unreal.install_cli "$@"
@@ -94,8 +96,8 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
         plugin = stage / "plugin" / PLUGIN_NAME
         shutil.copytree(ROOT / "unreal" / "plugin", plugin, ignore=PLUGIN_EXCLUDED)
         descriptor = json.loads((plugin / f"{PLUGIN_NAME}.uplugin").read_text(encoding="utf-8"))
-        if descriptor.get("VersionName") != version or "Modules" in descriptor:
-            raise RuntimeError(f"{PLUGIN_NAME}.uplugin must name version {version} and declare no Modules")
+        if descriptor.get("VersionName") != version:
+            raise RuntimeError(f"{PLUGIN_NAME}.uplugin must name version {version}")
 
         shutil.copytree(python_home, stage / "python", symlinks=False, ignore=EXCLUDED)
         python = stage / "python" / "bin" / f"python{PYTHON_VERSION}"

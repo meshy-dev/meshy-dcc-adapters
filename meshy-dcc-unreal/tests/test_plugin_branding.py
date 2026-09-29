@@ -7,11 +7,11 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_DESCRIPTOR = ROOT / "unreal" / "plugin" / "MeshyDccUnreal.uplugin"
 
 
-def test_plugin_is_python_only_and_meshy_branded() -> None:
+def test_plugin_declares_its_editor_module_and_meshy_branding() -> None:
     descriptor = json.loads(PLUGIN_DESCRIPTOR.read_text(encoding="utf-8"))
 
-    # No C++ module: the editor loads the plugin without compiling anything.
-    assert "Modules" not in descriptor
+    assert descriptor["Modules"] == [{"Name": "MeshyDccUnreal", "Type": "Editor", "LoadingPhase": "PostEngineInit"}]
+    assert (PLUGIN_DESCRIPTOR.parent / "Source" / "MeshyDccUnreal" / "MeshyDccUnreal.Build.cs").is_file()
     assert descriptor["VersionName"] == __version__
     assert descriptor["CreatedBy"] == "Meshy"
     assert descriptor["CreatedByURL"] == "https://www.meshy.ai"

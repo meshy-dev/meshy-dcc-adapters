@@ -11,6 +11,8 @@ from meshy_dcc_unreal import install_cli
 from meshy_dcc_unreal.__version__ import __version__
 
 PLUGIN = Path("Plugins") / "MeshyDccUnreal"
+# The env fixture stubs the engine build; the build-failure test runs the real function on a fake build script.
+REAL_BUILD_MODULE = install_cli.build_module
 
 
 def write_json(path: Path, value: dict) -> None:
@@ -39,7 +41,19 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
     write_json(project / "Game.uproject", {"FileVersion": 3, "EngineAssociation": "5.7"})
     monkeypatch.setenv(install_cli.ENGINE_ENV, str(engine))
     monkeypatch.setenv(install_cli.PAYLOAD_ENV, str(payload))
-    return {"engine": engine, "editor": editor, "payload": payload, "project": project}
+    builds = []
+
+    def fake_build(engine_info, project_file, log):
+        # What the engine's build tool leaves behind: module binaries and intermediates in the plugin.
+        builds.append(project_file)
+        plugin = project_file.parent / PLUGIN
+        (plugin / "Binaries" / "Mac").mkdir(parents=True, exist_ok=True)
+        (plugin / "Binaries" / "Mac" / "UnrealEditor.modules").write_text("{}", encoding="utf-8")
+        (plugin / "Intermediate" / "Build").mkdir(parents=True, exist_ok=True)
+        log.write_text("built\n", encoding="utf-8")
+
+    monkeypatch.setattr(install_cli, "build_module", fake_build)
+    return {"engine": engine, "editor": editor, "payload": payload, "project": project, "builds": builds}
 
 
 def run(capsys, *argv: str) -> tuple[int, dict]:
@@ -85,12 +99,16 @@ def test_install_copies_plugin_and_records_launch_plan(env, capsys):
         "python/meshy_dcc_unreal/__init__.py",
     }
 
-    # Python caches written by the editor do not count as foreign files.
+    assert env["builds"] == [project / "Game.uproject"]
+    assert (project / ".meshy-dcc" / "build.log").read_text() == "built\n"
+
+    # Build output and Python caches do not count as foreign files, and a built module is not rebuilt.
     cache = project / PLUGIN / "Content" / "Python" / "__pycache__"
     cache.mkdir()
     (cache / "init_unreal.cpython-311.pyc").write_bytes(b"\0")
     code, report = run(capsys, "install", str(project), "--yes")
     assert (code, report["install_mode"]) == (0, "current")
+    assert len(env["builds"]) == 1
     assert hidden_work(project) == []
 
 
@@ -169,6 +187,30 @@ def test_failed_install_rolls_back_to_the_previous_plugin(env, capsys, monkeypat
     assert code == install_cli.EXIT_INSTALL, report
     after = {p.relative_to(project).as_posix(): p.read_bytes() for p in project.rglob("*") if p.is_file()}
     assert after == before
+
+
+def test_a_failed_build_rolls_back_to_the_previous_plugin(env, capsys, monkeypatch, tmp_path):
+    project = env["project"]
+    run(capsys, "install", str(project), "--yes")
+    before = {p.relative_to(project).as_posix(): p.read_bytes() for p in project.rglob("*") if p.is_file()}
+    newer = make_payload(tmp_path / "newer" / "MeshyDccUnreal", version="9.9.9", body="print('new')\n")
+    monkeypatch.setenv(install_cli.PAYLOAD_ENV, str(newer))
+    monkeypatch.setattr(install_cli, "__version__", "9.9.9")
+    script = tmp_path / "Build.sh"
+    script.write_text("#!/bin/sh\necho 'ERROR: Platform Mac is not a valid platform to build.'\nexit 6\n")
+    script.chmod(0o755)
+    monkeypatch.setattr(install_cli, "build_command", lambda *_args: [str(script)])
+    monkeypatch.setattr(install_cli, "build_module", REAL_BUILD_MODULE)
+
+    code, report = run(capsys, "install", str(project), "--yes")
+    assert code == install_cli.EXIT_BUILD, report
+    assert "not a valid platform" in report["log_tail"][-1]
+    after = {
+        p.relative_to(project).as_posix(): p.read_bytes()
+        for p in project.rglob("*")
+        if p.is_file() and p.name != "build.log"
+    }
+    assert after == {name: data for name, data in before.items() if not name.endswith("build.log")}
 
 
 def test_uninstall_removes_only_what_install_wrote(env, capsys):

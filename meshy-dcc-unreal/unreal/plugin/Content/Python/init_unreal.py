@@ -37,12 +37,15 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import types
 import uuid
 from pathlib import Path
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 _PLUGIN_NAME = "MeshyDccUnreal"
+# sys.modules name of this startup run; see the end of the file.
+MODULE_NAME = "meshy_dcc_unreal_init"
 PROCESS_START_TOKEN = globals().get("PROCESS_START_TOKEN") or uuid.uuid4().hex
 
 
@@ -451,7 +454,7 @@ def _register_menus() -> None:
         copy_id_entry.set_string_command(
             type=unreal.ToolMenuStringCommandType.PYTHON,
             custom_type=unreal.Name(""),
-            string="import init_unreal; init_unreal._copy_instance_id()",
+            string="import meshy_dcc_unreal_init as m; m._copy_instance_id()",
         )
         dcc_menu.add_menu_entry("MeshyDccInstance", copy_id_entry)
 
@@ -465,7 +468,7 @@ def _register_menus() -> None:
         server_info_entry.set_string_command(
             type=unreal.ToolMenuStringCommandType.PYTHON,
             custom_type=unreal.Name(""),
-            string="import init_unreal; init_unreal._show_server_info()",
+            string="import meshy_dcc_unreal_init as m; m._show_server_info()",
         )
         dcc_menu.add_menu_entry("MeshyDccInstance", server_info_entry)
 
@@ -482,7 +485,7 @@ def _register_menus() -> None:
         show_url_entry.set_string_command(
             type=unreal.ToolMenuStringCommandType.PYTHON,
             custom_type=unreal.Name(""),
-            string="import init_unreal; init_unreal._show_url_dialog()",
+            string="import meshy_dcc_unreal_init as m; m._show_url_dialog()",
         )
         dcc_menu.add_menu_entry("MeshyDccServer", show_url_entry)
 
@@ -499,7 +502,7 @@ def _register_menus() -> None:
         restart_entry.set_string_command(
             type=unreal.ToolMenuStringCommandType.PYTHON,
             custom_type=unreal.Name(""),
-            string="import init_unreal; init_unreal._restart()",
+            string="import meshy_dcc_unreal_init as m; m._restart()",
         )
         dcc_menu.add_menu_entry("MeshyDccControl", restart_entry)
 
@@ -513,7 +516,7 @@ def _register_menus() -> None:
         stop_entry.set_string_command(
             type=unreal.ToolMenuStringCommandType.PYTHON,
             custom_type=unreal.Name(""),
-            string="import init_unreal; init_unreal._stop()",
+            string="import meshy_dcc_unreal_init as m; m._stop()",
         )
         dcc_menu.add_menu_entry("MeshyDccControl", stop_entry)
 
@@ -530,7 +533,7 @@ def _register_menus() -> None:
         about_entry.set_string_command(
             type=unreal.ToolMenuStringCommandType.PYTHON,
             custom_type=unreal.Name(""),
-            string="import init_unreal; init_unreal._show_about()",
+            string="import meshy_dcc_unreal_init as m; m._show_about()",
         )
         dcc_menu.add_menu_entry("MeshyDccAbout", about_entry)
 
@@ -645,4 +648,20 @@ def _on_first_tick(delta: float) -> None:
 # Run initialisation
 # ---------------------------------------------------------------------------
 
+# Unreal runs this file instead of importing it, and engine plugins ship files of
+# the same name, so ``import init_unreal`` would run a file again: a second tick
+# callback and server start, and from a worker thread an engine assertion. Menu
+# commands and tools reach this run through the module registered here instead.
+_NAMESPACE = globals()
+
+
+class _ThisRun(types.ModuleType):
+    def __getattr__(self, name: str):
+        try:
+            return _NAMESPACE[name]
+        except KeyError:
+            raise AttributeError(name) from None
+
+
+sys.modules.setdefault(MODULE_NAME, _ThisRun(MODULE_NAME))
 _initialize()

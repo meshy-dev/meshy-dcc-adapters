@@ -15,6 +15,13 @@
     "IsExperimentalVersion": false,
     "Installed": false,
     "EnabledByDefault": true,
+    "Modules": [
+        {
+            "Name": "MeshyDccUnreal",
+            "Type": "Editor",
+            "LoadingPhase": "PostEngineInit"
+        }
+    ],
     "Plugins": [
         {
             "Name": "PythonScriptPlugin",

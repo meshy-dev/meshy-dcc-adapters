@@ -1,22 +1,27 @@
 """Set up an Unreal project for Meshy DCC.
 
-``install`` copies the plugin to ``<project>/Plugins/MeshyDccUnreal``. The
-plugin carries its Python dependencies (this adapter and ``meshy_dcc_core``)
-in ``python/``, so nothing is installed into the engine and the editor's own
-Python runs them. Project plugins are enabled by default, so the ``.uproject``
-file is left alone.
+``install`` copies the plugin to ``<project>/Plugins/MeshyDccUnreal`` and
+builds its C++ editor module for the project with the engine's own build tool,
+the way the editor rebuilds a missing module, so the editor opens without
+asking. That needs the machine's toolchain: Visual Studio on Windows, an Xcode
+the engine accepts on macOS. The plugin carries its Python dependencies (this
+adapter and ``meshy_dcc_core``) in ``python/``, so nothing is installed into
+the engine and the editor's own Python runs them. Project plugins are enabled
+by default, so the ``.uproject`` file is left alone.
 
 ``install`` also writes ``.meshy-dcc/`` next to the ``.uproject``:
-``launch-plan.json`` for ``meshy-dcc start-instance`` and
-``receipts/unreal.json``, the SHA-256 of every plugin file it wrote. The
+``launch-plan.json`` for ``meshy-dcc start-instance``, ``build.log`` and
+``receipts/unreal.json``, the SHA-256 of every plugin file it copied. The
 directory ignores itself for version control. Repair, upgrade and uninstall
 only touch plugin files the receipt owns, and they refuse while the plugin
-holds anything else, apart from Python's ``__pycache__``.
+holds anything else, apart from build output (``Binaries``, ``Intermediate``)
+and Python's ``__pycache__``.
 
 ``meshy-dcc install --dcc-type unreal --project <root>`` runs this from the
 Meshy DCC package with its own Python. Without ``--yes`` nothing is written
-and the report is a plan. Exit codes: 0 done, 10 preflight, 30 the change
-failed and was rolled back, 50 the change is done but a copy was left behind.
+and the report is a plan. Exit codes: 0 done, 10 preflight, 20 the module did
+not build and the change was rolled back, 30 the change failed and was rolled
+back, 50 the change is done but a copy was left behind.
 """
 
 from __future__ import annotations
@@ -27,6 +32,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import uuid
 from pathlib import Path
@@ -45,9 +51,14 @@ LAUNCH_PLAN = "launch-plan.json"
 RECEIPT = Path("receipts") / "unreal.json"
 RECEIPT_TYPE = "meshy-dcc-install-receipt"
 GITIGNORE_CONTENT = "*\n"
+BUILD_LOG = "build.log"
+BUILD_TIMEOUT_SECONDS = 3600
+# Written by the build tool and Python inside the plugin; regenerated, never the user's work.
+GENERATED_DIRS = ("Binaries", "Intermediate")
 
 EXIT_OK = 0
 EXIT_PREFLIGHT = 10
+EXIT_BUILD = 20
 EXIT_INSTALL = 30
 EXIT_LEFT_BEHIND = 50
 
@@ -159,6 +170,53 @@ def find_engine(project: Dict[str, Any], override: Optional[str]) -> Dict[str, A
     return {"root": str(root), "version": ".".join(map(str, version)), "editor": str(editor)}
 
 
+def build_command(engine_root: Path, project_file: Path) -> List[str]:
+    """The build the editor runs when it offers to rebuild a project's missing modules."""
+    batch = engine_root / "Engine" / "Build" / "BatchFiles"
+    if sys.platform == "win32":
+        prefix, platform = ["cmd", "/c", str(batch / "Build.bat")], "Win64"
+    elif sys.platform == "darwin":
+        prefix, platform = [str(batch / "Mac" / "Build.sh")], "Mac"
+    else:
+        prefix, platform = [str(batch / "Linux" / "Build.sh")], "Linux"
+    return [
+        *prefix,
+        "Development",
+        platform,
+        f"-Project={project_file}",
+        "-TargetType=Editor",
+        "-Progress",
+        "-NoEngineChanges",
+        "-NoHotReloadFromIDE",
+    ]
+
+
+def build_module(engine: Dict[str, Any], project_file: Path, log: Path) -> None:
+    """Build the plugin's C++ editor module for the project; the output lands in the plugin's Binaries."""
+    command = build_command(Path(engine["root"]), project_file)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with log.open("w", encoding="utf-8") as handle:
+            completed = subprocess.run(
+                command, stdout=handle, stderr=subprocess.STDOUT, timeout=BUILD_TIMEOUT_SECONDS, check=False
+            )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise InstallError(f"The plugin's C++ module did not build: {exc}", EXIT_BUILD, build_log=str(log)) from exc
+    if completed.returncode != 0:
+        tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-20:]
+        raise InstallError(
+            "The plugin's C++ module did not build. It needs Visual Studio on Windows, or on macOS an Xcode "
+            "this engine accepts; the build log says which.",
+            EXIT_BUILD,
+            build_log=str(log),
+            log_tail=tail,
+        )
+
+
+def module_built(plugin: Path) -> bool:
+    return any(plugin.glob("Binaries/*/UnrealEditor.modules"))
+
+
 def check_project_plugins(project: Dict[str, Any]) -> None:
     """Refuse a project that switched off this plugin or the Python plugin it needs."""
     for entry in project.get("Plugins") or []:
@@ -191,7 +249,7 @@ def _sha256(path: Path) -> str:
 
 
 def _is_cache(relative: Path) -> bool:
-    return "__pycache__" in relative.parts
+    return "__pycache__" in relative.parts or relative.parts[0] in GENERATED_DIRS
 
 
 def manifest(root: Path) -> Dict[str, str]:
@@ -333,8 +391,14 @@ def install(args: argparse.Namespace) -> Tuple[int, Dict[str, Any]]:
     else:
         mode = "upgrade"
     plan = _launch_plan(context.project_file, engine)
+    needs_build = mode != "current" or not module_built(context.plugin)
     if not args.yes:
-        return EXIT_OK, context.report(status="planned", install_mode=mode, engine=engine)
+        return EXIT_OK, context.report(
+            status="planned",
+            install_mode=mode,
+            engine=engine,
+            build=build_command(Path(engine["root"]), context.project_file) if needs_build else None,
+        )
 
     launch_path = context.state / LAUNCH_PLAN
     gitignore = context.state / ".gitignore"
@@ -355,6 +419,8 @@ def install(args: argparse.Namespace) -> Tuple[int, Dict[str, Any]]:
             context.plugin.parent.mkdir(exist_ok=True)
             os.replace(staging, context.plugin)
             placed = True
+        if needs_build:
+            build_module(engine, context.project_file, context.state / BUILD_LOG)
         _write_json(launch_path, plan)
         gitignore.write_text(GITIGNORE_CONTENT, encoding="utf-8")
         _write_json(
@@ -377,12 +443,20 @@ def install(args: argparse.Namespace) -> Tuple[int, Dict[str, Any]]:
             os.replace(previous, context.plugin)
         for path, content in saved.items():
             _restore(path, content)
+        if isinstance(exc, InstallError) and exc.code == EXIT_BUILD:
+            raise
         raise InstallError(f"Install failed and was rolled back: {exc}", EXIT_INSTALL) from exc
     finally:
         if staging.exists():
             shutil.rmtree(staging)
 
-    result = context.report(status="ok", install_mode=mode, engine=engine, launch_plan=str(launch_path))
+    result = context.report(
+        status="ok",
+        install_mode=mode,
+        engine=engine,
+        launch_plan=str(launch_path),
+        build_log=str(context.state / BUILD_LOG) if needs_build else None,
+    )
     if moved:
         # Checked above, but a writer could have raced in since; keep the copy then.
         # ponytail: a write landing between this check and rmtree is lost; the window is milliseconds.
@@ -415,6 +489,7 @@ def uninstall(args: argparse.Namespace) -> Tuple[int, Dict[str, Any]]:
     if launch_path.is_file() and read_json(launch_path).get("dcc_type") == DCC_TYPE:
         launch_path.unlink()
     (context.state / RECEIPT).unlink(missing_ok=True)
+    (context.state / BUILD_LOG).unlink(missing_ok=True)
     gitignore = context.state / ".gitignore"
     if gitignore.is_file() and gitignore.read_text(encoding="utf-8") == GITIGNORE_CONTENT:
         remaining = [p for p in context.state.rglob("*") if p.is_file() and p != gitignore]
@@ -465,7 +540,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         report = {"schema_version": 1, "dcc_type": DCC_TYPE, "status": "failed", "message": str(exc), **exc.fields}
     if report.get("message"):
         # meshy-dcc shows the stderr tail of a failed step.
-        print(report["message"], *report.get("files", []), sep="\n", file=sys.stderr)
+        print(report["message"], *report.get("files", []), *report.get("log_tail", []), sep="\n", file=sys.stderr)
     print(json.dumps(report, indent=2) if args.json else f"{report['status']}: {report.get('plugin', '')}")
     return code
 

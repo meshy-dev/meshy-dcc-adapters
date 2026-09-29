@@ -54,7 +54,7 @@ def test_runtime_identity_binds_live_process_project_plugin_and_origins(monkeypa
     )
     monkeypatch.setitem(sys.modules, "meshy_dcc_unreal", adapter_module)
     monkeypatch.setitem(sys.modules, "meshy_dcc_core", core_module)
-    monkeypatch.setitem(sys.modules, "init_unreal", init_module)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_unreal_init", init_module)
     monkeypatch.setitem(sys.modules, "unreal", unreal_module)
     monkeypatch.setattr(sys, "executable", str(editor))
     monkeypatch.setattr(

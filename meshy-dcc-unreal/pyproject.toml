@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "meshy-dcc-unreal"
 version = "0.1.0"
-description = "Unreal Editor adapter for Meshy DCC: a Python-only project plugin that runs in the editor"
+description = "Unreal Editor adapter for Meshy DCC: a project plugin with a C++ editor module and a Python layer"
 authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"
 license = { text = "MIT" }

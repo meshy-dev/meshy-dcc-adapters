@@ -982,3 +982,29 @@ def test_blueprint_creation_skill_is_registered():
     assert "unreal.BlueprintFactory()" in script
     assert 'factory.set_editor_property("parent_class", parent_class)' in script
     assert "save_loaded_asset" in script
+
+
+def test_startup_run_registers_itself_so_importing_it_does_not_run_it_again(monkeypatch):
+    """Unreal runs init_unreal.py instead of importing it; a second run would start a second server."""
+    runs = []
+    fake_package = types.ModuleType("meshy_dcc_unreal")
+    fake_package.__path__ = []
+    fake_version = types.ModuleType("meshy_dcc_unreal.__version__")
+    fake_version.__version__ = "0.1.0"
+    fake_unreal = types.SimpleNamespace(
+        is_editor=lambda: True,
+        register_slate_post_tick_callback=lambda callback: runs.append(callback) or "tick-handle",
+    )
+    monkeypatch.setitem(sys.modules, "meshy_dcc_unreal", fake_package)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_unreal.__version__", fake_version)
+    monkeypatch.setitem(sys.modules, "unreal", fake_unreal)
+    monkeypatch.delitem(sys.modules, "meshy_dcc_unreal_init", raising=False)
+
+    script = Path(__file__).parents[1] / "unreal" / "plugin" / "Content" / "Python" / "init_unreal.py"
+    namespace = runpy.run_path(str(script), run_name="__main__")
+    import meshy_dcc_unreal_init  # noqa: PLC0415
+
+    assert meshy_dcc_unreal_init.PROCESS_START_TOKEN == namespace["PROCESS_START_TOKEN"]
+    assert meshy_dcc_unreal_init._show_about is namespace["_show_about"]
+    assert len(runs) == 1
+    assert 'string="import init_unreal' not in script.read_text(encoding="utf-8")
