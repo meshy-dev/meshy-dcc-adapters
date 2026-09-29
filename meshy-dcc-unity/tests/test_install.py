@@ -32,6 +32,8 @@ def test_install_copies_bundled_upm_package(tmp_path: Path):
     assert (target / "package.json").is_file()
     assert (target / "Editor" / "MeshyDccBridge.cs").is_file()
     assert (target / "Editor" / "MeshyDccConsole.cs").is_file()
+    # The package's NUnit tests stay out of user projects.
+    assert not (target / "Tests").exists()
 
 
 def test_install_supports_unity_2018_4_lts(tmp_path: Path):

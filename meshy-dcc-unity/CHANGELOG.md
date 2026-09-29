@@ -19,6 +19,9 @@ adapter this one was forked from.
   (the Editor matching `ProjectVersion.txt`) and the sidecar in
   `.meshy-dcc/`, which ignores itself for version control. `--files-only`
   skips the live readiness check. `uninstall` removes both files.
+- Project installs leave out the package's NUnit `Tests/`. Unity compiles an
+  embedded package's tests, which fails in projects without the Unity Test
+  Framework.
 - The Editor package starts the recorded sidecar and gives each Editor its own
   bridge port, so several Editors can run at once.
 - `meshy-unity` skill: session, model inspect and instantiate with a keyed PBR

@@ -33,6 +33,9 @@ RECEIPT_RELATIVE_PATH = Path(".meshy-dcc") / "receipts" / "unity.json"
 LAUNCH_PLAN_RELATIVE_PATH = Path(".meshy-dcc") / "launch-plan.json"
 SIDECAR_CONFIG_RELATIVE_PATH = Path(".meshy-dcc") / "unity.json"
 CONFIG_OWNER = "meshy-dcc-unity"
+# The package's own NUnit tests need the Unity Test Framework, which a user's
+# project may not have; Unity compiles an embedded package's tests regardless.
+DEV_ONLY_ENTRIES = frozenset({"Tests", "Tests.meta"})
 EXIT_OK, EXIT_PREFLIGHT, EXIT_ACQUIRE = 0, 10, 20
 EXIT_INSTALL, EXIT_VERIFY, EXIT_REQUIRES_RESTART = 30, 40, 50
 
@@ -203,6 +206,8 @@ def _source_package() -> Path:
 def _files_manifest(root: Path) -> list[dict[str, Any]]:
     result = []
     for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        if path.relative_to(root).parts[0] in DEV_ONLY_ENTRIES:
+            continue
         data = path.read_bytes()
         result.append(
             {
@@ -359,6 +364,12 @@ def _replace_package(project: Path, report: dict[str, Any]) -> None:
         safe_remove_tree(stage)
         code = EXIT_REQUIRES_RESTART if staged.get("requires_restart") else EXIT_INSTALL
         raise InstallFailure(code, "stage", staged.get("message", "failed to stage package"))
+    for name in DEV_ONLY_ENTRIES:
+        entry = stage / name
+        if entry.is_dir():
+            safe_remove_tree(entry)
+        elif entry.exists():
+            entry.unlink()
     previous_moved = False
     replacement_moved = False
     try:
