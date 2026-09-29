@@ -78,8 +78,8 @@ Inspect the Core catalog plan first. Its Blender entry already resolves this
 repository's raw installation guide:
 
 ```bash
-meshy-dcc-cli install --dcc-type blender
-meshy-dcc-cli install --dcc-type blender --execute --json
+meshy-dcc install --dcc-type blender
+meshy-dcc install --dcc-type blender --execute --json
 ```
 
 Then inspect and execute the adapter-owned host-enablement plan:

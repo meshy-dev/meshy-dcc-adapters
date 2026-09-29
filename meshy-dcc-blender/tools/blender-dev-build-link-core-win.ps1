@@ -213,7 +213,7 @@ try {
 Write-Host ""
 Write-Host "Done. Start Blender $BlenderVersion → Edit → Preferences → Add-ons → Enable 'Meshy DCC Blender'." -ForegroundColor Cyan
 Write-Host ""
-Write-Host "MCP instance: OS-assigned; inspect the Blender log or run meshy-dcc-cli list" -ForegroundColor Cyan
+Write-Host "MCP instance: OS-assigned; inspect the Blender log or run meshy-dcc list" -ForegroundColor Cyan
 Write-Host "Gateway: http://127.0.0.1:19765/mcp" -ForegroundColor Cyan
 Write-Host "Docs: See meshy-dcc-blender docs for Cursor/Bender MCP setup" -ForegroundColor Gray
 

@@ -34,19 +34,19 @@ SAFETY_FIELDS = {"read_only", "destructive", "idempotent"}
 
 
 def _find_meshy_dcc_cli() -> Optional[str]:
-    exe = shutil.which("meshy-dcc-cli")
+    exe = shutil.which("meshy-dcc")
     if exe:
         return exe
     if sys.platform == "win32":
         local_appdata = pathlib.Path.home() / "AppData" / "Local"
-        candidate = local_appdata / "meshy-dcc" / "bin" / "meshy-dcc-cli.exe"
+        candidate = local_appdata / "meshy-dcc" / "bin" / "meshy-dcc.exe"
         if candidate.is_file():
             return str(candidate)
     return None
 
 
 def lint_skills_with_cli(skills_dir: pathlib.Path, warnings_as_errors: bool = False) -> Optional[List[str]]:
-    """Run the standalone meshy-dcc-cli skill linter when it is installed."""
+    """Run the standalone meshy-dcc skill linter when it is installed."""
     cli = _find_meshy_dcc_cli()
     if cli is None:
         return None
@@ -60,7 +60,7 @@ def lint_skills_with_cli(skills_dir: pathlib.Path, warnings_as_errors: bool = Fa
     try:
         payload = json.loads(output) if output else {}
     except json.JSONDecodeError:
-        return [output or f"meshy-dcc-cli lint failed with exit code {proc.returncode}"] if proc.returncode else []
+        return [output or f"meshy-dcc lint failed with exit code {proc.returncode}"] if proc.returncode else []
 
     errors: List[str] = []
     for report in payload.get("reports", []):
@@ -70,7 +70,7 @@ def lint_skills_with_cli(skills_dir: pathlib.Path, warnings_as_errors: bool = Fa
                 errors.append(f"{report.get('skill_dir')}: {issue.get('category')}: {issue.get('message')}")
 
     if proc.returncode != 0 and not errors:
-        errors.append(output or f"meshy-dcc-cli lint failed with exit code {proc.returncode}")
+        errors.append(output or f"meshy-dcc lint failed with exit code {proc.returncode}")
     return errors
 
 
@@ -207,7 +207,7 @@ def lint_skills(
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skills-dir", type=pathlib.Path, default=DEFAULT_SKILLS_DIR)
-    parser.add_argument("--no-cli", action="store_true", help="Use the Python validator even when meshy-dcc-cli exists.")
+    parser.add_argument("--no-cli", action="store_true", help="Use the Python validator even when meshy-dcc exists.")
     parser.add_argument("--warnings-as-errors", action="store_true")
     args = parser.parse_args(argv)
 

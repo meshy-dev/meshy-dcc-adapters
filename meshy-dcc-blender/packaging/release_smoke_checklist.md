@@ -43,7 +43,7 @@ This checklist validates the GUI Extension install path for Blender 4.5+.
   ```
   [Meshy DCC Blender] Server started — http://127.0.0.1:<assigned-port>/mcp
   ```
-- [ ] Record the exact URL from the log or `meshy-dcc-cli list`; do not assume a
+- [ ] Record the exact URL from the log or `meshy-dcc list`; do not assume a
   fixed instance port.
 - [ ] Navigate to `<instance-url>/mcp` in a browser —
   expect `{"jsonrpc":"2.0","error":...}` (valid MCP endpoint, not a connection error)
@@ -177,7 +177,7 @@ If two Blender instances are available:
 - [ ] Start Blender #1 with the extension enabled — verify it becomes gateway
 - [ ] Start Blender #2 with the extension enabled —
   verify it registers on an ephemeral port
-- [ ] Run `meshy-dcc-cli list` — both instances and distinct direct URLs should appear
+- [ ] Run `meshy-dcc list` — both instances and distinct direct URLs should appear
 - [ ] Close Blender #1 — verify Blender #2 takes over gateway port
 
 ---

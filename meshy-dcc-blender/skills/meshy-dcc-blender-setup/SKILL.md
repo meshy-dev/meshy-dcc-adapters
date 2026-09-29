@@ -150,7 +150,7 @@ local gateway:
 ```
 
 Multiple Blender instances register their exact endpoints automatically; use
-`meshy-dcc-cli list` when a direct URL is required.
+`meshy-dcc list` when a direct URL is required.
 
 When editing an existing MCP config, preserve unrelated servers. Merge only the
 `blender` server entry unless the user asks for a different server name.
@@ -161,7 +161,7 @@ After pip setup and MCP JSON generation, tell the user:
 
 1. Open Blender with the launch command printed by the setup script.
 2. The installed `meshy_dcc_blender_startup.py` starts the server automatically.
-3. Use `meshy-dcc-cli list` to confirm the Blender instance and exact URL.
+3. Use `meshy-dcc list` to confirm the Blender instance and exact URL.
 
 The stable gateway URL is `http://127.0.0.1:19765/mcp`.
 
