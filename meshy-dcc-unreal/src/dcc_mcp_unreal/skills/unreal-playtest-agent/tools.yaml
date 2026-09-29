@@ -1,0 +1,495 @@
+tools:
+  - name: playtest_episode_control
+    description: >-
+      Start, inspect, or finish an in-memory PIE playtest episode. Episode
+      selectors define the bounded structured observation returned by the
+      other playtest-agent tools.
+    source_file: scripts/playtest_episode_control.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: false
+    input_schema:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [start, current, finish]
+        episode_id:
+          type: string
+          default: ""
+        include_pawns:
+          type: boolean
+          default: true
+        include_hidden:
+          type: boolean
+          default: false
+          description: Include actors hidden in game. Disabled by default so dormant entities are not treated as actionable.
+        include_components:
+          type: boolean
+          default: false
+          description: Include bounded actor-component names, classes, and requested scalar attributes.
+        class_contains:
+          type: array
+          items: {type: string}
+          maxItems: 16
+          default: []
+        exclude_class_contains:
+          type: array
+          items: {type: string}
+          maxItems: 16
+          default: []
+          description: Exclude matching actor classes after positive selectors, such as non-actionable debris.
+        name_contains:
+          type: array
+          items: {type: string}
+          maxItems: 16
+          default: []
+        tags:
+          type: array
+          items: {type: string}
+          maxItems: 16
+          default: []
+        attribute_names:
+          type: array
+          items: {type: string}
+          maxItems: 24
+          default: []
+        telemetry_aliases:
+          type: object
+          maxProperties: 24
+          default: {}
+          description: >-
+            Optional canonical telemetry fields mapped to bounded Unreal actor
+            or component property-name candidates. Built-in aliases cover
+            common health, ammo, and cooldown properties.
+          additionalProperties:
+            type: array
+            minItems: 1
+            maxItems: 8
+            uniqueItems: true
+            items: {type: string, minLength: 1, maxLength: 64, pattern: "^[A-Za-z0-9_]+$"}
+        max_entities:
+          type: integer
+          minimum: 1
+          maximum: 128
+          default: 64
+        max_distance:
+          type: number
+          minimum: 0
+          maximum: 1000000
+          default: 0
+      additionalProperties: false
+    output_schema:
+      type: object
+      required: [success, message, error, prompt, context]
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        error: {type: [string, "null"]}
+        prompt: {type: [string, "null"]}
+        context: {type: object}
+        _meta: &playtest_error_meta
+          type: object
+          properties:
+            dcc.error:
+              type: object
+              required: [type, message]
+              properties:
+                type: {type: string}
+                message: {type: string}
+                traceback: {type: string}
+              additionalProperties: false
+          additionalProperties: false
+      additionalProperties: false
+      $defs:
+        success_context:
+          type: object
+          required: [episode_id, session]
+          properties:
+            episode_id: {type: string}
+            session: {type: object}
+            selectors: {type: object}
+            observation: {type: object}
+            started_at: {type: number}
+            elapsed_seconds: {type: number, minimum: 0}
+            baseline_hash: {type: string, pattern: "^sha256:"}
+            action_count: {type: integer, minimum: 0}
+            transition_count: {type: integer, minimum: 0}
+            pending_action_ids: {type: array, items: {type: string}}
+            trace: {type: array, items: {type: object}}
+          additionalProperties: false
+      allOf:
+        - if:
+            properties: {success: {const: true}}
+            required: [success]
+          then:
+            properties:
+              error: {type: "null"}
+              context: {$ref: "#/$defs/success_context"}
+    next-tools:
+      on-success: [unreal_playtest_agent__playtest_observe]
+      on-failure: [dcc_diagnostics__audit_log]
+
+  - name: playtest_observe
+    description: >-
+      Return a bounded structured observation of the player and selected PIE
+      entities, including configured combat telemetry and action availability,
+      without taking or requiring a screenshot. Observation failure releases
+      only this episode's owned input and navigation, so this is not read-only.
+    source_file: scripts/playtest_observe.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    input_schema:
+      type: object
+      required: [episode_id]
+      properties:
+        episode_id: {type: string}
+      additionalProperties: false
+    output_schema:
+      type: object
+      required: [success, message, error, prompt, context]
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        error: {type: [string, "null"]}
+        prompt: {type: [string, "null"]}
+        context: {type: object}
+        _meta: *playtest_error_meta
+      additionalProperties: false
+      $defs:
+        success_context:
+          type: object
+          required: [episode_id, observation]
+          properties:
+            episode_id: {type: string}
+            observation:
+              type: object
+              required: [schema, world, time_seconds, runtime, player, action_availability, entity_count, entity_classes, entities, observation_hash]
+              properties:
+                schema: {const: dcc-mcp-playtest-observation-v1}
+                world: {type: string}
+                time_seconds: {type: number}
+                runtime: {type: object}
+                player: {type: object}
+                action_availability: {type: object}
+                entity_count: {type: integer, minimum: 0}
+                entity_classes: {type: object}
+                entities: {type: array, items: {type: object}}
+                observation_hash: {type: string, pattern: "^sha256:"}
+              additionalProperties: false
+          additionalProperties: false
+      allOf:
+        - if:
+            properties: {success: {const: true}}
+            required: [success]
+          then:
+            properties:
+              error: {type: "null"}
+              context: {$ref: "#/$defs/success_context"}
+    next-tools:
+      on-success: [unreal_playtest_agent__playtest_execute_action]
+      on-failure: [dcc_diagnostics__audit_log]
+
+  - name: playtest_execute_action
+    description: >-
+      Execute one bounded semantic gameplay action in the active PIE world.
+      Navigation follows Unreal navigation and never teleports the player.
+      Movement can require a measured displacement instead of treating input
+      delivery as success. Relative movement proof is direction- and duration-
+      bounded; displacement values use Unreal centimeters.
+    source_file: scripts/playtest_execute_action.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: false
+    input_schema:
+      type: object
+      required: [episode_id, action]
+      properties:
+        episode_id: {type: string}
+        action:
+          type: string
+          enum: [ensure_player_control, navigate_to_entity, navigate_to_location, face_entity, face_location, attack_primary_entity, attack_secondary_entity, melee_entity, explosive_entity, skill_entity, move_relative, stop_navigation, interact, attack_primary, attack_secondary, melee, explosive, skill, reload, jump, wait]
+        direction:
+          type: string
+          enum: [forward, backward, left, right]
+          default: forward
+          description: Camera-relative gameplay direction used only by move_relative.
+        target_name:
+          type: string
+          default: ""
+        target_name_contains:
+          type: string
+          default: ""
+        target_class_contains:
+          type: string
+          default: ""
+        target_exclude_class_contains:
+          type: array
+          items: {type: string}
+          maxItems: 16
+          default: []
+          description: Reject matching target classes even when another selector matches.
+        target_include_hidden:
+          type: boolean
+          default: false
+          description: Allow targeting actors hidden in game. Disabled by default.
+        target_tags:
+          type: array
+          items: {type: string}
+          maxItems: 8
+          default: []
+        target_location:
+          type: object
+          description: Explicit world-space point used by navigate_to_location or face_location.
+          required: [x, y, z]
+          properties:
+            x: {type: number, minimum: -1000000, maximum: 1000000}
+            y: {type: number, minimum: -1000000, maximum: 1000000}
+            z: {type: number, minimum: -1000000, maximum: 1000000}
+          additionalProperties: false
+        acceptance_radius:
+          type: number
+          minimum: 10
+          maximum: 10000
+          default: 125
+        duration:
+          type: number
+          minimum: 0
+          maximum: 5
+          default: 0.05
+          description: Hold duration for finite gameplay input, including move_relative.
+        timeout_seconds:
+          type: number
+          minimum: 0.1
+          maximum: 120
+          default: 30
+        require_line_of_sight:
+          type: boolean
+          default: true
+          description: Reject targeted attacks before input when the player controller has no line of sight.
+        stall_seconds:
+          type: number
+          minimum: 0.5
+          maximum: 30
+          default: 4
+        expect_movement:
+          type: boolean
+          description: >-
+            Require a measured player displacement for movement actions.
+            Defaults to true for move_relative and false for navigation,
+            where reaching the requested target is already an observed effect.
+        min_displacement:
+          type: number
+          minimum: 0.001
+          maximum: 1000000
+          default: 1
+          description: Minimum measured player displacement in Unreal centimeters required when movement is expected.
+      additionalProperties: false
+    output_schema:
+      type: object
+      required: [success, message, error, prompt, context]
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        error: {type: [string, "null"]}
+        prompt: {type: [string, "null"]}
+        context: {type: object}
+        _meta: *playtest_error_meta
+      additionalProperties: false
+      $defs:
+        success_context:
+          type: object
+          required: [episode_id, action_id, status, action, navigation_driver, target, before_hash, movement_expected, min_displacement, session_identity, distance_unit, duration, duration_unit]
+          properties:
+            episode_id: {type: string}
+            action_id: {type: string}
+            status: {const: pending}
+            action: {type: string}
+            navigation_driver: {type: [string, "null"]}
+            target: {type: [object, "null"]}
+            before_hash: {type: string, pattern: "^sha256:"}
+            movement_expected: {type: boolean}
+            min_displacement: {type: number, minimum: 0.001, maximum: 1000000}
+            session_identity: {type: string, pattern: "^sha256:"}
+            distance_unit: {const: centimeters}
+            duration: {type: number, minimum: 0, maximum: 5}
+            duration_unit: {const: seconds}
+            direction: {type: string, enum: [forward, backward, left, right]}
+          additionalProperties: false
+      allOf:
+        - if:
+            properties: {success: {const: true}}
+            required: [success]
+          then:
+            properties:
+              error: {type: "null"}
+              context: {$ref: "#/$defs/success_context"}
+    next-tools:
+      on-success: [unreal_playtest_agent__playtest_poll_action]
+      on-failure: [dcc_diagnostics__audit_log]
+    call_examples:
+      - arguments:
+          episode_id: pie_episode_example
+          action: move_relative
+          direction: forward
+          duration: 0.25
+          expect_movement: true
+          min_displacement: 5
+        note: Require an observed movement effect instead of input acceptance alone.
+
+  - name: playtest_poll_action
+    description: >-
+      Poll a semantic playtest action and return its structured transition.
+      Navigation reports completed, blocked, or timed_out from engine state;
+      expected movement reports stalled when displacement remains below its
+      threshold. Terminal transitions include exact bounded before/after
+      observations, measured displacement in Unreal centimeters, exact action
+      parameters, causal movement evidence, and combat telemetry deltas.
+    source_file: scripts/playtest_poll_action.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    input_schema:
+      type: object
+      required: [episode_id, action_id]
+      properties:
+        episode_id: {type: string}
+        action_id: {type: string}
+      additionalProperties: false
+    output_schema:
+      type: object
+      required: [success, message, error, prompt, context]
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        error: {type: [string, "null"]}
+        prompt: {type: [string, "null"]}
+        context: {type: object}
+        _meta: *playtest_error_meta
+      additionalProperties: false
+      $defs:
+        vector:
+          type: object
+          required: [x, y, z]
+          properties:
+            x: {type: number}
+            y: {type: number}
+            z: {type: number}
+          additionalProperties: false
+        transition:
+          type: object
+          required: [action_id, action, status, elapsed_seconds, movement_expected, min_displacement, session_identity, distance_unit, duration, duration_unit]
+          properties:
+            action_id: {type: string}
+            action: {type: string}
+            status: {type: string, enum: [pending, completed, blocked, stalled, timed_out, cancelled]}
+            elapsed_seconds: {type: number, minimum: 0}
+            session_identity: {type: string, pattern: "^sha256:"}
+            target: {type: [object, "null"]}
+            before_hash: {type: string, pattern: "^sha256:"}
+            after_hash: {type: [string, "null"], pattern: "^sha256:"}
+            player_location_delta:
+              oneOf:
+                - {$ref: "#/$defs/vector"}
+                - {type: "null"}
+            player_displacement: {type: [number, "null"], minimum: 0}
+            movement_expected: {type: boolean}
+            min_displacement: {type: number, minimum: 0.001, maximum: 1000000}
+            distance_unit: {const: centimeters}
+            duration: {type: number, minimum: 0, maximum: 5}
+            duration_unit: {const: seconds}
+            direction: {type: string, enum: [forward, backward, left, right]}
+            expected_direction: {$ref: "#/$defs/vector"}
+            max_causal_displacement: {type: number, minimum: 0}
+            movement_proof_window: {type: number, minimum: 0}
+            causal_displacement: {type: number, minimum: 0}
+            direction_alignment: {type: number, minimum: -1, maximum: 1}
+            entity_count_delta: {type: [integer, "null"]}
+            telemetry_deltas: {type: array, items: {type: object}}
+            before: {type: object}
+            after: {type: [object, "null"]}
+            observation: {type: object}
+            reason: {type: string, maxLength: 128}
+            blocked_reason: {type: string, maxLength: 128}
+            distance_to_target: {type: number, minimum: 0}
+            navigation_driver: {type: [string, "null"]}
+            steering_fallback_used: {type: boolean}
+            steering_backend: {type: [string, "null"]}
+            recovery:
+              type: object
+              required: [previous_session_identity, session_identity, player]
+              properties:
+                previous_session_identity: {type: string, pattern: "^sha256:"}
+                session_identity: {type: string, pattern: "^sha256:"}
+                player: {type: object}
+              additionalProperties: false
+            cleanup_errors: {type: array, items: {type: string}}
+            input_cleanup:
+              type: object
+              required: [release_attempted, release_completed, retirement_attempted, retirement_completed]
+              properties:
+                release_attempted: {type: boolean}
+                release_completed: {type: boolean}
+                retirement_attempted: {type: boolean}
+                retirement_completed: {type: boolean}
+              additionalProperties: false
+            damage_events: {type: array, items: {type: object}}
+            combat_feedback: {type: object}
+          additionalProperties: false
+          allOf:
+            - if:
+                properties: {status: {const: pending}}
+                required: [status]
+              then:
+                required: [observation]
+            - if:
+                properties: {status: {enum: [completed, blocked, stalled, timed_out, cancelled]}}
+                required: [status]
+              then:
+                required: [target, before_hash, after_hash, player_location_delta, player_displacement, entity_count_delta, telemetry_deltas, before, after]
+        success_context:
+          type: object
+          required: [episode_id, transition]
+          properties:
+            episode_id: {type: string}
+            transition: {$ref: "#/$defs/transition"}
+          additionalProperties: false
+      allOf:
+        - if:
+            properties: {success: {const: true}}
+            required: [success]
+          then:
+            properties:
+              error: {type: "null"}
+              context: {$ref: "#/$defs/success_context"}
+    next-tools:
+      on-success: [unreal_playtest_agent__playtest_observe]
+      on-failure: [dcc_diagnostics__audit_log]
