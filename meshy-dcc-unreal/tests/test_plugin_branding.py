@@ -1,17 +1,19 @@
 import json
-import struct
 from pathlib import Path
 
+from meshy_dcc_unreal.__version__ import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN_DESCRIPTOR = ROOT / "unreal" / "plugin" / "DccMcpUnreal.uplugin"
-PLUGIN_ICON = ROOT / "unreal" / "plugin" / "Resources" / "Icon128.png"
+PLUGIN_DESCRIPTOR = ROOT / "unreal" / "plugin" / "MeshyDccUnreal.uplugin"
 
 
-def test_plugin_browser_branding_uses_the_official_site_and_icon_contract() -> None:
+def test_plugin_is_python_only_and_meshy_branded() -> None:
     descriptor = json.loads(PLUGIN_DESCRIPTOR.read_text(encoding="utf-8"))
-    icon = PLUGIN_ICON.read_bytes()
 
-    assert descriptor["CreatedByURL"] == "https://dcc-mcp.github.io/"
-    assert descriptor["DocsURL"] == ("https://dcc-mcp.github.io/ecosystem#dcc-and-creative-application-adapters")
-    assert icon[:8] == b"\x89PNG\r\n\x1a\n"
-    assert struct.unpack(">II", icon[16:24]) == (128, 128)
+    # No C++ module: the editor loads the plugin without compiling anything.
+    assert "Modules" not in descriptor
+    assert descriptor["VersionName"] == __version__
+    assert descriptor["CreatedBy"] == "Meshy"
+    assert descriptor["CreatedByURL"] == "https://www.meshy.ai"
+    required = {entry["Name"] for entry in descriptor["Plugins"] if not entry.get("Optional")}
+    assert required == {"PythonScriptPlugin", "EditorScriptingUtilities"}

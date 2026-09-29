@@ -12,14 +12,13 @@ from unittest.mock import MagicMock, patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "src/dcc_mcp_unreal/skills/unreal-niagara/scripts/author_niagara_system.py"
-TOOLS = ROOT / "src/dcc_mcp_unreal/skills/unreal-niagara/tools.yaml"
-HEADER = ROOT / "unreal/plugin/Source/DccMcpUnreal/Public/DccMcpAutomationLibrary.h"
-IMPLEMENTATION = ROOT / "unreal/plugin/Source/DccMcpUnreal/Private/DccMcpAutomationLibrary.cpp"
-BUILD_RULES = ROOT / "unreal/plugin/Source/DccMcpUnreal/DccMcpUnreal.Build.cs"
+SCRIPT = ROOT / "src/meshy_dcc_unreal/skills/unreal-niagara/scripts/author_niagara_system.py"
+TOOLS = ROOT / "src/meshy_dcc_unreal/skills/unreal-niagara/tools.yaml"
+HEADER = ROOT / "unreal/plugin/Source/MeshyDccUnreal/Public/MeshyDccAutomationLibrary.h"
+IMPLEMENTATION = ROOT / "unreal/plugin/Source/MeshyDccUnreal/Private/MeshyDccAutomationLibrary.cpp"
+BUILD_RULES = ROOT / "unreal/plugin/Source/MeshyDccUnreal/MeshyDccUnreal.Build.cs"
 COMMANDLET_PROBE = ROOT / "tests/ue_niagara_commandlet.py"
 SMOKE_RUNNER = ROOT / "scripts/run_ue_smoke.ps1"
-JUSTFILE = ROOT / "justfile"
 
 
 def _load_authoring_script():
@@ -78,8 +77,8 @@ def test_authoring_tool_forwards_complete_five_stage_semantics_to_native_bridge(
     unreal = types.ModuleType("unreal")
     unreal.log = MagicMock()
     unreal.EditorLevelLibrary = MagicMock()
-    unreal.DccMcpAutomationLibrary = MagicMock()
-    unreal.DccMcpAutomationLibrary.author_niagara_system_json.return_value = json.dumps(
+    unreal.MeshyDccAutomationLibrary = MagicMock()
+    unreal.MeshyDccAutomationLibrary.author_niagara_system_json.return_value = json.dumps(
         {
             "success": True,
             "system_path": "/Game/VFX/NS_ChainExplosion",
@@ -101,7 +100,7 @@ def test_authoring_tool_forwards_complete_five_stage_semantics_to_native_bridge(
 
     assert result["success"] is True
     assert result["context"]["emitter_count"] == 15
-    payload = json.loads(unreal.DccMcpAutomationLibrary.author_niagara_system_json.call_args.args[0])
+    payload = json.loads(unreal.MeshyDccAutomationLibrary.author_niagara_system_json.call_args.args[0])
     assert payload["asset_name"] == "NS_ChainExplosion"
     assert payload["asset_path"] == "/Game/VFX"
     assert payload["emitters"] == emitters
@@ -129,8 +128,8 @@ def test_authoring_tool_preserves_stable_native_failure_contract() -> None:
     unreal = types.ModuleType("unreal")
     unreal.log = MagicMock()
     unreal.EditorLevelLibrary = MagicMock()
-    unreal.DccMcpAutomationLibrary = MagicMock()
-    unreal.DccMcpAutomationLibrary.author_niagara_system_json.return_value = json.dumps(
+    unreal.MeshyDccAutomationLibrary = MagicMock()
+    unreal.MeshyDccAutomationLibrary.author_niagara_system_json.return_value = json.dumps(
         {
             "success": False,
             "error_code": "niagara_editor_unavailable",
@@ -199,7 +198,6 @@ def test_native_bridge_guards_external_ue58_api_before_any_editor_mutation() -> 
 def test_commandlet_probe_requires_stable_fail_closed_result_without_asset_mutation() -> None:
     probe = COMMANDLET_PROBE.read_text(encoding="utf-8")
     runner = SMOKE_RUNNER.read_text(encoding="utf-8")
-    justfile = JUSTFILE.read_text(encoding="utf-8")
 
     assert "author_niagara_system_json" in probe
     assert 'error_code == "niagara_editor_unavailable"' in probe
@@ -208,6 +206,4 @@ def test_commandlet_probe_requires_stable_fail_closed_result_without_asset_mutat
     assert 'ValidateSet("native", "python", "niagara", "niagara-commandlet")' in runner
     assert "-run=pythonscript" in runner
     assert "ue_niagara_commandlet.py" in runner
-    assert "DccMcp.Smoke.NiagaraSemanticAuthoring" in runner
-    assert "ue-niagara-smoke" in justfile
-    assert "ue-niagara-commandlet" in justfile
+    assert "MeshyDcc.Smoke.NiagaraSemanticAuthoring" in runner

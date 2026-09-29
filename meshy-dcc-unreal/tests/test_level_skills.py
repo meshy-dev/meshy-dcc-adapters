@@ -21,7 +21,7 @@ def test_save_level_uses_ue58_save_packages_signature():
         ),
         EditorLoadingAndSavingUtils=loading_and_saving,
     )
-    script = "src/dcc_mcp_unreal/skills/unreal-level/scripts/save_level.py"
+    script = "src/meshy_dcc_unreal/skills/unreal-level/scripts/save_level.py"
     spec = importlib.util.spec_from_file_location("_test_save_level", script)
     module = importlib.util.module_from_spec(spec)
 
@@ -45,7 +45,7 @@ def test_save_level_reports_mrq_active_before_attempting_a_save():
         LevelEditorSubsystem=type("LevelEditorSubsystem", (), {}),
         get_editor_subsystem=lambda cls: mrq_subsystem if cls.__name__ == "MoviePipelineQueueSubsystem" else None,
     )
-    script = "src/dcc_mcp_unreal/skills/unreal-level/scripts/save_level.py"
+    script = "src/meshy_dcc_unreal/skills/unreal-level/scripts/save_level.py"
     spec = importlib.util.spec_from_file_location("_test_save_level_mrq", script)
     module = importlib.util.module_from_spec(spec)
 
@@ -75,7 +75,7 @@ def test_save_level_distinguishes_editor_not_loaded():
             save_current_level=save_current_level,
         ),
     )
-    script = "src/dcc_mcp_unreal/skills/unreal-level/scripts/save_level.py"
+    script = "src/meshy_dcc_unreal/skills/unreal-level/scripts/save_level.py"
     spec = importlib.util.spec_from_file_location("_test_save_level_not_loaded", script)
     module = importlib.util.module_from_spec(spec)
 

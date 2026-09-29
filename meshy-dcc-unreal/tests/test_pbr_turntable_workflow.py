@@ -31,7 +31,7 @@ def test_create_level_saves_and_verifies_asset(monkeypatch):
 
     result = _load(
         "create_level",
-        "src/dcc_mcp_unreal/skills/unreal-level/scripts/create_level.py",
+        "src/meshy_dcc_unreal/skills/unreal-level/scripts/create_level.py",
     ).create_level(level_path="/Game/Drawcall557/Maps/L_Lookdev")
 
     assert result["success"] is True
@@ -63,7 +63,7 @@ def test_spawn_actor_assigns_static_mesh_and_reports_bounds(monkeypatch):
 
     result = _load(
         "spawn_static_mesh_actor",
-        "src/dcc_mcp_unreal/skills/unreal-actors/scripts/spawn_actor.py",
+        "src/meshy_dcc_unreal/skills/unreal-actors/scripts/spawn_actor.py",
     ).spawn_actor(static_mesh_path="/Game/Meshes/SM_Gun")
 
     assert result["success"] is True
@@ -79,17 +79,17 @@ def test_attach_actor_preserves_world_transform(monkeypatch):
     parent = MagicMock()
     child.get_attach_parent_actor.return_value = None
     monkeypatch.setitem(sys.modules, "unreal", unreal)
-    import dcc_mcp_unreal.api
+    import meshy_dcc_unreal.api
 
     monkeypatch.setattr(
-        dcc_mcp_unreal.api,
+        meshy_dcc_unreal.api,
         "find_level_actor",
         MagicMock(side_effect=lambda name: {"Gun": child, "TurntableRoot": parent}.get(name)),
     )
 
     result = _load(
         "attach_actor",
-        "src/dcc_mcp_unreal/skills/unreal-actors/scripts/attach_actor.py",
+        "src/meshy_dcc_unreal/skills/unreal-actors/scripts/attach_actor.py",
     ).attach_actor(child_actor_name="Gun", parent_actor_name="TurntableRoot")
 
     assert result["success"] is True
@@ -112,12 +112,12 @@ def test_get_actor_transform_reports_bounds(monkeypatch):
         SimpleNamespace(x=10.0, y=20.0, z=30.0),
         SimpleNamespace(x=40.0, y=50.0, z=60.0),
     )
-    import dcc_mcp_unreal.api
+    import meshy_dcc_unreal.api
 
-    monkeypatch.setattr(dcc_mcp_unreal.api, "find_level_actor", MagicMock(return_value=actor))
+    monkeypatch.setattr(meshy_dcc_unreal.api, "find_level_actor", MagicMock(return_value=actor))
     result = _load(
         "get_actor_transform_bounds",
-        "src/dcc_mcp_unreal/skills/unreal-actors/scripts/get_actor_transform.py",
+        "src/meshy_dcc_unreal/skills/unreal-actors/scripts/get_actor_transform.py",
     ).get_actor_transform(actor_name="Gun")
 
     assert result["context"]["bounds"]["origin"] == [10.0, 20.0, 30.0]
@@ -134,13 +134,13 @@ def test_set_actor_transform_accepts_spawned_actor_label(monkeypatch):
     actor.get_actor_rotation.return_value = SimpleNamespace(pitch=0.0, yaw=0.0, roll=0.0)
     actor.get_actor_scale3d.return_value = SimpleNamespace(x=1.0, y=1.0, z=1.0)
     monkeypatch.setitem(sys.modules, "unreal", unreal)
-    import dcc_mcp_unreal.api
+    import meshy_dcc_unreal.api
 
-    monkeypatch.setattr(dcc_mcp_unreal.api, "find_level_actor", MagicMock(return_value=actor))
+    monkeypatch.setattr(meshy_dcc_unreal.api, "find_level_actor", MagicMock(return_value=actor))
 
     result = _load(
         "set_actor_transform_by_label",
-        "src/dcc_mcp_unreal/skills/unreal-actors/scripts/set_actor_transform.py",
+        "src/meshy_dcc_unreal/skills/unreal-actors/scripts/set_actor_transform.py",
     ).set_actor_transform(actor_name="Lookdev_Floor", rotation_pitch=-8.4, rotation_yaw=90.0, scale_x=4.0)
 
     assert result["success"] is True
@@ -161,13 +161,13 @@ def test_configure_sky_light_assigns_hdr_texture_cube(monkeypatch):
     actor = MagicMock()
     actor.get_component_by_class.return_value = component
     monkeypatch.setitem(sys.modules, "unreal", unreal)
-    import dcc_mcp_unreal.api
+    import meshy_dcc_unreal.api
 
-    monkeypatch.setattr(dcc_mcp_unreal.api, "find_level_actor", MagicMock(return_value=actor))
+    monkeypatch.setattr(meshy_dcc_unreal.api, "find_level_actor", MagicMock(return_value=actor))
 
     result = _load(
         "configure_sky_light",
-        "src/dcc_mcp_unreal/skills/unreal-actors/scripts/configure_sky_light.py",
+        "src/meshy_dcc_unreal/skills/unreal-actors/scripts/configure_sky_light.py",
     ).configure_sky_light(
         actor_name="Lookdev_SkyLight",
         cubemap_path="/Game/Lookdev/T_Studio_HDRI",
@@ -192,13 +192,13 @@ def test_configure_light_sets_allowlisted_lookdev_properties(monkeypatch):
     actor = MagicMock()
     actor.get_component_by_class.return_value = component
     monkeypatch.setitem(sys.modules, "unreal", unreal)
-    import dcc_mcp_unreal.api
+    import meshy_dcc_unreal.api
 
-    monkeypatch.setattr(dcc_mcp_unreal.api, "find_level_actor", MagicMock(return_value=actor))
+    monkeypatch.setattr(meshy_dcc_unreal.api, "find_level_actor", MagicMock(return_value=actor))
 
     result = _load(
         "configure_light",
-        "src/dcc_mcp_unreal/skills/unreal-actors/scripts/configure_light.py",
+        "src/meshy_dcc_unreal/skills/unreal-actors/scripts/configure_light.py",
     ).configure_light(
         actor_name="Lookdev_Key",
         intensity=18000,
@@ -228,13 +228,13 @@ def test_configure_camera_exposure_disables_eye_adaptation(monkeypatch):
     actor = MagicMock()
     actor.get_component_by_class.return_value = component
     monkeypatch.setitem(sys.modules, "unreal", unreal)
-    import dcc_mcp_unreal.api
+    import meshy_dcc_unreal.api
 
-    monkeypatch.setattr(dcc_mcp_unreal.api, "find_level_actor", MagicMock(return_value=actor))
+    monkeypatch.setattr(meshy_dcc_unreal.api, "find_level_actor", MagicMock(return_value=actor))
 
     result = _load(
         "configure_camera_exposure",
-        "src/dcc_mcp_unreal/skills/unreal-actors/scripts/configure_camera_exposure.py",
+        "src/meshy_dcc_unreal/skills/unreal-actors/scripts/configure_camera_exposure.py",
     ).configure_camera_exposure(actor_name="Lookdev_Camera", exposure_compensation=-2.0)
 
     assert result["success"] is True
@@ -281,7 +281,7 @@ def test_create_ocio_configuration_persists_valid_display_transform(monkeypatch)
 
     result = _load(
         "create_ocio_configuration",
-        "src/dcc_mcp_unreal/skills/unreal-assets/scripts/create_ocio_configuration.py",
+        "src/meshy_dcc_unreal/skills/unreal-assets/scripts/create_ocio_configuration.py",
     ).create_ocio_configuration(
         asset_path="/Game/Drawcall557/Color/OCIO_ACES13_CG",
         configuration_path="ocio://cg-config-v2.2.0_aces-v1.3_ocio-v2.4",
@@ -299,7 +299,7 @@ def test_create_ocio_configuration_persists_valid_display_transform(monkeypatch)
 def test_start_render_requires_a_queued_job(monkeypatch):
     unreal = ModuleType("unreal")
     unreal.log = MagicMock()
-    unreal.DccMcpAutomationLibrary = SimpleNamespace(get_enabled_plugin_names=lambda: ["MovieRenderPipeline"])
+    unreal.MeshyDccAutomationLibrary = SimpleNamespace(get_enabled_plugin_names=lambda: ["MovieRenderPipeline"])
     unreal.MoviePipelineQueueSubsystem = type("MoviePipelineQueueSubsystem", (), {})
     subsystem = MagicMock()
     subsystem.is_rendering.return_value = False
@@ -309,7 +309,7 @@ def test_start_render_requires_a_queued_job(monkeypatch):
 
     result = _load(
         "start_queued_render",
-        "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/start_queued_render.py",
+        "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/start_queued_render.py",
     ).start_queued_render()
 
     assert result["success"] is False
@@ -317,10 +317,10 @@ def test_start_render_requires_a_queued_job(monkeypatch):
 
 
 def test_transform_keyframes_support_linear_interpolation():
-    script = (ROOT / "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/add_transform_keyframe.py").read_text(
+    script = (ROOT / "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/add_transform_keyframe.py").read_text(
         encoding="utf-8"
     )
-    tools = (ROOT / "src/dcc_mcp_unreal/skills/unreal-cinematics/tools.yaml").read_text(encoding="utf-8")
+    tools = (ROOT / "src/meshy_dcc_unreal/skills/unreal-cinematics/tools.yaml").read_text(encoding="utf-8")
 
     assert 'interpolation: str = "default"' in script
     assert "RichCurveInterpMode.RCIM_LINEAR" in script

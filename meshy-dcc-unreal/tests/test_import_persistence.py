@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from dcc_mcp_unreal.import_persistence import import_snapshot, persist_import
+from meshy_dcc_unreal.import_persistence import import_snapshot, persist_import
 
 
 def host(before=(), after=(), dirty_before=(), dirty_after=()):

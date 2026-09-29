@@ -1,0 +1,8 @@
+Meshy DCC for Unreal
+Copyright (c) 2026 Meshy
+
+This product contains code derived from dcc-mcp-unreal
+(https://github.com/dcc-mcp/dcc-mcp-unreal), used under the MIT License. The
+source it was imported from (tag v0.3.8) declares the MIT License and its
+author, Long Hao, in its package metadata but ships no license file; LICENSE
+carries the MIT permission notice for that copyright.

@@ -11,10 +11,10 @@ from typing import Any, Dict, List
 
 import pytest
 
-from dcc_mcp_unreal import _metasound_builder as api
+from meshy_dcc_unreal import _metasound_builder as api
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_SKILL_ROOT = _REPO_ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-metasound"
+_SKILL_ROOT = _REPO_ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-metasound"
 
 NODE_A = "(NodeID=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA)"
 NODE_B = "(NodeID=BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB)"
@@ -222,7 +222,7 @@ class FakeBuilderSubsystem:
         self.unregister_result = True
 
     def create_source_builder(self, name: str, output_format: str, is_one_shot: bool):
-        assert name.startswith("DccMcp_")
+        assert name.startswith("MeshyDcc_")
         assert output_format in {"MONO", "STEREO", "QUAD", "FIVE_DOT_ONE", "SEVEN_DOT_ONE"}
         assert isinstance(is_one_shot, bool)
         return (
@@ -390,7 +390,7 @@ def test_asset_path_rejects_non_package_paths(path: str) -> None:
 def test_unknown_engine_version_fails_closed(fake_unreal: Any) -> None:
     fake_unreal.unreal.SystemLibrary.version = "unknown"
     with pytest.raises(api.MetaSoundOperationError, match="parse"):
-        api.create_source("/Game/Audio/MS_Test", "dcc-mcp", "Mono", True)
+        api.create_source("/Game/Audio/MS_Test", "meshy-dcc", "Mono", True)
 
 
 def test_create_source_uses_builder_api_and_returns_handles(fake_unreal: Any) -> None:

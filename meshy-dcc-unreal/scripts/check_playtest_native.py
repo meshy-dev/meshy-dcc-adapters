@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "unreal/plugin/Source/DccMcpUnreal/Private/DccMcpAutomationLibrary.cpp"
+SOURCE = ROOT / "unreal/plugin/Source/MeshyDccUnreal/Private/MeshyDccAutomationLibrary.cpp"
 
 
 def extract_bodies(text):
@@ -34,22 +34,22 @@ def extract_bodies(text):
         return body
 
     bodies = [
-        extract("#if ENGINE_MAJOR_VERSION >= 5\nusing FDccMcpCoreTicker", "UClass* ResolveFabApiClass"),
+        extract("#if ENGINE_MAJOR_VERSION >= 5\nusing FMeshyDccCoreTicker", "UClass* ResolveFabApiClass"),
         extract("bool IsPlayableWorld("),
         extract("TArray<FVector> FindNavigationWaypoints("),
         extract("bool StartPieInputSteeringInternal("),
     ]
     for name in ("AcquirePieKey", "PressOwnedPieKey", "ReleaseOwnedPieKey"):
         bodies.append(
-            extract(("FString" if name == "AcquirePieKey" else "bool") + " UDccMcpAutomationLibrary::" + name + "(")
+            extract(("FString" if name == "AcquirePieKey" else "bool") + " UMeshyDccAutomationLibrary::" + name + "(")
         )
     for start in (
         "static bool IsOwnedPieNavigationContext(",
         "static bool IsBoundedPieLocation(",
-        "bool UDccMcpAutomationLibrary::NavigateOwnedPieToLocation(",
-        "bool UDccMcpAutomationLibrary::NavigateOwnedPieToActor(",
-        "bool UDccMcpAutomationLibrary::StartOwnedPieInputSteeringToLocation(",
-        "bool UDccMcpAutomationLibrary::StopOwnedPieNavigation(",
+        "bool UMeshyDccAutomationLibrary::NavigateOwnedPieToLocation(",
+        "bool UMeshyDccAutomationLibrary::NavigateOwnedPieToActor(",
+        "bool UMeshyDccAutomationLibrary::StartOwnedPieInputSteeringToLocation(",
+        "bool UMeshyDccAutomationLibrary::StopOwnedPieNavigation(",
     ):
         bodies.append(extract(start))
     return "\n\n".join(bodies), spans

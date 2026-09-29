@@ -1,0 +1,33 @@
+{
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "0.1.0",
+    "FriendlyName": "Meshy DCC",
+    "Description": "Lets the meshy-dcc CLI and AI agents drive the Unreal Editor: import Meshy models, inspect and edit levels, assets and materials.",
+    "Category": "Scripting",
+    "CreatedBy": "Meshy",
+    "CreatedByURL": "https://www.meshy.ai",
+    "DocsURL": "https://www.meshy.ai",
+    "MarketplaceURL": "",
+    "SupportURL": "https://www.meshy.ai",
+    "CanContainContent": true,
+    "IsBetaVersion": true,
+    "IsExperimentalVersion": false,
+    "Installed": false,
+    "EnabledByDefault": true,
+    "Plugins": [
+        {
+            "Name": "PythonScriptPlugin",
+            "Enabled": true
+        },
+        {
+            "Name": "EditorScriptingUtilities",
+            "Enabled": true
+        },
+        {
+            "Name": "Niagara",
+            "Enabled": true,
+            "Optional": true
+        }
+    ]
+}

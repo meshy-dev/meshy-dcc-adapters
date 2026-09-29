@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from dcc_mcp_unreal.native_discovery import NATIVE_TOOL_SPECS
+from meshy_dcc_unreal.native_discovery import NATIVE_TOOL_SPECS
 
 
 def test_native_discovery_only_advertises_cpp_bridge_actions() -> None:
@@ -9,9 +9,9 @@ def test_native_discovery_only_advertises_cpp_bridge_actions() -> None:
         / "unreal"
         / "plugin"
         / "Source"
-        / "DccMcpUnreal"
+        / "MeshyDccUnreal"
         / "Private"
-        / "DccMcpUnrealModule.cpp"
+        / "MeshyDccUnrealModule.cpp"
     ).read_text(encoding="utf-8")
 
     advertised = {spec["name"] for spec in NATIVE_TOOL_SPECS}

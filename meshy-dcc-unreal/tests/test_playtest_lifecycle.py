@@ -14,7 +14,7 @@ from jsonschema import Draft202012Validator
 SCRIPTS = Path(
     os.environ.get(
         "REVIEW_SCRIPTS",
-        str(Path(__file__).resolve().parents[1] / "src/dcc_mcp_unreal/skills/unreal-playtest-agent/scripts"),
+        str(Path(__file__).resolve().parents[1] / "src/meshy_dcc_unreal/skills/unreal-playtest-agent/scripts"),
     )
 )
 
@@ -43,7 +43,7 @@ def test_decorated_alignment_roundoff_obeys_schema(m, yaw):
 
 
 def test_core_catalog_observe_declares_owned_cleanup_mutation():
-    import dcc_mcp_core as core
+    import meshy_dcc_core as core
 
     registry = core.ToolRegistry()
     catalog = core.SkillCatalog(registry)
@@ -147,7 +147,7 @@ class Model:
             ),
             register_slate_post_tick_callback=self.register,
             unregister_slate_post_tick_callback=self.unregister,
-            DccMcpAutomationLibrary=N(
+            MeshyDccAutomationLibrary=N(
                 acquire_pie_key=self.acquire,
                 press_owned_pie_key=self.press,
                 release_owned_pie_key=self.release,
@@ -253,8 +253,8 @@ class Model:
 
     def nav(self, native=False):
         if native:
-            self.u.DccMcpAutomationLibrary.start_pie_input_steering_to_location = self.steering
-            self.u.DccMcpAutomationLibrary.start_owned_pie_input_steering_to_location = self.steering_owned
+            self.u.MeshyDccAutomationLibrary.start_pie_input_steering_to_location = self.steering
+            self.u.MeshyDccAutomationLibrary.start_owned_pie_input_steering_to_location = self.steering_owned
         self.action = self.r.execute_action(
             self.episode, "navigate_to_location", target_location=dict(x=2000, y=0, z=0)
         )["action_id"]
@@ -436,7 +436,7 @@ def test_terminal_drift_schemas_and_no_cross_session_telemetry(m, drift):
 
 @pytest.mark.parametrize("member", ["acquire_pie_key", "press_owned_pie_key", "release_owned_pie_key"])
 def test_missing_bridge_fails_closed(m, member):
-    delattr(m.u.DccMcpAutomationLibrary, member)
+    delattr(m.u.MeshyDccAutomationLibrary, member)
     with pytest.raises(RuntimeError):
         m.start()
     assert not m.receiver.events
@@ -578,7 +578,7 @@ def test_public_primary_error_retains_navigation_cleanup_diagnostics(m, tool, er
     def refused(w, c, p):
         raise Cancel("navigation cleanup refused")
 
-    m.u.DccMcpAutomationLibrary.stop_owned_pie_navigation = refused
+    m.u.MeshyDccAutomationLibrary.stop_owned_pie_navigation = refused
     m.player.failure = error_type("primary observation failure")
     result = getattr(m.load(tool), tool)(episode_id=m.episode, action_id=m.action)
     assert result["_meta"]["dcc.error"]["message"] == "primary observation failure"
@@ -671,7 +671,7 @@ def test_authorized_recovery_public_schema(m):
 
 
 def test_each_poll_failure_retires_any_new_owned_navigation(m):
-    m.u.DccMcpAutomationLibrary.start_owned_pie_input_steering_to_location = m.steering_owned
+    m.u.MeshyDccAutomationLibrary.start_owned_pie_input_steering_to_location = m.steering_owned
     m.action = m.r.execute_action(m.episode, "navigate_to_location", target_location=dict(x=2000, y=0, z=0))[
         "action_id"
     ]

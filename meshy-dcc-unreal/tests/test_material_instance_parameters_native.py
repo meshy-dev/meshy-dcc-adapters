@@ -8,10 +8,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-materials"
+SKILL = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-materials"
 SCRIPT = SKILL / "scripts" / "set_material_instance_parameters.py"
-HEADER = ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Public" / "DccMcpAutomationLibrary.h"
-IMPLEMENTATION = ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Private" / "DccMcpAutomationLibrary.cpp"
+HEADER = ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Public" / "MeshyDccAutomationLibrary.h"
+IMPLEMENTATION = ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Private" / "MeshyDccAutomationLibrary.cpp"
 
 
 def _load_script():
@@ -75,7 +75,7 @@ def test_python_tool_routes_all_parameter_types_through_native_bridge() -> None:
     unreal.EditorAssetLibrary = types.SimpleNamespace(
         load_asset=MagicMock(side_effect=lambda path: instance if path == "/Game/MI" else texture)
     )
-    unreal.DccMcpAutomationLibrary = bridge
+    unreal.MeshyDccAutomationLibrary = bridge
 
     with patch.dict(sys.modules, {"unreal": unreal}):
         result = _load_script().set_material_instance_parameters(
@@ -105,7 +105,7 @@ def test_non_numeric_vector_components_fail_before_native_mutation() -> None:
     unreal.MaterialInstanceConstant = MaterialInstanceConstant
     unreal.LinearColor = MagicMock(return_value=object())
     unreal.EditorAssetLibrary = types.SimpleNamespace(load_asset=MagicMock(return_value=instance))
-    unreal.DccMcpAutomationLibrary = bridge
+    unreal.MeshyDccAutomationLibrary = bridge
 
     with patch.dict(sys.modules, {"unreal": unreal}):
         result = _load_script().set_material_instance_parameters(

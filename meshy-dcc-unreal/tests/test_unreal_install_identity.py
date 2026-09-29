@@ -10,7 +10,7 @@ import pytest
 SCRIPT = (
     Path(__file__).resolve().parents[1]
     / "src"
-    / "dcc_mcp_unreal"
+    / "meshy_dcc_unreal"
     / "skills"
     / "unreal-automation"
     / "scripts"
@@ -35,11 +35,11 @@ def test_runtime_identity_binds_live_process_project_plugin_and_origins(monkeypa
     project = tmp_path / "Sample" / "Sample.uproject"
     project.parent.mkdir()
     project.write_text("{}", encoding="utf-8")
-    plugin = project.parent / "Plugins" / "DccMcpUnreal"
+    plugin = project.parent / "Plugins" / "MeshyDccUnreal"
     plugin.mkdir(parents=True)
-    (plugin / "DccMcpUnreal.uplugin").write_text("{}", encoding="utf-8")
-    adapter_origin = tmp_path / "site" / "dcc_mcp_unreal" / "__init__.py"
-    core_origin = tmp_path / "site" / "dcc_mcp_core" / "__init__.py"
+    (plugin / "MeshyDccUnreal.uplugin").write_text("{}", encoding="utf-8")
+    adapter_origin = tmp_path / "site" / "meshy_dcc_unreal" / "__init__.py"
+    core_origin = tmp_path / "site" / "meshy_dcc_core" / "__init__.py"
     adapter_origin.parent.mkdir(parents=True)
     core_origin.parent.mkdir(parents=True)
     adapter_origin.write_text("# adapter\n", encoding="utf-8")
@@ -52,15 +52,15 @@ def test_runtime_identity_binds_live_process_project_plugin_and_origins(monkeypa
         PluginBlueprintLibrary=types.SimpleNamespace(get_plugin_base_dir=lambda _name: str(plugin)),
         SystemLibrary=types.SimpleNamespace(get_engine_version=lambda: "5.7.0-release"),
     )
-    monkeypatch.setitem(sys.modules, "dcc_mcp_unreal", adapter_module)
-    monkeypatch.setitem(sys.modules, "dcc_mcp_core", core_module)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_unreal", adapter_module)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_core", core_module)
     monkeypatch.setitem(sys.modules, "init_unreal", init_module)
     monkeypatch.setitem(sys.modules, "unreal", unreal_module)
     monkeypatch.setattr(sys, "executable", str(editor))
     monkeypatch.setattr(
         helpers["metadata"],
         "version",
-        lambda name: {"dcc-mcp-unreal": "0.3.0", "dcc-mcp-core": "0.20.13"}[name],
+        lambda name: {"meshy-dcc-unreal": "0.3.0", "meshy-dcc-core": "0.20.13"}[name],
     )
     server = types.SimpleNamespace(instance_id="11111111-1111-1111-1111-111111111111")
 

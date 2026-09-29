@@ -9,7 +9,7 @@ from unittest.mock import patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-hair"
+SKILL = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-hair"
 SCRIPTS = SKILL / "scripts"
 
 

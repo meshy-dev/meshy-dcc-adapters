@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 from jsonschema import Draft202012Validator
 
-_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_unreal" / "skills" / "unreal-playtest-agent"
+_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_unreal" / "skills" / "unreal-playtest-agent"
 _RUNTIME_PATH = _SKILL_DIR / "scripts" / "_playtest_runtime.py"
 
 
@@ -228,18 +228,18 @@ def _load_runtime(monkeypatch, *, reports_pie=True):
         def simple_move_to_actor(actual_controller, target):
             navigation_calls.append((actual_controller, target))
 
-    class DccMcpAutomationLibrary:
+    class MeshyDccAutomationLibrary:
         @staticmethod
         def acquire_pie_key(world, bound_controller, key):
             return (world, bound_controller, key)
 
         @staticmethod
         def press_owned_pie_key(owner):
-            return DccMcpAutomationLibrary.inject_pie_key(owner[2], True)
+            return MeshyDccAutomationLibrary.inject_pie_key(owner[2], True)
 
         @staticmethod
         def release_owned_pie_key(owner):
-            return DccMcpAutomationLibrary.inject_pie_key(owner[2], False)
+            return MeshyDccAutomationLibrary.inject_pie_key(owner[2], False)
 
         @staticmethod
         def stop_owned_pie_navigation(world, bound_controller, pawn):
@@ -317,7 +317,7 @@ def _load_runtime(monkeypatch, *, reports_pie=True):
         UnrealEditorSubsystem=UnrealEditorSubsystem,
         GameplayStatics=GameplayStatics,
         AIBlueprintHelperLibrary=AIBlueprintHelperLibrary,
-        DccMcpAutomationLibrary=DccMcpAutomationLibrary,
+        MeshyDccAutomationLibrary=MeshyDccAutomationLibrary,
         Vector=_Vector,
         Rotator=_Rotator,
         get_editor_subsystem=get_editor_subsystem,
@@ -462,7 +462,7 @@ def test_observe_returns_bounded_entities_and_scalar_attributes(monkeypatch):
         }
     )
 
-    assert observation["schema"] == "dcc-mcp-playtest-observation-v1"
+    assert observation["schema"] == "meshy-dcc-playtest-observation-v1"
     possessed = observation["runtime"].pop("possessed")
     session = observation["runtime"].pop("session")
     assert observation["runtime"] == {
@@ -1116,14 +1116,14 @@ def test_key_release_failure_does_not_hide_possession_drift_transition(monkeypat
     unreal = runtime._unreal()
     monkeypatch.setattr(unreal, "register_slate_post_tick_callback", lambda callback: callbacks.append(callback) or 1)
     monkeypatch.setattr(unreal, "unregister_slate_post_tick_callback", lambda _handle: None)
-    original_inject = unreal.DccMcpAutomationLibrary.inject_pie_key
+    original_inject = unreal.MeshyDccAutomationLibrary.inject_pie_key
 
     def fail_release(key, pressed):
         if not pressed:
             raise RuntimeError("key release failed")
         return original_inject(key, pressed)
 
-    monkeypatch.setattr(unreal.DccMcpAutomationLibrary, "inject_pie_key", fail_release)
+    monkeypatch.setattr(unreal.MeshyDccAutomationLibrary, "inject_pie_key", fail_release)
     monotonic = [300.0]
     monkeypatch.setattr(runtime.time, "monotonic", lambda: monotonic[0])
     episode = runtime.start_episode(include_pawns=True, max_entities=8)
@@ -1149,7 +1149,7 @@ def test_key_release_failure_does_not_hide_possession_drift_transition(monkeypat
 def test_zero_duration_key_release_survives_drift_after_key_down(monkeypatch):
     runtime, _player, _enemy, _door, controller, keys, _navigation = _load_runtime(monkeypatch)
     unreal = runtime._unreal()
-    original_inject = unreal.DccMcpAutomationLibrary.inject_pie_key
+    original_inject = unreal.MeshyDccAutomationLibrary.inject_pie_key
 
     def drift_after_key_down(key, pressed):
         accepted = original_inject(key, pressed)
@@ -1157,7 +1157,7 @@ def test_zero_duration_key_release_survives_drift_after_key_down(monkeypatch):
             controller.possessed_pawn = _Actor("Replacement_0", "PlayerPawn", _Vector())
         return accepted
 
-    monkeypatch.setattr(unreal.DccMcpAutomationLibrary, "inject_pie_key", drift_after_key_down)
+    monkeypatch.setattr(unreal.MeshyDccAutomationLibrary, "inject_pie_key", drift_after_key_down)
     episode = runtime.start_episode(include_pawns=True, max_entities=8)
     accepted = runtime.execute_action(
         episode["episode_id"],
@@ -1248,7 +1248,7 @@ def test_finishing_episode_releases_bounded_key_exactly_once(monkeypatch):
 
 
 def test_pie_loss_does_not_reclassify_pending_movement_as_completed(monkeypatch):
-    from dcc_mcp_unreal.pie_session import PieSessionUnavailableError
+    from meshy_dcc_unreal.pie_session import PieSessionUnavailableError
 
     runtime, _player, _enemy, _door, _controller, _keys, _navigation = _load_runtime(monkeypatch)
     episode = runtime.start_episode(include_pawns=True, max_entities=8)
@@ -1277,7 +1277,7 @@ def test_pie_loss_does_not_reclassify_pending_movement_as_completed(monkeypatch)
 
 
 def test_pie_loss_releases_bounded_key_once_without_hiding_primary_error(monkeypatch):
-    from dcc_mcp_unreal.pie_session import PieSessionUnavailableError
+    from meshy_dcc_unreal.pie_session import PieSessionUnavailableError
 
     runtime, _player, _enemy, _door, _controller, keys, _navigation = _load_runtime(monkeypatch)
     callbacks = []
@@ -1310,7 +1310,7 @@ def test_pie_loss_releases_bounded_key_once_without_hiding_primary_error(monkeyp
 
 
 def test_poll_tool_route_preserves_retryable_pie_loss(monkeypatch):
-    from dcc_mcp_unreal.pie_session import PieSessionUnavailableError
+    from meshy_dcc_unreal.pie_session import PieSessionUnavailableError
 
     def unavailable(_episode_id, _action_id):
         raise PieSessionUnavailableError("PIE world was lost")

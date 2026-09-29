@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSET_SCRIPTS = ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-assets" / "scripts"
-MATERIAL_SKILL = ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-materials"
+ASSET_SCRIPTS = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-assets" / "scripts"
+MATERIAL_SKILL = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-materials"
 
 
 def _load_script(name: str, path: Path):

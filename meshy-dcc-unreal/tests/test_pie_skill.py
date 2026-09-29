@@ -17,7 +17,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 _PIE_SCRIPTS_DIR = str(
-    Path(__file__).resolve().parent.parent / "src" / "dcc_mcp_unreal" / "skills" / "unreal-pie" / "scripts"
+    Path(__file__).resolve().parent.parent / "src" / "meshy_dcc_unreal" / "skills" / "unreal-pie" / "scripts"
 )
 
 if _PIE_SCRIPTS_DIR not in sys.path:
@@ -62,7 +62,7 @@ def _fake_unreal_module():
     unreal.EditorLevelLibrary = MagicMock()
     unreal.SystemLibrary = MagicMock()
 
-    unreal.DccMcpAutomationLibrary = types.SimpleNamespace(
+    unreal.MeshyDccAutomationLibrary = types.SimpleNamespace(
         inject_pie_key=MagicMock(return_value=True),
         inject_pie_axis=MagicMock(return_value=True),
         inject_pie_look=MagicMock(return_value=True),
@@ -143,14 +143,14 @@ class TestPieHelpers:
     def test_create_job(self):
         """create_job returns a unique job_id and stores the entry."""
         mod = _ensure_fresh_helpers()
-        job_id = mod.create_job("automation_test", "DccMcp.Smoke")
+        job_id = mod.create_job("automation_test", "MeshyDcc.Smoke")
         assert job_id.startswith("pie_automation_test_")
         assert len(job_id) > 20
 
         job = mod.get_job(job_id)
         assert job is not None
         assert job["job_type"] == "automation_test"
-        assert job["filter"] == "DccMcp.Smoke"
+        assert job["filter"] == "MeshyDcc.Smoke"
         assert job["status"] == "queued"
 
     def test_get_job_missing(self):
@@ -387,7 +387,7 @@ class TestPieInjectInput:
             result = mod.pie_inject_input(input_type="key_press", key="W")
             assert result["success"] is True
             assert "W" in str(result.get("context", {}).get("key", ""))
-            fake_ue.DccMcpAutomationLibrary.inject_pie_key.assert_called_once_with("W", True)
+            fake_ue.MeshyDccAutomationLibrary.inject_pie_key.assert_called_once_with("W", True)
 
     def test_key_press_fails_closed_outside_pie(self):
         """Acknowledgement is not returned when there is no active PIE world."""
@@ -399,7 +399,7 @@ class TestPieInjectInput:
             mod = _import_script("pie_inject_input")
             result = mod.pie_inject_input(input_type="key_press", key="W")
             assert result["success"] is False
-            fake_ue.DccMcpAutomationLibrary.inject_pie_key.assert_not_called()
+            fake_ue.MeshyDccAutomationLibrary.inject_pie_key.assert_not_called()
 
     def test_key_tap_schedules_release_without_blocking_the_game_thread(self):
         """A held tap releases on a later Slate tick instead of sleeping the PIE thread."""
@@ -416,7 +416,7 @@ class TestPieInjectInput:
 
             assert result["success"] is True
             assert result["context"]["release_scheduled"] is True
-            assert fake_ue.DccMcpAutomationLibrary.inject_pie_key.call_args_list == [
+            assert fake_ue.MeshyDccAutomationLibrary.inject_pie_key.call_args_list == [
                 (("W", True),),
                 (("W", False),),
             ]
@@ -450,7 +450,7 @@ class TestPieInjectInput:
             )
 
             assert result["success"] is True
-            fake_ue.DccMcpAutomationLibrary.click_pie_pointer_button.assert_called_once_with(
+            fake_ue.MeshyDccAutomationLibrary.click_pie_pointer_button.assert_called_once_with(
                 "LeftMouseButton", 0.125, 0.235
             )
 
@@ -465,7 +465,7 @@ class TestPieInjectInput:
             result = mod.pie_inject_input(input_type="mouse_button", button="left", position_x=0.125)
 
             assert result["success"] is False
-            fake_ue.DccMcpAutomationLibrary.click_pie_pointer_button.assert_not_called()
+            fake_ue.MeshyDccAutomationLibrary.click_pie_pointer_button.assert_not_called()
 
     def test_mouse_move_uses_native_pie_look_bridge(self):
         """mouse_move drives the possessed controller instead of a transient raw axis sample."""
@@ -478,8 +478,8 @@ class TestPieInjectInput:
             mod = _import_script("pie_inject_input")
             result = mod.pie_inject_input(input_type="mouse_move", delta_x=10.0, delta_y=20.0)
             assert result["success"] is True
-            fake_ue.DccMcpAutomationLibrary.inject_pie_look.assert_called_once_with(10.0, 20.0)
-            fake_ue.DccMcpAutomationLibrary.inject_pie_axis.assert_not_called()
+            fake_ue.MeshyDccAutomationLibrary.inject_pie_look.assert_called_once_with(10.0, 20.0)
+            fake_ue.MeshyDccAutomationLibrary.inject_pie_axis.assert_not_called()
 
     def test_mouse_move_fails_closed_without_native_pie_look_bridge(self):
         """Older native plugins cannot acknowledge a look delta they cannot apply reliably."""
@@ -488,12 +488,12 @@ class TestPieInjectInput:
             import unreal as fake_ue
 
             fake_ue._fake_level_editor_subsystem.is_in_play_in_editor.return_value = True
-            del fake_ue.DccMcpAutomationLibrary.inject_pie_look
+            del fake_ue.MeshyDccAutomationLibrary.inject_pie_look
             mod = _import_script("pie_inject_input")
             result = mod.pie_inject_input(input_type="mouse_move", delta_x=10.0, delta_y=20.0)
 
             assert result["success"] is False
-            fake_ue.DccMcpAutomationLibrary.inject_pie_axis.assert_not_called()
+            fake_ue.MeshyDccAutomationLibrary.inject_pie_axis.assert_not_called()
 
     def test_key_name_resolution(self):
         """Common short key names resolve to Unreal key names."""
@@ -600,7 +600,7 @@ class TestPieJobWorkflow:
         with _patch_unreal():
             _ensure_fresh_helpers()
             mod2 = _import_script("pie_run_test")
-            result = mod2.pie_run_test(filter="DccMcp.Smoke")
+            result = mod2.pie_run_test(filter="MeshyDcc.Smoke")
             assert result["success"] is True
             job_id = result.get("context", {}).get("job_id")
             assert job_id is not None
@@ -627,7 +627,7 @@ class TestPieJobWorkflow:
             _ensure_fresh_helpers()
             mod_run = _import_script("pie_run_test")
             mod_poll = _import_script("pie_poll_test")
-            run_result = mod_run.pie_run_test(filter="DccMcp.Smoke")
+            run_result = mod_run.pie_run_test(filter="MeshyDcc.Smoke")
             job_id = run_result["context"]["job_id"]
             poll_result = mod_poll.pie_poll_test(job_id=job_id)
             assert poll_result["success"] is True
@@ -636,11 +636,11 @@ class TestPieJobWorkflow:
     def test_poll_not_run_stays_pending(self):
         """A discovered test that has not run is not a successful completion."""
         helpers = _ensure_fresh_helpers()
-        job_id = helpers.create_job("automation_test", "DccMcp.Smoke")
+        job_id = helpers.create_job("automation_test", "MeshyDcc.Smoke")
         fake = _fake_unreal_module()
-        fake.DccMcpAutomationLibrary = MagicMock()
-        fake.DccMcpAutomationLibrary.list_automation_tests_json.return_value = (
-            '{"tests": [{"name": "DccMcp.Smoke", "state": "NotRun"}]}'
+        fake.MeshyDccAutomationLibrary = MagicMock()
+        fake.MeshyDccAutomationLibrary.list_automation_tests_json.return_value = (
+            '{"tests": [{"name": "MeshyDcc.Smoke", "state": "NotRun"}]}'
         )
 
         with patch.dict(sys.modules, {"unreal": fake}):
@@ -673,7 +673,7 @@ class TestPieJobWorkflow:
             mod_cancel = _import_script("pie_cancel_job")
 
             # 1. Queue
-            run_result = mod_run.pie_run_test(filter="DccMcp.Smoke")
+            run_result = mod_run.pie_run_test(filter="MeshyDcc.Smoke")
             assert run_result["success"] is True
             job_id = run_result["context"]["job_id"]
 

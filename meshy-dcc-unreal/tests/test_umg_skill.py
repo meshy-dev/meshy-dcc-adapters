@@ -16,7 +16,7 @@ from unittest import mock
 
 import pytest
 
-_SKILL_ROOT = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_unreal" / "skills" / "unreal-umg"
+_SKILL_ROOT = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_unreal" / "skills" / "unreal-umg"
 _SCRIPTS_DIR = _SKILL_ROOT / "scripts"
 
 

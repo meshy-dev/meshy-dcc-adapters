@@ -12,12 +12,12 @@ from unittest.mock import MagicMock, patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-level"
+SKILL = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-level"
 SCRIPT = SKILL / "scripts" / "focus_level_editor_viewport.py"
 TOOLS = SKILL / "tools.yaml"
-HEADER = ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Public" / "DccMcpAutomationLibrary.h"
-IMPLEMENTATION = ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Private" / "DccMcpAutomationLibrary.cpp"
-AUTOMATION = ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Private" / "DccMcpUnrealAutomationTests.cpp"
+HEADER = ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Public" / "MeshyDccAutomationLibrary.h"
+IMPLEMENTATION = ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Private" / "MeshyDccAutomationLibrary.cpp"
+AUTOMATION = ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Private" / "MeshyDccUnrealAutomationTests.cpp"
 
 
 def _load_script():
@@ -40,7 +40,7 @@ def test_tool_routes_to_native_bridge_and_returns_verified_postconditions() -> N
     }
     bridge = types.SimpleNamespace(focus_level_editor_viewport=MagicMock(return_value=json.dumps(native_result)))
     unreal = types.ModuleType("unreal")
-    unreal.DccMcpAutomationLibrary = bridge
+    unreal.MeshyDccAutomationLibrary = bridge
 
     with patch.dict(sys.modules, {"unreal": unreal}):
         result = _load_script().focus_level_editor_viewport()
@@ -66,7 +66,7 @@ def test_tool_fails_closed_when_native_postconditions_are_incomplete() -> None:
     }
     bridge = types.SimpleNamespace(focus_level_editor_viewport=MagicMock(return_value=json.dumps(native_result)))
     unreal = types.ModuleType("unreal")
-    unreal.DccMcpAutomationLibrary = bridge
+    unreal.MeshyDccAutomationLibrary = bridge
 
     with patch.dict(sys.modules, {"unreal": unreal}):
         result = _load_script().focus_level_editor_viewport()
@@ -87,7 +87,7 @@ def test_tool_rejects_nonboolean_native_success() -> None:
     }
     bridge = types.SimpleNamespace(focus_level_editor_viewport=MagicMock(return_value=json.dumps(native_result)))
     unreal = types.ModuleType("unreal")
-    unreal.DccMcpAutomationLibrary = bridge
+    unreal.MeshyDccAutomationLibrary = bridge
 
     with patch.dict(sys.modules, {"unreal": unreal}):
         result = _load_script().focus_level_editor_viewport()
@@ -116,7 +116,7 @@ def test_native_bridge_uses_slate_level_editor_apis_and_has_an_automation_test()
     automation = AUTOMATION.read_text(encoding="utf-8")
 
     assert "static FString FocusLevelEditorViewport();" in header
-    assert "FString UDccMcpAutomationLibrary::FocusLevelEditorViewport()" in implementation
+    assert "FString UMeshyDccAutomationLibrary::FocusLevelEditorViewport()" in implementation
     assert "IsInGameThread()" in implementation
     assert 'TEXT("OutputLog")' in implementation
     assert 'TEXT("MessageLog")' in implementation
@@ -135,5 +135,5 @@ def test_native_bridge_uses_slate_level_editor_apis_and_has_an_automation_test()
     assert "HasFocusedDescendants()" in implementation
     assert "postcondition_met" in implementation
     assert "SendInput" not in implementation
-    assert "FDccMcpEditorViewportFocusTest" in automation
-    assert "DccMcp.Smoke.EditorViewportFocus" in automation
+    assert "FMeshyDccEditorViewportFocusTest" in automation
+    assert "MeshyDcc.Smoke.EditorViewportFocus" in automation

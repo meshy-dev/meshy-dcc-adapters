@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_unreal.compatibility import parse_unreal_version, resolve_unreal_runtime, unreal_compatibility
+from meshy_dcc_unreal.compatibility import parse_unreal_version, resolve_unreal_runtime, unreal_compatibility
 
 
 @pytest.mark.parametrize(
@@ -36,5 +36,5 @@ def test_unreal_startup_resolves_runtime_before_importing_the_package():
 
 def test_ue58_can_compose_dcc_and_epic_mcp():
     compatibility = unreal_compatibility("5.8", has_embedded_python=True, has_official_mcp=True)
-    assert compatibility["integration_tier"] == "dcc-mcp-plus-epic"
+    assert compatibility["integration_tier"] == "meshy-dcc-plus-epic"
     assert compatibility["official_mcp_bridge"] is True

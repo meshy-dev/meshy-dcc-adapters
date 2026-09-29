@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build"
 OUTPUT = ROOT / "dist" / "standalone"
 README = ROOT / "packaging" / "standalone-README.md"
-NAME = "dcc-mcp-unreal" + (".exe" if sys.platform == "win32" else "")
+NAME = "meshy-dcc-unreal" + (".exe" if sys.platform == "win32" else "")
 
 
 def _find_binary() -> Path:
@@ -34,7 +34,7 @@ def _write_manifest(directory: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--server", required=True, type=Path, help="dcc-mcp-server binary to bundle")
+    parser.add_argument("--server", required=True, type=Path, help="meshy-dcc-server binary to bundle")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
     if not args.server.is_file():

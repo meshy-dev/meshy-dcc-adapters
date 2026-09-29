@@ -6,16 +6,16 @@ import types
 from pathlib import Path
 
 SCRIPT = (
-    Path(__file__).parents[1] / "src" / "dcc_mcp_unreal" / "skills" / "unreal-assets" / "scripts" / "get_asset_info.py"
+    Path(__file__).parents[1] / "src" / "meshy_dcc_unreal" / "skills" / "unreal-assets" / "scripts" / "get_asset_info.py"
 )
 
 
 def _load_module(monkeypatch):
-    core_skill = types.ModuleType("dcc_mcp_core.skill")
+    core_skill = types.ModuleType("meshy_dcc_core.skill")
     core_skill.skill_entry = lambda function: function
     core_skill.skill_error = lambda *args, **kwargs: {"success": False, **kwargs}
     core_skill.skill_success = lambda message, **kwargs: {"success": True, "message": message, **kwargs}
-    monkeypatch.setitem(sys.modules, "dcc_mcp_core.skill", core_skill)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_core.skill", core_skill)
 
     asset_data = types.ModuleType("_asset_data")
     asset_data.configure_dependency_options = lambda options: options

@@ -27,7 +27,7 @@ def test_refresh_pcg_rebuilds_matching_components():
             get_all_level_actors=lambda: [actor],
         ),
     )
-    script = "src/dcc_mcp_unreal/skills/unreal-pcg/scripts/refresh_pcg.py"
+    script = "src/meshy_dcc_unreal/skills/unreal-pcg/scripts/refresh_pcg.py"
     spec = importlib.util.spec_from_file_location("_test_refresh_pcg", script)
     module = importlib.util.module_from_spec(spec)
 
@@ -59,7 +59,7 @@ def test_refresh_pcg_passes_force_to_unreal_generate():
             get_all_level_actors=lambda: [actor],
         ),
     )
-    script = "src/dcc_mcp_unreal/skills/unreal-pcg/scripts/refresh_pcg.py"
+    script = "src/meshy_dcc_unreal/skills/unreal-pcg/scripts/refresh_pcg.py"
     spec = importlib.util.spec_from_file_location("_test_refresh_pcg_force", script)
     module = importlib.util.module_from_spec(spec)
 

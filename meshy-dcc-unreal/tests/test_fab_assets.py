@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_unreal" / "skills" / "unreal-fab-assets" / "scripts"
+SCRIPTS = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_unreal" / "skills" / "unreal-fab-assets" / "scripts"
 
 
 def load_helper():
@@ -66,7 +66,7 @@ def test_listing_id_must_be_uuid():
 
 
 def test_fab_skill_contract_validates():
-    from dcc_mcp_core import validate_skill
+    from meshy_dcc_core import validate_skill
 
     skill_dir = SCRIPTS.parent
     report = validate_skill(str(skill_dir))

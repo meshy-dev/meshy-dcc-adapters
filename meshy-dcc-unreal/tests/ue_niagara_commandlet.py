@@ -11,8 +11,8 @@ import unreal
 
 
 def main() -> dict:
-    asset_name = f"NS_DccMcpCommandletProbe_{uuid.uuid4().hex[:8]}"
-    package_path = "/Game/DccMcpAutomation/Commandlet"
+    asset_name = f"NS_MeshyDccCommandletProbe_{uuid.uuid4().hex[:8]}"
+    package_path = "/Game/MeshyDccAutomation/Commandlet"
     object_path = f"{package_path}/{asset_name}"
     specification = {
         "asset_name": asset_name,
@@ -32,7 +32,7 @@ def main() -> dict:
     }
 
     native_result = json.loads(
-        unreal.DccMcpAutomationLibrary.author_niagara_system_json(json.dumps(specification, separators=(",", ":")))
+        unreal.MeshyDccAutomationLibrary.author_niagara_system_json(json.dumps(specification, separators=(",", ":")))
     )
     error_code = native_result.get("error_code")
     asset_exists = unreal.EditorAssetLibrary.does_asset_exist(object_path)
@@ -49,12 +49,12 @@ def main() -> dict:
         "asset_exists": asset_exists,
     }
 
-    result_path = os.environ.get("DCC_MCP_UNREAL_TEST_RESULT", "")
+    result_path = os.environ.get("MESHY_DCC_UNREAL_TEST_RESULT", "")
     if result_path:
         path = Path(result_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    unreal.log(f"DCC_MCP_NIAGARA_COMMANDLET_RESULT={json.dumps(result, separators=(',', ':'))}")
+    unreal.log(f"MESHY_DCC_NIAGARA_COMMANDLET_RESULT={json.dumps(result, separators=(',', ':'))}")
     if not success:
         raise RuntimeError(f"Niagara commandlet contract failed: {result}")
     return result

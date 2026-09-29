@@ -1,21 +1,21 @@
 [CmdletBinding()]
 param(
     [string]$Version = "latest",
-    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "dcc-mcp-unreal\standalone"),
+    [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "meshy-dcc-unreal\standalone"),
     [string]$ArchivePath = "",
     [switch]$NoPersistEnvironment
 )
 
 $ErrorActionPreference = "Stop"
-$repo = "dcc-mcp/dcc-mcp-unreal"
+$repo = "meshy-dcc/meshy-dcc-unreal"
 $install = [IO.Path]::GetFullPath($InstallDir)
 $parent = Split-Path -Parent $install
 if (-not $parent) { throw "InstallDir must have a parent directory: $install" }
 
-$work = Join-Path ([IO.Path]::GetTempPath()) ("dcc-mcp-unreal-install-" + [guid]::NewGuid().ToString("N"))
+$work = Join-Path ([IO.Path]::GetTempPath()) ("meshy-dcc-unreal-install-" + [guid]::NewGuid().ToString("N"))
 $download = Join-Path $work "standalone.zip"
-$staging = Join-Path $parent (".dcc-mcp-unreal-staging-" + [guid]::NewGuid().ToString("N"))
-$backup = Join-Path $parent (".dcc-mcp-unreal-backup-" + [guid]::NewGuid().ToString("N"))
+$staging = Join-Path $parent (".meshy-dcc-unreal-staging-" + [guid]::NewGuid().ToString("N"))
+$backup = Join-Path $parent (".meshy-dcc-unreal-backup-" + [guid]::NewGuid().ToString("N"))
 
 try {
     New-Item -ItemType Directory -Path $work, $staging -Force | Out-Null
@@ -24,15 +24,15 @@ try {
     } else {
         $releaseUri = if ($Version -eq "latest") { "https://api.github.com/repos/$repo/releases/latest" } else { "https://api.github.com/repos/$repo/releases/tags/$Version" }
         $release = Invoke-RestMethod -Uri $releaseUri -Headers @{ Accept = "application/vnd.github+json" }
-        $asset = @($release.assets) | Where-Object { $_.name -match '^dcc-mcp-unreal-v?.+-windows-X64\.zip$' } | Select-Object -First 1
+        $asset = @($release.assets) | Where-Object { $_.name -match '^meshy-dcc-unreal-v?.+-windows-X64\.zip$' } | Select-Object -First 1
         if (-not $asset) { throw "Windows standalone asset was not found in release $($release.tag_name)" }
         Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $download -UseBasicParsing
     }
 
     Expand-Archive -LiteralPath $download -DestinationPath $staging
     $manifest = Join-Path $staging "SHA256SUMS"
-    $launcher = Join-Path $staging "dcc-mcp-unreal.exe"
-    $server = Join-Path $staging "dcc-mcp-server.exe"
+    $launcher = Join-Path $staging "meshy-dcc-unreal.exe"
+    $server = Join-Path $staging "meshy-dcc-server.exe"
     foreach ($required in $manifest, $launcher, $server) {
         if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Archive is missing $(Split-Path -Leaf $required)" }
     }
@@ -49,7 +49,7 @@ try {
         if ((Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash -ne $expected) { throw "SHA-256 mismatch: $relative" }
         $verified[$relative.ToLowerInvariant()] = $true
     }
-    foreach ($requiredName in "dcc-mcp-unreal.exe", "dcc-mcp-server.exe") {
+    foreach ($requiredName in "meshy-dcc-unreal.exe", "meshy-dcc-server.exe") {
         if (-not $verified.ContainsKey($requiredName)) { throw "SHA256SUMS does not cover $requiredName" }
     }
 
@@ -62,11 +62,11 @@ try {
     if (Test-Path -LiteralPath $install) { Move-Item -LiteralPath $install -Destination $backup }
     Move-Item -LiteralPath $staging -Destination $install
     if (-not $NoPersistEnvironment) {
-        [Environment]::SetEnvironmentVariable("DCC_MCP_SERVER_EXECUTABLE", (Join-Path $install "dcc-mcp-unreal.exe"), "User")
+        [Environment]::SetEnvironmentVariable("MESHY_DCC_SERVER_EXECUTABLE", (Join-Path $install "meshy-dcc-unreal.exe"), "User")
     }
-    $env:DCC_MCP_SERVER_EXECUTABLE = Join-Path $install "dcc-mcp-unreal.exe"
+    $env:MESHY_DCC_SERVER_EXECUTABLE = Join-Path $install "meshy-dcc-unreal.exe"
     if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Recurse -Force }
-    Write-Host "Installed standalone sidecar: $env:DCC_MCP_SERVER_EXECUTABLE"
+    Write-Host "Installed standalone sidecar: $env:MESHY_DCC_SERVER_EXECUTABLE"
 } catch {
     if ((Test-Path -LiteralPath $backup) -and -not (Test-Path -LiteralPath $install)) { Move-Item -LiteralPath $backup -Destination $install }
     throw

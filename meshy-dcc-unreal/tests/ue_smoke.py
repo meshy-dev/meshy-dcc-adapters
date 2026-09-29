@@ -1,7 +1,7 @@
-"""Legacy Unreal Editor smoke entry point for DccMcpUnreal.
+"""Legacy Unreal Editor smoke entry point for MeshyDccUnreal.
 
 Run with UnrealEditor-Cmd.exe and ``-ExecutePythonScript``.  The preferred
-entry point is the native Automation Test ``DccMcp.Smoke.ServerStarts``; this
+entry point is the native Automation Test ``MeshyDcc.Smoke.ServerStarts``; this
 wrapper remains useful for older plugin builds or direct script debugging.
 """
 
@@ -21,7 +21,7 @@ def _ensure_plugin_python_on_path() -> None:
         if source_plugin_python_str not in sys.path:
             sys.path.insert(0, source_plugin_python_str)
 
-    plugin_python = project_root / "Plugins" / "DccMcpUnreal" / "python"
+    plugin_python = project_root / "Plugins" / "MeshyDccUnreal" / "python"
     if plugin_python.is_dir():
         plugin_python_str = str(plugin_python)
         if plugin_python_str not in sys.path:
@@ -30,10 +30,10 @@ def _ensure_plugin_python_on_path() -> None:
 
 def main() -> dict:
     _ensure_plugin_python_on_path()
-    import dcc_mcp_unreal_automation  # noqa: PLC0415
+    import meshy_dcc_unreal_automation  # noqa: PLC0415
 
-    return dcc_mcp_unreal_automation.run_smoke(
-        result_path=os.environ.get("DCC_MCP_UNREAL_TEST_RESULT", ""),
+    return meshy_dcc_unreal_automation.run_smoke(
+        result_path=os.environ.get("MESHY_DCC_UNREAL_TEST_RESULT", ""),
         raise_on_failure=True,
     )
 

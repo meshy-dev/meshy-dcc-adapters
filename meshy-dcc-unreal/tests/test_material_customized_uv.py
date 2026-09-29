@@ -11,10 +11,10 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-materials"
+SKILL = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-materials"
 SCRIPT = SKILL / "scripts" / "connect_material_expression_to_customized_uv.py"
-HEADER = ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Public" / "DccMcpAutomationLibrary.h"
-IMPLEMENTATION = ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Private" / "DccMcpAutomationLibrary.cpp"
+HEADER = ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Public" / "MeshyDccAutomationLibrary.h"
+IMPLEMENTATION = ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Private" / "MeshyDccAutomationLibrary.cpp"
 
 
 def _load_script():
@@ -48,7 +48,7 @@ def _unreal_module(*, connect_result: dict, inspect_result: dict):
     unreal.Material = _Material
     unreal.EditorAssetLibrary = types.SimpleNamespace(load_asset=MagicMock(return_value=material))
     unreal.MaterialEditingLibrary = types.SimpleNamespace(get_material_expressions=MagicMock(return_value=[expression]))
-    unreal.DccMcpAutomationLibrary = bridge
+    unreal.MeshyDccAutomationLibrary = bridge
     return unreal, material, expression, bridge
 
 
@@ -103,7 +103,7 @@ def test_native_bridge_uses_editor_only_customized_uv_and_synchronous_save_verif
 
 def test_native_automation_fixture_uses_the_ue418_create_package_signature() -> None:
     automation_test = (
-        ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Private" / "DccMcpUnrealAutomationTests.cpp"
+        ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Private" / "MeshyDccUnrealAutomationTests.cpp"
     ).read_text(encoding="utf-8")
 
     assert "CreatePackage(nullptr, *PackageName)" in automation_test

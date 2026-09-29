@@ -11,7 +11,7 @@ def _load_build_package_module():
     script = (
         Path(__file__).parents[1]
         / "src"
-        / "dcc_mcp_unreal"
+        / "meshy_dcc_unreal"
         / "skills"
         / "unreal-build-package"
         / "scripts"
@@ -57,14 +57,14 @@ def _make_engine(tmp_path: Path) -> Path:
 
 def test_local_core_version_must_meet_plugin_minimum(tmp_path):
     module = _load_build_plugin_module()
-    core = tmp_path / "dcc-mcp-core"
+    core = tmp_path / "meshy-dcc-core"
     core.mkdir()
-    (core / "pyproject.toml").write_text('[project]\nversion = "0.19.60"\n', encoding="utf-8")
+    (core / "pyproject.toml").write_text('[project]\nversion = "0.1.9"\n', encoding="utf-8")
 
     try:
         module.validate_local_core(core)
     except ValueError as exc:
-        assert "0.20.13" in str(exc)
+        assert "0.2.0" in str(exc)
     else:
         raise AssertionError("stale local core must be rejected")
 
@@ -83,7 +83,7 @@ def test_build_plugin_package_reuses_repository_build_script(tmp_path, monkeypat
         observed["cwd"] = cwd
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.write_text("ok", encoding="utf-8")
-        archive = repository / "dist" / "DccMcpUnreal-0.2.0-ue5.8-win64.zip"
+        archive = repository / "dist" / "MeshyDccUnreal-0.2.0-ue5.8-win64.zip"
         archive.write_bytes(b"zip")
         return 0
 
@@ -242,7 +242,7 @@ def test_ue4_native_payload_skips_incompatible_embedded_python_dependencies(tmp_
             skip_core=False,
             use_local_core=False,
             core_root=tmp_path / "core",
-            core_spec="dcc-mcp-core>=0.20.0,<1.0.0",
+            core_spec="meshy-dcc-core>=0.20.0,<1.0.0",
         ),
         tmp_path / "payload",
     )
@@ -276,7 +276,7 @@ def test_ue4_source_engine_allows_uat_to_compile(tmp_path, monkeypatch):
             vctoolchain_version="",
             patched_headers_dir="",
         ),
-        tmp_path / "uat" / "DccMcpUnreal",
+        tmp_path / "uat" / "MeshyDccUnreal",
     )
 
     assert "-nocompile" not in observed[0]
@@ -311,7 +311,7 @@ def test_ue4_installed_engine_uses_precompiled_uat(tmp_path, monkeypatch):
             vctoolchain_version="",
             patched_headers_dir="",
         ),
-        tmp_path / "uat" / "DccMcpUnreal",
+        tmp_path / "uat" / "MeshyDccUnreal",
     )
 
     assert "-nocompile" in observed[0]
@@ -437,7 +437,7 @@ def test_wegame_profile_writes_preflight_manifest(tmp_path, monkeypatch):
 
     manifest = json.loads((output / "WeGame" / "release-preflight.json").read_text(encoding="utf-8"))
     assert result["success"] is True
-    assert manifest["schema"] == "dcc-mcp-unreal.wegame-preflight.v1"
+    assert manifest["schema"] == "meshy-dcc-unreal.wegame-preflight.v1"
     assert manifest["content_root"] == "../Windows"
     assert manifest["executable"] == "Game.exe"
 

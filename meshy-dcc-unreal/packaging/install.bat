@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  dcc-mcp-unreal — Windows one-click installer
+REM  meshy-dcc-unreal — Windows one-click installer
 REM
 REM  Double-click to install interactively, or pass args:
 REM    install.bat                                    (interactive)
@@ -19,17 +19,17 @@ set "SCRIPT_DIR=%~dp0"
 REM ── Step 1: Determine plugin source ──────────────────────────
 REM Check if we're inside a release package or a source checkout.
 set "PLUGIN_SOURCE="
-if exist "%SCRIPT_DIR%..\DccMcpUnreal.uplugin" (
-    REM Release package: install.bat is inside the extracted DccMcpUnreal/ folder
+if exist "%SCRIPT_DIR%..\MeshyDccUnreal.uplugin" (
+    REM Release package: install.bat is inside the extracted MeshyDccUnreal/ folder
     set "PLUGIN_SOURCE=%SCRIPT_DIR%.."
-) else if exist "%SCRIPT_DIR%..\unreal\plugin\DccMcpUnreal.uplugin" (
+) else if exist "%SCRIPT_DIR%..\unreal\plugin\MeshyDccUnreal.uplugin" (
     REM Source checkout: install.bat is in packaging/, plugin source in ../unreal/plugin/
     set "PLUGIN_SOURCE=%SCRIPT_DIR%..\unreal\plugin"
 )
 
 if "%PLUGIN_SOURCE%"=="" (
     echo ERROR: Cannot find plugin source.
-    echo   Expected: DccMcpUnreal.uplugin in parent directory or ..\unreal\plugin\
+    echo   Expected: MeshyDccUnreal.uplugin in parent directory or ..\unreal\plugin\
     echo   Current:  %SCRIPT_DIR%
     exit /b 1
 )
@@ -60,7 +60,7 @@ REM ── Step 3: Interactive mode (no args) ───────────�
 if "%TARGET_PATH%"=="" (
     echo.
     echo ============================================================
-    echo   dcc-mcp-unreal — One-Click Installer
+    echo   meshy-dcc-unreal — One-Click Installer
     echo ============================================================
     echo.
     echo   Drag-and-drop an Unreal Engine root folder
@@ -121,13 +121,13 @@ if "%INSTALL_MODE%"=="project" (
 
 REM ── Step 6: Determine destination ────────────────────────────
 if "%INSTALL_MODE%"=="engine" (
-    set "DEST=%TARGET_PATH%\Engine\Plugins\DccMcpUnreal"
+    set "DEST=%TARGET_PATH%\Engine\Plugins\MeshyDccUnreal"
     echo.
     echo Installing as Engine plugin...
     echo   Engine: %TARGET_PATH%
     echo   Dest:   !DEST!
 ) else (
-    set "DEST=%PROJECT_ROOT%Plugins\DccMcpUnreal"
+    set "DEST=%PROJECT_ROOT%Plugins\MeshyDccUnreal"
     echo.
     echo Installing as Project plugin...
     echo   Project: %UPROJECT_FILE%
@@ -175,10 +175,10 @@ if "%INSTALL_MODE%"=="project" (
 
 echo.
 echo Installing Python dependencies (using !PYTHON_EXE!)...
-"!PYTHON_EXE!" -m pip install dcc-mcp-unreal --target "!DEST!\python" --quiet 2>&1
+"!PYTHON_EXE!" -m pip install meshy-dcc-unreal --target "!DEST!\python" --quiet 2>&1
 if errorlevel 1 (
     echo WARNING: pip install failed. You can install manually later:
-    echo   "!PYTHON_EXE!" -m pip install dcc-mcp-unreal --target "!DEST!\python"
+    echo   "!PYTHON_EXE!" -m pip install meshy-dcc-unreal --target "!DEST!\python"
 ) else (
     echo Python dependencies installed.
 )
@@ -201,20 +201,20 @@ echo.
 if "%INSTALL_MODE%"=="project" (
     echo   Next steps:
     echo   1. Open "%UPROJECT_FILE%" in Unreal Editor
-    echo   2. Edit ^> Plugins ^> search "DCC MCP Unreal"
+    echo   2. Edit ^> Plugins ^> search "Meshy DCC Unreal"
     echo   3. Enable the plugin and restart the editor
     echo   4. In the Python console, run:
-    echo      import dcc_mcp_unreal
-    echo      dcc_mcp_unreal.start_server()
+    echo      import meshy_dcc_unreal
+    echo      meshy_dcc_unreal.start_server()
 ) else (
     echo   Next steps:
     echo   1. Open any project in Unreal Editor
-    echo   2. Edit ^> Plugins ^> search "DCC MCP Unreal"
+    echo   2. Edit ^> Plugins ^> search "Meshy DCC Unreal"
     echo   3. Enable the plugin and restart the editor
 )
 echo.
-echo   Agent connection: http://127.0.0.1:9765/mcp
-echo   CLI tools:        dcc-mcp-cli list
+echo   Agent connection: http://127.0.0.1:19765/mcp
+echo   CLI tools:        meshy-dcc list
 echo ============================================================
 
 REM Keep window open for interactive mode

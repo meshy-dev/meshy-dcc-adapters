@@ -1,4 +1,4 @@
-"""Tests for dcc_mcp_unreal.skill_runner."""
+"""Tests for meshy_dcc_unreal.skill_runner."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ def _write_script(dir_path: Path, name: str, source: str) -> Path:
 
 
 def test_has_explicit_main_detects_def_main():
-    from dcc_mcp_unreal.skill_runner import _has_explicit_main
+    from meshy_dcc_unreal.skill_runner import _has_explicit_main
 
     assert _has_explicit_main("def main(**kwargs) -> dict:\n    return func(**kwargs)")
     assert _has_explicit_main("  def main(**kwargs) -> dict:\n    return func(**kwargs)")
@@ -35,7 +35,7 @@ def test_has_explicit_main_detects_def_main():
 
 
 def test_has_explicit_main_false_when_no_main():
-    from dcc_mcp_unreal.skill_runner import _has_explicit_main
+    from meshy_dcc_unreal.skill_runner import _has_explicit_main
 
     assert _has_explicit_main("@skill_entry\ndef my_tool(**kwargs):\n    return skill_success('ok')") is False
     assert _has_explicit_main("def helper():\n    pass") is False
@@ -47,9 +47,9 @@ def test_has_explicit_main_false_when_no_main():
 
 
 def test_discover_skill_entry_finds_decorated_function():
-    from dcc_mcp_core.skill import skill_entry
+    from meshy_dcc_core.skill import skill_entry
 
-    from dcc_mcp_unreal.skill_runner import _discover_skill_entry
+    from meshy_dcc_unreal.skill_runner import _discover_skill_entry
 
     @skill_entry
     def my_tool(**kwargs):
@@ -64,9 +64,9 @@ def test_discover_skill_entry_finds_decorated_function():
 
 
 def test_discover_skill_entry_skips_private_names():
-    from dcc_mcp_core.skill import skill_entry
+    from meshy_dcc_core.skill import skill_entry
 
-    from dcc_mcp_unreal.skill_runner import _discover_skill_entry
+    from meshy_dcc_unreal.skill_runner import _discover_skill_entry
 
     @skill_entry
     def _private_tool(**kwargs):
@@ -79,7 +79,7 @@ def test_discover_skill_entry_skips_private_names():
 
 
 def test_discover_skill_entry_returns_none_when_no_entry():
-    from dcc_mcp_unreal.skill_runner import _discover_skill_entry
+    from meshy_dcc_unreal.skill_runner import _discover_skill_entry
 
     fake_module = type(sys)("fake_skill")
     fake_module.__dict__["not_a_tool"] = lambda: None
@@ -94,14 +94,14 @@ def test_discover_skill_entry_returns_none_when_no_entry():
 
 def test_run_script_with_explicit_main():
     """Scripts with explicit main() work unchanged."""
-    from dcc_mcp_unreal.skill_runner import run_skill_script
+    from meshy_dcc_unreal.skill_runner import run_skill_script
 
     with tempfile.TemporaryDirectory() as tmpdir:
         script = _write_script(
             Path(tmpdir),
             "explicit_main.py",
             textwrap.dedent("""\
-            from dcc_mcp_core.skill import skill_entry, skill_success
+            from meshy_dcc_core.skill import skill_entry, skill_success
 
             @skill_entry
             def my_tool(name: str = "world", **kwargs) -> dict:
@@ -111,7 +111,7 @@ def test_run_script_with_explicit_main():
                 return my_tool(**kwargs)
 
             if __name__ == "__main__":
-                from dcc_mcp_core.skill import run_main
+                from meshy_dcc_core.skill import run_main
                 run_main(main)
             """),
         )
@@ -128,7 +128,7 @@ def test_run_script_with_explicit_main():
 
 def test_run_script_without_main_discovers_entry():
     """When no main() is present, the runner auto-discovers @skill_entry."""
-    from dcc_mcp_unreal.skill_runner import run_skill_script
+    from meshy_dcc_unreal.skill_runner import run_skill_script
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Also create a mock unreal module to satisfy lazy imports
@@ -140,7 +140,7 @@ def test_run_script_without_main_discovers_entry():
                 Path(tmpdir),
                 "no_main.py",
                 textwrap.dedent("""\
-                from dcc_mcp_core.skill import skill_entry, skill_success
+                from meshy_dcc_core.skill import skill_entry, skill_success
 
                 @skill_entry
                 def get_version(**kwargs) -> dict:
@@ -157,14 +157,14 @@ def test_run_script_without_main_discovers_entry():
 
 def test_run_script_without_main_errors_on_module():
     """When @skill_entry raises an exception, it's caught."""
-    from dcc_mcp_unreal.skill_runner import run_skill_script
+    from meshy_dcc_unreal.skill_runner import run_skill_script
 
     with tempfile.TemporaryDirectory() as tmpdir:
         script = _write_script(
             Path(tmpdir),
             "error_script.py",
             textwrap.dedent("""\
-            from dcc_mcp_core.skill import skill_entry, skill_error
+            from meshy_dcc_core.skill import skill_entry, skill_error
 
             @skill_entry
             def broken_tool(**kwargs) -> dict:
@@ -179,7 +179,7 @@ def test_run_script_without_main_errors_on_module():
 
 def test_run_script_delegates_to_core_for_missing_file():
     """Missing files are handled by the core runner."""
-    from dcc_mcp_unreal.skill_runner import run_skill_script
+    from meshy_dcc_unreal.skill_runner import run_skill_script
 
     with pytest.raises(FileNotFoundError, match="nonexistent"):
         run_skill_script("/nonexistent/path.py", {})
@@ -187,7 +187,7 @@ def test_run_script_delegates_to_core_for_missing_file():
 
 def test_run_script_delegates_to_core_when_neither_main_nor_entry():
     """When a script has no main and no @skill_entry, core errors out."""
-    from dcc_mcp_unreal.skill_runner import run_skill_script
+    from meshy_dcc_unreal.skill_runner import run_skill_script
 
     with tempfile.TemporaryDirectory() as tmpdir:
         script = _write_script(
@@ -209,9 +209,9 @@ def test_run_script_delegates_to_core_when_neither_main_nor_entry():
 
 def test_host_execution_bridge_accepts_custom_runner():
     """The custom runner can be wired into HostExecutionBridge."""
-    from dcc_mcp_core import HostExecutionBridge
+    from meshy_dcc_core import HostExecutionBridge
 
-    from dcc_mcp_unreal.skill_runner import run_skill_script as custom_runner
+    from meshy_dcc_unreal.skill_runner import run_skill_script as custom_runner
 
     bridge = HostExecutionBridge(runner=custom_runner)
     assert bridge.runner is custom_runner
@@ -222,9 +222,9 @@ def test_host_execution_bridge_accepts_custom_runner():
 
 def test_inprocess_executor_uses_custom_runner_for_script_without_main():
     """End-to-end: bridge executor → custom runner → auto-discover main."""
-    from dcc_mcp_core import HostExecutionBridge
+    from meshy_dcc_core import HostExecutionBridge
 
-    from dcc_mcp_unreal.skill_runner import run_skill_script as custom_runner
+    from meshy_dcc_unreal.skill_runner import run_skill_script as custom_runner
 
     bridge = HostExecutionBridge(runner=custom_runner)
     executor = bridge.as_inprocess_executor()
@@ -238,7 +238,7 @@ def test_inprocess_executor_uses_custom_runner_for_script_without_main():
                 Path(tmpdir),
                 "simple_getter.py",
                 textwrap.dedent("""\
-                from dcc_mcp_core.skill import skill_entry, skill_success
+                from meshy_dcc_core.skill import skill_entry, skill_success
 
                 @skill_entry
                 def engine_info(**kwargs) -> dict:
@@ -260,8 +260,8 @@ def test_inprocess_executor_uses_custom_runner_for_script_without_main():
 
 def test_make_execution_bridge_uses_custom_runner():
     """_make_execution_bridge wires the custom skill runner."""
-    from dcc_mcp_unreal.server import _make_execution_bridge
-    from dcc_mcp_unreal.skill_runner import run_skill_script as custom_runner
+    from meshy_dcc_unreal.server import _make_execution_bridge
+    from meshy_dcc_unreal.skill_runner import run_skill_script as custom_runner
 
     dispatcher, bridge = _make_execution_bridge(timeout_secs=5.0)
     assert bridge.runner is custom_runner

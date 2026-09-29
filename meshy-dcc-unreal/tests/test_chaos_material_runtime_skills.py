@@ -1,7 +1,7 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ROOT / "src" / "dcc_mcp_unreal" / "skills"
+SKILLS = ROOT / "src" / "meshy_dcc_unreal" / "skills"
 
 
 def test_core_fracture_editor_skills_are_typed_and_discoverable() -> None:
@@ -27,7 +27,7 @@ def test_core_fracture_editor_skills_are_typed_and_discoverable() -> None:
 
 def test_chaos_conversion_splits_disconnected_mesh_islands_into_clustered_fragments() -> None:
     source = (
-        ROOT / "unreal" / "plugin" / "Source" / "DccMcpUnreal" / "Private" / "DccMcpAutomationLibrary.cpp"
+        ROOT / "unreal" / "plugin" / "Source" / "MeshyDccUnreal" / "Private" / "MeshyDccAutomationLibrary.cpp"
     ).read_text(encoding="utf-8")
 
     assert "FGeometryCollectionEngineConversion::AppendStaticMesh" in source

@@ -118,7 +118,7 @@ struct UAIBlueprintHelperLibrary {
     static void SimpleMoveToActor(APlayerController* c,AActor*){receiver=c;}
 };
 using UNavigationSystem=UAIBlueprintHelperLibrary;
-struct UDccMcpAutomationLibrary {
+struct UMeshyDccAutomationLibrary {
     static FString AcquirePieKey(UWorld*,APlayerController*,const FString&);
     static bool PressOwnedPieKey(const FString&);
     static bool ReleaseOwnedPieKey(const FString&);

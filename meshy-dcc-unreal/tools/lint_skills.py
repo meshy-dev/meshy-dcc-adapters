@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lint SKILL.md files in the dcc-mcp-unreal skills directory.
+"""Lint SKILL.md files in the meshy-dcc-unreal skills directory.
 
 Usage:
     python tools/lint_skills.py                    # lint all skills
@@ -125,12 +125,12 @@ def parse_yaml_file(path: Path) -> Optional[dict]:
         return None
 
 
-def get_dcc_mcp_metadata(fm: dict) -> dict:
+def get_meshy_dcc_metadata(fm: dict) -> dict:
     metadata = fm.get("metadata")
     if not isinstance(metadata, dict):
         return {}
-    dcc_mcp = metadata.get("dcc-mcp") or metadata.get("dcc_mcp")
-    return dcc_mcp if isinstance(dcc_mcp, dict) else {}
+    meshy_dcc = metadata.get("meshy-dcc") or metadata.get("meshy_dcc")
+    return meshy_dcc if isinstance(meshy_dcc, dict) else {}
 
 
 # ---------------------------------------------------------------------------
@@ -277,8 +277,8 @@ def check_name_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIss
 def check_dcc_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssue]:
     issues: List[LintIssue] = []
     file_path = str(skill_dir / "SKILL.md")
-    dcc_mcp = get_dcc_mcp_metadata(fm)
-    dcc = dcc_mcp.get("dcc")
+    meshy_dcc = get_meshy_dcc_metadata(fm)
+    dcc = meshy_dcc.get("dcc")
 
     if "dcc" in fm:
         issues.append(
@@ -287,7 +287,7 @@ def check_dcc_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssu
                 file=file_path,
                 severity="ERROR",
                 rule="TOP_LEVEL_DCC",
-                message="top-level 'dcc' is obsolete; use metadata.dcc-mcp.dcc",
+                message="top-level 'dcc' is obsolete; use metadata.meshy-dcc.dcc",
             )
         )
 
@@ -298,7 +298,7 @@ def check_dcc_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssu
                 file=file_path,
                 severity="ERROR",
                 rule="NO_DCC",
-                message="frontmatter missing metadata.dcc-mcp.dcc",
+                message="frontmatter missing metadata.meshy-dcc.dcc",
             )
         )
         return issues
@@ -337,11 +337,11 @@ def check_version_field(skill_dir: Path, skill_name: str, fm: dict) -> List[Lint
                 file=str(skill_dir / "SKILL.md"),
                 severity="ERROR",
                 rule="TOP_LEVEL_VERSION",
-                message="top-level 'version' is obsolete; use metadata.dcc-mcp.version",
+                message="top-level 'version' is obsolete; use metadata.meshy-dcc.version",
             )
         )
 
-    version = get_dcc_mcp_metadata(fm).get("version", "1.0.0")
+    version = get_meshy_dcc_metadata(fm).get("version", "1.0.0")
     if version and not SEMVER_RE.match(str(version)):
         issues.append(
             LintIssue(
@@ -358,32 +358,32 @@ def check_version_field(skill_dir: Path, skill_name: str, fm: dict) -> List[Lint
 def check_metadata_shape(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssue]:
     issues: List[LintIssue] = []
     file_path = str(skill_dir / "SKILL.md")
-    dcc_mcp = get_dcc_mcp_metadata(fm)
+    meshy_dcc = get_meshy_dcc_metadata(fm)
 
-    if not dcc_mcp:
+    if not meshy_dcc:
         issues.append(
             LintIssue(
                 skill=skill_name,
                 file=file_path,
                 severity="ERROR",
-                rule="NO_DCC_MCP_METADATA",
-                message="frontmatter missing metadata.dcc-mcp block",
+                rule="NO_MESHY_DCC_METADATA",
+                message="frontmatter missing metadata.meshy-dcc block",
             )
         )
         return issues
 
-    if not dcc_mcp.get("layer"):
+    if not meshy_dcc.get("layer"):
         issues.append(
             LintIssue(
                 skill=skill_name,
                 file=file_path,
                 severity="ERROR",
                 rule="NO_LAYER",
-                message="metadata.dcc-mcp.layer is required",
+                message="metadata.meshy-dcc.layer is required",
             )
         )
 
-    tools_ref = dcc_mcp.get("tools")
+    tools_ref = meshy_dcc.get("tools")
     if tools_ref and tools_ref != "tools.yaml":
         issues.append(
             LintIssue(
@@ -391,7 +391,7 @@ def check_metadata_shape(skill_dir: Path, skill_name: str, fm: dict) -> List[Lin
                 file=file_path,
                 severity="WARNING",
                 rule="TOOLS_REF",
-                message=f"metadata.dcc-mcp.tools should normally be 'tools.yaml', got {tools_ref!r}",
+                message=f"metadata.meshy-dcc.tools should normally be 'tools.yaml', got {tools_ref!r}",
             )
         )
 
@@ -402,8 +402,8 @@ def check_metadata_shape(skill_dir: Path, skill_name: str, fm: dict) -> List[Lin
                     skill=skill_name,
                     file=file_path,
                     severity="ERROR",
-                    rule="TOP_LEVEL_DCC_MCP_KEY",
-                    message=f"top-level '{legacy_key}' is obsolete; move DCC-MCP extensions under metadata.dcc-mcp",
+                    rule="TOP_LEVEL_MESHY_DCC_KEY",
+                    message=f"top-level '{legacy_key}' is obsolete; move Meshy DCC extensions under metadata.meshy-dcc",
                 )
             )
 
@@ -481,8 +481,8 @@ def check_scripts_section(skill_dir: Path, skill_name: str, content: str) -> Lis
 
 def load_tools_yaml(skill_dir: Path, skill_name: str, fm: dict) -> Tuple[List[LintIssue], List[dict]]:
     issues: List[LintIssue] = []
-    dcc_mcp = get_dcc_mcp_metadata(fm)
-    tools_ref = dcc_mcp.get("tools")
+    meshy_dcc = get_meshy_dcc_metadata(fm)
+    tools_ref = meshy_dcc.get("tools")
     if not tools_ref:
         return issues, []
 
@@ -494,7 +494,7 @@ def load_tools_yaml(skill_dir: Path, skill_name: str, fm: dict) -> Tuple[List[Li
                 file=str(skill_dir / "SKILL.md"),
                 severity="ERROR",
                 rule="TOOLS_YAML_MISSING",
-                message=f"metadata.dcc-mcp.tools references missing file '{tools_ref}'",
+                message=f"metadata.meshy-dcc.tools references missing file '{tools_ref}'",
             )
         )
         return issues, []
@@ -529,7 +529,7 @@ def load_tools_yaml(skill_dir: Path, skill_name: str, fm: dict) -> Tuple[List[Li
 
 
 def check_tools_yaml(skill_dir: Path, skill_name: str, tools: List[dict]) -> List[LintIssue]:
-    """Check tools.yaml entries for current dcc-mcp-core metadata fields."""
+    """Check tools.yaml entries for current meshy-dcc-core metadata fields."""
     issues: List[LintIssue] = []
     tools_path = str(skill_dir / "tools.yaml")
 
@@ -622,7 +622,7 @@ def check_depends_exist(
 ) -> List[LintIssue]:
     """Warn if depends[] references skill names that don't exist."""
     issues: List[LintIssue] = []
-    depends = get_dcc_mcp_metadata(fm).get("depends", [])
+    depends = get_meshy_dcc_metadata(fm).get("depends", [])
     if not depends or not isinstance(depends, list):
         return issues
 
@@ -837,7 +837,7 @@ def print_report(issues: List[LintIssue], skills_root: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Lint SKILL.md files in the dcc-mcp-unreal skills directory.",
+        description="Lint SKILL.md files in the meshy-dcc-unreal skills directory.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -848,8 +848,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--skills-root",
-        default="src/dcc_mcp_unreal/skills",
-        help="Path to skills directory (default: src/dcc_mcp_unreal/skills)",
+        default="src/meshy_dcc_unreal/skills",
+        help="Path to skills directory (default: src/meshy_dcc_unreal/skills)",
     )
     parser.add_argument(
         "--error-only",

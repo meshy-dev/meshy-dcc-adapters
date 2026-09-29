@@ -63,7 +63,7 @@ def test_blueprint_layout_orders_connected_nodes_and_avoids_overlap():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module, spec = _load_module(
             "_blueprint_graph_api",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/_blueprint_graph_api.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/_blueprint_graph_api.py",
         )
         spec.loader.exec_module(module)
         result = module.layout_graph(graph)
@@ -81,7 +81,7 @@ def test_blueprint_graph_lookup_uses_unreal_58_list_graphs():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module, spec = _load_module(
             "_blueprint_graph_api",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/_blueprint_graph_api.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/_blueprint_graph_api.py",
         )
         spec.loader.exec_module(module)
         assert module.get_graph(object()) is event_graph
@@ -95,7 +95,7 @@ class TestCreateBlueprintClass:
         """Verify the script can be imported."""
         module, _ = _load_module(
             "create_blueprint_class",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/create_blueprint_class.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/create_blueprint_class.py",
         )
         assert module is not None
 
@@ -108,7 +108,7 @@ class TestCreateBlueprintClass:
 
         module, spec = _load_module(
             "create_blueprint_class",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/create_blueprint_class.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/create_blueprint_class.py",
         )
         spec.loader.exec_module(module)
 
@@ -133,7 +133,7 @@ class TestAddEventNode:
 
         module, spec = _load_module(
             "add_event_node",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/add_event_node.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/add_event_node.py",
         )
         spec.loader.exec_module(module)
 
@@ -158,7 +158,7 @@ class TestConnectNodes:
 
         module, spec = _load_module(
             "connect_nodes",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/connect_nodes.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/connect_nodes.py",
         )
         spec.loader.exec_module(module)
 
@@ -186,7 +186,7 @@ class TestAddVariable:
 
         module, spec = _load_module(
             "add_variable",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/add_variable.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/add_variable.py",
         )
         spec.loader.exec_module(module)
 
@@ -212,7 +212,7 @@ class TestCompileBlueprint:
 
         module, spec = _load_module(
             "compile_blueprint",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/compile_blueprint.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/compile_blueprint.py",
         )
         spec.loader.exec_module(module)
 
@@ -230,7 +230,7 @@ class TestCompileBlueprint:
         unreal.BlueprintEditorLibrary.compile_blueprint.return_value = True
         module, spec = _load_module(
             "compile_blueprint_success",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/compile_blueprint.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/compile_blueprint.py",
         )
         spec.loader.exec_module(module)
 
@@ -252,7 +252,7 @@ class TestFindNodes:
 
         module, spec = _load_module(
             "find_nodes",
-            "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/find_nodes.py",
+            "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/find_nodes.py",
         )
         spec.loader.exec_module(module)
 
@@ -280,7 +280,7 @@ class TestFindNodes:
         with patch.dict(sys.modules, {"_blueprint_graph_api": graph_api}):
             module, spec = _load_module(
                 "find_nodes_structured_error",
-                "src/dcc_mcp_unreal/skills/unreal-blueprints/scripts/find_nodes.py",
+                "src/meshy_dcc_unreal/skills/unreal-blueprints/scripts/find_nodes.py",
             )
             spec.loader.exec_module(module)
             result = module.find_nodes(blueprint_name="BP_ShooterEnemyAI")
@@ -292,7 +292,7 @@ class TestFindNodes:
 
     def test_manifest_documents_rejected_find_node_arguments(self):
         manifest = yaml.safe_load(
-            Path("src/dcc_mcp_unreal/skills/unreal-blueprints/tools.yaml").read_text(encoding="utf-8")
+            Path("src/meshy_dcc_unreal/skills/unreal-blueprints/tools.yaml").read_text(encoding="utf-8")
         )
         tool = next(item for item in manifest["tools"] if item["name"] == "find_nodes")
         schema = tool["input_schema"]

@@ -48,22 +48,22 @@ if ([string]::IsNullOrWhiteSpace($editorCmd)) {
 
 $resultDir = Join-Path $projectRoot "Saved\Automation"
 New-Item -ItemType Directory -Force -Path $resultDir | Out-Null
-$result = Join-Path $resultDir "dcc_mcp_unreal_smoke.json"
+$result = Join-Path $resultDir "meshy_dcc_unreal_smoke.json"
 $log = Join-Path $resultDir "ue_smoke_run.log"
 $report = Join-Path $resultDir "Reports"
 Remove-Item -LiteralPath $result -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $log -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $report -Recurse -Force -ErrorAction SilentlyContinue
 
-$env:DCC_MCP_UNREAL_PORT = "0"
-$env:DCC_MCP_UNREAL_TEST_RESULT = $result
-$env:DCC_MCP_DISABLE_TELEMETRY = "1"
-$env:DCC_MCP_DISABLE_JOB_PERSISTENCE = "1"
-$env:DCC_MCP_DISABLE_FILE_LOGGING = "1"
-$env:DCC_MCP_UNREAL_DISABLE_MENUS = "1"
+$env:MESHY_DCC_UNREAL_PORT = "0"
+$env:MESHY_DCC_UNREAL_TEST_RESULT = $result
+$env:MESHY_DCC_DISABLE_TELEMETRY = "1"
+$env:MESHY_DCC_DISABLE_JOB_PERSISTENCE = "1"
+$env:MESHY_DCC_DISABLE_FILE_LOGGING = "1"
+$env:MESHY_DCC_UNREAL_DISABLE_MENUS = "1"
 
 if ($Mode -eq "native" -or $Mode -eq "niagara") {
-    $testFilter = if ($Mode -eq "niagara") { "DccMcp.Smoke.NiagaraSemanticAuthoring" } else { "DccMcp.Smoke" }
+    $testFilter = if ($Mode -eq "niagara") { "MeshyDcc.Smoke.NiagaraSemanticAuthoring" } else { "MeshyDcc.Smoke" }
     $ueArgs = @(
         $projectFile,
         "-Unattended",

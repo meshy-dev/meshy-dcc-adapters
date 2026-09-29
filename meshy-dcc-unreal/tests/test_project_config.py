@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_unreal.project_config import (
+from meshy_dcc_unreal.project_config import (
     patch_console_variables,
     read_console_variables,
     validate_settings,
@@ -11,9 +11,9 @@ from dcc_mcp_unreal.project_config import (
 
 
 def test_project_config_path_discovers_embedded_plugin_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    import dcc_mcp_unreal.project_config as project_config
+    import meshy_dcc_unreal.project_config as project_config
 
-    module_file = tmp_path / "Plugins" / "DccMcpUnreal" / "python" / "dcc_mcp_unreal" / "project_config.py"
+    module_file = tmp_path / "Plugins" / "MeshyDccUnreal" / "python" / "meshy_dcc_unreal" / "project_config.py"
     (tmp_path / "Config").mkdir()
     (tmp_path / "Config" / "DefaultEngine.ini").write_text("", encoding="utf-8")
     monkeypatch.setattr(project_config, "__file__", str(module_file))
@@ -55,10 +55,10 @@ def test_patch_is_idempotent(tmp_path: Path):
 
 
 def test_skill_handlers_publish_explicit_mcp_parameters():
-    from dcc_mcp_core.schema import tool_spec_from_callable
+    from meshy_dcc_core.schema import tool_spec_from_callable
 
     script = (
-        Path(__file__).parents[1] / "src/dcc_mcp_unreal/skills/unreal-project-config/scripts/apply_project_config.py"
+        Path(__file__).parents[1] / "src/meshy_dcc_unreal/skills/unreal-project-config/scripts/apply_project_config.py"
     )
     spec = importlib.util.spec_from_file_location("unreal_project_config_apply", script)
     module = importlib.util.module_from_spec(spec)
@@ -81,7 +81,7 @@ def test_project_config_handlers_default_to_configured_allowlist(tmp_path: Path,
         ("inspect_project_config", "inspect_project_config.py"),
         ("verify_project_config", "verify_project_config.py"),
     ):
-        script = root / "src/dcc_mcp_unreal/skills/unreal-project-config/scripts" / filename
+        script = root / "src/meshy_dcc_unreal/skills/unreal-project-config/scripts" / filename
         spec = importlib.util.spec_from_file_location(f"unreal_project_config_{name}", script)
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None

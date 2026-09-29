@@ -1,4 +1,4 @@
-"""Tests for dcc-mcp-unreal (without a real Unreal Engine instance).
+"""Tests for meshy-dcc-unreal (without a real Unreal Engine instance).
 
 All tests run in a plain Python environment — no ``unreal`` module is available.
 This covers the public API surface, helpers, and the server instantiation path.
@@ -29,14 +29,14 @@ else:
 
 def test_import():
     """Package imports without errors."""
-    import dcc_mcp_unreal
+    import meshy_dcc_unreal
 
-    assert dcc_mcp_unreal.__version__ == version("dcc-mcp-unreal")
+    assert meshy_dcc_unreal.__version__ == version("meshy-dcc-unreal")
 
 
 def test_api_imports():
     """All public API symbols are importable from the top-level package."""
-    from dcc_mcp_unreal import (
+    from meshy_dcc_unreal import (
         UNREAL_CAPABILITIES_DICT,
         MissingParamError,
         UnrealMcpServer,
@@ -100,21 +100,21 @@ def test_api_imports():
 
 def test_is_unreal_available_false_outside_unreal():
     """is_unreal_available() returns False outside Unreal Engine."""
-    from dcc_mcp_unreal import is_unreal_available
+    from meshy_dcc_unreal import is_unreal_available
 
     assert is_unreal_available() is False
 
 
 def test_get_unreal_returns_none_outside_unreal():
     """get_unreal() returns None when unreal module is absent."""
-    from dcc_mcp_unreal import get_unreal
+    from meshy_dcc_unreal import get_unreal
 
     assert get_unreal() is None
 
 
 def test_require_unreal_raises_outside_unreal():
     """require_unreal() raises UnrealNotAvailableError when not in UE."""
-    from dcc_mcp_unreal import UnrealNotAvailableError, require_unreal
+    from meshy_dcc_unreal import UnrealNotAvailableError, require_unreal
 
     with pytest.raises(UnrealNotAvailableError):
         require_unreal()
@@ -127,7 +127,7 @@ def test_require_unreal_raises_outside_unreal():
 
 def test_unreal_success_returns_dict():
     """unreal_success() returns a success dict with expected keys."""
-    from dcc_mcp_unreal import unreal_success
+    from meshy_dcc_unreal import unreal_success
 
     result = unreal_success("test done", count=3)
     assert isinstance(result, dict)
@@ -137,7 +137,7 @@ def test_unreal_success_returns_dict():
 
 def test_unreal_success_with_prompt():
     """unreal_success() preserves the prompt field."""
-    from dcc_mcp_unreal import unreal_success
+    from meshy_dcc_unreal import unreal_success
 
     result = unreal_success("done", prompt="Check the viewport")
     assert result.get("prompt") == "Check the viewport"
@@ -145,7 +145,7 @@ def test_unreal_success_with_prompt():
 
 def test_unreal_success_with_context():
     """unreal_success() stores extra kwargs in context."""
-    from dcc_mcp_unreal import unreal_success
+    from meshy_dcc_unreal import unreal_success
 
     result = unreal_success("ok", actor_name="SM_Cube", count=5)
     ctx = result.get("context", {})
@@ -155,7 +155,7 @@ def test_unreal_success_with_context():
 
 def test_unreal_error_returns_dict():
     """unreal_error() returns a failure dict."""
-    from dcc_mcp_unreal import unreal_error
+    from meshy_dcc_unreal import unreal_error
 
     result = unreal_error("failed", error="ImportError: unreal")
     assert isinstance(result, dict)
@@ -165,7 +165,7 @@ def test_unreal_error_returns_dict():
 
 def test_unreal_error_with_possible_solutions():
     """unreal_error() stores possible_solutions in context."""
-    from dcc_mcp_unreal import unreal_error
+    from meshy_dcc_unreal import unreal_error
 
     result = unreal_error(
         "Plugin not found",
@@ -180,7 +180,7 @@ def test_unreal_error_with_possible_solutions():
 
 def test_unreal_warning_returns_success_dict():
     """unreal_warning() returns success=True with a warning in context."""
-    from dcc_mcp_unreal import unreal_warning
+    from meshy_dcc_unreal import unreal_warning
 
     result = unreal_warning("Done with issues", warning="Asset not found, used default")
     assert isinstance(result, dict)
@@ -192,7 +192,7 @@ def test_unreal_warning_returns_success_dict():
 
 def test_unreal_from_exception():
     """unreal_from_exception() builds error dict from an exception."""
-    from dcc_mcp_unreal import unreal_from_exception
+    from meshy_dcc_unreal import unreal_from_exception
 
     try:
         raise RuntimeError("test error")
@@ -205,7 +205,7 @@ def test_unreal_from_exception():
 
 def test_unreal_from_exception_default_message():
     """unreal_from_exception() uses default message when none given."""
-    from dcc_mcp_unreal import unreal_from_exception
+    from meshy_dcc_unreal import unreal_from_exception
 
     try:
         raise ValueError("oops")
@@ -223,7 +223,7 @@ def test_unreal_from_exception_default_message():
 
 def test_with_unreal_catches_import_error():
     """@with_unreal catches ImportError and returns error dict."""
-    from dcc_mcp_unreal import unreal_success, with_unreal
+    from meshy_dcc_unreal import unreal_success, with_unreal
 
     @with_unreal
     def needs_unreal(**kwargs):
@@ -238,7 +238,7 @@ def test_with_unreal_catches_import_error():
 
 def test_with_unreal_catches_generic_exception():
     """@with_unreal catches general exceptions and returns error dict."""
-    from dcc_mcp_unreal import with_unreal
+    from meshy_dcc_unreal import with_unreal
 
     @with_unreal
     def broken(**kwargs):
@@ -250,7 +250,7 @@ def test_with_unreal_catches_generic_exception():
 
 def test_with_unreal_passes_through_success():
     """@with_unreal passes through a successful return value unchanged."""
-    from dcc_mcp_unreal import unreal_success, with_unreal
+    from meshy_dcc_unreal import unreal_success, with_unreal
 
     @with_unreal
     def good_func(x: int = 1, **kwargs):
@@ -263,7 +263,7 @@ def test_with_unreal_passes_through_success():
 
 def test_with_unreal_accepts_positional_args():
     """@with_unreal accepts both *args and **kwargs."""
-    from dcc_mcp_unreal import unreal_success, with_unreal
+    from meshy_dcc_unreal import unreal_success, with_unreal
 
     @with_unreal
     def func_with_args(a, b, **kwargs):
@@ -280,7 +280,7 @@ def test_with_unreal_accepts_positional_args():
 
 def test_require_param_returns_value():
     """require_param() returns the value when key exists."""
-    from dcc_mcp_unreal import require_param
+    from meshy_dcc_unreal import require_param
 
     params = {"actor_name": "SM_Cube", "radius": 100.0}
     assert require_param(params, "actor_name") == "SM_Cube"
@@ -289,7 +289,7 @@ def test_require_param_returns_value():
 
 def test_require_param_returns_default():
     """require_param() returns default when key is absent."""
-    from dcc_mcp_unreal import require_param
+    from meshy_dcc_unreal import require_param
 
     params = {}
     assert require_param(params, "radius", 50.0) == 50.0
@@ -297,7 +297,7 @@ def test_require_param_returns_default():
 
 def test_require_param_raises_when_missing():
     """require_param() raises MissingParamError when key is absent and no default."""
-    from dcc_mcp_unreal import MissingParamError, require_param
+    from meshy_dcc_unreal import MissingParamError, require_param
 
     with pytest.raises(MissingParamError, match="actor_name"):
         require_param({}, "actor_name")
@@ -305,7 +305,7 @@ def test_require_param_raises_when_missing():
 
 def test_require_any_param_first_match():
     """require_any_param() returns first matching key."""
-    from dcc_mcp_unreal import require_any_param
+    from meshy_dcc_unreal import require_any_param
 
     params = {"node_name": "cube"}
     assert require_any_param(params, "actor_name", "node_name", "name") == "cube"
@@ -313,7 +313,7 @@ def test_require_any_param_first_match():
 
 def test_require_any_param_raises_when_all_missing():
     """require_any_param() raises MissingParamError when none of the keys exist."""
-    from dcc_mcp_unreal import MissingParamError, require_any_param
+    from meshy_dcc_unreal import MissingParamError, require_any_param
 
     with pytest.raises(MissingParamError):
         require_any_param({}, "actor_name", "name")
@@ -321,7 +321,7 @@ def test_require_any_param_raises_when_all_missing():
 
 def test_missing_param_error_returns_dict():
     """missing_param_error() returns a failure dict."""
-    from dcc_mcp_unreal import missing_param_error
+    from meshy_dcc_unreal import missing_param_error
 
     result = missing_param_error("actor_name")
     assert result.get("success") is False
@@ -330,7 +330,7 @@ def test_missing_param_error_returns_dict():
 
 def test_get_param_list_bare_string():
     """get_param_list() coerces a bare string to a single-element list."""
-    from dcc_mcp_unreal import get_param_list
+    from meshy_dcc_unreal import get_param_list
 
     params = {"actors": "SM_Cube"}
     assert get_param_list(params, "actors") == ["SM_Cube"]
@@ -338,7 +338,7 @@ def test_get_param_list_bare_string():
 
 def test_get_param_list_already_list():
     """get_param_list() returns a list as-is."""
-    from dcc_mcp_unreal import get_param_list
+    from meshy_dcc_unreal import get_param_list
 
     params = {"actors": ["SM_Cube", "BP_Player"]}
     assert get_param_list(params, "actors") == ["SM_Cube", "BP_Player"]
@@ -346,7 +346,7 @@ def test_get_param_list_already_list():
 
 def test_get_param_list_default():
     """get_param_list() returns [] when key is absent."""
-    from dcc_mcp_unreal import get_param_list
+    from meshy_dcc_unreal import get_param_list
 
     assert get_param_list({}, "actors") == []
 
@@ -358,14 +358,14 @@ def test_get_param_list_default():
 
 def test_ensure_valid_name_passes():
     """ensure_valid_name() returns None for a valid name."""
-    from dcc_mcp_unreal import ensure_valid_name
+    from meshy_dcc_unreal import ensure_valid_name
 
     assert ensure_valid_name("SM_Cube") is None
 
 
 def test_ensure_valid_name_empty():
     """ensure_valid_name() returns error dict for empty name."""
-    from dcc_mcp_unreal import ensure_valid_name
+    from meshy_dcc_unreal import ensure_valid_name
 
     result = ensure_valid_name("", param="actor_name")
     assert isinstance(result, dict)
@@ -375,7 +375,7 @@ def test_ensure_valid_name_empty():
 
 def test_ensure_valid_name_whitespace():
     """ensure_valid_name() returns error dict for whitespace-only name."""
-    from dcc_mcp_unreal import ensure_valid_name
+    from meshy_dcc_unreal import ensure_valid_name
 
     result = ensure_valid_name("   ")
     assert result.get("success") is False
@@ -383,7 +383,7 @@ def test_ensure_valid_name_whitespace():
 
 def test_build_context_dict_filters_none():
     """build_context_dict() excludes None-valued keys."""
-    from dcc_mcp_unreal import build_context_dict
+    from meshy_dcc_unreal import build_context_dict
 
     result = build_context_dict(a=1, b=None, c="hello")
     assert result == {"a": 1, "c": "hello"}
@@ -410,7 +410,7 @@ class _FakeRotator:
 
 def test_vector_to_list():
     """vector_to_list() converts a Vector-like object to [x, y, z]."""
-    from dcc_mcp_unreal import vector_to_list
+    from meshy_dcc_unreal import vector_to_list
 
     v = _FakeVector(100.0, 200.0, 300.0)
     assert vector_to_list(v) == [100.0, 200.0, 300.0]
@@ -418,7 +418,7 @@ def test_vector_to_list():
 
 def test_rotator_to_list():
     """rotator_to_list() converts a Rotator-like object to [pitch, yaw, roll]."""
-    from dcc_mcp_unreal import rotator_to_list
+    from meshy_dcc_unreal import rotator_to_list
 
     r = _FakeRotator(10.0, 20.0, 30.0)
     assert rotator_to_list(r) == [10.0, 20.0, 30.0]
@@ -431,7 +431,7 @@ def test_rotator_to_list():
 
 def test_unreal_capabilities_dict():
     """UNREAL_CAPABILITIES_DICT has expected keys and Unreal-specific values."""
-    from dcc_mcp_unreal import UNREAL_CAPABILITIES_DICT
+    from meshy_dcc_unreal import UNREAL_CAPABILITIES_DICT
 
     assert UNREAL_CAPABILITIES_DICT["transform"] is True
     assert UNREAL_CAPABILITIES_DICT["scene_manager"] is True
@@ -442,13 +442,13 @@ def test_unreal_capabilities_dict():
 
 
 # ---------------------------------------------------------------------------
-# Server instantiation (no real dcc-mcp-core required for these tests)
+# Server instantiation (no real meshy-dcc-core required for these tests)
 # ---------------------------------------------------------------------------
 
 
 def test_server_instantiation():
-    """UnrealMcpServer can be instantiated (requires dcc-mcp-core)."""
-    from dcc_mcp_unreal import UnrealMcpServer
+    """UnrealMcpServer can be instantiated (requires meshy-dcc-core)."""
+    from meshy_dcc_unreal import UnrealMcpServer
 
     server = UnrealMcpServer(port=9999)
     assert server._config is not None
@@ -459,46 +459,46 @@ def test_server_instantiation():
 
 
 def test_server_forces_current_windows_ui_control_scope(monkeypatch):
-    import dcc_mcp_unreal.server as server_module
+    import meshy_dcc_unreal.server as server_module
 
     monkeypatch.setattr(server_module, "_IS_WINDOWS", True, raising=False)
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_BACKEND", "mock")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_PROCESS_ID", "123")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_WINDOW_HANDLE", "456")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_UIA_PROCESS_ID", "123")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_UIA_WINDOW_HANDLE", "456")
-    monkeypatch.setenv("DCC_MCP_APP_UI_BACKEND", "windows-uia")
-    monkeypatch.setenv("DCC_MCP_APP_UI_UIA_PROCESS_ID", "123")
-    monkeypatch.setenv("DCC_MCP_APP_UI_UIA_WINDOW_HANDLE", "456")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_BACKEND", "mock")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", "123")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_WINDOW_HANDLE", "456")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_UIA_PROCESS_ID", "123")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_UIA_WINDOW_HANDLE", "456")
+    monkeypatch.setenv("MESHY_DCC_APP_UI_BACKEND", "windows-uia")
+    monkeypatch.setenv("MESHY_DCC_APP_UI_UIA_PROCESS_ID", "123")
+    monkeypatch.setenv("MESHY_DCC_APP_UI_UIA_WINDOW_HANDLE", "456")
 
     server_module.UnrealMcpServer(port=0)
 
-    assert os.environ["DCC_MCP_UI_CONTROL_BACKEND"] == "cua"
-    assert os.environ["DCC_MCP_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
-    assert "DCC_MCP_UI_CONTROL_WINDOW_HANDLE" not in os.environ
+    assert os.environ["MESHY_DCC_UI_CONTROL_BACKEND"] == "cua"
+    assert os.environ["MESHY_DCC_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
+    assert "MESHY_DCC_UI_CONTROL_WINDOW_HANDLE" not in os.environ
     for legacy_name in (
-        "DCC_MCP_UI_CONTROL_UIA_PROCESS_ID",
-        "DCC_MCP_UI_CONTROL_UIA_WINDOW_HANDLE",
-        "DCC_MCP_APP_UI_BACKEND",
-        "DCC_MCP_APP_UI_UIA_PROCESS_ID",
-        "DCC_MCP_APP_UI_UIA_WINDOW_HANDLE",
+        "MESHY_DCC_UI_CONTROL_UIA_PROCESS_ID",
+        "MESHY_DCC_UI_CONTROL_UIA_WINDOW_HANDLE",
+        "MESHY_DCC_APP_UI_BACKEND",
+        "MESHY_DCC_APP_UI_UIA_PROCESS_ID",
+        "MESHY_DCC_APP_UI_UIA_WINDOW_HANDLE",
     ):
         assert legacy_name not in os.environ
 
 
 def test_server_start_repairs_ui_control_scope_drift(monkeypatch):
-    import dcc_mcp_unreal.server as server_module
+    import meshy_dcc_unreal.server as server_module
 
     monkeypatch.setattr(server_module, "_IS_WINDOWS", True, raising=False)
     server = server_module.UnrealMcpServer(port=0)
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_BACKEND", "mock")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_PROCESS_ID", "123")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_WINDOW_HANDLE", "456")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_UIA_PROCESS_ID", "123")
-    monkeypatch.setenv("DCC_MCP_UI_CONTROL_UIA_WINDOW_HANDLE", "456")
-    monkeypatch.setenv("DCC_MCP_APP_UI_BACKEND", "windows-uia")
-    monkeypatch.setenv("DCC_MCP_APP_UI_UIA_PROCESS_ID", "123")
-    monkeypatch.setenv("DCC_MCP_APP_UI_UIA_WINDOW_HANDLE", "456")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_BACKEND", "mock")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", "123")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_WINDOW_HANDLE", "456")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_UIA_PROCESS_ID", "123")
+    monkeypatch.setenv("MESHY_DCC_UI_CONTROL_UIA_WINDOW_HANDLE", "456")
+    monkeypatch.setenv("MESHY_DCC_APP_UI_BACKEND", "windows-uia")
+    monkeypatch.setenv("MESHY_DCC_APP_UI_UIA_PROCESS_ID", "123")
+    monkeypatch.setenv("MESHY_DCC_APP_UI_UIA_WINDOW_HANDLE", "456")
     captured = {}
 
     def capture_start(_self, *, install_atexit_hook=True):
@@ -508,22 +508,22 @@ def test_server_start_repairs_ui_control_scope_drift(monkeypatch):
     monkeypatch.setattr(server_module.DccServerBase, "start", capture_start)
 
     assert server.start(install_atexit_hook=False) is False
-    assert captured["DCC_MCP_UI_CONTROL_BACKEND"] == "cua"
-    assert captured["DCC_MCP_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
-    assert "DCC_MCP_UI_CONTROL_WINDOW_HANDLE" not in captured
+    assert captured["MESHY_DCC_UI_CONTROL_BACKEND"] == "cua"
+    assert captured["MESHY_DCC_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
+    assert "MESHY_DCC_UI_CONTROL_WINDOW_HANDLE" not in captured
     for legacy_name in (
-        "DCC_MCP_UI_CONTROL_UIA_PROCESS_ID",
-        "DCC_MCP_UI_CONTROL_UIA_WINDOW_HANDLE",
-        "DCC_MCP_APP_UI_BACKEND",
-        "DCC_MCP_APP_UI_UIA_PROCESS_ID",
-        "DCC_MCP_APP_UI_UIA_WINDOW_HANDLE",
+        "MESHY_DCC_UI_CONTROL_UIA_PROCESS_ID",
+        "MESHY_DCC_UI_CONTROL_UIA_WINDOW_HANDLE",
+        "MESHY_DCC_APP_UI_BACKEND",
+        "MESHY_DCC_APP_UI_UIA_PROCESS_ID",
+        "MESHY_DCC_APP_UI_UIA_WINDOW_HANDLE",
     ):
         assert legacy_name not in captured
 
 
 def test_server_custom_name():
     """UnrealMcpServer accepts custom server_name and server_version."""
-    from dcc_mcp_unreal import UnrealMcpServer
+    from meshy_dcc_unreal import UnrealMcpServer
 
     server = UnrealMcpServer(port=8765, server_name="my-unreal-mcp", server_version="1.2.3")
     assert server._config.server_name == "my-unreal-mcp"
@@ -533,21 +533,21 @@ def test_server_custom_name():
 @pytest.mark.parametrize(("port", "expected"), [(None, 18765), (0, 0)])
 def test_server_dynamic_port_and_explicit_zero_override_env(monkeypatch, port, expected):
     """Core owns env resolution while an explicit zero remains meaningful."""
-    from dcc_mcp_unreal import UnrealMcpServer
+    from meshy_dcc_unreal import UnrealMcpServer
 
-    monkeypatch.setenv("DCC_MCP_UNREAL_PORT", "18765")
+    monkeypatch.setenv("MESHY_DCC_UNREAL_PORT", "18765")
     server = UnrealMcpServer(port=port)
     assert server._config.port == expected
 
 
 @pytest.mark.parametrize(
     "script_name",
-    ["init_unreal.py", "dcc_mcp_unreal_startup.py"],
+    ["init_unreal.py", "meshy_dcc_unreal_startup.py"],
 )
 def test_unreal_bootstrap_delegates_instance_port_resolution_to_core(script_name):
     script = Path(__file__).parents[1] / "unreal" / "plugin" / "Content" / "Python" / script_name
     source = script.read_text(encoding="utf-8")
-    assert 'os.environ.get("DCC_MCP_UNREAL_PORT"' not in source
+    assert 'os.environ.get("MESHY_DCC_UNREAL_PORT"' not in source
     assert "start_server(port=" not in source
 
 
@@ -563,7 +563,7 @@ def test_unreal_bootstrap_resolves_plugin_root_without_file_global(monkeypatch, 
     """UE startup-script execution may omit __file__; the mounted plugin remains authoritative."""
     callbacks = []
     requested_plugins = []
-    plugin_root = tmp_path / "DccMcpUnreal"
+    plugin_root = tmp_path / "MeshyDccUnreal"
     (plugin_root / "python").mkdir(parents=True)
 
     fake_unreal = types.SimpleNamespace(
@@ -578,18 +578,18 @@ def test_unreal_bootstrap_resolves_plugin_root_without_file_global(monkeypatch, 
     monkeypatch.setattr(sys, "path", list(sys.path))
 
     script = Path(__file__).parents[1] / "unreal" / "plugin" / "Content" / "Python" / "init_unreal.py"
-    namespace = {"__name__": "dcc_mcp_unreal_fileless_startup"}
+    namespace = {"__name__": "meshy_dcc_unreal_fileless_startup"}
     exec(compile(script.read_text(encoding="utf-8"), str(script), "exec"), namespace)
 
-    assert namespace["_bootstrap_log_dir"]() == tmp_path / ".dcc-mcp" / "bootstrap-errors"
-    assert requested_plugins == ["DccMcpUnreal", "DccMcpUnreal"]
+    assert namespace["_bootstrap_log_dir"]() == tmp_path / ".meshy-dcc" / "bootstrap-errors"
+    assert requested_plugins == ["MeshyDccUnreal", "MeshyDccUnreal"]
     assert sys.path[0] == str(plugin_root / "python")
     assert len(callbacks) == 1
 
 
 def test_main_thread_dispatcher_registers_one_tick_callback_on_the_game_thread(monkeypatch):
     """Worker dispatch must queue work without touching Slate from that worker."""
-    from dcc_mcp_unreal.server import UnrealMainThreadDispatcher
+    from meshy_dcc_unreal.server import UnrealMainThreadDispatcher
 
     main_thread_id = threading.get_ident()
     callbacks = []
@@ -650,7 +650,7 @@ def test_main_thread_dispatcher_registers_one_tick_callback_on_the_game_thread(m
 
 
 def test_scene_publisher_runs_immediately_then_once_per_second(monkeypatch):
-    from dcc_mcp_unreal.server import UnrealMainThreadDispatcher
+    from meshy_dcc_unreal.server import UnrealMainThreadDispatcher
 
     callbacks = []
     fake_unreal = types.SimpleNamespace(
@@ -670,7 +670,7 @@ def test_scene_publisher_runs_immediately_then_once_per_second(monkeypatch):
 
 
 def test_server_publishes_changed_scene_to_gateway_and_resource(monkeypatch):
-    import dcc_mcp_unreal.server as server_module
+    import meshy_dcc_unreal.server as server_module
 
     server = server_module.UnrealMcpServer(port=0)
     snapshot = {"scene": "/Game/Maps/LiveMap", "world_type": "Editor"}
@@ -692,7 +692,7 @@ def test_server_publishes_changed_scene_to_gateway_and_resource(monkeypatch):
 
 
 def test_init_unreal_registers_submenu_entries_and_releases_one_shot_tick(monkeypatch):
-    """UE should expose one DCC MCP top-level menu, matching the other DCC hosts."""
+    """UE should expose one Meshy DCC top-level menu, matching the other DCC hosts."""
     callbacks = []
     unregistered = []
     entries = []
@@ -704,14 +704,14 @@ def test_init_unreal_registers_submenu_entries_and_releases_one_shot_tick(monkey
         def mcp_url():
             return "http://127.0.0.1:12345/mcp"
 
-    fake_package = types.ModuleType("dcc_mcp_unreal")
+    fake_package = types.ModuleType("meshy_dcc_unreal")
     fake_package.__path__ = []
     fake_package.start_server = lambda **_kwargs: starts.append(True) or FakeHandle()
     fake_package.stop_server = lambda: None
-    fake_version = types.ModuleType("dcc_mcp_unreal.__version__")
+    fake_version = types.ModuleType("meshy_dcc_unreal.__version__")
     fake_version.__version__ = "0.2.0"
-    monkeypatch.setitem(sys.modules, "dcc_mcp_unreal", fake_package)
-    monkeypatch.setitem(sys.modules, "dcc_mcp_unreal.__version__", fake_version)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_unreal", fake_package)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_unreal.__version__", fake_version)
 
     class FakeEntry:
         def __init__(self, name, type):
@@ -769,56 +769,56 @@ def test_init_unreal_registers_submenu_entries_and_releases_one_shot_tick(monkey
         unregister_slate_post_tick_callback=lambda handle: unregistered.append(handle),
     )
     monkeypatch.setitem(sys.modules, "unreal", fake_unreal)
-    monkeypatch.delenv("DCC_MCP_UI_CONTROL_BACKEND", raising=False)
-    monkeypatch.delenv("DCC_MCP_UI_CONTROL_PROCESS_ID", raising=False)
-    monkeypatch.delenv("DCC_MCP_UI_CONTROL_WINDOW_HANDLE", raising=False)
-    monkeypatch.delenv("DCC_MCP_UI_CONTROL_UIA_PROCESS_ID", raising=False)
-    monkeypatch.delenv("DCC_MCP_APP_UI_BACKEND", raising=False)
-    monkeypatch.delenv("DCC_MCP_APP_UI_UIA_PROCESS_ID", raising=False)
+    monkeypatch.delenv("MESHY_DCC_UI_CONTROL_BACKEND", raising=False)
+    monkeypatch.delenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", raising=False)
+    monkeypatch.delenv("MESHY_DCC_UI_CONTROL_WINDOW_HANDLE", raising=False)
+    monkeypatch.delenv("MESHY_DCC_UI_CONTROL_UIA_PROCESS_ID", raising=False)
+    monkeypatch.delenv("MESHY_DCC_APP_UI_BACKEND", raising=False)
+    monkeypatch.delenv("MESHY_DCC_APP_UI_UIA_PROCESS_ID", raising=False)
 
     script = Path(__file__).parents[1] / "unreal" / "plugin" / "Content" / "Python" / "init_unreal.py"
-    runpy.run_path(str(script), run_name="dcc_mcp_unreal_test_init")
+    runpy.run_path(str(script), run_name="meshy_dcc_unreal_test_init")
     assert len(callbacks) == 1
     assert starts == []
     if sys.platform == "win32":
-        assert os.environ["DCC_MCP_UI_CONTROL_BACKEND"] == "cua"
-        assert os.environ["DCC_MCP_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
-        assert "DCC_MCP_UI_CONTROL_WINDOW_HANDLE" not in os.environ
-        assert "DCC_MCP_UI_CONTROL_UIA_PROCESS_ID" not in os.environ
-        assert "DCC_MCP_APP_UI_BACKEND" not in os.environ
-        assert "DCC_MCP_APP_UI_UIA_PROCESS_ID" not in os.environ
+        assert os.environ["MESHY_DCC_UI_CONTROL_BACKEND"] == "cua"
+        assert os.environ["MESHY_DCC_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
+        assert "MESHY_DCC_UI_CONTROL_WINDOW_HANDLE" not in os.environ
+        assert "MESHY_DCC_UI_CONTROL_UIA_PROCESS_ID" not in os.environ
+        assert "MESHY_DCC_APP_UI_BACKEND" not in os.environ
+        assert "MESHY_DCC_APP_UI_UIA_PROCESS_ID" not in os.environ
     else:
-        assert "DCC_MCP_UI_CONTROL_BACKEND" not in os.environ
-        assert "DCC_MCP_UI_CONTROL_PROCESS_ID" not in os.environ
-        assert "DCC_MCP_APP_UI_BACKEND" not in os.environ
-        assert "DCC_MCP_APP_UI_UIA_PROCESS_ID" not in os.environ
+        assert "MESHY_DCC_UI_CONTROL_BACKEND" not in os.environ
+        assert "MESHY_DCC_UI_CONTROL_PROCESS_ID" not in os.environ
+        assert "MESHY_DCC_APP_UI_BACKEND" not in os.environ
+        assert "MESHY_DCC_APP_UI_UIA_PROCESS_ID" not in os.environ
 
     callbacks[0](0.0)
     assert starts == [True]
 
     assert submenus == [
         {
-            "owner": "DccMcp",
+            "owner": "MeshyDcc",
             "section_name": "",
-            "name": "DccMcp",
-            "label": "DCC MCP",
-            "tool_tip": "DCC MCP server controls",
+            "name": "MeshyDcc",
+            "label": "Meshy DCC",
+            "tool_tip": "Meshy DCC server controls",
         }
     ]
     assert entries == [
-        ("DccMcpInstance", "DccMcp.CopyInstanceId"),
-        ("DccMcpInstance", "DccMcp.ServerInfo"),
-        ("DccMcpServer", "DccMcp.ShowUrl"),
-        ("DccMcpControl", "DccMcp.Restart"),
-        ("DccMcpControl", "DccMcp.Stop"),
-        ("DccMcpAbout", "DccMcp.About"),
+        ("MeshyDccInstance", "MeshyDcc.CopyInstanceId"),
+        ("MeshyDccInstance", "MeshyDcc.ServerInfo"),
+        ("MeshyDccServer", "MeshyDcc.ShowUrl"),
+        ("MeshyDccControl", "MeshyDcc.Restart"),
+        ("MeshyDccControl", "MeshyDcc.Stop"),
+        ("MeshyDccAbout", "MeshyDcc.About"),
     ]
     assert unregistered == ["tick-handle"]
 
 
 def test_asset_data_object_path_supports_ue58_and_legacy_api():
     helper_path = (
-        Path(__file__).parents[1] / "src" / "dcc_mcp_unreal" / "skills" / "unreal-assets" / "scripts" / "_asset_data.py"
+        Path(__file__).parents[1] / "src" / "meshy_dcc_unreal" / "skills" / "unreal-assets" / "scripts" / "_asset_data.py"
     )
     spec = importlib.util.spec_from_file_location("_test_unreal_asset_data", helper_path)
     assert spec and spec.loader
@@ -853,7 +853,7 @@ def test_fbx_import_options_combine_meshes_and_select_named_asset():
     helper_path = (
         Path(__file__).parents[1]
         / "src"
-        / "dcc_mcp_unreal"
+        / "meshy_dcc_unreal"
         / "skills"
         / "unreal-assets"
         / "scripts"
@@ -944,7 +944,7 @@ def test_fbx_import_options_combine_meshes_and_select_named_asset():
 
 
 def test_texture_material_skill_is_registered_and_builds_complete_graph():
-    skill_root = Path(__file__).parents[1] / "src" / "dcc_mcp_unreal" / "skills" / "unreal-assets"
+    skill_root = Path(__file__).parents[1] / "src" / "meshy_dcc_unreal" / "skills" / "unreal-assets"
     tools = (skill_root / "tools.yaml").read_text(encoding="utf-8")
     script = (skill_root / "scripts" / "create_texture_material.py").read_text(encoding="utf-8")
 
@@ -973,7 +973,7 @@ def test_texture_material_skill_is_registered_and_builds_complete_graph():
 
 
 def test_blueprint_creation_skill_is_registered():
-    skill_root = Path(__file__).parents[1] / "src" / "dcc_mcp_unreal" / "skills" / "unreal-assets"
+    skill_root = Path(__file__).parents[1] / "src" / "meshy_dcc_unreal" / "skills" / "unreal-assets"
     tools = (skill_root / "tools.yaml").read_text(encoding="utf-8")
     script = (skill_root / "scripts" / "create_blueprint.py").read_text(encoding="utf-8")
 

@@ -12,7 +12,7 @@ def _module():
     path = (
         Path(__file__).resolve().parents[1]
         / "src"
-        / "dcc_mcp_unreal"
+        / "meshy_dcc_unreal"
         / "skills"
         / "unreal-geospatial-pcg-table"
         / "scripts"
@@ -29,7 +29,7 @@ def _entry_module():
     scripts = (
         Path(__file__).resolve().parents[1]
         / "src"
-        / "dcc_mcp_unreal"
+        / "meshy_dcc_unreal"
         / "skills"
         / "unreal-geospatial-pcg-table"
         / "scripts"

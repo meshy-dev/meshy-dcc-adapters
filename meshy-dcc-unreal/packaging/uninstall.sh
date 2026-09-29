@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dcc-mcp-unreal — Linux/macOS uninstaller
+# meshy-dcc-unreal — Linux/macOS uninstaller
 
 set -euo pipefail
 
@@ -15,16 +15,16 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -n "$ENGINE_ROOT" ]]; then
-    DEST="$ENGINE_ROOT/Engine/Plugins/DccMcpUnreal"
+    DEST="$ENGINE_ROOT/Engine/Plugins/MeshyDccUnreal"
 else
-    DEST="$PROJECT_ROOT/Plugins/DccMcpUnreal"
+    DEST="$PROJECT_ROOT/Plugins/MeshyDccUnreal"
 fi
 
 if [[ ! -d "$DEST" ]]; then
-    echo "[dcc-mcp-unreal] Plugin not found at $DEST"
+    echo "[meshy-dcc-unreal] Plugin not found at $DEST"
     exit 0
 fi
 
 echo "Removing $DEST ..."
 rm -rf "$DEST"
-echo "[dcc-mcp-unreal] Uninstalled successfully."
+echo "[meshy-dcc-unreal] Uninstalled successfully."

@@ -1,5 +1,5 @@
 // Appended to exact production bodies by scripts/check_playtest_native.py.
-using L=UDccMcpAutomationLibrary;
+using L=UMeshyDccAutomationLibrary;
 void check(bool value,const char* message){if(!value)throw std::runtime_error(message);}
 struct Fixture {
     UWorld world,other; APawn pawn,replacement; APlayerController controller,other_controller; UPlayerInput input,replaced_input;

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Post-install verification for dcc-mcp-unreal plugin.
+"""Post-install verification for meshy-dcc-unreal plugin.
 
 Checks that:
 1. The plugin directory structure is correct
 2. The .uplugin descriptor is valid JSON
-3. The dcc_mcp_unreal Python package is importable from the plugin's python/ dir
-4. The dcc_mcp_core dependency is present
+3. The meshy_dcc_unreal Python package is importable from the plugin's python/ dir
+4. The meshy_dcc_core dependency is present
 5. The Content/Python/init_unreal.py entry point exists
 
 Usage:
-    python post_install.py --plugin-root /path/to/DccMcpUnreal
+    python post_install.py --plugin-root /path/to/MeshyDccUnreal
     python post_install.py  # auto-detect from script location
 """
 
@@ -30,7 +30,7 @@ def check(condition: bool, msg_ok: str, msg_fail: str) -> bool:
 
 
 def verify(plugin_root: Path) -> bool:
-    print(f"\n[dcc-mcp-unreal] Post-install verification: {plugin_root}\n")
+    print(f"\n[meshy-dcc-unreal] Post-install verification: {plugin_root}\n")
     passed = True
 
     # 1. Plugin root exists
@@ -39,7 +39,7 @@ def verify(plugin_root: Path) -> bool:
         return False
 
     # 2. .uplugin descriptor
-    uplugin = plugin_root / "DccMcpUnreal.uplugin"
+    uplugin = plugin_root / "MeshyDccUnreal.uplugin"
     if not uplugin.exists():
         matches = sorted(plugin_root.glob("*.uplugin"))
         uplugin = matches[0] if matches else uplugin
@@ -70,45 +70,45 @@ def verify(plugin_root: Path) -> bool:
     else:
         print(f"  [INFO] python/ not found at {python_dir} (expected after install, OK in dev mode)")
 
-    # 5. dcc_mcp_unreal importable (from python/ or regular sys.path in dev mode)
+    # 5. meshy_dcc_unreal importable (from python/ or regular sys.path in dev mode)
     try:
-        import dcc_mcp_unreal  # noqa: F401, PLC0415
-        from dcc_mcp_unreal.__version__ import __version__  # noqa: PLC0415
+        import meshy_dcc_unreal  # noqa: F401, PLC0415
+        from meshy_dcc_unreal.__version__ import __version__  # noqa: PLC0415
 
-        passed &= check(True, f"dcc_mcp_unreal importable (version={__version__})", "")
+        passed &= check(True, f"meshy_dcc_unreal importable (version={__version__})", "")
     except ImportError as exc:
-        passed &= check(False, "", f"dcc_mcp_unreal import failed: {exc}")
+        passed &= check(False, "", f"meshy_dcc_unreal import failed: {exc}")
 
-    # 6. dcc_mcp_core importable
+    # 6. meshy_dcc_core importable
     try:
-        import dcc_mcp_core  # noqa: F401, PLC0415
+        import meshy_dcc_core  # noqa: F401, PLC0415
 
         if python_dir.is_dir():
             try:
-                Path(dcc_mcp_core.__file__).resolve().relative_to(python_dir.resolve())
+                Path(meshy_dcc_core.__file__).resolve().relative_to(python_dir.resolve())
                 bundled_core = True
             except (AttributeError, ValueError):
                 bundled_core = False
             passed &= check(
                 bundled_core,
-                "dcc_mcp_core is bundled in python/",
-                "dcc_mcp_core resolved outside the plugin python/ payload",
+                "meshy_dcc_core is bundled in python/",
+                "meshy_dcc_core resolved outside the plugin python/ payload",
             )
         else:
-            passed &= check(True, "dcc_mcp_core importable", "")
+            passed &= check(True, "meshy_dcc_core importable", "")
     except ImportError as exc:
-        passed &= check(False, "", f"dcc_mcp_core import failed: {exc}")
+        passed &= check(False, "", f"meshy_dcc_core import failed: {exc}")
 
     print()
     if passed:
-        print("[dcc-mcp-unreal] All checks passed. OK")
+        print("[meshy-dcc-unreal] All checks passed. OK")
     else:
-        print("[dcc-mcp-unreal] Some checks FAILED. See above for details.")
+        print("[meshy-dcc-unreal] Some checks FAILED. See above for details.")
     return passed
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Post-install verification for dcc-mcp-unreal")
+    parser = argparse.ArgumentParser(description="Post-install verification for meshy-dcc-unreal")
     parser.add_argument(
         "--plugin-root",
         default=None,

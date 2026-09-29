@@ -6,14 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_unreal import official_mcp
+from meshy_dcc_unreal import official_mcp
 
 
 def _load_prepare_module():
     script = (
         Path(__file__).parents[1]
         / "src"
-        / "dcc_mcp_unreal"
+        / "meshy_dcc_unreal"
         / "skills"
         / "unreal-official-mcp"
         / "scripts"

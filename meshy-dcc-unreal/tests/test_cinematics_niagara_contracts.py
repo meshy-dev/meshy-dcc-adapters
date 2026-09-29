@@ -20,7 +20,7 @@ def _load_script(name: str, relative_path: str):
 def _render_unreal():
     unreal = types.ModuleType("unreal")
     unreal.log = MagicMock()
-    unreal.DccMcpAutomationLibrary = types.SimpleNamespace(get_enabled_plugin_names=lambda: ["MovieRenderPipeline"])
+    unreal.MeshyDccAutomationLibrary = types.SimpleNamespace(get_enabled_plugin_names=lambda: ["MovieRenderPipeline"])
     unreal.LevelSequence = type("LevelSequence", (), {})
     unreal.MoviePipelineQueueSubsystem = type("MoviePipelineQueueSubsystem", (), {})
     unreal.MoviePipelineExecutorJob = type("MoviePipelineExecutorJob", (), {})
@@ -112,7 +112,7 @@ def test_queue_uses_real_output_setting_and_preserves_sequence_rate():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         result = module.queue_sequence_render(
             sequence_path="/Game/Sequences/Test",
@@ -137,7 +137,7 @@ def test_queue_configures_ocio_color_output(tmp_path):
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render_ocio",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         result = module.queue_sequence_render(
             sequence_path="/Game/Sequences/Test",
@@ -162,7 +162,7 @@ def test_queue_can_clear_existing_jobs_before_adding_render():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render_clear",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         result = module.queue_sequence_render(
             sequence_path="/Game/Sequences/Test",
@@ -188,7 +188,7 @@ def test_queue_rejects_ocio_transform_missing_after_reload(tmp_path):
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render_invalid_ocio",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         result = module.queue_sequence_render(
             sequence_path="/Game/Sequences/Test",
@@ -204,7 +204,7 @@ def test_queue_rejects_ocio_transform_missing_after_reload(tmp_path):
 def test_queue_absolute_path_validation_is_agent_platform_independent():
     module = _load_script(
         "queue_sequence_render_path_contract",
-        "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+        "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
     )
 
     assert module._is_absolute_output_path("C:/renders") is True
@@ -220,7 +220,7 @@ def test_queue_failure_removes_partial_job_and_returns_error():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render_failure",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         result = module.queue_sequence_render(
             sequence_path="/Game/Sequences/Test",
@@ -238,7 +238,7 @@ def test_queue_rejects_unsaved_editor_level_before_allocating_job():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render_unsaved_map",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         result = module.queue_sequence_render(
             sequence_path="/Game/Sequences/Test",
@@ -260,7 +260,7 @@ def test_queue_rejects_unsafe_lumen_atlas_before_allocating_job(tmp_path):
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render_unsafe_lumen",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         module.project_config_path = lambda: config_path
         result = module.queue_sequence_render(
@@ -275,12 +275,12 @@ def test_queue_rejects_unsafe_lumen_atlas_before_allocating_job(tmp_path):
 
 def test_queue_fails_cleanly_when_movie_render_queue_plugin_is_disabled():
     unreal, _subsystem, queue, _output_setting = _render_unreal()
-    unreal.DccMcpAutomationLibrary.get_enabled_plugin_names = lambda: []
+    unreal.MeshyDccAutomationLibrary.get_enabled_plugin_names = lambda: []
     del unreal.MoviePipelineQueueSubsystem
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "queue_sequence_render_plugin_disabled",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/queue_sequence_render.py",
         )
         result = module.queue_sequence_render(
             sequence_path="/Game/Sequences/Test",
@@ -295,7 +295,7 @@ def test_queue_fails_cleanly_when_movie_render_queue_plugin_is_disabled():
 def test_cancel_render_uses_active_executor():
     unreal = types.ModuleType("unreal")
     unreal.log = MagicMock()
-    unreal.DccMcpAutomationLibrary = types.SimpleNamespace(get_enabled_plugin_names=lambda: ["MovieRenderPipeline"])
+    unreal.MeshyDccAutomationLibrary = types.SimpleNamespace(get_enabled_plugin_names=lambda: ["MovieRenderPipeline"])
     unreal.MoviePipelineQueueSubsystem = type("MoviePipelineQueueSubsystem", (), {})
     executor = MagicMock()
     subsystem = MagicMock()
@@ -306,7 +306,7 @@ def test_cancel_render_uses_active_executor():
     with patch.dict(sys.modules, {"unreal": unreal}):
         result = _load_script(
             "cancel_queued_render",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/cancel_queued_render.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/cancel_queued_render.py",
         ).cancel_queued_render()
 
     assert result["success"] is True
@@ -338,7 +338,7 @@ def test_create_level_sequence_uses_requested_package_and_fractional_rate():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "create_level_sequence_contract",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/create_level_sequence.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/create_level_sequence.py",
         )
         result = module.create_level_sequence(
             sequence_name="LS_Test",
@@ -370,7 +370,7 @@ def test_playback_range_uses_frame_rate_denominator_and_fails_closed():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "set_playback_range_contract",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/set_playback_range.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/set_playback_range.py",
         )
         result = module.set_playback_range(
             sequence_path="/Game/Cinematics/LS_Test",
@@ -392,7 +392,7 @@ def test_playback_range_uses_frame_rate_denominator_and_fails_closed():
 
 
 def test_camera_cut_uses_sequence_binding_id():
-    import dcc_mcp_unreal.api as api_module
+    import meshy_dcc_unreal.api as api_module
 
     unreal = types.ModuleType("unreal")
     unreal.log = MagicMock()
@@ -425,7 +425,7 @@ def test_camera_cut_uses_sequence_binding_id():
     ):
         module = _load_script(
             "add_camera_cut_track_contract",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/add_camera_cut_track.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/add_camera_cut_track.py",
         )
         result = module.add_camera_cut_track(
             sequence_path="/Game/Cinematics/LS_Test",
@@ -440,7 +440,7 @@ def test_camera_cut_uses_sequence_binding_id():
 
 
 def test_camera_cut_reuses_existing_named_binding():
-    import dcc_mcp_unreal.api as api_module
+    import meshy_dcc_unreal.api as api_module
 
     unreal = types.ModuleType("unreal")
     unreal.log = MagicMock()
@@ -471,7 +471,7 @@ def test_camera_cut_reuses_existing_named_binding():
     ):
         module = _load_script(
             "add_camera_cut_reuse_contract",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/add_camera_cut_track.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/add_camera_cut_track.py",
         )
         result = module.add_camera_cut_track(
             sequence_path="/Game/Cinematics/LS_Test",
@@ -519,7 +519,7 @@ def test_sequence_info_normalizes_unreal_text_and_detects_camera_track_by_type()
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "get_sequence_info_contract",
-            "src/dcc_mcp_unreal/skills/unreal-cinematics/scripts/get_sequence_info.py",
+            "src/meshy_dcc_unreal/skills/unreal-cinematics/scripts/get_sequence_info.py",
         )
         result = module.get_sequence_info(sequence_path="/Game/Cinematics/LS_Test")
 
@@ -532,8 +532,8 @@ def test_sequence_info_normalizes_unreal_text_and_detects_camera_track_by_type()
 
 def test_cinematics_contract_exposes_queue_not_render_success():
     root = Path(__file__).resolve().parents[1]
-    tools = (root / "src/dcc_mcp_unreal/skills/unreal-cinematics/tools.yaml").read_text(encoding="utf-8")
-    skill = (root / "src/dcc_mcp_unreal/skills/unreal-cinematics/SKILL.md").read_text(encoding="utf-8")
+    tools = (root / "src/meshy_dcc_unreal/skills/unreal-cinematics/tools.yaml").read_text(encoding="utf-8")
+    skill = (root / "src/meshy_dcc_unreal/skills/unreal-cinematics/SKILL.md").read_text(encoding="utf-8")
 
     assert "queue_sequence_render" in tools
     assert "render_sequence_to_movie" not in tools
@@ -542,9 +542,9 @@ def test_cinematics_contract_exposes_queue_not_render_success():
 
 
 def test_cinematics_and_niagara_skill_contracts_validate():
-    from dcc_mcp_core import validate_skill
+    from meshy_dcc_core import validate_skill
 
-    skills_root = Path(__file__).resolve().parents[1] / "src/dcc_mcp_unreal/skills"
+    skills_root = Path(__file__).resolve().parents[1] / "src/meshy_dcc_unreal/skills"
     for skill_name in ("unreal-cinematics", "unreal-niagara"):
         report = validate_skill(str(skills_root / skill_name))
         assert not report.has_errors, report.issues
@@ -569,7 +569,7 @@ def test_niagara_asset_is_created_in_requested_package_path():
     with patch.dict(sys.modules, {"unreal": unreal}):
         module = _load_script(
             "create_niagara_system",
-            "src/dcc_mcp_unreal/skills/unreal-niagara/scripts/create_niagara_system.py",
+            "src/meshy_dcc_unreal/skills/unreal-niagara/scripts/create_niagara_system.py",
         )
         result = module.create_niagara_system(system_name="NS_Test", package_path="/Game/VFX")
 
@@ -581,7 +581,7 @@ def test_niagara_asset_is_created_in_requested_package_path():
 def test_niagara_template_request_fails_closed():
     module = _load_script(
         "create_niagara_system_template",
-        "src/dcc_mcp_unreal/skills/unreal-niagara/scripts/create_niagara_system.py",
+        "src/meshy_dcc_unreal/skills/unreal-niagara/scripts/create_niagara_system.py",
     )
     result = module.create_niagara_system(
         system_name="NS_Test",

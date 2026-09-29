@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dcc_mcp_unreal import verified_effect_result
+from meshy_dcc_unreal import verified_effect_result
 
 WAVE_FIELDS = (
     "door_index",

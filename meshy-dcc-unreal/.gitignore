@@ -35,7 +35,7 @@ htmlcov/
 Thumbs.db
 
 # Local Unreal project artifacts
-/dcc-mcp.uproject
+/meshy-dcc.uproject
 /Binaries/
 /Build/
 /Config/

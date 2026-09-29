@@ -1,5 +1,5 @@
 @echo off
-REM dcc-mcp-unreal — Windows uninstaller
+REM meshy-dcc-unreal — Windows uninstaller
 setlocal
 
 set "PROJECT_ROOT=%CD%"
@@ -19,17 +19,17 @@ shift & goto :parse_args
 :done_args
 
 if not "%ENGINE_ROOT%"=="" (
-    set "DEST=%ENGINE_ROOT%\Engine\Plugins\DccMcpUnreal"
+    set "DEST=%ENGINE_ROOT%\Engine\Plugins\MeshyDccUnreal"
 ) else (
-    set "DEST=%PROJECT_ROOT%\Plugins\DccMcpUnreal"
+    set "DEST=%PROJECT_ROOT%\Plugins\MeshyDccUnreal"
 )
 
 if not exist "%DEST%" (
-    echo [dcc-mcp-unreal] Plugin not found at %DEST%
+    echo [meshy-dcc-unreal] Plugin not found at %DEST%
     exit /b 0
 )
 
 echo Removing %DEST% ...
 rmdir /s /q "%DEST%"
-echo [dcc-mcp-unreal] Uninstalled successfully.
+echo [meshy-dcc-unreal] Uninstalled successfully.
 endlocal

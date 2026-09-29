@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  dcc-mcp-unreal — Linux/macOS installer
+#  meshy-dcc-unreal — Linux/macOS installer
 #
 #  Installs the plugin into the current Unreal Engine project
 #  or as an Engine plugin (if --engine is passed).
@@ -40,7 +40,7 @@ done
 # Read version from .uplugin
 UPLUGIN="$(find "$PLUGIN_DIR" -maxdepth 1 -name '*.uplugin' | head -n 1)"
 VERSION=$(python3 -c "import json; d=json.load(open('$UPLUGIN')); print(d.get('VersionName','0.1.0'))" 2>/dev/null || echo "0.1.0")
-echo "[dcc-mcp-unreal] Installing version $VERSION"
+echo "[meshy-dcc-unreal] Installing version $VERSION"
 
 # Determine destination
 if [[ "$INSTALL_MODE" == "engine" ]]; then
@@ -48,7 +48,7 @@ if [[ "$INSTALL_MODE" == "engine" ]]; then
         echo "ERROR: --engine requires a path, e.g. --engine /opt/UE_5.4"
         exit 1
     fi
-    DEST="$ENGINE_ROOT/Engine/Plugins/DccMcpUnreal"
+    DEST="$ENGINE_ROOT/Engine/Plugins/MeshyDccUnreal"
     echo "Installing as Engine plugin to: $DEST"
 else
     # Check for .uproject
@@ -56,7 +56,7 @@ else
         echo "WARNING: No .uproject found in $PROJECT_ROOT"
         echo "         Specify the project root with --project /path/to/game"
     fi
-    DEST="$PROJECT_ROOT/Plugins/DccMcpUnreal"
+    DEST="$PROJECT_ROOT/Plugins/MeshyDccUnreal"
     echo "Installing as Project plugin to: $DEST"
 fi
 
@@ -70,12 +70,12 @@ cp -R "$PLUGIN_DIR/." "$DEST/"
 echo "Plugin files copied."
 
 # Install Python package into plugin's python/ directory
-echo "Installing dcc-mcp-unreal Python package..."
-if python3 -m pip install dcc-mcp-unreal --target "$DEST/python" --quiet; then
+echo "Installing meshy-dcc-unreal Python package..."
+if python3 -m pip install meshy-dcc-unreal --target "$DEST/python" --quiet; then
     echo "Python package installed."
 else
     echo "WARNING: pip install failed. Install manually:"
-    echo "  pip install dcc-mcp-unreal --target '$DEST/python'"
+    echo "  pip install meshy-dcc-unreal --target '$DEST/python'"
 fi
 
 # Run post-install verification
@@ -91,11 +91,11 @@ echo " Installation complete!"
 echo ""
 echo " To enable in Unreal Engine:"
 echo " 1. Open your project in Unreal Editor"
-echo " 2. Edit > Plugins > search 'DCC MCP Unreal'"
+echo " 2. Edit > Plugins > search 'Meshy DCC Unreal'"
 echo " 3. Enable the plugin and restart the editor"
-echo " 4. The MCP instance uses an OS-assigned port; run dcc-mcp-cli list"
-echo "    or connect through the gateway at http://127.0.0.1:9765/mcp"
+echo " 4. The MCP instance uses an OS-assigned port; run meshy-dcc list"
+echo "    or connect through the gateway at http://127.0.0.1:19765/mcp"
 echo ""
-echo " To configure port:   export DCC_MCP_UNREAL_PORT=9000"
-echo " To configure name:   export DCC_MCP_UNREAL_SERVER_NAME=my-unreal"
+echo " To configure port:   export MESHY_DCC_UNREAL_PORT=9000"
+echo " To configure name:   export MESHY_DCC_UNREAL_SERVER_NAME=my-unreal"
 echo "============================================================"

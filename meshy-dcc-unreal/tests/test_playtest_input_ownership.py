@@ -16,7 +16,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = Path(os.environ.get("REVIEW_SCRIPTS", str(ROOT / "src/dcc_mcp_unreal/skills/unreal-playtest-agent/scripts")))
+SCRIPTS = Path(os.environ.get("REVIEW_SCRIPTS", str(ROOT / "src/meshy_dcc_unreal/skills/unreal-playtest-agent/scripts")))
 
 
 class Cancelled(BaseException):
@@ -97,7 +97,7 @@ class Harness:
                 get_all_actors_of_class=lambda world, cls: [self.player] + self.actors,
                 get_time_seconds=lambda world: self.now,
             ),
-            DccMcpAutomationLibrary=NS(
+            MeshyDccAutomationLibrary=NS(
                 inject_pie_key=self.inject,
                 acquire_pie_key=self.acquire,
                 press_owned_pie_key=self.press,
@@ -290,7 +290,7 @@ def test_observation_failure_releases_input(h, error_type):
 
 
 def test_primary_pie_loss_not_masked_by_cleanup_cancellation(h):
-    from dcc_mcp_unreal.pie_session import PieSessionUnavailableError
+    from meshy_dcc_unreal.pie_session import PieSessionUnavailableError
 
     h.start()
     h.world = None
@@ -305,7 +305,7 @@ def test_primary_pie_loss_not_masked_by_cleanup_cancellation(h):
 
 
 def test_drift_transition_conforms_to_output_schema(h):
-    from dcc_mcp_unreal.api import unreal_success
+    from meshy_dcc_unreal.api import unreal_success
 
     h.start()
     h.controller.pawn = Object("other-pawn")
@@ -447,7 +447,7 @@ def test_arbitrary_action_rejected(h):
 
 
 def test_failed_release_cannot_report_completed(h, monkeypatch):
-    monkeypatch.setattr(h.u.DccMcpAutomationLibrary, "release_owned_pie_key", lambda owner: False)
+    monkeypatch.setattr(h.u.MeshyDccAutomationLibrary, "release_owned_pie_key", lambda owner: False)
     h.start(expect_movement=False)
     h.now += 0.3
     result = h.poll()
@@ -486,7 +486,7 @@ def test_public_wrapper_drift_schema(h, monkeypatch, component):
 
 
 def test_missing_owned_bridge_rejects_before_key_down(h, monkeypatch):
-    monkeypatch.delattr(h.u.DccMcpAutomationLibrary, "acquire_pie_key")
+    monkeypatch.delattr(h.u.MeshyDccAutomationLibrary, "acquire_pie_key")
     with pytest.raises(RuntimeError, match="owned PIE input"):
         h.start()
     assert h.events == []
@@ -501,7 +501,7 @@ def test_delivered_key_up_is_never_replayed_after_cleanup_cancellation(h, stage)
         raise Cancelled("cancelled after key-up delivery")
 
     if stage == "release":
-        h.u.DccMcpAutomationLibrary.release_owned_pie_key = release_then_cancel
+        h.u.MeshyDccAutomationLibrary.release_owned_pie_key = release_then_cancel
     else:
         h.unregister_error = Cancelled("retirement refused")
     h.start()
@@ -517,7 +517,7 @@ def test_delivered_key_up_is_never_replayed_after_cleanup_cancellation(h, stage)
 
 
 def test_finish_after_observation_loss_reports_cleanup_failure(h, monkeypatch):
-    monkeypatch.setattr(h.u.DccMcpAutomationLibrary, "release_owned_pie_key", lambda owner: False)
+    monkeypatch.setattr(h.u.MeshyDccAutomationLibrary, "release_owned_pie_key", lambda owner: False)
     h.start()
     h.world = None
     result = h.r.finish_episode(h.episode)["trace"][0]
@@ -534,7 +534,7 @@ def test_owner_cannot_be_retargeted_when_receiver_disappears(h, monkeypatch):
         assert owner.controller is h.original
         return False
 
-    monkeypatch.setattr(h.u.DccMcpAutomationLibrary, "release_owned_pie_key", release_missing)
+    monkeypatch.setattr(h.u.MeshyDccAutomationLibrary, "release_owned_pie_key", release_missing)
     h.start()
     h.drift()
     result = h.poll()
@@ -546,22 +546,22 @@ def test_owner_cannot_be_retargeted_when_receiver_disappears(h, monkeypatch):
 
 
 def test_native_owned_receiver_contract():
-    native = ROOT / "unreal/plugin/Source/DccMcpUnreal/Private/DccMcpAutomationLibrary.cpp"
+    native = ROOT / "unreal/plugin/Source/MeshyDccUnreal/Private/MeshyDccAutomationLibrary.cpp"
     # Source-only guard; installed-wheel behavior is covered by the same public tests.
     if not native.exists():
         native = (
-            Path(__import__("dcc_mcp_unreal").__file__).parent
-            / "_plugin/Source/DccMcpUnreal/Private/DccMcpAutomationLibrary.cpp"
+            Path(__import__("meshy_dcc_unreal").__file__).parent
+            / "_plugin/Source/MeshyDccUnreal/Private/MeshyDccAutomationLibrary.cpp"
         )
     source = native.read_text(encoding="utf-8")
-    delivery = source.split("bool DeliverOwnedKey(", 1)[1].split("struct FDccMcpInputSteeringState", 1)[0]
+    delivery = source.split("bool DeliverOwnedKey(", 1)[1].split("struct FMeshyDccInputSteeringState", 1)[0]
     assert "State.Receiver.Get()" in delivery
     assert "Receiver->InputKey(" in delivery
     assert "GetPiePlayerController" not in delivery
     assert "InjectSlate" not in delivery
     assert "Receiver->GetOuter() != Controller" in delivery
-    release = source.split("bool UDccMcpAutomationLibrary::ReleaseOwnedPieKey(", 1)[1].split(
-        "bool UDccMcpAutomationLibrary::InjectPieKey(", 1
+    release = source.split("bool UMeshyDccAutomationLibrary::ReleaseOwnedPieKey(", 1)[1].split(
+        "bool UMeshyDccAutomationLibrary::InjectPieKey(", 1
     )[0]
     assert "RemoveAndCopyValue" in release
     assert "DeliverOwnedKey(State, false)" in release

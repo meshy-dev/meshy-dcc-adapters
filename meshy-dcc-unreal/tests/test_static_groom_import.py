@@ -9,7 +9,7 @@ from unittest.mock import patch
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "src" / "dcc_mcp_unreal" / "skills" / "unreal-assets" / "scripts"
+SCRIPTS = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-assets" / "scripts"
 
 
 def _load_script(name: str, path: Path):
@@ -78,7 +78,7 @@ def test_import_static_groom_uses_explicit_factory_options_and_safe_version(tmp_
         does_asset_exist=lambda path: path == "/Game/Grooms/G_Hair",
     )
     unreal = types.ModuleType("unreal")
-    unreal.DccMcpAutomationLibrary = types.SimpleNamespace(
+    unreal.MeshyDccAutomationLibrary = types.SimpleNamespace(
         get_enabled_plugin_names=lambda: ["HairStrands", "AlembicHairImporter"]
     )
     unreal.AssetImportTask = AssetImportTask

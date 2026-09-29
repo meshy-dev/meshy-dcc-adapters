@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_unreal import _standalone_entry
+from meshy_dcc_unreal import _standalone_entry
 
 
 @pytest.fixture(autouse=True)
@@ -16,8 +16,8 @@ def stub_native_discovery(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_standalone_forwards_arguments_to_bundled_server(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    launcher = tmp_path / ("dcc-mcp-unreal.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-unreal")
-    server = tmp_path / ("dcc-mcp-server.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-server")
+    launcher = tmp_path / ("meshy-dcc-unreal.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-unreal")
+    server = tmp_path / ("meshy-dcc-server.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-server")
     server.touch()
     called = []
     monkeypatch.setattr(_standalone_entry.subprocess, "call", lambda command: called.append(command) or 7)
@@ -39,9 +39,9 @@ def test_frozen_standalone_resolves_server_next_to_sys_executable(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    launcher = tmp_path / ("dcc-mcp-unreal.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-unreal")
-    server = tmp_path / ("dcc-mcp-server.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-server")
-    module_argv = tmp_path / "lib" / "dcc_mcp_unreal" / "_standalone_entry.py"
+    launcher = tmp_path / ("meshy-dcc-unreal.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-unreal")
+    server = tmp_path / ("meshy-dcc-server.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-server")
+    module_argv = tmp_path / "lib" / "meshy_dcc_unreal" / "_standalone_entry.py"
     server.touch()
     called = []
     monkeypatch.setattr(_standalone_entry.sys, "executable", str(launcher))
@@ -63,16 +63,16 @@ def test_frozen_standalone_resolves_server_next_to_sys_executable(
 def test_standalone_requires_bundled_server(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(_standalone_entry.sys, "executable", str(tmp_path / "missing-python"))
 
-    with pytest.raises(FileNotFoundError, match="Bundled dcc-mcp-server"):
-        _standalone_entry.main([str(tmp_path / "dcc-mcp-unreal"), "sidecar"])
+    with pytest.raises(FileNotFoundError, match="Bundled meshy-dcc-server"):
+        _standalone_entry.main([str(tmp_path / "meshy-dcc-unreal"), "sidecar"])
 
 
 def test_non_unreal_command_does_not_start_native_discovery(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    launcher = tmp_path / ("dcc-mcp-unreal.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-unreal")
-    server = tmp_path / ("dcc-mcp-server.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-server")
+    launcher = tmp_path / ("meshy-dcc-unreal.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-unreal")
+    server = tmp_path / ("meshy-dcc-server.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-server")
     server.touch()
     called = []
     monkeypatch.setattr(_standalone_entry.subprocess, "call", lambda command: called.append(command) or 0)
@@ -82,8 +82,8 @@ def test_non_unreal_command_does_not_start_native_discovery(
 
 
 def test_explicit_discovery_url_is_preserved(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    launcher = tmp_path / ("dcc-mcp-unreal.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-unreal")
-    server = tmp_path / ("dcc-mcp-server.exe" if _standalone_entry.sys.platform == "win32" else "dcc-mcp-server")
+    launcher = tmp_path / ("meshy-dcc-unreal.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-unreal")
+    server = tmp_path / ("meshy-dcc-server.exe" if _standalone_entry.sys.platform == "win32" else "meshy-dcc-server")
     server.touch()
     called = []
     monkeypatch.setattr(_standalone_entry.subprocess, "call", lambda command: called.append(command) or 0)

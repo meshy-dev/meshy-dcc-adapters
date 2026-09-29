@@ -70,7 +70,7 @@ def _fake_unreal(*, game_world=None, runtime_actors=(), editor_actors=(), report
 
 
 def test_find_level_actor_prefers_actor_from_active_pie_world(monkeypatch):
-    from dcc_mcp_unreal.api import find_level_actor
+    from meshy_dcc_unreal.api import find_level_actor
 
     runtime_actor = _Actor("CBP_MPS_Neil_C_0")
     unreal = _fake_unreal(
@@ -85,7 +85,7 @@ def test_find_level_actor_prefers_actor_from_active_pie_world(monkeypatch):
 
 
 def test_game_world_is_the_shared_source_of_truth_for_pie_activity(monkeypatch):
-    from dcc_mcp_unreal.pie_session import require_pie_context
+    from meshy_dcc_unreal.pie_session import require_pie_context
 
     world = object()
     unreal = _fake_unreal(game_world=world, reports_pie=False)
@@ -97,7 +97,7 @@ def test_game_world_is_the_shared_source_of_truth_for_pie_activity(monkeypatch):
 
 
 def test_missing_pie_world_has_stable_retryable_error_contract(monkeypatch):
-    from dcc_mcp_unreal.pie_session import PieSessionUnavailableError, require_pie_context
+    from meshy_dcc_unreal.pie_session import PieSessionUnavailableError, require_pie_context
 
     monkeypatch.setitem(sys.modules, "unreal", _fake_unreal())
 
@@ -109,7 +109,7 @@ def test_missing_pie_world_has_stable_retryable_error_contract(monkeypatch):
 
 
 def test_pie_session_error_result_is_machine_classified_as_retryable():
-    from dcc_mcp_unreal.pie_session import PieSessionUnavailableError, pie_session_error
+    from meshy_dcc_unreal.pie_session import PieSessionUnavailableError, pie_session_error
 
     result = pie_session_error(PieSessionUnavailableError("PIE world is transitioning"))
 
@@ -130,7 +130,7 @@ def test_list_actors_uses_same_active_pie_actor_set(monkeypatch):
     script = (
         Path(__file__).resolve().parents[1]
         / "src"
-        / "dcc_mcp_unreal"
+        / "meshy_dcc_unreal"
         / "skills"
         / "unreal-actors"
         / "scripts"
