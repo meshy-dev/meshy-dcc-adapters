@@ -301,56 +301,6 @@ def test_mrq_control_tools_fail_before_subsystem_dispatch_when_plugin_is_missing
     unreal.get_editor_subsystem.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    ("script_name", "function_name"),
-    [
-        ("render_audi_phase_stills.py", "render_audi_phase_stills"),
-        ("render_audi_rain_film.py", "render_audi_rain_film"),
-    ],
-)
-def test_automotive_mrq_tools_fail_before_main_thread_dispatch_when_plugin_is_missing(
-    script_name: str,
-    function_name: str,
-) -> None:
-    scripts = ROOT / "src" / "meshy_dcc_unreal" / "skills" / "unreal-automotive-rain-film" / "scripts"
-    loaded_helpers = {}
-    for helper_name in ("_automotive_common", "_movie_render"):
-        helper_spec = importlib.util.spec_from_file_location(
-            helper_name,
-            scripts / (helper_name + ".py"),
-        )
-        assert helper_spec and helper_spec.loader
-        helper = importlib.util.module_from_spec(helper_spec)
-        helper_spec.loader.exec_module(helper)
-        loaded_helpers[helper_name] = helper
-
-    unreal = types.ModuleType("unreal")
-    unreal.MeshyDccAutomationLibrary = types.SimpleNamespace(get_enabled_plugin_names=lambda: [])
-    dispatcher = MagicMock(side_effect=AssertionError("main-thread dispatch must not start"))
-    import meshy_dcc_unreal.server as server_module
-
-    previous_server = server_module._server_instance
-    server_module._server_instance = types.SimpleNamespace(
-        _main_thread_dispatcher=types.SimpleNamespace(dispatch_callable=dispatcher)
-    )
-    try:
-        with patch.dict(sys.modules, {**loaded_helpers, "unreal": unreal}):
-            spec = importlib.util.spec_from_file_location(
-                "missing_automotive_" + function_name,
-                scripts / script_name,
-            )
-            assert spec and spec.loader
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            result = getattr(module, function_name)()
-    finally:
-        server_module._server_instance = previous_server
-
-    assert result["success"] is False
-    assert result["context"]["missing_plugins"] == ["MovieRenderPipeline"]
-    dispatcher.assert_not_called()
-
-
 def test_queue_render_reports_active_mrq_before_asset_or_queue_mutation(tmp_path: Path) -> None:
     unreal = types.ModuleType("unreal")
     unreal.MeshyDccAutomationLibrary = types.SimpleNamespace(get_enabled_plugin_names=lambda: ["MovieRenderPipeline"])

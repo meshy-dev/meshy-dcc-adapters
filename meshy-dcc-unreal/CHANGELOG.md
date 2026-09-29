@@ -12,6 +12,8 @@ adapter this one was forked from.
 - Unreal Engine 5.0 or newer only. The Unreal Engine 4 standalone sidecar is
   gone: its launcher, native tool discovery, PyOxidizer build and Windows
   installer, and the `meshy-dcc-unreal-standalone` command.
+- The upstream `unreal-automotive-rain-film` skill, a film demo built around
+  one Audi asset, is removed.
 - The plugin keeps its C++ editor module and ships it as source; the
   installer builds it for each project. It depends on the Python Editor Script
   Plugin and Editor Scripting Utilities.
