@@ -1,0 +1,8 @@
+{
+  "name": "DccMcp.Unity.Editor",
+  "references": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}
