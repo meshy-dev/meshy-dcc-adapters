@@ -245,3 +245,29 @@ class TestGetObjectInfo:
         bpy.data.objects.get.return_value = None
         result = load_and_call("blender-objects/scripts/get_object_info.py", bpy, name="Ghost")
         assert result["success"] is False
+
+
+class TestObjectNameAlias:
+    """The transform tools take ``object_name``, as the other object tools do, or ``name``."""
+
+    def test_move_accepts_object_name(self):
+        bpy = make_mock_bpy()
+        bpy.data.objects.get.return_value = _make_obj("Cube")
+
+        result = load_and_call("blender-objects/scripts/move_object.py", bpy, object_name="Cube", location=[1, 2, 3])
+        assert result["success"] is True
+        bpy.data.objects.get.assert_called_with("Cube")
+
+    def test_delete_still_accepts_name(self):
+        bpy = make_mock_bpy()
+        bpy.data.objects.get.return_value = _make_obj("Cube")
+
+        result = load_and_call("blender-objects/scripts/delete_object.py", bpy, name="Cube")
+        assert result["success"] is True
+
+    def test_missing_name_is_explained(self):
+        bpy = make_mock_bpy()
+
+        result = load_and_call("blender-objects/scripts/scale_object.py", bpy, scale=2.0)
+        assert result["success"] is False
+        assert "object_name" in str(result)

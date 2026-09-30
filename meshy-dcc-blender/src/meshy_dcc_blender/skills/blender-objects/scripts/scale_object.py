@@ -44,6 +44,11 @@ def scale_object(name: str, scale: Union[float, List[float]]) -> dict:
 @skill_entry
 def main(**kwargs) -> dict:
     """Entry point; delegates to :func:`scale_object`."""
+    # ``object_name``, as the other object tools call it, is accepted for ``name``.
+    if "object_name" in kwargs:
+        kwargs["name"] = kwargs.pop("object_name")
+    if not kwargs.get("name"):
+        return skill_error("Object name is required", "Pass object_name (or its alias name).")
     return scale_object(**kwargs)
 
 

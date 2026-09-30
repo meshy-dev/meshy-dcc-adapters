@@ -72,10 +72,12 @@ tools:
       type: "object"
       additionalProperties: false
       properties:
-        name:
+        object_name:
           type: "string"
           description: "Name of the object to delete."
-      required: ["name"]
+        name:
+          type: "string"
+          description: "Alias of object_name."
     read_only: false
     destructive: true
     idempotent: false
@@ -88,9 +90,12 @@ tools:
       type: "object"
       additionalProperties: false
       properties:
-        name:
+        object_name:
           type: "string"
           description: "Name of the object to duplicate."
+        name:
+          type: "string"
+          description: "Alias of object_name."
         new_name:
           type: "string"
           description: "Optional name for the duplicated object."
@@ -99,7 +104,6 @@ tools:
           items:
             type: "number"
           description: "[dx, dy, dz] offset to apply relative to original object."
-      required: ["name"]
     read_only: false
     destructive: false
     idempotent: false
@@ -118,15 +122,18 @@ tools:
       type: "object"
       additionalProperties: false
       properties:
-        name:
+        object_name:
           type: "string"
           description: "Name of the object to move."
+        name:
+          type: "string"
+          description: "Alias of object_name."
         location:
           type: "array"
           items:
             type: "number"
           description: "[x, y, z] coordinates."
-      required: ["name", "location"]
+      required: ["location"]
     read_only: false
     destructive: false
     idempotent: true
@@ -139,15 +146,18 @@ tools:
       type: "object"
       additionalProperties: false
       properties:
-        name:
+        object_name:
           type: "string"
           description: "Name of the object to rotate."
+        name:
+          type: "string"
+          description: "Alias of object_name."
         rotation:
           type: "array"
           items:
             type: "number"
           description: "[rx, ry, rz] rotation in **degrees**."
-      required: ["name", "rotation"]
+      required: ["rotation"]
     read_only: false
     destructive: false
     idempotent: true
@@ -160,12 +170,15 @@ tools:
       type: "object"
       additionalProperties: false
       properties:
-        name:
+        object_name:
           type: "string"
           description: "Name of the object to scale."
+        name:
+          type: "string"
+          description: "Alias of object_name."
         scale:
           description: "Uniform scale factor (float) or [sx, sy, sz] list."
-      required: ["name", "scale"]
+      required: ["scale"]
     read_only: false
     destructive: false
     idempotent: true

@@ -22,3 +22,6 @@ adapter this one was forked from.
   learn that, say, `move_object` takes `name` while `rename_object` takes
   `object_name`. Their schemas now come from each script's signature and
   docstring.
+- `delete_object`, `duplicate_object`, `move_object`, `rotate_object` and
+  `scale_object` accept `object_name`, as the other object tools call it;
+  `name` still works.

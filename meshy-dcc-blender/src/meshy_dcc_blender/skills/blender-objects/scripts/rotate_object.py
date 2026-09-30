@@ -42,6 +42,11 @@ def rotate_object(name: str, rotation: List[float]) -> dict:
 @skill_entry
 def main(**kwargs) -> dict:
     """Entry point; delegates to :func:`rotate_object`."""
+    # ``object_name``, as the other object tools call it, is accepted for ``name``.
+    if "object_name" in kwargs:
+        kwargs["name"] = kwargs.pop("object_name")
+    if not kwargs.get("name"):
+        return skill_error("Object name is required", "Pass object_name (or its alias name).")
     return rotate_object(**kwargs)
 
 
