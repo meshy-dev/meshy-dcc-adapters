@@ -4,6 +4,19 @@ tools:
     source_file: scripts/create_sphere.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        radius:
+          type: "number"
+          default: 1.0
+        name:
+          type: "string"
+        location:
+          type: "array"
+          items:
+            type: "number"
     read_only: false
     destructive: false
     idempotent: false
@@ -12,6 +25,13 @@ tools:
     source_file: scripts/save_blend.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        path:
+          type: "string"
+      required: ["path"]
     read_only: false
     destructive: false
     idempotent: false
@@ -20,6 +40,13 @@ tools:
     source_file: scripts/file_exists.py
     execution: sync
     affinity: any
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        path:
+          type: "string"
+      required: ["path"]
     read_only: true
     destructive: false
     idempotent: true

@@ -4,6 +4,17 @@ tools:
     source_file: scripts/create_collection.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name for the new collection."
+        parent_collection:
+          type: "string"
+          description: "Optional name of the parent collection. If None, links to the scene's root collection."
+      required: ["name"]
     read_only: false
     destructive: false
     idempotent: false
@@ -12,6 +23,17 @@ tools:
     source_file: scripts/link_to_collection.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        object_name:
+          type: "string"
+          description: "Name of the object to link."
+        collection_name:
+          type: "string"
+          description: "Name of the target collection."
+      required: ["object_name", "collection_name"]
     read_only: false
     destructive: false
     idempotent: true
@@ -20,6 +42,10 @@ tools:
     source_file: scripts/list_collections.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: true
     destructive: false
     idempotent: true

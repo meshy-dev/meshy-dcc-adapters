@@ -4,6 +4,31 @@ tools:
     source_file: scripts/create_light.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        light_type:
+          type: "string"
+          default: "POINT"
+          description: "Type of light: POINT, SUN, AREA, or SPOT."
+        name:
+          type: "string"
+          description: "Optional name for the light object."
+        location:
+          type: "array"
+          items:
+            type: "number"
+          description: "[x, y, z] position. Defaults to [0, 0, 3]."
+        energy:
+          type: "number"
+          default: 1000.0
+          description: "Light energy/intensity in watts."
+        color:
+          type: "array"
+          items:
+            type: "number"
+          description: "[R, G, B] light color (0-1). Default: white."
     read_only: false
     destructive: false
     idempotent: false
@@ -12,6 +37,25 @@ tools:
     source_file: scripts/set_light_properties.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name of the light object."
+        energy:
+          type: "number"
+          description: "Light energy in watts."
+        color:
+          type: "array"
+          items:
+            type: "number"
+          description: "[R, G, B] color values (0-1)."
+        radius:
+          type: "number"
+          description: "Light radius/size (for POINT and SPOT lights)."
+      required: ["name"]
     read_only: false
     destructive: false
     idempotent: true
@@ -20,6 +64,10 @@ tools:
     source_file: scripts/list_lights.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: true
     destructive: false
     idempotent: true
@@ -28,6 +76,19 @@ tools:
     source_file: scripts/set_world_background.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        color:
+          type: "array"
+          items:
+            type: "number"
+          description: "RGB or RGBA values in the 0-1 range."
+        strength:
+          type: "number"
+          description: "Optional world shader strength when nodes are available."
+      required: ["color"]
     read_only: false
     destructive: false
     idempotent: true

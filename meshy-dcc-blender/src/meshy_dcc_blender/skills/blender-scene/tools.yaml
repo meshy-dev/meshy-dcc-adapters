@@ -4,6 +4,10 @@ tools:
     source_file: scripts/new_scene.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: false
     destructive: true
     idempotent: false
@@ -12,6 +16,13 @@ tools:
     source_file: scripts/save_scene.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        filepath:
+          type: "string"
+          description: "Optional path to save the scene to. If None, saves to the current file path. If the scene has never been saved, this is required."
     read_only: false
     destructive: false
     idempotent: true
@@ -20,6 +31,14 @@ tools:
     source_file: scripts/open_scene.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        filepath:
+          type: "string"
+          description: "Absolute path to the .blend file to open."
+      required: ["filepath"]
     read_only: false
     destructive: true
     idempotent: false
@@ -28,6 +47,13 @@ tools:
     source_file: scripts/list_objects.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        object_type:
+          type: "string"
+          description: "Optional Blender object type filter, e.g. ``\"MESH\"``, ``\"LIGHT\"``, ``\"CAMERA\"``, ``\"ARMATURE\"``."
     read_only: true
     destructive: false
     idempotent: true
@@ -36,6 +62,10 @@ tools:
     source_file: scripts/get_scene_info.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: true
     destructive: false
     idempotent: true
@@ -44,6 +74,10 @@ tools:
     source_file: scripts/get_session_info.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: true
     destructive: false
     idempotent: true

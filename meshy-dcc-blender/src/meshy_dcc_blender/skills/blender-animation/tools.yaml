@@ -30,6 +30,17 @@ tools:
     source_file: scripts/set_frame_range.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        start:
+          type: "integer"
+          description: "Start frame number."
+        end:
+          type: "integer"
+          description: "End frame number."
+      required: ["start", "end"]
     read_only: false
     destructive: false
     idempotent: true
@@ -38,6 +49,10 @@ tools:
     source_file: scripts/get_frame_range.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: true
     destructive: false
     idempotent: true
@@ -46,6 +61,14 @@ tools:
     source_file: scripts/set_current_frame.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        frame:
+          type: "integer"
+          description: "Frame number to set as current."
+      required: ["frame"]
     read_only: false
     destructive: false
     idempotent: true

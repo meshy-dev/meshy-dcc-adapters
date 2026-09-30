@@ -4,6 +4,31 @@ tools:
     source_file: scripts/create_material.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name for the new material."
+        color:
+          type: "array"
+          items:
+            type: "number"
+          description: "[R, G, B] or [R, G, B, A] base color (0-1 range). Default: white."
+        metallic:
+          type: "number"
+          default: 0.0
+          description: "Metallic value (0.0 - 1.0)."
+        roughness:
+          type: "number"
+          default: 0.5
+          description: "Roughness value (0.0 - 1.0)."
+        use_nodes:
+          type: "boolean"
+          default: true
+          description: "Whether to use the node-based shader system."
+      required: ["name"]
     read_only: false
     destructive: false
     idempotent: false
@@ -12,6 +37,18 @@ tools:
     source_file: scripts/assign_material.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        object_name:
+          type: "string"
+        material_name:
+          type: "string"
+        slot_index:
+          type: "integer"
+          default: 0
+      required: ["object_name", "material_name"]
     read_only: false
     destructive: false
     idempotent: true
@@ -20,6 +57,19 @@ tools:
     source_file: scripts/set_material_color.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        material_name:
+          type: "string"
+          description: "Name of the material to modify."
+        color:
+          type: "array"
+          items:
+            type: "number"
+          description: "[R, G, B] or [R, G, B, A] color values (0.0 - 1.0)."
+      required: ["material_name", "color"]
     read_only: false
     destructive: false
     idempotent: true
@@ -28,6 +78,10 @@ tools:
     source_file: scripts/list_materials.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: true
     destructive: false
     idempotent: true
@@ -36,6 +90,14 @@ tools:
     source_file: scripts/delete_material.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name of the material to delete."
+      required: ["name"]
     read_only: false
     destructive: true
     idempotent: false

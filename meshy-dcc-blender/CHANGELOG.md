@@ -16,3 +16,9 @@ adapter this one was forked from.
   `discard_unsaved`, because Blender's dirty flag misses Python edits.
 - `install --python` accepts a venv interpreter; it no longer follows the
   symlink out of the venv.
+- Every tool declares its input schema. 42 tools (object transforms, scene,
+  materials, lights, modifiers, collections, frame range, render farm)
+  published only `{"type": "object"}`, so a caller had to read the script to
+  learn that, say, `move_object` takes `name` while `rename_object` takes
+  `object_name`. Their schemas now come from each script's signature and
+  docstring.

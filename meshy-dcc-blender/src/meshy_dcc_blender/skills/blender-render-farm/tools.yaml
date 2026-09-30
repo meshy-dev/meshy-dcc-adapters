@@ -4,6 +4,10 @@ tools:
     source_file: scripts/validate_scene_for_farm.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: true
     destructive: false
     idempotent: true
@@ -12,6 +16,38 @@ tools:
     source_file: scripts/write_render_job.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        output_dir:
+          type: "string"
+          description: "Directory where the ``.json`` job file is written."
+        job_name:
+          type: "string"
+          description: "Job display name.  Defaults to the scene file stem."
+        renderer:
+          type: "string"
+          description: "Override render engine name (e.g. ``\"CYCLES\"``, ``\"BLENDER_EEVEE\"``). Defaults to the scene's active render engine."
+        start_frame:
+          type: "integer"
+          description: "Override start frame.  Defaults to scene render frame_start."
+        end_frame:
+          type: "integer"
+          description: "Override end frame.  Defaults to scene render frame_end."
+        step:
+          type: "integer"
+          default: 1
+          description: "Frame step / increment.  Default: 1."
+        chunk_size:
+          type: "integer"
+          default: 10
+          description: "Frames per render task.  Default: 10."
+        priority:
+          type: "integer"
+          default: 50
+          description: "Job priority (0=low, 100=high).  Default: 50."
+      required: ["output_dir"]
     read_only: false
     destructive: false
     idempotent: false
@@ -21,6 +57,44 @@ tools:
     execution: async
     affinity: main
     timeout_hint_secs: 900
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        farm:
+          type: "string"
+          default: "flamenco"
+          description: "Render farm backend (``\"flamenco\"``, ``\"deadline\"``, or ``\"generic\"``)."
+        job_name:
+          type: "string"
+          description: "Display name for the job.  Defaults to scene stem."
+        pool:
+          type: "string"
+          default: "blender"
+          description: "Worker pool / farm name.  Default: ``\"blender\"``."
+        priority:
+          type: "integer"
+          default: 50
+          description: "Job priority 0-100.  Default: 50."
+        start_frame:
+          type: "integer"
+          description: "Override start frame."
+        end_frame:
+          type: "integer"
+          description: "Override end frame."
+        chunk_size:
+          type: "integer"
+          default: 10
+          description: "Frames per task.  Default: 10."
+        deadline_command:
+          type: "string"
+          description: "Path to ``deadlinecommand`` binary (Deadline only)."
+        flamenco_server_url:
+          type: "string"
+          description: "Flamenco Manager URL (Flamenco only)."
+        flamenco_project_id:
+          type: "string"
+          description: "Flamenco project UUID (Flamenco only)."
     read_only: false
     destructive: false
     idempotent: false
@@ -29,6 +103,24 @@ tools:
     source_file: scripts/get_render_job_status.py
     execution: sync
     affinity: any
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        job_id:
+          type: "string"
+          description: "The job ID returned by ``submit_render_job``."
+        farm:
+          type: "string"
+          default: "flamenco"
+          description: "Render farm backend (``\"flamenco\"`` or ``\"deadline\"``)."
+        deadline_command:
+          type: "string"
+          description: "Path to ``deadlinecommand`` binary (Deadline only)."
+        flamenco_server_url:
+          type: "string"
+          description: "Flamenco Manager URL (Flamenco only)."
+      required: ["job_id"]
     read_only: true
     destructive: false
     idempotent: true
@@ -37,6 +129,27 @@ tools:
     source_file: scripts/list_render_jobs.py
     execution: sync
     affinity: any
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        farm:
+          type: "string"
+          default: "flamenco"
+          description: "Render farm backend (``\"flamenco\"`` or ``\"deadline\"``)."
+        limit:
+          type: "integer"
+          default: 20
+          description: "Maximum number of jobs to return.  Default: 20."
+        status_filter:
+          type: "string"
+          description: "Optional filter by job status (e.g. ``\"queued\"``, ``\"active\"``, ``\"completed\"``)."
+        deadline_command:
+          type: "string"
+          description: "Path to ``deadlinecommand`` binary (Deadline only)."
+        flamenco_server_url:
+          type: "string"
+          description: "Flamenco Manager URL (Flamenco only)."
     read_only: true
     destructive: false
     idempotent: true
@@ -46,6 +159,24 @@ tools:
     execution: async
     affinity: main
     timeout_hint_secs: 300
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        job_id:
+          type: "string"
+          description: "The job ID returned by ``submit_render_job``."
+        farm:
+          type: "string"
+          default: "flamenco"
+          description: "Render farm backend (``\"flamenco\"`` or ``\"deadline\"``)."
+        deadline_command:
+          type: "string"
+          description: "Path to ``deadlinecommand`` binary (Deadline only)."
+        flamenco_server_url:
+          type: "string"
+          description: "Flamenco Manager URL (Flamenco only)."
+      required: ["job_id"]
     read_only: false
     destructive: true
     idempotent: false
@@ -55,6 +186,10 @@ tools:
     execution: sync
     affinity: main
     timeout_hint_secs: 60
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties: {}
     read_only: false
     destructive: true
     idempotent: true
@@ -63,6 +198,20 @@ tools:
     source_file: scripts/render_farm_status.py
     execution: sync
     affinity: any
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        farm:
+          type: "string"
+          default: "flamenco"
+          description: "Render farm backend (``\"flamenco\"`` or ``\"deadline\"``)."
+        deadline_command:
+          type: "string"
+          description: "Path to ``deadlinecommand`` binary (Deadline only)."
+        flamenco_server_url:
+          type: "string"
+          description: "Flamenco Manager URL (Flamenco only)."
     read_only: true
     destructive: false
     idempotent: true

@@ -68,6 +68,14 @@ tools:
     source_file: scripts/delete_object.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name of the object to delete."
+      required: ["name"]
     read_only: false
     destructive: true
     idempotent: false
@@ -76,6 +84,22 @@ tools:
     source_file: scripts/duplicate_object.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name of the object to duplicate."
+        new_name:
+          type: "string"
+          description: "Optional name for the duplicated object."
+        location_offset:
+          type: "array"
+          items:
+            type: "number"
+          description: "[dx, dy, dz] offset to apply relative to original object."
+      required: ["name"]
     read_only: false
     destructive: false
     idempotent: false
@@ -90,6 +114,19 @@ tools:
     source_file: scripts/move_object.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name of the object to move."
+        location:
+          type: "array"
+          items:
+            type: "number"
+          description: "[x, y, z] coordinates."
+      required: ["name", "location"]
     read_only: false
     destructive: false
     idempotent: true
@@ -98,6 +135,19 @@ tools:
     source_file: scripts/rotate_object.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name of the object to rotate."
+        rotation:
+          type: "array"
+          items:
+            type: "number"
+          description: "[rx, ry, rz] rotation in **degrees**."
+      required: ["name", "rotation"]
     read_only: false
     destructive: false
     idempotent: true
@@ -106,6 +156,16 @@ tools:
     source_file: scripts/scale_object.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        name:
+          type: "string"
+          description: "Name of the object to scale."
+        scale:
+          description: "Uniform scale factor (float) or [sx, sy, sz] list."
+      required: ["name", "scale"]
     read_only: false
     destructive: false
     idempotent: true
@@ -114,6 +174,16 @@ tools:
     source_file: scripts/get_object_info.py
     execution: sync
     affinity: main
+    input_schema:
+      type: "object"
+      additionalProperties: false
+      properties:
+        object_name:
+          type: "string"
+          description: "Preferred MCP-facing name of the object to inspect."
+        name:
+          type: "string"
+          description: "Backwards-compatible alias for older callers."
     read_only: true
     destructive: false
     idempotent: true
