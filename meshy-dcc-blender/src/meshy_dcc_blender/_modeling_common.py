@@ -13,6 +13,53 @@ AXIS_INDEX = {"x": 0, "y": 1, "z": 2}
 MAX_EVIDENCE_ELEMENTS = 1_000_000
 
 
+_ROTATION_PATHS = {"QUATERNION": "rotation_quaternion", "AXIS_ANGLE": "rotation_axis_angle"}
+
+
+def rotation_data_path(obj: Any) -> str:
+    """Return the rotation property Blender uses for ``obj.rotation_mode``.
+
+    glTF imports use QUATERNION, where ``rotation_euler`` is ignored.
+    """
+    return _ROTATION_PATHS.get(getattr(obj, "rotation_mode", "XYZ"), "rotation_euler")
+
+
+def rotation_as_euler(obj: Any) -> List[float]:
+    """Return ``obj``'s rotation as XYZ Euler radians, read from the property its mode uses."""
+    path = rotation_data_path(obj)
+    if path == "rotation_euler":
+        return [float(value) for value in obj.rotation_euler]
+    from mathutils import Quaternion
+
+    if path == "rotation_quaternion":
+        quaternion = Quaternion(obj.rotation_quaternion)
+    else:
+        angle, *axis = obj.rotation_axis_angle
+        quaternion = Quaternion(axis, angle)
+    return [float(value) for value in quaternion.to_euler("XYZ")]
+
+
+def set_rotation_degrees(obj: Any, degrees: Sequence[float]) -> List[float]:
+    """Set ``obj``'s rotation from XYZ Euler degrees through the property its mode uses.
+
+    Returns the rotation read back from the object, as XYZ Euler degrees.
+    """
+    radians = [math.radians(float(value)) for value in degrees]
+    path = rotation_data_path(obj)
+    if path == "rotation_euler":
+        obj.rotation_euler = radians
+    else:
+        from mathutils import Euler
+
+        quaternion = Euler(radians, "XYZ").to_quaternion()
+        if path == "rotation_quaternion":
+            obj.rotation_quaternion = quaternion
+        else:
+            axis, angle = quaternion.to_axis_angle()
+            obj.rotation_axis_angle = (angle, axis[0], axis[1], axis[2])
+    return [math.degrees(value) for value in rotation_as_euler(obj)]
+
+
 def operator_finished(result: Any) -> bool:
     """Return whether a Blender operator explicitly reported FINISHED."""
     return isinstance(result, set) and "FINISHED" in result

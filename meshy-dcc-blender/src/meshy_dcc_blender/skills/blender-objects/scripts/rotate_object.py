@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import math
 from typing import List
 
 from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
 
+from meshy_dcc_blender._modeling_common import set_rotation_degrees
+
 
 def rotate_object(name: str, rotation: List[float]) -> dict:
-    """Set the Euler rotation of an object.
+    """Set an object's rotation from Euler angles, through the property its rotation_mode uses.
 
     Args:
         name: Name of the object to rotate.
@@ -25,12 +26,12 @@ def rotate_object(name: str, rotation: List[float]) -> dict:
         if obj is None:
             return skill_error(f"Object not found: {name}", f"No object named '{name}' in the scene.")
 
-        obj.rotation_euler = [math.radians(r) for r in rotation]
-        actual_deg = [math.degrees(r) for r in obj.rotation_euler]
+        actual_deg = set_rotation_degrees(obj, rotation)
         return skill_success(
             f"Rotated {name}",
             object_name=name,
             rotation_degrees=actual_deg,
+            rotation_mode=getattr(obj, "rotation_mode", None),
             prompt="Object rotated. Use get_object_info to verify the new rotation.",
         )
     except ImportError:

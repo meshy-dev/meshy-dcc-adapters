@@ -156,7 +156,7 @@ tools:
           type: "array"
           items:
             type: "number"
-          description: "[rx, ry, rz] rotation in **degrees**."
+          description: "[rx, ry, rz] rotation in **degrees** (XYZ Euler). Applied through the property the object's rotation_mode uses, so quaternion objects such as glTF imports rotate too."
       required: ["rotation"]
     read_only: false
     destructive: false

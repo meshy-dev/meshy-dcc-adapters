@@ -57,13 +57,10 @@ def _apply_placement(
             )
 
         if placement.rotate:
-            import math
+            from meshy_dcc_blender._modeling_common import set_rotation_degrees
 
-            obj.rotation_euler = (
-                math.radians(placement.rotate[0] if len(placement.rotate) > 0 else 0.0),
-                math.radians(placement.rotate[1] if len(placement.rotate) > 1 else 0.0),
-                math.radians(placement.rotate[2] if len(placement.rotate) > 2 else 0.0),
-            )
+            # Imported glTF objects use QUATERNION, which ignores rotation_euler.
+            set_rotation_degrees(obj, (list(placement.rotate) + [0.0, 0.0, 0.0])[:3])
 
         if placement.scale:
             obj.scale = (

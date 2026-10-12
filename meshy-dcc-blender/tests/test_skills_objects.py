@@ -157,6 +157,22 @@ class TestRotateObject:
         # Check that radians were applied
         assert abs(obj.rotation_euler[0] - math.radians(90)) < 1e-6
 
+    def test_rotate_writes_the_quaternion_of_a_quaternion_object(self):
+        """S01: glTF imports use QUATERNION, so writing rotation_euler changed nothing."""
+        bpy = make_mock_bpy()
+        obj = _make_obj("Crystal")
+        obj.rotation_mode = "QUATERNION"
+        obj.rotation_euler = [0.0, 0.0, 0.0]
+        before = obj.rotation_quaternion
+        bpy.data.objects.get.return_value = obj
+
+        result = load_and_call("blender-objects/scripts/rotate_object.py", bpy, name="Crystal", rotation=[0, 0, 90])
+
+        assert result["success"] is True
+        assert obj.rotation_euler == [0.0, 0.0, 0.0]
+        assert obj.rotation_quaternion is not before
+        assert result["context"]["rotation_mode"] == "QUATERNION"
+
     def test_rotate_nonexistent_returns_error(self):
         bpy = make_mock_bpy()
         bpy.data.objects.get.return_value = None
@@ -271,3 +287,28 @@ class TestObjectNameAlias:
         result = load_and_call("blender-objects/scripts/scale_object.py", bpy, scale=2.0)
         assert result["success"] is False
         assert "object_name" in str(result)
+
+
+def test_import_placement_rotates_quaternion_objects():
+    """Imported glTF objects use QUATERNION; placement.rotate used to write rotation_euler."""
+    from types import SimpleNamespace
+
+    bpy = make_mock_bpy()
+    obj = _make_obj("Imported")
+    obj.rotation_mode = "QUATERNION"
+    before = obj.rotation_quaternion
+    bpy.data.objects.get.return_value = obj
+    placement = SimpleNamespace(translate=None, rotate=[0, 0, 90], scale=None, parent_name=None)
+
+    warnings = load_and_call(
+        "blender-import-to-scene/scripts/import_to_scene.py",
+        bpy,
+        func_name="_apply_placement",
+        bpy=bpy,
+        imported_names=["Imported"],
+        placement=placement,
+    )
+
+    assert warnings == []
+    assert obj.rotation_euler == [0.0, 0.0, 0.0]
+    assert obj.rotation_quaternion is not before

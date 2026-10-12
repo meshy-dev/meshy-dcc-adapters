@@ -13,6 +13,7 @@ from meshy_dcc_blender._modeling_common import (
     object_identity,
     operator_finished,
     post_mutation_uv_state,
+    rotation_as_euler,
     select_object,
     uv_state,
     vector,
@@ -314,7 +315,7 @@ def freeze_transforms(
         select_object(bpy, obj)
         before = {
             "location": coords(obj.location),
-            "rotation": coords(obj.rotation_euler),
+            "rotation": rotation_as_euler(obj),
             "scale": coords(obj.scale),
         }
         operation_started = True
@@ -323,7 +324,7 @@ def freeze_transforms(
         )
         after = {
             "location": coords(obj.location),
-            "rotation": coords(obj.rotation_euler),
+            "rotation": rotation_as_euler(obj),
             "scale": coords(obj.scale),
         }
         if not finished:
@@ -365,7 +366,7 @@ def freeze_transforms(
             try:
                 after = {
                     "location": coords(obj.location),
-                    "rotation": coords(obj.rotation_euler),
+                    "rotation": rotation_as_euler(obj),
                     "scale": coords(obj.scale),
                 }
             except Exception:
