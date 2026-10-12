@@ -129,7 +129,10 @@ class BlenderUiDispatcher(HostUiDispatcherBase):
         timeout_ms: int = 30000,
         budget_ms: float = 200.0,
         active_interval_secs: float = 0.0,
-        idle_interval_secs: float = 0.5,
+        # Blender timers cannot be woken from the HTTP thread (bpy.app.timers is
+        # not thread-safe), so the idle interval is the latency floor of every
+        # call: 0.5 s here made each call ~500 ms. 20 ms costs well under 1% CPU.
+        idle_interval_secs: float = 0.02,
         pump: Optional[BlenderTimerPump] = None,
     ) -> None:
         super().__init__()

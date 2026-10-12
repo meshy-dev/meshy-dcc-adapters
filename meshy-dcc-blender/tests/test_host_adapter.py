@@ -101,6 +101,13 @@ def test_blender_callable_dispatcher_posts_work_to_tick_loop():
     assert result == ["done"]
 
 
+def test_blender_ui_dispatcher_idle_poll_is_not_the_call_latency():
+    """The idle interval bounds every call's latency; 0.5 s made each call ~500 ms."""
+    from meshy_dcc_blender.host import BlenderUiDispatcher
+
+    assert BlenderUiDispatcher().idle_interval_secs <= 0.05
+
+
 def test_blender_ui_dispatcher_uses_core_queue_and_timer_pump():
     from meshy_dcc_core import HostUiDispatcherBase
 
