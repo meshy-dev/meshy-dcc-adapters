@@ -1,7 +1,7 @@
 ---
 name: godot-node
 description: >-
-  Domain skill — Add a typed node with initial properties. Delete a node with undo support. Duplicate a node and its owned children. Reparent a node while preserving ownership. Set an existing node property. Return stored and editable node properties. Create and assign a Resource to a node property. Apply a Control anchor preset. Rename an edited-scene node. Connect a signal between scene nodes. Disconnect a signal connection. Return groups for a node. Replace group membership for a node. Find edited-scene nodes in a group.
+  Domain skill — Add a typed node with initial properties. Delete a node with undo support. Duplicate a node and its owned children. Reparent a node while preserving ownership. Set an existing node property, such as position, rotation, scale, transform or visible. Return stored and editable node properties. Create and assign a Resource to a node property. Apply a Control anchor preset. Rename an edited-scene node. Connect a signal between scene nodes. Disconnect a signal connection. Return groups for a node. Replace group membership for a node. Find edited-scene nodes in a group.
 license: MIT
 compatibility: "Godot 4.4+; meshy-dcc-core 0.2.x"
 allowed-tools: "python"

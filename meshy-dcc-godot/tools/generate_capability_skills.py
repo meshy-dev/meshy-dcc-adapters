@@ -34,7 +34,10 @@ CATEGORIES = {
         ("delete_node", "Delete a node with undo support."),
         ("duplicate_node", "Duplicate a node and its owned children."),
         ("move_node", "Reparent a node while preserving ownership."),
-        ("update_property", "Set an existing node property."),
+        (
+            "update_property",
+            "Set an existing node property, such as position, rotation, scale, transform or visible.",
+        ),
         ("get_node_properties", "Return stored and editable node properties."),
         ("add_resource", "Create and assign a Resource to a node property."),
         ("set_anchor_preset", "Apply a Control anchor preset."),
@@ -717,6 +720,22 @@ REMOTE_BRIDGE_ANY_AFFINITY = {
 }
 
 
+# Words agents search with that a tool's description does not contain. Godot has no
+# separate transform tool; update_property sets position, rotation, scale and visible.
+TOOL_SEARCH_ALIASES = {
+    "update_property": [
+        "move node",
+        "rotate node",
+        "scale node",
+        "hide node",
+        "show node",
+        "set position",
+        "set rotation",
+        "set transform",
+    ],
+}
+
+
 def _tool_yaml(category: str, name: str, description: str) -> str:
     read_only = name.startswith(READ_ONLY_PREFIXES)
     destructive = name in DESTRUCTIVE
@@ -735,6 +754,9 @@ def _tool_yaml(category: str, name: str, description: str) -> str:
         }
         output_schema = "{type: object}"
     input_schema = json.dumps(schema, separators=(",", ":"))
+    aliases = ""
+    if name in TOOL_SEARCH_ALIASES:
+        aliases = f"\n    search_aliases: {json.dumps(TOOL_SEARCH_ALIASES[name])}"
     return f"""  - name: {name}
     description: {description} Parameters are validated again by the Godot host.
     input_schema: {input_schema}
@@ -746,7 +768,7 @@ def _tool_yaml(category: str, name: str, description: str) -> str:
     affinity: {affinity}
     enforce_thread_affinity: true
     timeout_hint_secs: 60
-    source_file: scripts/dispatch.py
+    source_file: scripts/dispatch.py{aliases}
 """
 
 
