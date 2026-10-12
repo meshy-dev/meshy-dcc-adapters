@@ -66,6 +66,47 @@ class TestSetKeyframe:
         assert result["success"] is True
         assert key.interpolation == "LINEAR"
 
+    def test_keys_the_value_set_before_the_call(self):
+        """S01: frame_set re-evaluated the curve first, so move_object then set_keyframe keyed 0."""
+        bpy = make_mock_bpy()
+        obj = MagicMock()
+        obj.rotation_mode = "XYZ"
+        bpy.data.objects.get.return_value = obj
+        order = []
+        bpy.context.scene.frame_set.side_effect = lambda frame: order.append(("frame_set", frame))
+        obj.keyframe_insert.side_effect = lambda **kw: order.append(("key", kw["data_path"], kw["frame"]))
+
+        result = load_and_call(
+            "blender-animation/scripts/set_keyframe.py", bpy, object_name="Door", frame=24, data_paths=["location"]
+        )
+
+        assert result["success"] is True
+        assert order == [("key", "location", 24), ("frame_set", 24)]
+        assert result["context"]["frame"] == 24
+
+    def test_keys_the_rotation_property_the_object_uses(self):
+        """S01: glTF imports rotate through rotation_quaternion; rotation_euler keys were inert."""
+        bpy = make_mock_bpy()
+        obj = MagicMock()
+        obj.rotation_mode = "QUATERNION"
+        bpy.data.objects.get.return_value = obj
+
+        default = load_and_call("blender-animation/scripts/set_keyframe.py", bpy, object_name="Crystal", frame=5)
+        keyed = [c.kwargs["data_path"] for c in obj.keyframe_insert.call_args_list]
+        assert keyed == ["location", "rotation_quaternion", "scale"]
+        assert default["context"]["data_paths"] == keyed
+
+        obj.keyframe_insert.reset_mock()
+        explicit = load_and_call(
+            "blender-animation/scripts/set_keyframe.py",
+            bpy,
+            object_name="Crystal",
+            frame=5,
+            data_paths=["rotation_euler"],
+        )
+        assert [c.kwargs["data_path"] for c in obj.keyframe_insert.call_args_list] == ["rotation_quaternion"]
+        assert explicit["context"]["data_paths"] == ["rotation_quaternion"]
+
     def test_object_not_found(self):
         bpy = make_mock_bpy()
         bpy.data.objects.get.return_value = None

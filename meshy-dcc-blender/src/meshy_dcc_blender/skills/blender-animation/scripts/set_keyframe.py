@@ -7,8 +7,9 @@ from typing import List, Optional
 from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
 
 from meshy_dcc_blender._animation_ops import action_fcurves
+from meshy_dcc_blender._modeling_common import rotation_data_path
 
-VALID_DATA_PATHS = ["location", "rotation_euler", "scale", "hide_viewport", "hide_render"]
+DEFAULT_DATA_PATHS = ["location", "rotation_euler", "scale"]
 
 
 def set_keyframe(
@@ -36,16 +37,18 @@ def set_keyframe(
             return skill_error(f"Object not found: {object_name}", f"No object named '{object_name}'.")
 
         scene = bpy.context.scene
-        if frame is not None:
-            scene.frame_set(frame)
-        actual_frame = scene.frame_current
+        # Key first, then move the playhead: frame_set re-evaluates existing
+        # curves and would overwrite the values the caller just set.
+        actual_frame = frame if frame is not None else scene.frame_current
 
         mode = interpolation.upper() if interpolation else None
         if mode not in {None, "BEZIER", "LINEAR", "CONSTANT"}:
             return skill_error("Unsupported interpolation", "Use BEZIER, LINEAR, or CONSTANT.")
         preferences = getattr(getattr(bpy.context, "preferences", None), "edit", None)
         previous_mode = getattr(preferences, "keyframe_new_interpolation_type", None)
-        paths = data_paths or ["location", "rotation_euler", "scale"]
+        # rotation_euler stands for whichever rotation property the object uses.
+        rotation = rotation_data_path(obj)
+        paths = [rotation if path == "rotation_euler" else path for path in data_paths or DEFAULT_DATA_PATHS]
         inserted = []
         try:
             if mode is not None and preferences is not None:
@@ -65,6 +68,8 @@ def set_keyframe(
         finally:
             if previous_mode is not None:
                 preferences.keyframe_new_interpolation_type = previous_mode
+        if frame is not None:
+            scene.frame_set(frame)
 
         return skill_success(
             f"Keyframe set on {object_name} at frame {actual_frame}",

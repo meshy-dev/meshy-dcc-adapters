@@ -19,6 +19,7 @@ tools:
           type: integer
         data_paths:
           type: array
+          description: "Defaults to location, rotation and scale. rotation_euler keys the rotation property the object's rotation_mode uses (rotation_quaternion for glTF imports)."
           items:
             type: string
             enum: [location, rotation_euler, scale, hide_viewport, hide_render]
