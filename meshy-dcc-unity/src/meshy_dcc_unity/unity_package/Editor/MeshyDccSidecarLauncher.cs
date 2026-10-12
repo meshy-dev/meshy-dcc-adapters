@@ -66,6 +66,8 @@ namespace MeshyDcc.Unity
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetDirectoryName(path) ?? Environment.CurrentDirectory,
                 };
+                // The sidecar registers this as the instance's host version.
+                startInfo.EnvironmentVariables["MESHY_DCC_UNITY_VERSION"] = Application.unityVersion;
                 Process.Start(startInfo);
                 UnityEngine.Debug.Log("Meshy DCC Unity standalone sidecar started.");
             }
