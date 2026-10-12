@@ -145,7 +145,7 @@ tools:
       on-success: [unity_diagnostics__inspect_job]
       on-failure: [unity_diagnostics__read_console, dcc_diagnostics__audit_log]
   - name: refresh_and_compile
-    description: Queue AssetDatabase refresh and keep the Core job open across domain reload until Unity becomes idle, reporting script compilation failure instead of claiming completion early. Use inspect_job with the same request_id only for reconnect or audit recovery.
+    description: Queue AssetDatabase refresh and keep the Core job open across domain reload until Unity becomes idle, reporting script compilation failure instead of claiming completion early. If the Editor main thread stops answering for 120 s (MESHY_DCC_UNITY_UNRESPONSIVE_SECS), the job ends with context.reason host_unresponsive. Use inspect_job with the same request_id only for reconnect, audit, or host_unresponsive recovery.
     input_schema:
       type: object
       required: [request_id]

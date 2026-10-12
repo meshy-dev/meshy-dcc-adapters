@@ -50,7 +50,7 @@ tools:
       on-success: [unity_project__inspect_project, unity_scene__inspect_scene]
       on-failure: [dcc_diagnostics__screenshot, dcc_diagnostics__audit_log]
   - name: inspect_job
-    description: Read the persisted state of one Unity mutating job by request_id. States are queued, running, succeeded, or failed; failed jobs are not automatically retried.
+    description: Read the persisted state of one Unity mutating job by request_id. States are queued, running, succeeded, or failed; failed jobs are not automatically retried. After a job wait ended with context.reason host_unresponsive, use this once Unity answers again; the Unity job may have finished.
     input_schema:
       type: object
       required: [request_id]

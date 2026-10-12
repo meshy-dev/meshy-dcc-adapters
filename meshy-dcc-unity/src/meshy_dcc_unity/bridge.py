@@ -14,6 +14,8 @@ _bridge: DccBridge | None = None
 _lock = threading.Lock()
 _HOST_REQUEST_LIFETIME_SECONDS = 55
 _host_dispatch_ready = threading.Event()
+# Wall-clock time Unity's main thread stopped answering; None while it answers.
+_host_unresponsive_since: float | None = None
 
 _HOST_BLOCKED_MESSAGE = (
     "Unity transport is connected, but the Editor main thread is not dispatching. "
@@ -66,10 +68,19 @@ def stop_bridge() -> None:
 
 def set_host_dispatch_ready(ready: bool) -> None:
     """Publish whether Unity's main-thread update loop answered a live probe."""
+    global _host_unresponsive_since
     if ready:
         _host_dispatch_ready.set()
+        _host_unresponsive_since = None
     else:
         _host_dispatch_ready.clear()
+        if _host_unresponsive_since is None:
+            _host_unresponsive_since = time.time()
+
+
+def host_unresponsive_since() -> float | None:
+    """When Unity's main thread last stopped answering, or None while it answers."""
+    return _host_unresponsive_since
 
 
 def is_host_dispatch_ready() -> bool:
