@@ -247,10 +247,34 @@ def test_rigging_pose_and_animation_tools_yaml_declares_modern_contracts():
         assert "annotations" in tool
 
 
+def test_create_armature_starts_without_bones():
+    """S01: armature_add left a default 'Bone' that took 5684 vertices in auto weights."""
+    bpy = _bpy_with_objects([])
+
+    def new_object(name, data):
+        rig = FakeArmature(name)
+        rig.data = data
+        bpy.data.objects.append(rig)
+        return rig
+
+    bpy.data.armatures.new = lambda name: SimpleNamespace(name=name, bones=FakeBones(), edit_bones=FakeBones())
+    bpy.data.objects.new = new_object
+
+    created = load_and_call("blender-rigging/scripts/create_armature.py", bpy, name="AgentRig", location=[1, 2, 3])
+
+    assert created["success"] is True, created
+    assert created["context"]["bone_count"] == 0
+    bpy.ops.object.armature_add.assert_not_called()
+    rig = bpy.data.objects.get("AgentRig")
+    assert tuple(rig.location) == (1.0, 2.0, 3.0)
+    bpy.context.collection.objects.link.assert_called_once_with(rig)
+
+
 def test_create_armature_create_bone_and_mirror_bones():
     armature = FakeArmature("Rig")
     bpy = _bpy_with_objects([armature])
     bpy.context.active_object = armature
+    bpy.data.objects.new = lambda name, data: (setattr(armature, "name", name), armature)[1]
 
     created = load_and_call("blender-rigging/scripts/create_armature.py", bpy, name="AgentRig")
     assert created["success"] is True

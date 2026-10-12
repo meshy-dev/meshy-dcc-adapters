@@ -131,15 +131,13 @@ def create_armature(name: str, location: Sequence[float] | None = None) -> dict:
         import bpy
 
         _object_mode(bpy)
-        bpy.ops.object.armature_add(enter_editmode=False, align="WORLD", location=tuple(loc))
-        armature = getattr(bpy.context, "active_object", None)
-        if armature is None:
-            armature = getattr(bpy.context, "object", None)
-        if armature is None:
-            return skill_error("Armature creation failed", "Blender did not return an active armature object.")
-        armature.name = name
-        if getattr(armature, "data", None) is not None:
-            armature.data.name = name
+        # Not bpy.ops.object.armature_add: it always adds a default bone, which
+        # then takes vertices in automatic weights.
+        armature = bpy.data.objects.new(name, bpy.data.armatures.new(name))
+        armature.location = tuple(loc)
+        collection = getattr(bpy.context, "collection", None) or bpy.context.scene.collection
+        collection.objects.link(armature)
+        _set_active(bpy, armature)
         return skill_success(
             f"Created armature {armature.name}",
             armature_name=armature.name,
