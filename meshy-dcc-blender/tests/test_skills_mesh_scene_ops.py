@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -286,9 +287,19 @@ def test_mesh_count_cleanup_triangulate_and_errors():
     assert counts["context"]["face_count"] == 1
     assert counts["context"]["triangle_count"] == 2
 
-    cleaned = load_and_call("blender-mesh-ops/scripts/cleanup_mesh.py", bpy, object_name="Cube")
+    # bpy.ops.mesh.merge_by_distance does not exist (Blender 5.0.1), but any
+    # bpy.ops attribute looks callable until it is called, so merge via bmesh.
+    bmesh = MagicMock()
+    with patch.dict(sys.modules, {"bmesh": bmesh}):
+        cleaned = load_and_call(
+            "blender-mesh-ops/scripts/cleanup_mesh.py", bpy, object_name="Cube", merge_threshold=0.01
+        )
+        merged = load_and_call("blender-mesh-ops/scripts/merge_vertices.py", bpy, object_name="Cube", threshold=0.02)
     assert cleaned["success"] is True
-    bpy.ops.mesh.merge_by_distance.assert_called_once()
+    assert merged["success"] is True
+    bpy.ops.mesh.merge_by_distance.assert_not_called()
+    dists = [c.kwargs["dist"] for c in bmesh.ops.remove_doubles.call_args_list]
+    assert dists == [0.01, 0.02]
     bpy.ops.mesh.normals_make_consistent.assert_called_once_with(inside=False)
 
     triangulated = load_and_call("blender-mesh-ops/scripts/triangulate_mesh.py", bpy, object_name="Cube")

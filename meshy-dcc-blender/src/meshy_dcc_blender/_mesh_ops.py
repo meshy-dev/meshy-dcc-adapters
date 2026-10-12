@@ -69,24 +69,24 @@ def _edit_select_all(bpy: Any, obj: Any) -> None:
     bpy.ops.mesh.select_all(action="SELECT")
 
 
+def _merge_by_distance(obj: Any, threshold: float) -> None:
+    """Merge vertices closer than ``threshold`` on a mesh in edit mode.
+
+    ``bpy.ops.mesh.merge_by_distance`` does not exist, yet every ``bpy.ops``
+    attribute looks callable until it is called; bmesh needs no operator context.
+    """
+    import bmesh
+
+    bm = bmesh.from_edit_mesh(obj.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=threshold)
+    bmesh.update_edit_mesh(obj.data)
+
+
 def _return_object_mode(bpy: Any) -> None:
     try:
         bpy.ops.object.mode_set(mode="OBJECT")
     except Exception:
         pass
-
-
-def _call_mesh_operator(primary: Any, fallback: Any | None = None, **kwargs: Any) -> Any:
-    try:
-        return primary(**kwargs)
-    except TypeError:
-        filtered = {key: value for key, value in kwargs.items() if key not in {"threshold", "distance"}}
-        try:
-            return primary(**filtered)
-        except TypeError:
-            if fallback is None:
-                raise
-            return fallback(**kwargs)
 
 
 def get_poly_count(object_name: str) -> dict:
@@ -129,12 +129,7 @@ def cleanup_mesh(
         _edit_select_all(bpy, obj)
         operations = []
         if remove_doubles:
-            merge = getattr(bpy.ops.mesh, "merge_by_distance", None)
-            remove = getattr(bpy.ops.mesh, "remove_doubles", None)
-            if callable(merge):
-                _call_mesh_operator(merge, distance=merge_threshold)
-            elif callable(remove):
-                _call_mesh_operator(remove, threshold=merge_threshold)
+            _merge_by_distance(obj, merge_threshold)
             operations.append("remove_doubles")
         if fix_normals:
             bpy.ops.mesh.normals_make_consistent(inside=False)
@@ -279,16 +274,7 @@ def merge_vertices(object_name: str, threshold: float = 0.0001) -> dict:
             return error
         before = _mesh_counts(obj)
         _edit_select_all(bpy, obj)
-        merge = getattr(bpy.ops.mesh, "merge_by_distance", None)
-        remove = getattr(bpy.ops.mesh, "remove_doubles", None)
-        if callable(merge):
-            _call_mesh_operator(merge, distance=threshold)
-        elif callable(remove):
-            _call_mesh_operator(remove, threshold=threshold)
-        else:
-            return skill_error(
-                "Merge operator unavailable", "Neither merge_by_distance nor remove_doubles is available."
-            )
+        _merge_by_distance(obj, threshold)
         _return_object_mode(bpy)
         after = _mesh_counts(obj)
         return skill_success(
