@@ -66,6 +66,16 @@ namespace MeshyDcc.Unity
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetDirectoryName(path) ?? Environment.CurrentDirectory,
                 };
+                // The Windows package's launcher is a .cmd. Run it through cmd.exe
+                // explicitly: /s with one outer pair of quotes keeps the quoted
+                // launcher path and --pid-file value intact when they contain spaces.
+                var extension = Path.GetExtension(path);
+                if (string.Equals(extension, ".cmd", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(extension, ".bat", StringComparison.OrdinalIgnoreCase))
+                {
+                    startInfo.FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+                    startInfo.Arguments = "/d /s /c \"\"" + path + "\" " + arguments + "\"";
+                }
                 // The sidecar registers this as the instance's host version.
                 startInfo.EnvironmentVariables["MESHY_DCC_UNITY_VERSION"] = Application.unityVersion;
                 Process.Start(startInfo);

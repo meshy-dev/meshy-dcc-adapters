@@ -6,6 +6,7 @@ adapter and ``websockets`` installed into it::
 
     python/                          CPython and its site-packages
     bin/meshy-dcc-unity-sidecar      runs ``python -m meshy_dcc_unity``
+                                     (``meshy-dcc-unity-sidecar.cmd`` on Windows)
 
 The Unity Editor package ships inside ``meshy_dcc_unity/unity_package``.
 ``meshy-dcc install --dcc-type unity --project <root>`` extracts the zip and
@@ -14,6 +15,11 @@ runs the bundled installer against the project.
 Usage::
 
     python packaging/build_package.py --core-wheel <meshy_dcc_core wheel> --output-dir dist
+
+A Windows package builds from any host: pass the Windows core wheel and
+``--python-home`` pointing at an extracted python-build-standalone
+``x86_64-pc-windows-msvc`` install (the directory holding ``python.exe``).
+The wheels are then installed for Windows with ``uv pip install --target``.
 """
 
 from __future__ import annotations
@@ -43,6 +49,7 @@ EXCLUDED = shutil.ignore_patterns(
     "ensurepip",
     "lib2to3",
     "tcl8*",
+    "tcl",
     "tk8*",
     "itcl*",
     "thread2*",
@@ -54,6 +61,13 @@ SIDECAR_SCRIPT = """#!/bin/sh
 here=$(cd "$(dirname "$0")" && pwd)
 exec "$here/../python/bin/python{version}" -m meshy_dcc_unity "$@"
 """
+# %~dp0 is this file's directory with a trailing backslash; %* passes the
+# arguments as given.
+SIDECAR_CMD = (
+    "@echo off\r\n"
+    '"%~dp0..\\python\\python.exe" -m meshy_dcc_unity %*\r\n'
+    "exit /b %ERRORLEVEL%\r\n"
+)
 
 
 def adapter_version() -> str:
@@ -72,10 +86,18 @@ def default_python_home() -> Path:
         capture_output=True,
         text=True,
     ).stdout.strip()
-    return Path(executable).resolve().parents[1]
+    executable = Path(executable).resolve()
+    # Windows keeps python.exe at the root of the install, POSIX in bin/.
+    return executable.parent if executable.name.lower() == "python.exe" else executable.parents[1]
 
 
-def platform_tag() -> str:
+def is_windows_python(python_home: Path) -> bool:
+    return (python_home / "python.exe").is_file()
+
+
+def platform_tag(python_home: Path) -> str:
+    if is_windows_python(python_home):
+        return "windows_x86_64"
     machine = os.uname().machine if hasattr(os, "uname") else "x86_64"
     system = {"darwin": "macos", "linux": "linux"}.get(sys.platform, sys.platform)
     return f"{system}_{'arm64' if machine in {'arm64', 'aarch64'} else 'x86_64'}"
@@ -87,31 +109,32 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
         stage = Path(temp) / "package"
         shutil.copytree(python_home, stage / "python", symlinks=False, ignore=EXCLUDED)
         neutralize_python_prefix(stage / "python", python_home)
-        python = stage / "python" / "bin" / f"python{PYTHON_VERSION}"
-        subprocess.run(
-            [
-                "uv",
-                "pip",
-                "install",
-                "--python",
-                str(python),
-                "--no-deps",
-                str(core_wheel),
-                str(ROOT),
-                "websockets>=12,<18",
-            ],
-            check=True,
-        )
-        strip_build_paths(stage / "python" / "lib" / f"python{PYTHON_VERSION}" / "site-packages")
+        packages = [str(core_wheel), str(ROOT), "websockets>=12,<18"]
+        if is_windows_python(python_home):
+            # The Windows interpreter cannot run here, so uv installs for it by target.
+            site = stage / "python" / "Lib" / "site-packages"
+            install = ["--target", str(site), "--python-platform", "x86_64-pc-windows-msvc"]
+            install += ["--python-version", PYTHON_VERSION]
+        else:
+            site = stage / "python" / "lib" / f"python{PYTHON_VERSION}" / "site-packages"
+            install = ["--python", str(stage / "python" / "bin" / f"python{PYTHON_VERSION}")]
+        subprocess.run(["uv", "pip", "install", *install, "--no-deps", *packages], check=True)
+        # --target also writes console scripts that point at this machine's paths.
+        shutil.rmtree(site / "bin", ignore_errors=True)
+        strip_build_paths(site)
         for cache in stage.rglob("__pycache__"):
             shutil.rmtree(cache)
-        sidecar = stage / "bin" / "meshy-dcc-unity-sidecar"
-        sidecar.parent.mkdir()
-        sidecar.write_text(SIDECAR_SCRIPT.format(version=PYTHON_VERSION), encoding="utf-8")
-        sidecar.chmod(0o755)
+        (stage / "bin").mkdir()
+        if is_windows_python(python_home):
+            sidecar = stage / "bin" / "meshy-dcc-unity-sidecar.cmd"
+            sidecar.write_bytes(SIDECAR_CMD.encode("ascii"))
+        else:
+            sidecar = stage / "bin" / "meshy-dcc-unity-sidecar"
+            sidecar.write_text(SIDECAR_SCRIPT.format(version=PYTHON_VERSION), encoding="utf-8")
+            sidecar.chmod(0o755)
 
         output_dir.mkdir(parents=True, exist_ok=True)
-        archive = output_dir / f"meshy_dcc_unity_{platform_tag()}_v{version}.zip"
+        archive = output_dir / f"meshy_dcc_unity_{platform_tag(python_home)}_v{version}.zip"
         write_zip(stage, archive)
     return archive
 
