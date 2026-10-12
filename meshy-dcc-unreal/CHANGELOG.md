@@ -22,6 +22,12 @@ adapter this one was forked from.
   CPython for `bin/meshy-dcc-unreal`, the installer. Nothing is installed into
   the engine. The package leaves out `direct_url.json`, which would record
   local build paths.
+- `packaging/build_package.py --platform windows-x86_64` builds the Windows
+  package on any machine: a pinned python-build-standalone CPython 3.11.15
+  (its SHA-256 checked), the plugin's packages installed for Windows, and
+  `bin/meshy-dcc-unreal.cmd` as the installer.
+- On Windows the installer runs `Build.bat` directly. `cmd /c` dropped the
+  outer quotes once both the engine path and the project path had spaces.
 - New installer (`meshy-dcc-unreal install | uninstall | status`): copies the
   plugin into `Plugins/MeshyDccUnreal`, builds the module with the engine's
   build script as the editor's rebuild prompt would (exit 20 and a rollback

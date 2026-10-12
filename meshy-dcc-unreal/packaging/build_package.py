@@ -11,6 +11,7 @@ editor is involved, so the package brings a relocatable CPython
       python/                        this adapter and meshy_dcc_core
     python/                          CPython for the installer
     bin/meshy-dcc-unreal             runs the installer from the plugin copy
+                                     (bin/meshy-dcc-unreal.cmd on Windows)
 
 ``meshy-dcc install --dcc-type unreal --project <root>`` extracts the zip and
 runs ``bin/meshy-dcc-unreal install <root> --yes --json``.
@@ -18,6 +19,12 @@ runs ``bin/meshy-dcc-unreal install <root> --yes --json``.
 Usage::
 
     python packaging/build_package.py --core-wheel <meshy_dcc_core wheel> --output-dir dist
+    python packaging/build_package.py --platform windows-x86_64 \
+        --core-wheel <meshy_dcc_core win_amd64 wheel> --output-dir dist
+
+The Windows package is built on any machine: its CPython is the pinned
+python-build-standalone build below, and the plugin's packages are installed
+for Windows with ``uv pip install --python-platform``.
 """
 
 from __future__ import annotations
@@ -31,7 +38,10 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
+import urllib.parse
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -55,6 +65,13 @@ EXCLUDED = shutil.ignore_patterns(
     "include",
     "share",
     "EXTERNALLY-MANAGED",
+    # Windows layout: Tcl/Tk, import libraries and pip launchers.
+    "tcl",
+    "libs",
+    "Scripts",
+    "_tkinter.pyd",
+    "tcl86t.dll",
+    "tk86t.dll",
 )
 # The C++ module ships as source; the installer builds it for each project with the local toolchain.
 PLUGIN_EXCLUDED = shutil.ignore_patterns("__pycache__", "Binaries", "Intermediate", "*.pyc")
@@ -62,6 +79,20 @@ INSTALLER_SCRIPT = """#!/bin/sh
 here=$(cd "$(dirname "$0")" && pwd)
 PYTHONPATH="$here/../plugin/{plugin}/python" exec "$here/../python/bin/python{version}" -m meshy_dcc_unreal.install_cli "$@"
 """
+WINDOWS = "windows-x86_64"
+# The python-build-standalone build of the CPython the macOS package bundles
+# (uv's 3.11). The digest is pinned; it matches the release's SHA256SUMS.
+PBS_RELEASE = "20260504"
+PBS_WINDOWS = f"cpython-3.11.15+{PBS_RELEASE}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+PBS_WINDOWS_SHA256 = "3faa1bec91efb6c3d98dd9a1dfae6ec4a40a855a8bb793ac2a2f2b1689816cfe"
+PBS_URL = f"https://github.com/astral-sh/python-build-standalone/releases/download/{PBS_RELEASE}/"
+WINDOWS_INSTALLER_SCRIPT = (
+    "@echo off\r\n"
+    "setlocal\r\n"
+    'set "PYTHONPATH=%~dp0..\\plugin\\{plugin}\\python"\r\n'
+    '"%~dp0..\\python\\python.exe" -m meshy_dcc_unreal.install_cli %*\r\n'
+    "exit /b %ERRORLEVEL%\r\n"
+)
 
 
 def adapter_version() -> str:
@@ -83,13 +114,33 @@ def default_python_home() -> Path:
     return Path(executable).resolve().parents[1]
 
 
+def windows_python_home(cache: Path) -> Path:
+    """The pinned Windows CPython, downloaded once into ``cache`` and checked against its digest."""
+    home = cache / PBS_WINDOWS.removesuffix(".tar.gz") / "python"
+    if (home / "python.exe").is_file():
+        return home
+    archive = cache / PBS_WINDOWS
+    if not archive.is_file():
+        cache.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(PBS_URL + urllib.parse.quote(PBS_WINDOWS), archive)
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    if digest != PBS_WINDOWS_SHA256:
+        archive.unlink()
+        raise RuntimeError(f"{PBS_WINDOWS} has SHA-256 {digest}, expected {PBS_WINDOWS_SHA256}")
+    with tarfile.open(archive) as bundle:
+        bundle.extractall(home.parent, filter="data")
+    return home
+
+
 def platform_tag() -> str:
     machine = os.uname().machine if hasattr(os, "uname") else "x86_64"
     system = {"darwin": "macos", "linux": "linux"}.get(sys.platform, sys.platform)
     return f"{system}_{'arm64' if machine in {'arm64', 'aarch64'} else 'x86_64'}"
 
 
-def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
+def build(core_wheel: Path, python_home: Path, output_dir: Path, target: str = "") -> Path:
+    """Build for this machine, or for Windows when ``target`` is ``windows-x86_64``."""
+    windows = target == WINDOWS
     version = adapter_version()
     with tempfile.TemporaryDirectory() as temp:
         stage = Path(temp) / "package"
@@ -101,14 +152,18 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
 
         shutil.copytree(python_home, stage / "python", symlinks=False, ignore=EXCLUDED)
         neutralize_python_prefix(stage / "python", python_home)
-        python = stage / "python" / "bin" / f"python{PYTHON_VERSION}"
+        if windows:
+            # The stage's python.exe cannot run here; resolve for Windows instead.
+            interpreter = [PYTHON_VERSION, "--python-platform", "x86_64-pc-windows-msvc"]
+        else:
+            interpreter = [str(stage / "python" / "bin" / f"python{PYTHON_VERSION}")]
         subprocess.run(
             [
                 "uv",
                 "pip",
                 "install",
                 "--python",
-                str(python),
+                *interpreter,
                 "--target",
                 str(plugin / "python"),
                 "--no-deps",
@@ -118,18 +173,24 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
             check=True,
         )
         shutil.rmtree(plugin / "python" / "bin", ignore_errors=True)
+        shutil.rmtree(plugin / "python" / "Scripts", ignore_errors=True)
         (plugin / "python" / ".lock").unlink(missing_ok=True)
         strip_build_paths(plugin / "python")
         for cache in stage.rglob("__pycache__"):
             shutil.rmtree(cache)
 
-        installer = stage / "bin" / "meshy-dcc-unreal"
-        installer.parent.mkdir()
-        installer.write_text(INSTALLER_SCRIPT.format(plugin=PLUGIN_NAME, version=PYTHON_VERSION), encoding="utf-8")
+        (stage / "bin").mkdir()
+        if windows:
+            installer = stage / "bin" / "meshy-dcc-unreal.cmd"
+            installer.write_bytes(WINDOWS_INSTALLER_SCRIPT.format(plugin=PLUGIN_NAME).encode("ascii"))
+        else:
+            installer = stage / "bin" / "meshy-dcc-unreal"
+            installer.write_text(INSTALLER_SCRIPT.format(plugin=PLUGIN_NAME, version=PYTHON_VERSION), encoding="utf-8")
         installer.chmod(0o755)
 
         output_dir.mkdir(parents=True, exist_ok=True)
-        archive = output_dir / f"meshy_dcc_unreal_{platform_tag()}_v{version}.zip"
+        tag = "windows_x86_64" if windows else platform_tag()
+        archive = output_dir / f"meshy_dcc_unreal_{tag}_v{version}.zip"
         write_zip(stage, archive)
     return archive
 
@@ -170,10 +231,23 @@ def write_zip(root: Path, archive: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--core-wheel", type=Path, required=True)
-    parser.add_argument("--python-home", type=Path, help="Relocatable CPython root (default: uv's)")
+    parser.add_argument("--platform", choices=[WINDOWS], help="Build for another platform (default: this machine)")
+    parser.add_argument("--python-home", type=Path, help="Relocatable CPython root (default: uv's, or the pinned Windows build)")
+    parser.add_argument(
+        "--python-cache",
+        type=Path,
+        default=Path(tempfile.gettempdir()) / "meshy-dcc-python-build-standalone",
+        help="Where the Windows CPython download is kept",
+    )
     parser.add_argument("--output-dir", type=Path, default=ROOT / "dist")
     args = parser.parse_args()
-    archive = build(args.core_wheel, args.python_home or default_python_home(), args.output_dir)
+    if args.python_home:
+        python_home = args.python_home
+    elif args.platform == WINDOWS:
+        python_home = windows_python_home(args.python_cache)
+    else:
+        python_home = default_python_home()
+    archive = build(args.core_wheel, python_home, args.output_dir, args.platform or "")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     print(f"{archive}\nsha256 {digest}")
 

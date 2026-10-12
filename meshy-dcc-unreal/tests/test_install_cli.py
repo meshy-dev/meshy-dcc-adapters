@@ -250,3 +250,15 @@ def test_a_project_that_disables_python_is_refused(env, capsys):
     assert code == install_cli.EXIT_PREFLIGHT
     assert "PythonScriptPlugin" in report["message"]
     assert not (env["project"] / "Plugins").exists()
+
+
+def test_windows_build_runs_build_bat_directly(monkeypatch, tmp_path):
+    # `cmd /c "<Program Files>\...\Build.bat" ... "-Project=<path with spaces>"` loses
+    # its first and last quotes; the batch file is run directly instead.
+    monkeypatch.setattr(install_cli.sys, "platform", "win32")
+    project = tmp_path / "Unreal Projects" / "My Game.uproject"
+    command = install_cli.build_command(tmp_path / "Program Files" / "UE_5.7", project)
+    assert command[0].endswith("Build.bat")
+    assert "cmd" not in command[0].lower().split("/")[-1]
+    assert command[1:3] == ["Development", "Win64"]
+    assert f"-Project={project}" in command

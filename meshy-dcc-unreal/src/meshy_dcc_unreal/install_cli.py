@@ -174,7 +174,10 @@ def build_command(engine_root: Path, project_file: Path) -> List[str]:
     """The build the editor runs when it offers to rebuild a project's missing modules."""
     batch = engine_root / "Engine" / "Build" / "BatchFiles"
     if sys.platform == "win32":
-        prefix, platform = ["cmd", "/c", str(batch / "Build.bat")], "Win64"
+        # Run the batch file itself: Windows wraps the whole command line for
+        # cmd.exe. An explicit `cmd /c` strips the first and last quotes once
+        # both the engine path (Program Files) and the project path are quoted.
+        prefix, platform = [str(batch / "Build.bat")], "Win64"
     elif sys.platform == "darwin":
         prefix, platform = [str(batch / "Mac" / "Build.sh")], "Mac"
     else:
