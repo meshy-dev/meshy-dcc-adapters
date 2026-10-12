@@ -6,6 +6,7 @@ adapter and ``websockets`` installed into it::
 
     python/                          CPython and its site-packages
     bin/meshy-dcc-godot-sidecar      runs ``python -m meshy_dcc_godot``
+                                     (``.cmd`` in the Windows package)
 
 The EditorPlugin ships inside ``meshy_dcc_godot/godot_addon``.
 ``meshy-dcc install --dcc-type godot --project <root>`` extracts the zip and
@@ -14,6 +15,11 @@ runs the bundled installer against the project.
 Usage::
 
     python packaging/build_package.py --core-wheel <meshy_dcc_core wheel> --output-dir dist
+    python packaging/build_package.py --target windows-x86_64 \\
+        --core-wheel <win_amd64 meshy_dcc_core wheel> --output-dir dist [--python-archive <tar.gz>]
+
+The Windows package is built on any machine: its CPython is the pinned
+python-build-standalone archive below, and the wheels are installed for Windows.
 """
 
 from __future__ import annotations
@@ -26,7 +32,9 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -50,6 +58,16 @@ EXCLUDED = shutil.ignore_patterns(
     "share",
     "EXTERNALLY-MANAGED",
 )
+# python-build-standalone 20260504, CPython 3.11.15 (the version uv installs on
+# macOS); the digest is the one published in that release's SHA256SUMS.
+WINDOWS_PYTHON_URL = (
+    "https://github.com/astral-sh/python-build-standalone/releases/download/20260504/"
+    "cpython-3.11.15%2B20260504-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+)
+WINDOWS_PYTHON_SHA256 = "3faa1bec91efb6c3d98dd9a1dfae6ec4a40a855a8bb793ac2a2f2b1689816cfe"
+# Not needed beside the sidecar on Windows: pip's launchers, Tcl/Tk, import libraries.
+WINDOWS_EXCLUDED = shutil.ignore_patterns("Scripts", "tcl", "libs")
+SIDECAR_CMD = '@echo off\r\n"%~dp0..\\python\\python.exe" -m meshy_dcc_godot %*\r\n'
 SIDECAR_SCRIPT = """#!/bin/sh
 here=$(cd "$(dirname "$0")" && pwd)
 exec "$here/../python/bin/python{version}" -m meshy_dcc_godot "$@"
@@ -116,6 +134,63 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
     return archive
 
 
+def build_windows(core_wheel: Path, python_archive: Path | None, output_dir: Path) -> Path:
+    """The Windows x86_64 package, built from the pinned CPython archive."""
+    version = adapter_version()
+    with tempfile.TemporaryDirectory() as temp:
+        work = Path(temp)
+        if python_archive is None:
+            python_archive = work / "python.tar.gz"
+            urllib.request.urlretrieve(WINDOWS_PYTHON_URL, python_archive)
+        digest = hashlib.sha256(python_archive.read_bytes()).hexdigest()
+        if digest != WINDOWS_PYTHON_SHA256:
+            raise SystemExit(f"{python_archive}: sha256 {digest}, expected {WINDOWS_PYTHON_SHA256}")
+        with tarfile.open(python_archive) as archive:
+            archive.extractall(work / "cpython", filter="data")
+
+        stage = work / "package"
+        excluded = [EXCLUDED, WINDOWS_EXCLUDED]
+        shutil.copytree(
+            work / "cpython" / "python",
+            stage / "python",
+            ignore=lambda folder, names: set().union(*(rule(folder, names) for rule in excluded)),
+        )
+        site = stage / "python" / "Lib" / "site-packages"
+        subprocess.run(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--target",
+                str(site),
+                "--python-platform",
+                "x86_64-pc-windows-msvc",
+                "--python-version",
+                PYTHON_VERSION,
+                "--no-deps",
+                str(core_wheel),
+                str(ROOT),
+                "websockets>=12,<18",
+            ],
+            check=True,
+        )
+        # --target writes console-script launchers (pointing at this machine) and a lock file.
+        shutil.rmtree(site / "bin", ignore_errors=True)
+        shutil.rmtree(site / "Scripts", ignore_errors=True)
+        (site / ".lock").unlink(missing_ok=True)
+        strip_build_paths(site)
+        for cache in stage.rglob("__pycache__"):
+            shutil.rmtree(cache)
+        sidecar = stage / "bin" / "meshy-dcc-godot-sidecar.cmd"
+        sidecar.parent.mkdir()
+        sidecar.write_bytes(SIDECAR_CMD.encode("ascii"))
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        archive = output_dir / f"meshy_dcc_godot_windows_x86_64_v{version}.zip"
+        write_zip(stage, archive)
+    return archive
+
+
 def strip_build_paths(site: Path) -> None:
     """Drop ``direct_url.json``: it records the local paths the wheels were installed from."""
     for record in site.glob("*.dist-info/RECORD"):
@@ -152,10 +227,17 @@ def write_zip(root: Path, archive: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--core-wheel", type=Path, required=True)
+    parser.add_argument("--target", choices=["host", "windows-x86_64"], default="host")
     parser.add_argument("--python-home", type=Path, help="Relocatable CPython root (default: uv's)")
+    parser.add_argument(
+        "--python-archive", type=Path, help="Windows: a downloaded copy of WINDOWS_PYTHON_URL"
+    )
     parser.add_argument("--output-dir", type=Path, default=ROOT / "dist")
     args = parser.parse_args()
-    archive = build(args.core_wheel, args.python_home or default_python_home(), args.output_dir)
+    if args.target == "windows-x86_64":
+        archive = build_windows(args.core_wheel, args.python_archive, args.output_dir)
+    else:
+        archive = build(args.core_wheel, args.python_home or default_python_home(), args.output_dir)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     print(f"{archive}\nsha256 {digest}")
 

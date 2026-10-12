@@ -114,9 +114,21 @@ func _start_meshy_sidecar() -> void:
 		return
 	var port := listener.get_local_port()
 	listener.stop()
-	var pid := OS.create_process(sidecar, [
+	# Where install recorded the package's Python (Windows, whose launcher is a
+	# .cmd), run it directly instead of going through cmd.exe.
+	var program := sidecar
+	var args := PackedStringArray()
+	var python := str(config.get("python", ""))
+	if not python.is_empty():
+		if not python.is_absolute_path() or not FileAccess.file_exists(python):
+			push_error("Meshy DCC: sidecar Python not found: %s" % python)
+			return
+		program = python
+		args.append_array(["-m", "meshy_dcc_godot"])
+	args.append_array([
 		"serve", "--watch-pid", str(OS.get_process_id()), "--bridge-port", str(port),
 	])
+	var pid := OS.create_process(program, args)
 	if pid <= 0:
 		push_error("Meshy DCC: the sidecar could not be started: %s" % sidecar)
 		return

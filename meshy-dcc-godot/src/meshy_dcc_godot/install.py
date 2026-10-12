@@ -1213,7 +1213,10 @@ def _installed_result(
     install_mode: str,
 ) -> tuple[int, dict[str, Any]]:
     if args.sidecar is not None:
-        _write_launch_files(project, godot, args.sidecar)
+        # On Windows the EditorPlugin starts the package's Python itself: the
+        # sidecar launcher is a .cmd, which CreateProcess would hand to cmd.exe.
+        python = Path(sys.executable) if os.name == "nt" else None
+        _write_launch_files(project, godot, args.sidecar, python)
     result = _plan_result(project)
     result.update(
         status="requires_restart",
@@ -1284,7 +1287,9 @@ def _install_is_current(state: dict[str, Any], godot: dict[str, Any], python: Pa
     return owned == packaged
 
 
-def _write_launch_files(project: Path, godot: dict[str, Any], sidecar: Path) -> None:
+def _write_launch_files(
+    project: Path, godot: dict[str, Any], sidecar: Path, python: Path | None = None
+) -> None:
     """Record how start-instance opens this project and where the sidecar lives.
 
     Rewritten on every install: a newer adapter package moves the sidecar.
@@ -1310,6 +1315,8 @@ def _write_launch_files(project: Path, godot: dict[str, Any], sidecar: Path) -> 
         "adapter_version": __version__,
         "sidecar": str(sidecar),
     }
+    if python is not None:
+        config["python"] = str(python)
     _atomic_write(project / LAUNCH_PLAN_RELATIVE_PATH, json.dumps(plan, indent=2) + "\n")
     _atomic_write(project / SIDECAR_CONFIG_RELATIVE_PATH, json.dumps(config, indent=2) + "\n")
 

@@ -85,6 +85,23 @@ def test_files_only_install_records_launch_plan_then_uninstall_removes_it(
     assert not (project / SIDECAR_CONFIG_RELATIVE_PATH).exists()
 
 
+def test_windows_config_names_the_python_the_plugin_starts(tmp_path: Path):
+    project = tmp_path / "project"
+    project.mkdir()
+    godot = {"path": str(tmp_path / "Godot.exe"), "version": "4.7.2.stable"}
+    sidecar = tmp_path / "bin" / "meshy-dcc-godot-sidecar.cmd"
+    python = tmp_path / "python" / "python.exe"
+
+    install_module._write_launch_files(project, godot, sidecar)
+    config = json.loads((project / SIDECAR_CONFIG_RELATIVE_PATH).read_text(encoding="utf-8"))
+    assert "python" not in config, "macOS keeps starting the sidecar script"
+
+    install_module._write_launch_files(project, godot, sidecar, python)
+    config = json.loads((project / SIDECAR_CONFIG_RELATIVE_PATH).read_text(encoding="utf-8"))
+    assert config["python"] == str(python)
+    assert config["sidecar"] == str(sidecar)
+
+
 def test_missing_sidecar_fails_preflight_without_writing(project: Path, tmp_path: Path, capsys):
     code, report = run(
         capsys, "install", str(project), "--yes", "--json", "--sidecar", str(tmp_path / "absent")
