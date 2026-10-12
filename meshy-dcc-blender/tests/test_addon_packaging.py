@@ -111,7 +111,7 @@ def test_extension_namespace_import_does_not_create_top_level_alias(monkeypatch)
 
         lifecycle_calls = []
         fake_bpy.ops = SimpleNamespace(
-            wm=SimpleNamespace(read_factory_settings=lambda **kwargs: lifecycle_calls.append(("reset", kwargs)))
+            wm=SimpleNamespace(read_homefile=lambda **kwargs: lifecycle_calls.append(("reset", kwargs)))
         )
         dispatcher = SimpleNamespace(start_pump=lambda: lifecycle_calls.append(("start_pump", None)))
         readiness = SimpleNamespace(

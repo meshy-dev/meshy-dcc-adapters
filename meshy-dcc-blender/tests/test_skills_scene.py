@@ -78,11 +78,14 @@ class TestListObjects:
 
 
 class TestNewScene:
-    def test_calls_read_factory_settings(self):
+    def test_reads_empty_homefile_without_resetting_preferences(self):
+        # read_factory_settings reloads preferences, which disables every
+        # extension: the adapter's unregister() then stopped its own server.
         bpy = make_mock_bpy()
         result = load_and_call("blender-scene/scripts/new_scene.py", bpy)
         assert result["success"] is True
-        bpy.ops.wm.read_factory_settings.assert_called_once_with(use_empty=True)
+        bpy.ops.wm.read_homefile.assert_called_once_with(use_empty=True)
+        bpy.ops.wm.read_factory_settings.assert_not_called()
 
 
 class TestSaveScene:

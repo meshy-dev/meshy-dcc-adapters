@@ -1,8 +1,9 @@
 """Create a new empty Blender scene.
 
-After ``read_factory_settings`` Blender wipes all registered timers — including
-the MCP main-thread dispatcher pump.  This module restores the pump so subsequent
-tool calls succeed without restarting Blender.
+Uses ``read_homefile(use_empty=True)``, not ``read_factory_settings``: the latter
+also reloads preferences, which disables every extension, so the adapter's
+``unregister()`` stopped its own server and the instance left the registry.
+Loading a file can still drop the dispatcher timer, so the pump is re-armed.
 """
 
 from __future__ import annotations
@@ -15,12 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 def _preserve_mcp_dispatcher() -> None:
-    """Re-register the MCP main-thread dispatcher timer after Blender factory reset.
+    """Re-register the MCP main-thread dispatcher timer after loading the file.
 
-    ``bpy.ops.wm.read_factory_settings(use_empty=True)`` unregisters all
-    ``bpy.app.timers`` callbacks including the dispatcher pump.  The HTTP
-    server stays alive (port remains open) but subsequent tool calls hang
-    because the queue is never drained.
+    If the dispatcher pump were dropped, the HTTP server would stay alive (port
+    open) but later tool calls would hang because the queue is never drained.
 
     This is best-effort — it must not raise or the ``new_scene`` operation
     would fail with a half-applied factory reset.
@@ -59,7 +58,7 @@ def new_scene() -> dict:
     try:
         import bpy
 
-        bpy.ops.wm.read_factory_settings(use_empty=True)
+        bpy.ops.wm.read_homefile(use_empty=True)
         _preserve_mcp_dispatcher()
         return skill_success(
             "New scene created",
