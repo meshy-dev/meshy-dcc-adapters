@@ -100,6 +100,7 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
             raise RuntimeError(f"{PLUGIN_NAME}.uplugin must name version {version}")
 
         shutil.copytree(python_home, stage / "python", symlinks=False, ignore=EXCLUDED)
+        neutralize_python_prefix(stage / "python", python_home)
         python = stage / "python" / "bin" / f"python{PYTHON_VERSION}"
         subprocess.run(
             [
@@ -142,6 +143,17 @@ def strip_build_paths(site: Path) -> None:
             prefix = f"{record.parent.name}/direct_url.json,"
             lines = record.read_text(encoding="utf-8").splitlines(keepends=True)
             record.write_text("".join(line for line in lines if not line.startswith(prefix)), encoding="utf-8")
+
+
+def neutralize_python_prefix(python: Path, python_home: Path) -> None:
+    """Put back the neutral ``/install`` prefix that uv replaces with its own install path."""
+    for sysconfig in python.glob("lib/python*/_sysconfigdata_*.py"):
+        text = sysconfig.read_text(encoding="utf-8")
+        sysconfig.write_text(text.replace(str(python_home), "/install"), encoding="utf-8")
+    for dylib in python.glob("lib/libpython*.dylib"):
+        # The interpreter is linked statically; only the library's own id names the path.
+        subprocess.run(["install_name_tool", "-id", f"@rpath/{dylib.name}", str(dylib)], check=True)
+        subprocess.run(["codesign", "--force", "--sign", "-", str(dylib)], check=True, capture_output=True)
 
 
 def write_zip(root: Path, archive: Path) -> None:
