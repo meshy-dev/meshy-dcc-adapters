@@ -437,3 +437,64 @@ def test_import_usd_exposes_typed_options(tmp_path):
 
     assert tool["affinity"] == "main"
     assert tool["execution"] == "sync"
+
+
+class _RnaProperty:
+    def __init__(self, identifier, is_enum_flag=False):
+        self.identifier = identifier
+        self.is_enum_flag = is_enum_flag
+
+
+class _FbxExportOperator:
+    """Behaves like bpy.ops.export_scene.fbx: an enum-flag option must be a set."""
+
+    def __init__(self):
+        self.received = None
+
+    def get_rna_type(self):
+        props = [_RnaProperty("filepath"), _RnaProperty("use_selection"), _RnaProperty("bake_anim")]
+        props.append(_RnaProperty("object_types", is_enum_flag=True))
+        return type("RnaType", (), {"properties": props})()
+
+    def __call__(self, **kwargs):
+        if not isinstance(kwargs.get("object_types", set()), set):
+            raise TypeError("FBX export: object_types expected a set, not list")
+        if not isinstance(kwargs.get("bake_anim", False), bool):
+            raise TypeError("FBX export: bake_anim expected True/False or 0/1")
+        self.received = kwargs
+        Path(kwargs["filepath"]).write_text("fbx", encoding="utf-8")
+        return {"FINISHED"}
+
+
+def test_export_fbx_takes_enum_flag_options_as_a_list(tmp_path):
+    """S01: a JSON list for object_types made the export retry without every option."""
+    bpy = _bpy_with_scene([FakeObject("Boar")])
+    bpy.ops.export_scene.fbx = _FbxExportOperator()
+
+    result = load_and_call(
+        "blender-geometry/scripts/export_fbx.py",
+        bpy,
+        path=str(tmp_path / "boar.fbx"),
+        options={"object_types": ["MESH", "ARMATURE"], "bake_anim": False},
+    )
+
+    assert result["success"] is True, result
+    assert bpy.ops.export_scene.fbx.received["object_types"] == {"MESH", "ARMATURE"}
+    assert bpy.ops.export_scene.fbx.received["bake_anim"] is False
+    assert result["context"]["warnings"] == []
+
+
+def test_export_fbx_fails_on_a_bad_option_instead_of_dropping_all(tmp_path):
+    bpy = _bpy_with_scene([FakeObject("Boar")])
+    bpy.ops.export_scene.fbx = _FbxExportOperator()
+
+    result = load_and_call(
+        "blender-geometry/scripts/export_fbx.py",
+        bpy,
+        path=str(tmp_path / "boar.fbx"),
+        options={"object_types": ["MESH"], "bake_anim": "sometimes"},
+    )
+
+    assert result["success"] is False
+    assert "bake_anim" in json.dumps(result)
+    assert bpy.ops.export_scene.fbx.received is None

@@ -95,40 +95,42 @@ def _select_objects(bpy: Any, object_names: Sequence[str] | None) -> tuple[bool,
     return True, [obj.name for obj in objects], None
 
 
-def _operator_property_names(operator: Any) -> set[str] | None:
-    """Return Blender RNA option names when the operator exposes them."""
+def _operator_properties(operator: Any) -> dict[str, Any] | None:
+    """Return Blender RNA option properties by name when the operator exposes them."""
     get_rna_type = getattr(operator, "get_rna_type", None)
     if not callable(get_rna_type):
         return None
     try:
-        properties = get_rna_type().properties
-        names = set()
-        for prop in properties:
+        properties = {}
+        for prop in get_rna_type().properties:
             identifier = getattr(prop, "identifier", None)
             if identifier and identifier != "rna_type":
-                names.add(identifier)
+                properties[identifier] = prop
     except Exception:
         return None
-    return names or None
+    return properties or None
 
 
 def _call_with_options(operator: Any, base: dict[str, Any], options: dict[str, Any], warnings: list[str]) -> None:
-    supported = _operator_property_names(operator)
+    """Call ``operator`` with the options it declares; an invalid value fails the call.
+
+    It used to retry without every option on any TypeError, so one bad value
+    (a JSON list for an enum-flag option such as FBX ``object_types``) silently
+    exported with defaults.
+    """
+    supported = _operator_properties(operator)
     if supported is not None:
-        ignored = sorted(set(options) - supported)
+        ignored = sorted(set(options) - set(supported))
         if ignored:
             warnings.append(f"Ignored unsupported options: {ignored}")
-        options = {key: value for key, value in options.items() if key in supported}
-    payload = dict(base)
-    payload.update(options)
-    try:
-        operator(**payload)
-    except TypeError as exc:
-        if options:
-            warnings.append(f"Retried without unsupported options: {sorted(options)}")
-            operator(**base)
-        else:
-            raise exc
+        options = {
+            key: set(value)
+            if isinstance(value, (list, tuple)) and getattr(supported[key], "is_enum_flag", False)
+            else value
+            for key, value in options.items()
+            if key in supported
+        }
+    operator(**{**base, **options})
 
 
 def _has_nonempty_file(path: Path) -> bool:
