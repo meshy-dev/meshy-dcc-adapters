@@ -1,0 +1,29 @@
+; Engine configuration file.
+; Used by the real-Godot CI smoke.
+
+config_version=5
+
+[application]
+
+config/name="Meshy DCC Godot CI"
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=540
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/meshy_dcc_godot/plugin.cfg")
+
+[meshy_dcc]
+
+playtest/project_id="meshy-dcc-godot-ci"
+playtest/session_id="typed-action-smoke"
+playtest/authority_id="ci-playtest-owner"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+

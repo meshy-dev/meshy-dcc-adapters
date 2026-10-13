@@ -1,0 +1,304 @@
+import base64
+import struct
+import zlib
+
+import pytest
+
+from meshy_dcc_godot import capability_dispatch, screenshot
+from meshy_dcc_godot.screenshot import finalize_screenshot, finalize_screenshot_batch
+
+
+def test_game_screenshot_encodes_immutable_host_snapshot_off_the_godot_thread(
+    monkeypatch, tmp_path
+):
+    raw_path = tmp_path / "game.png.meshy-dcc-1.raw"
+    output_path = tmp_path / "game.png"
+    pixels = bytes((255, 0, 0, 255, 0, 255, 0, 128))
+    raw_path.write_bytes(pixels)
+    host_calls = []
+
+    def call_host(method, params):
+        host_calls.append((method, params))
+        return {
+            "path": "res://.meshy-dcc/game.png",
+            "width": 2,
+            "height": 1,
+            "__raw_snapshot__": {
+                "path": str(raw_path),
+                "output_path": str(output_path),
+                "format": "rgba8",
+                "byte_length": len(pixels),
+            },
+        }
+
+    monkeypatch.setattr(capability_dispatch, "call_host", call_host)
+
+    result = capability_dispatch.dispatch(
+        "get_game_screenshot", {"path": "res://.meshy-dcc/game.png"}
+    )
+
+    assert host_calls == [("capability.get_game_screenshot", {"path": "res://.meshy-dcc/game.png"})]
+    assert result["context"] == {
+        "path": "res://.meshy-dcc/game.png",
+        "width": 2,
+        "height": 1,
+    }
+    png = output_path.read_bytes()
+    assert png.startswith(b"\x89PNG\r\n\x1a\n")
+    assert struct.unpack(">II", png[16:24]) == (2, 1)
+    idat_size = struct.unpack(">I", png[33:37])[0]
+    assert zlib.decompress(png[41 : 41 + idat_size]) == b"\x00" + pixels
+    assert not raw_path.exists()
+
+
+def test_game_screenshot_base64_is_derived_from_the_off_thread_png(monkeypatch, tmp_path):
+    raw_path = tmp_path / "game.png.meshy-dcc-2.raw"
+    output_path = tmp_path / "game.png"
+    raw_path.write_bytes(bytes((10, 20, 30)))
+    monkeypatch.setattr(
+        capability_dispatch,
+        "call_host",
+        lambda _method, _params: {
+            "path": "res://.meshy-dcc/game.png",
+            "width": 1,
+            "height": 1,
+            "__raw_snapshot__": {
+                "path": str(raw_path),
+                "output_path": str(output_path),
+                "format": "rgb8",
+                "byte_length": 3,
+            },
+        },
+    )
+
+    result = capability_dispatch.dispatch("get_game_screenshot", {"include_base64": True})
+
+    assert base64.b64decode(result["context"]["png_base64"]) == output_path.read_bytes()
+    assert not raw_path.exists()
+
+
+def test_editor_screenshot_uses_the_same_off_thread_finalizer(monkeypatch, tmp_path):
+    raw_path = tmp_path / "editor.png.meshy-dcc-1.raw"
+    output_path = tmp_path / "editor.png"
+    raw_path.write_bytes(bytes((9, 8, 7)))
+    monkeypatch.setattr(
+        capability_dispatch,
+        "call_host",
+        lambda _method, _params: {
+            "path": "res://.meshy-dcc/editor.png",
+            "width": 1,
+            "height": 1,
+            "__raw_snapshot__": {
+                "path": str(raw_path),
+                "output_path": str(output_path),
+                "format": "rgb8",
+                "byte_length": 3,
+            },
+        },
+    )
+
+    result = capability_dispatch.dispatch("get_editor_screenshot", {})
+
+    assert result["context"]["path"] == "res://.meshy-dcc/editor.png"
+    assert output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert not raw_path.exists()
+
+
+def test_screenshot_snapshot_size_mismatch_fails_closed_and_removes_staging_file(tmp_path):
+    raw_path = tmp_path / "game.png.meshy-dcc-3.raw"
+    output_path = tmp_path / "game.png"
+    raw_path.write_bytes(b"too-short")
+
+    with pytest.raises(ValueError, match="byte length"):
+        finalize_screenshot(
+            {
+                "path": "res://.meshy-dcc/game.png",
+                "width": 2,
+                "height": 2,
+                "__raw_snapshot__": {
+                    "path": str(raw_path),
+                    "output_path": str(output_path),
+                    "format": "rgba8",
+                    "byte_length": 9,
+                },
+            }
+        )
+
+    assert not raw_path.exists()
+    assert not output_path.exists()
+
+
+def test_same_path_screenshot_error_does_not_poison_the_next_call(monkeypatch, tmp_path):
+    failed_raw_path = tmp_path / "game.png.meshy-dcc-failed.raw"
+    next_raw_path = tmp_path / "game.png.meshy-dcc-next.raw"
+    output_path = tmp_path / "game.png"
+    failed_raw_path.write_bytes(b"in")
+    next_pixels = bytes((7, 11, 13))
+    next_raw_path.write_bytes(next_pixels)
+    snapshots = iter(
+        (
+            {
+                "path": "res://.meshy-dcc/game.png",
+                "width": 1,
+                "height": 1,
+                "__raw_snapshot__": {
+                    "path": str(failed_raw_path),
+                    "output_path": str(output_path),
+                    "format": "rgb8",
+                    "byte_length": 3,
+                },
+            },
+            {
+                "path": "res://.meshy-dcc/game.png",
+                "width": 1,
+                "height": 1,
+                "__raw_snapshot__": {
+                    "path": str(next_raw_path),
+                    "output_path": str(output_path),
+                    "format": "rgb8",
+                    "byte_length": 3,
+                },
+            },
+        )
+    )
+    monkeypatch.setattr(capability_dispatch, "call_host", lambda _method, _params: next(snapshots))
+
+    with pytest.raises(ValueError, match="incomplete"):
+        capability_dispatch.dispatch("get_game_screenshot", {"include_base64": True})
+
+    result = capability_dispatch.dispatch("get_game_screenshot", {"include_base64": True})
+
+    assert not failed_raw_path.exists()
+    assert not next_raw_path.exists()
+    assert base64.b64decode(result["context"]["png_base64"]) == output_path.read_bytes()
+
+
+def test_capture_frames_finalizes_each_immutable_snapshot_off_the_godot_thread(tmp_path):
+    first_raw = tmp_path / "frame_000.png.meshy-dcc-1.raw"
+    second_raw = tmp_path / "frame_001.png.meshy-dcc-2.raw"
+    first_output = tmp_path / "frame_000.png"
+    second_output = tmp_path / "frame_001.png"
+    first_raw.write_bytes(bytes((1, 2, 3)))
+    second_raw.write_bytes(bytes((4, 5, 6)))
+    first_output.write_bytes(b"old-first")
+    second_output.write_bytes(b"old-second")
+
+    result = finalize_screenshot_batch(
+        {
+            "paths": ["res://.meshy-dcc/frame_000.png", "res://.meshy-dcc/frame_001.png"],
+            "count": 2,
+            "__raw_snapshots__": [
+                {
+                    "path": str(first_raw),
+                    "output_path": str(first_output),
+                    "format": "rgb8",
+                    "byte_length": 3,
+                    "width": 1,
+                    "height": 1,
+                },
+                {
+                    "path": str(second_raw),
+                    "output_path": str(second_output),
+                    "format": "rgb8",
+                    "byte_length": 3,
+                    "width": 1,
+                    "height": 1,
+                },
+            ],
+        }
+    )
+
+    assert result["paths"] == ["res://.meshy-dcc/frame_000.png", "res://.meshy-dcc/frame_001.png"]
+    assert first_output.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert second_output.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert not first_raw.exists()
+    assert not second_raw.exists()
+
+
+def test_capture_frames_batch_failure_is_atomic_and_cleans_all_staging(tmp_path):
+    first_raw = tmp_path / "frame_000.png.meshy-dcc-1.raw"
+    second_raw = tmp_path / "frame_001.png.meshy-dcc-2.raw"
+    first_output = tmp_path / "frame_000.png"
+    second_output = tmp_path / "frame_001.png"
+    first_raw.write_bytes(bytes((1, 2, 3)))
+    second_raw.write_bytes(bytes((4, 5, 6)))
+
+    with pytest.raises(ValueError, match="byte length"):
+        finalize_screenshot_batch(
+            {
+                "__raw_snapshots__": [
+                    {
+                        "path": str(first_raw),
+                        "output_path": str(first_output),
+                        "format": "rgb8",
+                        "byte_length": 3,
+                        "width": 1,
+                        "height": 1,
+                    },
+                    {
+                        "path": str(second_raw),
+                        "output_path": str(second_output),
+                        "format": "rgb8",
+                        "byte_length": 4,
+                        "width": 1,
+                        "height": 1,
+                    },
+                ]
+            }
+        )
+
+    assert not first_output.exists()
+    assert not second_output.exists()
+    assert not first_raw.exists()
+    assert not second_raw.exists()
+
+
+def test_capture_frames_batch_publish_failure_rolls_back_outputs_and_staging(monkeypatch, tmp_path):
+    first_raw = tmp_path / "frame_000.png.meshy-dcc-1.raw"
+    second_raw = tmp_path / "frame_001.png.meshy-dcc-2.raw"
+    first_output = tmp_path / "frame_000.png"
+    second_output = tmp_path / "frame_001.png"
+    first_raw.write_bytes(bytes((1, 2, 3)))
+    second_raw.write_bytes(bytes((4, 5, 6)))
+    first_output.write_bytes(b"old-first")
+    second_output.write_bytes(b"old-second")
+    replace = screenshot.os.replace
+    calls = 0
+
+    def fail_on_second_replace(source, destination):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("simulated publish failure")
+        return replace(source, destination)
+
+    monkeypatch.setattr(screenshot.os, "replace", fail_on_second_replace)
+
+    with pytest.raises(OSError, match="simulated publish failure"):
+        finalize_screenshot_batch(
+            {
+                "__raw_snapshots__": [
+                    {
+                        "path": str(first_raw),
+                        "output_path": str(first_output),
+                        "format": "rgb8",
+                        "byte_length": 3,
+                        "width": 1,
+                        "height": 1,
+                    },
+                    {
+                        "path": str(second_raw),
+                        "output_path": str(second_output),
+                        "format": "rgb8",
+                        "byte_length": 3,
+                        "width": 1,
+                        "height": 1,
+                    },
+                ]
+            }
+        )
+
+    assert first_output.read_bytes() == b"old-first"
+    assert second_output.read_bytes() == b"old-second"
+    assert not first_raw.exists()
+    assert not second_raw.exists()
