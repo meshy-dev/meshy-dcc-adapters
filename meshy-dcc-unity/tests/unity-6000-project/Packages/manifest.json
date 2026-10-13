@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "ai.meshy.dcc": "file:../../../src/meshy_dcc_unity/unity_package",
+    "com.unity.test-framework": "1.4.6"
+  },
+  "testables": [
+    "ai.meshy.dcc"
+  ]
+}

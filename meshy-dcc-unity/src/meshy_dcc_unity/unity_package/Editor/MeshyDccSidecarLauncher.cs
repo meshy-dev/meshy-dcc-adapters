@@ -1,0 +1,125 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+
+namespace MeshyDcc.Unity
+{
+    internal static class MeshyDccSidecarLauncher
+    {
+        internal static void StartIfConfigured()
+        {
+            if (MeshyDccBridge.IsImportWorkerOrBatchMode())
+            {
+                return;
+            }
+            var path = Environment.GetEnvironmentVariable("MESHY_DCC_UNITY_SIDECAR_PATH");
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            try
+            {
+                path = Path.GetFullPath(path);
+                if (!File.Exists(path))
+                {
+                    UnityEngine.Debug.LogWarning("Meshy DCC Unity sidecar was not found: " + path);
+                    return;
+                }
+
+                var expected = Environment.GetEnvironmentVariable("MESHY_DCC_UNITY_SIDECAR_SHA256");
+                if (!string.IsNullOrEmpty(expected) && !string.Equals(
+                        expected.Trim(), ComputeSha256(path), StringComparison.OrdinalIgnoreCase))
+                {
+                    UnityEngine.Debug.LogError("Meshy DCC Unity sidecar SHA-256 validation failed.");
+                    return;
+                }
+
+                var bridgePort = Environment.GetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_PORT");
+                if (string.IsNullOrEmpty(bridgePort) &&
+                    string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_URL")))
+                {
+                    // One bridge port per Editor, so several Editors can run at once. The
+                    // process environment keeps it across domain reloads, where the pid file
+                    // keeps the running sidecar.
+                    // ponytail: the port is free when probed, not reserved; a clash shows as
+                    // a bridge that never connects.
+                    bridgePort = FreeLoopbackPort().ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    Environment.SetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_PORT", bridgePort);
+                    Environment.SetEnvironmentVariable("MESHY_DCC_UNITY_BRIDGE_URL", "ws://127.0.0.1:" + bridgePort);
+                }
+                if (string.IsNullOrEmpty(bridgePort)) bridgePort = "13852";
+                var pidFile = Path.Combine(
+                    Path.GetTempPath(),
+                    "meshy-dcc-unity-" + ComputeProjectHash(Application.dataPath) + ".pid");
+                var arguments = "--bridge-port " + bridgePort + " --watch-pid " +
+                    Process.GetCurrentProcess().Id + " --pid-file \"" + pidFile + "\"";
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = path,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetDirectoryName(path) ?? Environment.CurrentDirectory,
+                };
+                // The Windows package's launcher is a .cmd. Run it through cmd.exe
+                // explicitly: /s with one outer pair of quotes keeps the quoted
+                // launcher path and --pid-file value intact when they contain spaces.
+                var extension = Path.GetExtension(path);
+                if (string.Equals(extension, ".cmd", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(extension, ".bat", StringComparison.OrdinalIgnoreCase))
+                {
+                    startInfo.FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe");
+                    startInfo.Arguments = "/d /s /c \"\"" + path + "\" " + arguments + "\"";
+                }
+                // The sidecar registers this as the instance's host version.
+                startInfo.EnvironmentVariables["MESHY_DCC_UNITY_VERSION"] = Application.unityVersion;
+                Process.Start(startInfo);
+                UnityEngine.Debug.Log("Meshy DCC Unity standalone sidecar started.");
+            }
+            catch (Exception exception)
+            {
+                MeshyDccBootstrapErrors.Capture("sidecar-launch", exception);
+                UnityEngine.Debug.LogWarning("Meshy DCC Unity sidecar failed to start: " + exception.Message);
+            }
+        }
+
+        private static int FreeLoopbackPort()
+        {
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+            try
+            {
+                return ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+            }
+            finally
+            {
+                listener.Stop();
+            }
+        }
+
+        private static string ComputeSha256(string path)
+        {
+            using (var sha256 = SHA256.Create())
+            using (var stream = File.OpenRead(path))
+            {
+                return BitConverter.ToString(sha256.ComputeHash(stream)).Replace("-", string.Empty)
+                    .ToLowerInvariant();
+            }
+        }
+
+        private static string ComputeProjectHash(string path)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var bytes = Encoding.UTF8.GetBytes(Path.GetFullPath(path).ToLowerInvariant());
+                return BitConverter.ToString(sha256.ComputeHash(bytes), 0, 8)
+                    .Replace("-", string.Empty).ToLowerInvariant();
+            }
+        }
+    }
+}

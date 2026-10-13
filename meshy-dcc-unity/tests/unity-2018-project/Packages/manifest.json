@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "ai.meshy.dcc": "file:../../../src/meshy_dcc_unity/unity_package"
+  },
+  "testables": [
+    "ai.meshy.dcc"
+  ]
+}

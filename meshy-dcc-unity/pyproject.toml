@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meshy-dcc-unity"
+version = "0.1.0"
+description = "Unity Editor adapter and typed game-authoring skills for Meshy DCC"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
+keywords = ["unity", "mcp", "game-development", "ai", "model-context-protocol"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Games/Entertainment",
+]
+dependencies = ["meshy-dcc-core>=0.2.0,<0.3.0", "websockets>=12"]
+
+[project.urls]
+Homepage = "https://github.com/meshy-dev/meshy-dcc-unity"
+Repository = "https://github.com/meshy-dev/meshy-dcc-unity"
+Issues = "https://github.com/meshy-dev/meshy-dcc-unity/issues"
+
+[project.optional-dependencies]
+dev = ["build>=1.2", "jsonschema>=4", "pytest>=8", "pyyaml>=6", "ruff>=0.8", "twine>=6"]
+
+[project.scripts]
+meshy-dcc-unity = "meshy_dcc_unity._standalone_entry:main"
+meshy-dcc-unity-standalone = "meshy_dcc_unity._standalone_entry:main"
+meshy-dcc-unity-install = "meshy_dcc_unity.install:main"
+
+[project.entry-points."meshy_dcc.adapters"]
+unity = "meshy_dcc_unity:UnityMcpServer"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meshy_dcc_unity"]
+artifacts = ["src/meshy_dcc_unity/skills/**", "src/meshy_dcc_unity/unity_package/**"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/meshy_dcc_unity",
+  "tests",
+  "tools",
+  "README.md",
+  "install.md",
+  "CHANGELOG.md",
+  "LICENSE",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]

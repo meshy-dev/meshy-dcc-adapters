@@ -1,0 +1,16 @@
+{
+  "name": "MeshyDcc.Unity.Editor.Tests",
+  "references": [
+    "MeshyDcc.Unity.Editor"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
