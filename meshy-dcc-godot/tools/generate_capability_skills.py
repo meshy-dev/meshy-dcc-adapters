@@ -736,6 +736,101 @@ TOOL_SEARCH_ALIASES = {
 }
 
 
+def _object(properties: dict, *required: str) -> dict:
+    schema = {"type": "object", "properties": properties, "additionalProperties": False}
+    if required:
+        schema["required"] = list(required)
+    return schema
+
+
+# Tools whose parameters are spelled out, matching what capabilities.gd reads.
+# Every other tool still takes its category's shared property set.
+SCENE_NODE = dict(NODE_PATH, description="Edited-scene node path; empty or '.' is the scene root.")
+TOOL_INPUT_SCHEMAS = {
+    "add_node": _object(
+        {
+            "type": dict(STRING, description="Godot Node class, default Node2D."),
+            "name": dict(STRING, description="Node name, default the class name."),
+            "parent_path": dict(SCENE_NODE, description="Parent node path, default the scene root."),
+            "properties": dict(PROPERTIES, description="Initial values for existing properties."),
+        }
+    ),
+    "delete_node": _object({"node_path": dict(NODE_PATH, description="A non-root edited-scene node.")}, "node_path"),
+    "duplicate_node": _object(
+        {
+            "node_path": NODE_PATH,
+            "name": dict(STRING, description="Name of the copy, default <name>Copy."),
+            "parent_path": dict(NODE_PATH, description="Parent of the copy, default the original's parent."),
+        },
+        "node_path",
+    ),
+    "move_node": _object(
+        {
+            "node_path": NODE_PATH,
+            "parent_path": dict(NODE_PATH, description="New parent; must not be the node or below it."),
+            "keep_global_transform": {"type": "boolean", "default": True},
+        },
+        "node_path",
+        "parent_path",
+    ),
+    "update_property": _object({"node_path": SCENE_NODE, "property": STRING, "value": VALUE}, "property", "value"),
+    "get_node_properties": _object({"node_path": SCENE_NODE}),
+    "add_resource": _object(
+        {
+            "node_path": SCENE_NODE,
+            "property": dict(STRING, description="Existing node property that receives the resource."),
+            "resource_type": dict(STRING, description="Godot Resource class, default Resource."),
+            "properties": dict(PROPERTIES, description="Initial values for the resource's properties."),
+        },
+        "property",
+    ),
+    "set_anchor_preset": _object(
+        {
+            "node_path": dict(SCENE_NODE, description="A Control node."),
+            "preset": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 15,
+                "default": 15,
+                "description": "Control.LayoutPreset value; 15 is PRESET_FULL_RECT.",
+            },
+            "keep_offsets": {"type": "boolean", "default": False},
+        }
+    ),
+    "rename_node": _object(
+        {"node_path": NODE_PATH, "name": dict(STRING, description="New name, without '/'.")}, "node_path", "name"
+    ),
+    "connect_signal": _object(
+        {
+            "source_path": NODE_PATH,
+            "signal": STRING,
+            "target_path": NODE_PATH,
+            "method": STRING,
+            "flags": {"type": "integer", "minimum": 0, "default": 0, "description": "Object.ConnectFlags bits."},
+        },
+        "source_path",
+        "signal",
+        "target_path",
+        "method",
+    ),
+    "disconnect_signal": _object(
+        {"source_path": NODE_PATH, "signal": STRING, "target_path": NODE_PATH, "method": STRING},
+        "source_path",
+        "signal",
+        "target_path",
+        "method",
+    ),
+    "get_node_groups": _object({"node_path": SCENE_NODE}),
+    "set_node_groups": _object(
+        {
+            "node_path": SCENE_NODE,
+            "groups": {"type": "array", "items": STRING, "description": "The node's complete group list."},
+        },
+        "groups",
+    ),
+    "find_nodes_in_group": _object({"group": STRING}, "group"),
+}
+
 def _tool_yaml(category: str, name: str, description: str) -> str:
     read_only = name.startswith(READ_ONLY_PREFIXES)
     destructive = name in DESTRUCTIVE
@@ -745,6 +840,9 @@ def _tool_yaml(category: str, name: str, description: str) -> str:
         output_schema = json.dumps(TYPED_ACTION_OUTPUT_SCHEMA, separators=(",", ":"))
     elif name == "execute_game_script":
         schema = COMPATIBILITY_METHOD_INPUT_SCHEMA
+        output_schema = "{type: object}"
+    elif name in TOOL_INPUT_SCHEMAS:
+        schema = TOOL_INPUT_SCHEMAS[name]
         output_schema = "{type: object}"
     else:
         schema = {

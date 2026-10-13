@@ -1,7 +1,7 @@
 tools:
   - name: add_node
     description: Add a typed node with initial properties. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"type":{"type":"string","maxLength":500,"description":"Godot Node class, default Node2D."},"name":{"type":"string","maxLength":500,"description":"Node name, default the class name."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Initial values for existing properties."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: delete_node
     description: Delete a node with undo support. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A non-root edited-scene node."}},"additionalProperties":false,"required":["node_path"]}
     output_schema: {type: object}
     read_only: false
     destructive: true
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: duplicate_node
     description: Duplicate a node and its owned children. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500,"description":"Name of the copy, default <name>Copy."},"parent_path":{"type":"string","maxLength":500,"description":"Parent of the copy, default the original's parent."}},"additionalProperties":false,"required":["node_path"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: move_node
     description: Reparent a node while preserving ownership. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500,"description":"New parent; must not be the node or below it."},"keep_global_transform":{"type":"boolean","default":true}},"additionalProperties":false,"required":["node_path","parent_path"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: update_property
     description: Set an existing node property, such as position, rotation, scale, transform or visible. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"property":{"type":"string","maxLength":500},"value":{}},"additionalProperties":false,"required":["property","value"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -62,7 +62,7 @@ tools:
     search_aliases: ["move node", "rotate node", "scale node", "hide node", "show node", "set position", "set rotation", "set transform"]
   - name: get_node_properties
     description: Return stored and editable node properties. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -74,7 +74,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: add_resource
     description: Create and assign a Resource to a node property. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"property":{"type":"string","maxLength":500,"description":"Existing node property that receives the resource."},"resource_type":{"type":"string","maxLength":500,"description":"Godot Resource class, default Resource."},"properties":{"type":"object","description":"Initial values for the resource's properties."}},"additionalProperties":false,"required":["property"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -86,7 +86,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_anchor_preset
     description: Apply a Control anchor preset. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A Control node."},"preset":{"type":"integer","minimum":0,"maximum":15,"default":15,"description":"Control.LayoutPreset value; 15 is PRESET_FULL_RECT."},"keep_offsets":{"type":"boolean","default":false}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -98,7 +98,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: rename_node
     description: Rename an edited-scene node. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500,"description":"New name, without '/'."}},"additionalProperties":false,"required":["node_path","name"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -110,7 +110,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: connect_signal
     description: Connect a signal between scene nodes. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"source_path":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"flags":{"type":"integer","minimum":0,"default":0,"description":"Object.ConnectFlags bits."}},"additionalProperties":false,"required":["source_path","signal","target_path","method"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -122,7 +122,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: disconnect_signal
     description: Disconnect a signal connection. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"source_path":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500}},"additionalProperties":false,"required":["source_path","signal","target_path","method"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -134,7 +134,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_node_groups
     description: Return groups for a node. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -146,7 +146,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_node_groups
     description: Replace group membership for a node. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"groups":{"type":"array","items":{"type":"string","maxLength":500},"description":"The node's complete group list."}},"additionalProperties":false,"required":["groups"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -158,7 +158,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: find_nodes_in_group
     description: Find edited-scene nodes in a group. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"source_path":{"type":"string","maxLength":500},"target_path":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"property":{"type":"string","maxLength":500},"value":{},"properties":{"type":"object"},"resource_type":{"type":"string","maxLength":500},"signal":{"type":"string","maxLength":500},"method":{"type":"string","maxLength":500},"groups":{"type":"array","items":{"type":"string","maxLength":500}},"group":{"type":"string","maxLength":500}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"group":{"type":"string","maxLength":500}},"additionalProperties":false,"required":["group"]}
     output_schema: {type: object}
     read_only: true
     destructive: false

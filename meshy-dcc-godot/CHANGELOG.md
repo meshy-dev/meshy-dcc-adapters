@@ -23,6 +23,10 @@ adapter this one was forked from.
   `MESHY_DCC_GODOT_EXECUTABLE`, `PATH` or the macOS app bundle.
 - Installing the same version again over a valid install leaves the addon in
   place.
+- The 14 `godot-node` tools each declare the parameters the editor reads,
+  which of them are required, and reject any others. They used to share one
+  schema listing every node parameter, so a tool did not say what it needed.
+  The other skills still share a schema per category.
 - Repair and upgrade delete the previous addon copy once it is proven to hold
   nothing the project needs: the copy is unchanged since staging, and each of
   its files was owned by the old receipt or sits byte-identical in the new
