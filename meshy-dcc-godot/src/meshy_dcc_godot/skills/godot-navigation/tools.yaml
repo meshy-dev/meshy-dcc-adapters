@@ -1,7 +1,7 @@
 tools:
   - name: setup_navigation_region
     description: Add or configure a navigation region. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"properties":{"type":"object"},"layers":{"type":"integer","minimum":0},"from":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"to":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"optimize":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"is_3d":{"type":"boolean","default":true},"node_path":{"type":"string","maxLength":500,"description":"NavigationRegion to configure; a path that is not found adds a new one. Empty is the scene root."},"name":{"type":"string","maxLength":500,"description":"Node name, default NavigationRegion3D or NavigationRegion2D."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Property values for the node."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: setup_navigation_agent
     description: Add or configure a navigation agent. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"properties":{"type":"object"},"layers":{"type":"integer","minimum":0},"from":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"to":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"optimize":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"is_3d":{"type":"boolean","default":true},"node_path":{"type":"string","maxLength":500,"description":"NavigationAgent to configure; a path that is not found adds a new one. Empty is the scene root."},"name":{"type":"string","maxLength":500,"description":"Node name, default NavigationAgent3D or NavigationAgent2D."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Property values for the node."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: bake_navigation_mesh
     description: Bake a NavigationMesh in the editor. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"properties":{"type":"object"},"layers":{"type":"integer","minimum":0},"from":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"to":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"optimize":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A NavigationRegion2D or NavigationRegion3D; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_navigation_layers
     description: Set navigation layers on a node. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"properties":{"type":"object"},"layers":{"type":"integer","minimum":0},"from":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"to":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"optimize":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"layers":{"type":"integer","minimum":0,"default":1,"description":"navigation_layers bits."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_navigation_info
     description: Return navigation node configuration. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"properties":{"type":"object"},"layers":{"type":"integer","minimum":0},"from":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"to":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"optimize":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: query_navigation_path
     description: Query a 2D or 3D navigation path. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"properties":{"type":"object"},"layers":{"type":"integer","minimum":0},"from":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"to":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"optimize":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A Node2D or Node3D whose world's navigation map is queried."},"from":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":3,"description":"Start [x, y] or [x, y, z], default the origin."},"to":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":3,"description":"End [x, y] or [x, y, z], default the origin."},"optimize":{"type":"boolean","default":true}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false

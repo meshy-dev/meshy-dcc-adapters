@@ -23,10 +23,18 @@ adapter this one was forked from.
   `MESHY_DCC_GODOT_EXECUTABLE`, `PATH` or the macOS app bundle.
 - Installing the same version again over a valid install leaves the addon in
   place.
-- The 14 `godot-node` tools each declare the parameters the editor reads,
-  which of them are required, and reject any others. They used to share one
-  schema listing every node parameter, so a tool did not say what it needed.
-  The other skills still share a schema per category.
+- Every capability tool declares the parameters the editor or the running
+  game reads for it, which of them are required, the defaults the host
+  applies, and rejects any others. The tools of a skill used to share one
+  schema listing every parameter of the category and accepting any other, so a
+  tool did not say what it needed. `get_runtime_status` and
+  `get_game_node_properties` still take the shared runtime schema.
+- Arguments the open schemas let through are now refused: `setup_camera_3d`,
+  `setup_lighting`, `set_material_3d`, `setup_physics_body` and
+  `set_particle_material` take property values under `properties` only, not
+  as top-level keys, and the fallback names `name` (for `animation` or
+  `state`), `pattern` and `reference` (for `query`) and `path` (for an
+  animation track's `property_path`) are gone.
 - Repair and upgrade delete the previous addon copy once it is proven to hold
   nothing the project needs: the copy is unchanged since staging, and each of
   its files was owned by the old receipt or sits byte-identical in the new

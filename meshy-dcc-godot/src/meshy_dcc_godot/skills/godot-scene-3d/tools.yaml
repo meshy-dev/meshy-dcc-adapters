@@ -1,7 +1,7 @@
 tools:
   - name: add_mesh_instance
     description: Add a primitive MeshInstance3D. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"primitive":{"type":"string","maxLength":500},"light_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"mesh_properties":{"type":"object"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"primitive":{"type":"string","enum":["box","sphere","capsule","cylinder","plane","quad","prism","torus"],"default":"box"},"name":{"type":"string","maxLength":500,"description":"Node name, default Mesh."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"mesh_properties":{"type":"object","description":"Initial values for the mesh's properties."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: setup_camera_3d
     description: Add or configure a Camera3D. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"primitive":{"type":"string","maxLength":500},"light_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"mesh_properties":{"type":"object"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Camera3D to configure; a path that is not found adds a new one. Empty is the scene root."},"name":{"type":"string","maxLength":500,"description":"Node name, default Camera3D."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Camera3D property values."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: setup_lighting
     description: Add or configure a 3D light. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"primitive":{"type":"string","maxLength":500},"light_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"mesh_properties":{"type":"object"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"light_type":{"type":"string","enum":["directional","omni","spot"],"default":"directional"},"name":{"type":"string","maxLength":500,"description":"Node name, default the light class."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Light property values."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: setup_environment
     description: Add or configure a WorldEnvironment. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"primitive":{"type":"string","maxLength":500},"light_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"mesh_properties":{"type":"object"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"WorldEnvironment to configure; a path that is not found adds a new one. Empty is the scene root."},"name":{"type":"string","maxLength":500,"description":"Node name, default WorldEnvironment."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Environment resource property values."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: add_gridmap
     description: Add and configure a GridMap. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"primitive":{"type":"string","maxLength":500},"light_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"mesh_properties":{"type":"object"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"name":{"type":"string","maxLength":500,"description":"Node name, default GridMap."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Initial values for existing properties."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_material_3d
     description: Create or update a StandardMaterial3D override. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"primitive":{"type":"string","maxLength":500},"light_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"mesh_properties":{"type":"object"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A GeometryInstance3D; empty or '.' is the scene root."},"properties":{"type":"object","description":"StandardMaterial3D property values."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false

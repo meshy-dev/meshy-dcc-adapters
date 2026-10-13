@@ -1,7 +1,7 @@
 tools:
   - name: add_audio_player
     description: Add an audio stream player node. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"stream_path":{"type":"string","pattern":"^res://","maxLength":500},"bus":{"type":"string","maxLength":500},"effect_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"volume_db":{"type":"number"},"mute":{"type":"boolean"},"solo":{"type":"boolean"},"bypass":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"type":{"type":"string","enum":["AudioStreamPlayer","AudioStreamPlayer2D","AudioStreamPlayer3D"],"default":"AudioStreamPlayer"},"name":{"type":"string","maxLength":500,"description":"Node name, default the player class."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Initial values for existing properties."},"stream_path":{"type":"string","pattern":"^res://","maxLength":500,"description":"An existing .wav, .ogg or .mp3 to assign."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: add_audio_bus
     description: Add an audio bus. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"stream_path":{"type":"string","pattern":"^res://","maxLength":500},"bus":{"type":"string","maxLength":500},"effect_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"volume_db":{"type":"number"},"mute":{"type":"boolean"},"solo":{"type":"boolean"},"bypass":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"name":{"type":"string","maxLength":500,"description":"New bus name."},"index":{"type":"integer","minimum":-1,"default":-1,"description":"Position; -1 appends."}},"additionalProperties":false,"required":["name"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: add_audio_bus_effect
     description: Add an AudioEffect to a bus. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"stream_path":{"type":"string","pattern":"^res://","maxLength":500},"bus":{"type":"string","maxLength":500},"effect_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"volume_db":{"type":"number"},"mute":{"type":"boolean"},"solo":{"type":"boolean"},"bypass":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"bus":{"type":"string","maxLength":500,"default":"Master"},"effect_type":{"type":"string","maxLength":500,"default":"AudioEffectReverb","description":"AudioEffect class."},"properties":{"type":"object","description":"Initial values for the effect's properties."},"index":{"type":"integer","minimum":-1,"default":-1,"description":"Position; -1 appends."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_audio_bus
     description: Configure volume, mute, solo, or bypass. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"stream_path":{"type":"string","pattern":"^res://","maxLength":500},"bus":{"type":"string","maxLength":500},"effect_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"volume_db":{"type":"number"},"mute":{"type":"boolean"},"solo":{"type":"boolean"},"bypass":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"bus":{"type":"string","maxLength":500,"default":"Master","description":"Bus name; fields left out stay unchanged."},"volume_db":{"type":"number"},"mute":{"type":"boolean"},"solo":{"type":"boolean"},"bypass":{"type":"boolean","description":"Bypass the bus effects."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_audio_bus_layout
     description: Return buses and effects. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"stream_path":{"type":"string","pattern":"^res://","maxLength":500},"bus":{"type":"string","maxLength":500},"effect_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"volume_db":{"type":"number"},"mute":{"type":"boolean"},"solo":{"type":"boolean"},"bypass":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_audio_info
     description: Return audio-node configuration. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"type":{"type":"string","maxLength":500},"stream_path":{"type":"string","pattern":"^res://","maxLength":500},"bus":{"type":"string","maxLength":500},"effect_type":{"type":"string","maxLength":500},"properties":{"type":"object"},"volume_db":{"type":"number"},"mute":{"type":"boolean"},"solo":{"type":"boolean"},"bypass":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false

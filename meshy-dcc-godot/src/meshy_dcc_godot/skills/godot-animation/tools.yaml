@@ -1,7 +1,7 @@
 tools:
   - name: list_animations
     description: List AnimationPlayer libraries and animations. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"animation":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"library":{"type":"string","maxLength":500},"length":{"type":"number","exclusiveMinimum":0},"track":{"type":"integer","minimum":0},"track_type":{"type":"string","maxLength":500},"property_path":{"type":"string","maxLength":500},"time":{"type":"number","minimum":0},"value":{},"transition":{"type":"number"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"An AnimationPlayer; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: create_animation
     description: Create an animation in an AnimationPlayer. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"animation":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"library":{"type":"string","maxLength":500},"length":{"type":"number","exclusiveMinimum":0},"track":{"type":"integer","minimum":0},"track_type":{"type":"string","maxLength":500},"property_path":{"type":"string","maxLength":500},"time":{"type":"number","minimum":0},"value":{},"transition":{"type":"number"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"An AnimationPlayer; empty or '.' is the scene root."},"animation":{"type":"string","maxLength":500,"description":"New animation name."},"library":{"type":"string","maxLength":500,"default":"","description":"Library, created when missing; empty is the default."},"length":{"type":"number","exclusiveMinimum":0,"default":1.0,"description":"Seconds."},"loop_mode":{"type":"integer","minimum":0,"maximum":2,"default":0,"description":"Animation.LoopMode: 0 none, 1 linear, 2 ping-pong."},"overwrite":{"type":"boolean","default":false,"description":"Replace an existing animation."}},"additionalProperties":false,"required":["animation"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: add_animation_track
     description: Add a typed animation track. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"animation":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"library":{"type":"string","maxLength":500},"length":{"type":"number","exclusiveMinimum":0},"track":{"type":"integer","minimum":0},"track_type":{"type":"string","maxLength":500},"property_path":{"type":"string","maxLength":500},"time":{"type":"number","minimum":0},"value":{},"transition":{"type":"number"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"An AnimationPlayer; empty or '.' is the scene root."},"animation":{"type":"string","maxLength":500,"description":"Animation name; library/name outside the default library."},"track_type":{"type":"string","enum":["value","position_3d","rotation_3d","scale_3d","method","bezier","audio","animation"],"default":"value"},"property_path":{"type":"string","maxLength":500,"description":"Track path from the player's root node, such as Sprite2D:position."},"interpolation":{"type":"integer","minimum":0,"maximum":4,"default":1,"description":"Animation.InterpolationType: 0 nearest, 1 linear, 2 cubic, 3 linear angle, 4 cubic angle."}},"additionalProperties":false,"required":["animation","property_path"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_animation_keyframe
     description: Insert an animation key with optional easing. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"animation":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"library":{"type":"string","maxLength":500},"length":{"type":"number","exclusiveMinimum":0},"track":{"type":"integer","minimum":0},"track_type":{"type":"string","maxLength":500},"property_path":{"type":"string","maxLength":500},"time":{"type":"number","minimum":0},"value":{},"transition":{"type":"number"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"An AnimationPlayer; empty or '.' is the scene root."},"animation":{"type":"string","maxLength":500,"description":"Animation name; library/name outside the default library."},"track":{"type":"integer","minimum":0,"description":"Track index from add_animation_track."},"time":{"type":"number","minimum":0,"default":0},"value":{},"transition":{"type":"number","default":1.0,"description":"Easing; 1 is linear."}},"additionalProperties":false,"required":["animation","track","value"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_animation_info
     description: Return animation tracks and keys. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"animation":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"library":{"type":"string","maxLength":500},"length":{"type":"number","exclusiveMinimum":0},"track":{"type":"integer","minimum":0},"track_type":{"type":"string","maxLength":500},"property_path":{"type":"string","maxLength":500},"time":{"type":"number","minimum":0},"value":{},"transition":{"type":"number"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"An AnimationPlayer; empty or '.' is the scene root."},"animation":{"type":"string","maxLength":500,"description":"Animation name; library/name outside the default library."}},"additionalProperties":false,"required":["animation"]}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: remove_animation
     description: Remove an animation from a library. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"animation":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"library":{"type":"string","maxLength":500},"length":{"type":"number","exclusiveMinimum":0},"track":{"type":"integer","minimum":0},"track_type":{"type":"string","maxLength":500},"property_path":{"type":"string","maxLength":500},"time":{"type":"number","minimum":0},"value":{},"transition":{"type":"number"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"An AnimationPlayer; empty or '.' is the scene root."},"animation":{"type":"string","maxLength":500,"description":"Animation name within library."},"library":{"type":"string","maxLength":500,"default":"","description":"Empty is the default library."}},"additionalProperties":false,"required":["animation"]}
     output_schema: {type: object}
     read_only: false
     destructive: false

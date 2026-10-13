@@ -1,7 +1,7 @@
 tools:
   - name: tilemap_set_cell
     description: Set one TileMapLayer cell. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"cell":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"position":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"size":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"source_id":{"type":"integer"},"atlas_coords":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"alternative":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A TileMapLayer; empty or '.' is the scene root."},"cell":{"type":"array","items":{"type":"integer"},"minItems":2,"maxItems":2,"default":[0,0]},"source_id":{"type":"integer","minimum":-1,"description":"TileSet source id; -1 erases the cell."},"atlas_coords":{"type":"array","items":{"type":"integer"},"minItems":2,"maxItems":2,"description":"Tile [x, y] in the atlas source."},"alternative":{"type":"integer","minimum":0,"default":0}},"additionalProperties":false,"required":["source_id","atlas_coords"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: tilemap_fill_rect
     description: Fill a rectangle of TileMapLayer cells. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"cell":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"position":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"size":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"source_id":{"type":"integer"},"atlas_coords":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"alternative":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A TileMapLayer; empty or '.' is the scene root."},"position":{"type":"array","items":{"type":"integer"},"minItems":2,"maxItems":2,"default":[0,0],"description":"Top-left cell."},"size":{"type":"array","items":{"type":"integer"},"minItems":2,"maxItems":2,"default":[1,1],"description":"Width and height in cells."},"source_id":{"type":"integer","minimum":-1,"description":"TileSet source id; -1 erases the cell."},"atlas_coords":{"type":"array","items":{"type":"integer"},"minItems":2,"maxItems":2,"description":"Tile [x, y] in the atlas source."},"alternative":{"type":"integer","minimum":0,"default":0}},"additionalProperties":false,"required":["source_id","atlas_coords"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: tilemap_get_cell
     description: Read one TileMapLayer cell. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"cell":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"position":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"size":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"source_id":{"type":"integer"},"atlas_coords":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"alternative":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A TileMapLayer; empty or '.' is the scene root."},"cell":{"type":"array","items":{"type":"integer"},"minItems":2,"maxItems":2,"default":[0,0]}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: tilemap_clear
     description: Clear TileMapLayer cells. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"cell":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"position":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"size":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"source_id":{"type":"integer"},"atlas_coords":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"alternative":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A TileMapLayer; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: tilemap_get_info
     description: Return TileMapLayer and TileSet information. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"cell":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"position":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"size":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"source_id":{"type":"integer"},"atlas_coords":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"alternative":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A TileMapLayer; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: tilemap_get_used_cells
     description: Return used TileMapLayer coordinates. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"cell":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"position":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"size":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"source_id":{"type":"integer"},"atlas_coords":{"type":"array","items":{"type":"number"},"minItems":2,"maxItems":4},"alternative":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A TileMapLayer; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false

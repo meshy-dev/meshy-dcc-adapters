@@ -1,7 +1,7 @@
 tools:
   - name: create_shader
     description: Create a bounded .gdshader resource. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500},"shader_path":{"type":"string","pattern":"^res://","maxLength":500},"node_path":{"type":"string","maxLength":500},"shader_type":{"type":"string","maxLength":500},"source":{"type":"string","maxLength":1000000},"search":{"type":"string","maxLength":100000},"replace":{"type":"string","maxLength":100000},"parameter":{"type":"string","maxLength":500},"value":{}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500,"description":"New .gdshader file; an existing file is replaced."},"shader_type":{"type":"string","enum":["canvas_item","spatial","particles","sky","fog"],"default":"canvas_item"},"source":{"type":"string","maxLength":1000000,"description":"Shader text, default an empty shader of shader_type."}},"additionalProperties":false,"required":["path"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: read_shader
     description: Read a project shader file. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500},"shader_path":{"type":"string","pattern":"^res://","maxLength":500},"node_path":{"type":"string","maxLength":500},"shader_type":{"type":"string","maxLength":500},"source":{"type":"string","maxLength":1000000},"search":{"type":"string","maxLength":100000},"replace":{"type":"string","maxLength":100000},"parameter":{"type":"string","maxLength":500},"value":{}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500,"description":"An existing .gdshader file."}},"additionalProperties":false,"required":["path"]}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: edit_shader
     description: Replace or search/replace shader source. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500},"shader_path":{"type":"string","pattern":"^res://","maxLength":500},"node_path":{"type":"string","maxLength":500},"shader_type":{"type":"string","maxLength":500},"source":{"type":"string","maxLength":1000000},"search":{"type":"string","maxLength":100000},"replace":{"type":"string","maxLength":100000},"parameter":{"type":"string","maxLength":500},"value":{}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500,"description":"An existing .gdshader file."},"source":{"type":"string","maxLength":1000000,"description":"Full replacement text."},"search":{"type":"string","maxLength":100000,"description":"Exact text to replace when source is not given."},"replace":{"type":"string","maxLength":100000,"default":""},"replace_all":{"type":"boolean","default":false,"description":"Replace every match; otherwise search must be unique."},"allow_empty":{"type":"boolean","default":false,"description":"Allow the result to be empty."}},"additionalProperties":false,"required":["path"]}
     output_schema: {type: object}
     read_only: false
     destructive: true
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: assign_shader_material
     description: Assign a ShaderMaterial to a CanvasItem or GeometryInstance3D. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500},"shader_path":{"type":"string","pattern":"^res://","maxLength":500},"node_path":{"type":"string","maxLength":500},"shader_type":{"type":"string","maxLength":500},"source":{"type":"string","maxLength":1000000},"search":{"type":"string","maxLength":100000},"replace":{"type":"string","maxLength":100000},"parameter":{"type":"string","maxLength":500},"value":{}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A CanvasItem or GeometryInstance3D; empty or '.' is the scene root."},"shader_path":{"type":"string","pattern":"^res://","maxLength":500,"description":"An existing .gdshader file."}},"additionalProperties":false,"required":["shader_path"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_shader_param
     description: Set one ShaderMaterial parameter. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500},"shader_path":{"type":"string","pattern":"^res://","maxLength":500},"node_path":{"type":"string","maxLength":500},"shader_type":{"type":"string","maxLength":500},"source":{"type":"string","maxLength":1000000},"search":{"type":"string","maxLength":100000},"replace":{"type":"string","maxLength":100000},"parameter":{"type":"string","maxLength":500},"value":{}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A node with a ShaderMaterial; empty or '.' is the scene root."},"parameter":{"type":"string","maxLength":500,"description":"Shader uniform name."},"value":{}},"additionalProperties":false,"required":["parameter","value"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_shader_params
     description: Return shader parameters on a node material. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"path":{"type":"string","pattern":"^res://","maxLength":500},"shader_path":{"type":"string","pattern":"^res://","maxLength":500},"node_path":{"type":"string","maxLength":500},"shader_type":{"type":"string","maxLength":500},"source":{"type":"string","maxLength":1000000},"search":{"type":"string","maxLength":100000},"replace":{"type":"string","maxLength":100000},"parameter":{"type":"string","maxLength":500},"value":{}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"A node with a ShaderMaterial; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false

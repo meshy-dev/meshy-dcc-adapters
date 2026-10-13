@@ -1,7 +1,7 @@
 tools:
   - name: setup_physics_body
     description: Configure physics-body properties. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"shape":{"type":"string","maxLength":500},"properties":{"type":"object"},"shape_properties":{"type":"object"},"layer":{"type":"integer","minimum":0},"mask":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"properties":{"type":"object","description":"Property values for the node."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: setup_collision
     description: Add and configure a collision shape. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"shape":{"type":"string","maxLength":500},"properties":{"type":"object"},"shape_properties":{"type":"object"},"layer":{"type":"integer","minimum":0},"mask":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"is_3d":{"type":"boolean","default":true},"shape":{"type":"string","enum":["box","circle","capsule"],"default":"box"},"shape_properties":{"type":"object","description":"Initial values for the shape's properties."},"name":{"type":"string","maxLength":500,"description":"Node name, default CollisionShape3D or CollisionShape2D."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: set_physics_layers
     description: Set collision layer and mask. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"shape":{"type":"string","maxLength":500},"properties":{"type":"object"},"shape_properties":{"type":"object"},"layer":{"type":"integer","minimum":0},"mask":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"layer":{"type":"integer","minimum":0,"description":"collision_layer bits, default unchanged."},"mask":{"type":"integer","minimum":0,"description":"collision_mask bits, default unchanged."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_physics_layers
     description: Read collision layer and mask. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"shape":{"type":"string","maxLength":500},"properties":{"type":"object"},"shape_properties":{"type":"object"},"layer":{"type":"integer","minimum":0},"mask":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_collision_info
     description: Return collision child and shape details. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"shape":{"type":"string","maxLength":500},"properties":{"type":"object"},"shape_properties":{"type":"object"},"layer":{"type":"integer","minimum":0},"mask":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: add_raycast
     description: Add a RayCast2D or RayCast3D. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"parent_path":{"type":"string","maxLength":500},"name":{"type":"string","maxLength":500},"is_3d":{"type":"boolean"},"shape":{"type":"string","maxLength":500},"properties":{"type":"object"},"shape_properties":{"type":"object"},"layer":{"type":"integer","minimum":0},"mask":{"type":"integer","minimum":0}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"is_3d":{"type":"boolean","default":true},"name":{"type":"string","maxLength":500,"description":"Node name, default RayCast."},"parent_path":{"type":"string","maxLength":500,"description":"Parent node path, default the scene root."},"properties":{"type":"object","description":"Initial values for existing properties."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false

@@ -1,7 +1,7 @@
 tools:
   - name: run_test_scenario
     description: Run a sequence of runtime actions and assertions. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"steps":{"type":"array","items":{"type":"object"},"maxItems":100},"equals":{"type":"object"},"text":{"type":"string","maxLength":500},"first":{"type":"string","pattern":"^res://","maxLength":500},"second":{"type":"string","pattern":"^res://","maxLength":500},"threshold":{"type":"number","minimum":0,"maximum":1},"frames":{"type":"integer","minimum":1,"maximum":120}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"steps":{"type":"array","items":{"type":"object","properties":{"action":{"type":"string","maxLength":500,"description":"A runtime tool name."},"params":{"type":"object","description":"That tool's arguments."}},"additionalProperties":false,"required":["action"]},"maxItems":100}},"additionalProperties":false,"required":["steps"]}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: assert_node_state
     description: Assert runtime node existence and properties. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"steps":{"type":"array","items":{"type":"object"},"maxItems":100},"equals":{"type":"object"},"text":{"type":"string","maxLength":500},"first":{"type":"string","pattern":"^res://","maxLength":500},"second":{"type":"string","pattern":"^res://","maxLength":500},"threshold":{"type":"number","minimum":0,"maximum":1},"frames":{"type":"integer","minimum":1,"maximum":120}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Running-game node path such as /root/Main/Player; empty or '.' is the current scene."},"equals":{"type":"object","description":"Property values the node must have."}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: assert_screen_text
     description: Assert visible runtime text. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"steps":{"type":"array","items":{"type":"object"},"maxItems":100},"equals":{"type":"object"},"text":{"type":"string","maxLength":500},"first":{"type":"string","pattern":"^res://","maxLength":500},"second":{"type":"string","pattern":"^res://","maxLength":500},"threshold":{"type":"number","minimum":0,"maximum":1},"frames":{"type":"integer","minimum":1,"maximum":120}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"text":{"type":"string","maxLength":500,"description":"Case-insensitive text a visible Control must contain."},"cursor":{"type":"string","maxLength":500,"description":"next_cursor from the previous page; empty starts at the beginning."},"max_nodes":{"type":"integer","minimum":1,"maximum":128,"default":64},"budget_ms":{"type":"integer","minimum":1,"maximum":50,"default":40}},"additionalProperties":false,"required":["text"]}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -37,7 +37,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: compare_screenshots
     description: Compare two PNGs using bounded pixel sampling. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"steps":{"type":"array","items":{"type":"object"},"maxItems":100},"equals":{"type":"object"},"text":{"type":"string","maxLength":500},"first":{"type":"string","pattern":"^res://","maxLength":500},"second":{"type":"string","pattern":"^res://","maxLength":500},"threshold":{"type":"number","minimum":0,"maximum":1},"frames":{"type":"integer","minimum":1,"maximum":120}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"first":{"type":"string","pattern":"^res://","maxLength":500,"description":"An existing .png file."},"second":{"type":"string","pattern":"^res://","maxLength":500,"description":"An existing .png file of the same size."},"threshold":{"type":"number","minimum":0,"maximum":1,"default":0.01,"description":"Channel difference above which a pixel counts as different."},"sample_step":{"type":"integer","minimum":1,"default":1,"description":"Sample every Nth pixel on each axis."}},"additionalProperties":false,"required":["first","second"]}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: run_stress_test
     description: Sample runtime performance for a bounded frame count. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"steps":{"type":"array","items":{"type":"object"},"maxItems":100},"equals":{"type":"object"},"text":{"type":"string","maxLength":500},"first":{"type":"string","pattern":"^res://","maxLength":500},"second":{"type":"string","pattern":"^res://","maxLength":500},"threshold":{"type":"number","minimum":0,"maximum":1},"frames":{"type":"integer","minimum":1,"maximum":120}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"frames":{"type":"integer","minimum":1,"maximum":120,"default":60}},"additionalProperties":false}
     output_schema: {type: object}
     read_only: false
     destructive: false
@@ -61,7 +61,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_test_report
     description: Return the latest runtime test report. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500},"steps":{"type":"array","items":{"type":"object"},"maxItems":100},"equals":{"type":"object"},"text":{"type":"string","maxLength":500},"first":{"type":"string","pattern":"^res://","maxLength":500},"second":{"type":"string","pattern":"^res://","maxLength":500},"threshold":{"type":"number","minimum":0,"maximum":1},"frames":{"type":"integer","minimum":1,"maximum":120}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false

@@ -1,7 +1,7 @@
 tools:
   - name: list_export_presets
     description: List project export presets without secrets. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"preset":{"type":"string","maxLength":500},"path":{"type":"string","maxLength":500},"debug":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: export_project
     description: Export a project using a named preset and safe project path. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"preset":{"type":"string","maxLength":500},"path":{"type":"string","maxLength":500},"debug":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{"preset":{"type":"string","maxLength":500,"description":"Export preset name."},"path":{"type":"string","maxLength":500,"description":"Output file relative to the project folder, without res:// or '..'."},"debug":{"type":"boolean","default":false,"description":"Export a debug build."}},"additionalProperties":false,"required":["preset","path"]}
     output_schema: {type: object}
     read_only: false
     destructive: true
@@ -25,7 +25,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: get_export_info
     description: Return export configuration and template availability. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"preset":{"type":"string","maxLength":500},"path":{"type":"string","maxLength":500},"debug":{"type":"boolean"}},"additionalProperties":true}
+    input_schema: {"type":"object","properties":{},"additionalProperties":false}
     output_schema: {type: object}
     read_only: true
     destructive: false
