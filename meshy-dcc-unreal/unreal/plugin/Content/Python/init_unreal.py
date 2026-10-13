@@ -1,0 +1,667 @@
+"""Meshy DCC Unreal — Unreal Engine plugin Python entry point.
+
+This file is automatically executed by Unreal Engine when the plugin is
+loaded, because it is named ``init_unreal.py`` inside the plugin's
+``Content/Python/`` directory.
+
+Unreal Engine Python Plugin loading order
+------------------------------------------
+1. Engine-level ``init_unreal.py`` files (Engine/Plugins/.../Content/Python/)
+2. Project-level ``init_unreal.py`` files (ProjectRoot/Plugins/.../Content/Python/)
+3. ``startup`` scripts configured in Project Settings → Python
+
+This file performs the equivalent of Maya's ``initializePlugin``:
+1. Ensures ``meshy_dcc_unreal`` is importable (adds the plugin's ``python/``
+   directory to ``sys.path`` if needed).
+2. Starts the MCP HTTP server.
+3. Registers Editor menu items via ``unreal.ToolMenus``.
+
+Configuration (environment variables)
+--------------------------------------
+``MESHY_DCC_UNREAL_PORT``
+    Optional fixed MCP instance port.  By default the OS assigns a free port.
+
+``MESHY_DCC_UNREAL_SERVER_NAME``
+    Name advertised in the MCP ``initialize`` response.  Default: ``"unreal-mcp"``.
+
+``MESHY_DCC_UNREAL_RUNTIME``
+    Runtime selection: ``auto`` (default), ``python``, or ``sidecar``.
+
+``MESHY_DCC_UI_CONTROL_BACKEND``
+    UI automation backend.  Defaults to ``"cua"`` on Windows while
+    preserving an explicit user override.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import sys
+import types
+import uuid
+from pathlib import Path
+from typing import List, Optional
+
+logger = logging.getLogger(__name__)
+_PLUGIN_NAME = "MeshyDccUnreal"
+# sys.modules name of this startup run; see the end of the file.
+MODULE_NAME = "meshy_dcc_unreal_init"
+PROCESS_START_TOKEN = globals().get("PROCESS_START_TOKEN") or uuid.uuid4().hex
+
+
+def _resolve_bootstrap_runtime() -> str:
+    runtime_mode = os.environ.get("MESHY_DCC_UNREAL_RUNTIME", "auto").lower()
+    if runtime_mode != "auto":
+        return runtime_mode
+    try:
+        import unreal  # noqa: PLC0415
+
+        major = int(str(unreal.SystemLibrary.get_engine_version()).split(".", 1)[0])
+        return "python" if major >= 5 else "sidecar"
+    except Exception as exc:
+        logger.warning("[meshy-dcc-unreal] Runtime auto-detection failed; using embedded Python: %s", exc)
+        return "python"
+
+
+def _configure_app_ui() -> None:
+    """Make the bundled UI Control skill target this Unreal Editor process."""
+    if sys.platform == "win32":
+        os.environ.setdefault("MESHY_DCC_UI_CONTROL_BACKEND", "cua")
+        os.environ.setdefault("MESHY_DCC_UI_CONTROL_PROCESS_ID", str(os.getpid()))
+        os.environ.pop("MESHY_DCC_UI_CONTROL_WINDOW_HANDLE", None)
+        for legacy_name in (
+            "MESHY_DCC_UI_CONTROL_UIA_PROCESS_ID",
+            "MESHY_DCC_UI_CONTROL_UIA_WINDOW_HANDLE",
+            "MESHY_DCC_APP_UI_BACKEND",
+            "MESHY_DCC_APP_UI_UIA_PROCESS_ID",
+            "MESHY_DCC_APP_UI_UIA_WINDOW_HANDLE",
+        ):
+            os.environ.pop(legacy_name, None)
+
+
+_configure_app_ui()
+
+# ---------------------------------------------------------------------------
+# Ensure meshy_dcc_unreal package is importable
+# ---------------------------------------------------------------------------
+
+
+def _plugin_root() -> Path:
+    """Resolve the mounted plugin root without requiring a ``__file__`` global."""
+    try:
+        import unreal  # noqa: PLC0415
+
+        plugin_library = getattr(unreal, "PluginBlueprintLibrary", None)
+        get_base_dir = getattr(plugin_library, "get_plugin_base_dir", None)
+        if callable(get_base_dir):
+            base_dir = get_base_dir(_PLUGIN_NAME)
+            if base_dir:
+                return Path(str(base_dir)).resolve()
+    except Exception as exc:
+        logger.debug("[meshy-dcc-unreal] Mounted plugin root lookup failed: %s", exc)
+
+    script_path = globals().get("__file__")
+    if script_path:
+        return Path(str(script_path)).resolve().parent.parent.parent
+
+    raise RuntimeError("Unable to resolve the mounted MeshyDccUnreal plugin root")
+
+
+def _ensure_package_importable() -> None:
+    """Add the plugin's python/ directory to sys.path.
+
+    When the plugin is installed as a project plugin, the ``python/``
+    subdirectory contains the ``meshy_dcc_unreal`` package and its dependency
+    ``meshy_dcc_core``.  Unreal does not automatically add plugin subdirectories
+    to sys.path, so we do it here.
+    """
+    plugin_root = _plugin_root()
+    python_dir = plugin_root / "python"
+
+    # Packaged dependencies must win over globally installed packages.
+    if python_dir.is_dir():
+        _add_sys_path(python_dir, prepend=True)
+
+    try:
+        import meshy_dcc_unreal  # noqa: F401, PLC0415
+
+        return
+    except ImportError:
+        logger.warning(
+            "[meshy-dcc-unreal] meshy_dcc_unreal could not be imported. "
+            "Install a packaged plugin with python/ dependencies or run from a source checkout.",
+        )
+
+
+def _add_sys_path(path: Path, *, prepend: bool = True) -> None:
+    if path.is_dir():
+        path_str = str(path)
+        if path_str not in sys.path:
+            if prepend:
+                sys.path.insert(0, path_str)
+            else:
+                sys.path.append(path_str)
+            logger.debug("[meshy-dcc-unreal] Added %s to sys.path", path_str)
+
+
+_runtime_mode = _resolve_bootstrap_runtime()
+if _runtime_mode != "sidecar":
+    _ensure_package_importable()
+
+# ---------------------------------------------------------------------------
+# Module-level server handle and menu state
+# ---------------------------------------------------------------------------
+
+_handle = None
+_menus_registered = False
+
+
+# ---------------------------------------------------------------------------
+# Version helper
+# ---------------------------------------------------------------------------
+
+
+def _get_version() -> str:
+    try:
+        from meshy_dcc_unreal.__version__ import __version__  # noqa: PLC0415
+
+        return __version__
+    except Exception:
+        return "0.0.0"
+
+
+VERSION = _get_version()
+
+
+def _bootstrap_log_dir() -> Path:
+    plugin_root = _plugin_root()
+    project_root = plugin_root.parent.parent if plugin_root.parent.name == "Plugins" else plugin_root.parent
+    return project_root / ".meshy-dcc" / "bootstrap-errors"
+
+
+def _clear_bootstrap_errors(log_dir: Path) -> None:
+    """A successful startup supersedes stale failures for this adapter."""
+    if not log_dir.is_dir():
+        return
+    for error_log in log_dir.glob("meshy-dcc-unreal.*.host-errors.log"):
+        try:
+            error_log.unlink()
+        except OSError as exc:
+            logger.warning("[meshy-dcc-unreal] Could not clear stale bootstrap error %s: %s", error_log, exc)
+
+
+def _project_skill_paths() -> List[str]:
+    """Return the conventional project-local Meshy DCC skill root when present."""
+    try:
+        import unreal  # noqa: PLC0415
+
+        project_dir = unreal.Paths.project_dir()
+        if not project_dir:
+            return []
+        skill_root = Path(str(project_dir)).resolve() / ".meshy-dcc" / "skills"
+        return [str(skill_root)] if skill_root.is_dir() else []
+    except Exception as exc:
+        logger.debug("[meshy-dcc-unreal] Project-local skill discovery skipped: %s", exc)
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Server helpers
+# ---------------------------------------------------------------------------
+
+
+def _start() -> None:
+    global _handle
+    try:
+        import meshy_dcc_unreal  # noqa: PLC0415
+
+        server_name = os.environ.get("MESHY_DCC_UNREAL_SERVER_NAME", "unreal-mcp")
+        _handle = meshy_dcc_unreal.start_server(
+            server_name=server_name,
+            extra_skill_paths=_project_skill_paths(),
+        )
+        import unreal as ue  # noqa: PLC0415
+
+        ue.log(f"[meshy-dcc-unreal] v{VERSION} MCP server started at {_handle.mcp_url()}")
+    except Exception as exc:
+        logger.error("[meshy-dcc-unreal] Failed to start MCP server: %s", exc)
+        try:
+            import unreal as ue  # noqa: PLC0415
+
+            ue.log_warning(f"[meshy-dcc-unreal] Failed to start MCP server: {exc}")
+        except Exception:
+            pass
+        raise
+
+
+def _stop() -> None:
+    global _handle
+    try:
+        import meshy_dcc_unreal  # noqa: PLC0415
+
+        meshy_dcc_unreal.stop_server()
+        _handle = None
+        import unreal as ue  # noqa: PLC0415
+
+        ue.log("[meshy-dcc-unreal] MCP server stopped")
+    except Exception as exc:
+        logger.warning("[meshy-dcc-unreal] Failed to stop MCP server: %s", exc)
+
+
+def _server_url() -> str:
+    if _handle is not None:
+        try:
+            return _handle.mcp_url()
+        except Exception:
+            pass
+    return "<not running>"
+
+
+def _resolve_instance_id() -> Optional[str]:
+    """Return the Unreal MCP instance UUID for the active server, if available.
+
+    Used by the Copy Instance ID and Server Info menu actions.
+    Returns ``None`` when the server is not running or the instance id
+    is not yet assigned.
+    """
+    try:
+        import meshy_dcc_unreal.server as server_mod  # noqa: PLC0415
+
+        server = getattr(server_mod, "_server_instance", None)
+        if server is not None:
+            instance_id = getattr(server, "instance_id", None)
+            if instance_id:
+                return str(instance_id)
+    except Exception as exc:
+        logger.debug("[meshy-dcc-unreal] instance id lookup failed: %s", exc)
+    return None
+
+
+def _set_clipboard_text(text: str) -> None:
+    """Set the system clipboard text, trying PySide2 then platform CLI fallback."""
+    # PySide2 is available inside Unreal Engine 5 (Qt5 bindings).
+    try:
+        from PySide2 import QtWidgets  # noqa: PLC0415
+
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.clipboard().setText(text)
+            return
+    except Exception:
+        pass
+
+    # Platform CLI fallback for environments without Qt bindings.
+    import subprocess  # noqa: PLC0415
+
+    if sys.platform == "win32":
+        subprocess.run(["clip"], input=text.encode("utf-16"), check=False)
+    elif sys.platform == "darwin":
+        subprocess.run(["pbcopy"], input=text.encode(), check=False)
+    else:
+        try:
+            subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode(), check=False)
+        except FileNotFoundError:
+            raise RuntimeError("Unable to access system clipboard (no PySide2, clip, pbcopy, or xclip available)")
+
+
+def _copy_instance_id() -> None:
+    """Copy the Meshy DCC instance UUID to the system clipboard."""
+    instance_id = _resolve_instance_id()
+    if not instance_id:
+        _show_notification("Meshy DCC: Instance ID not available. Is the server running?")
+        return
+    try:
+        _set_clipboard_text(instance_id)
+    except RuntimeError as exc:
+        _show_notification(str(exc))
+        return
+
+    try:
+        import unreal as ue  # noqa: PLC0415
+
+        ue.log(f"Meshy DCC: Instance ID copied to clipboard: {instance_id}")
+    except Exception:
+        pass
+    _show_notification("Meshy DCC: Instance ID copied to clipboard")
+
+
+def _show_server_info() -> None:
+    """Show server status information in a dialog."""
+    instance_id = _resolve_instance_id()
+    url = _server_url()
+
+    dcc_version = "unknown"
+    try:
+        import unreal as ue  # noqa: PLC0415
+
+        system_library = getattr(ue, "SystemLibrary", None)
+        if system_library is not None and hasattr(system_library, "get_engine_version"):
+            dcc_version = str(system_library.get_engine_version())
+    except Exception:
+        pass
+
+    gateway = os.environ.get("MESHY_DCC_GATEWAY_PORT", "")
+    gateway_display = gateway if gateway else "disabled"
+
+    core_version = "unknown"
+    try:
+        from meshy_dcc_core.server_base import _package_version  # noqa: PLC0415
+
+        core_version = _package_version() or "unknown"
+    except Exception:
+        pass
+
+    msg = (
+        f"Instance UUID: {instance_id or 'N/A'}\n"
+        f"DCC: Unreal Engine {dcc_version}\n"
+        f"PID: {os.getpid()}\n"
+        f"MCP URL: {url}\n"
+        f"Gateway Port: {gateway_display}\n"
+        f"Core Version: {core_version}\n"
+        f"Adapter Version: {VERSION}\n"
+        f"Python: {sys.version.split()[0]}"
+    )
+    _show_notification(msg)
+
+
+def _show_about() -> None:
+    """Show about dialog with version information."""
+    dcc_version = "unknown"
+    try:
+        import unreal as ue  # noqa: PLC0415
+
+        system_library = getattr(ue, "SystemLibrary", None)
+        if system_library is not None and hasattr(system_library, "get_engine_version"):
+            dcc_version = str(system_library.get_engine_version())
+    except Exception:
+        pass
+
+    msg = (
+        f"meshy-dcc-unreal v{VERSION}\n"
+        f"Unreal Engine {dcc_version}\n"
+        f"Python {sys.version.split()[0]}\n\n"
+        "Meshy DCC — AI-driven DCC automation.\n"
+        "https://www.meshy.ai"
+    )
+    _show_notification(msg)
+
+
+def _restart() -> None:
+    _stop()
+    _start()
+    try:
+        import unreal as ue  # noqa: PLC0415
+
+        ue.log(f"[meshy-dcc-unreal] MCP server restarted at {_server_url()}")
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Unreal Editor menu integration
+# ---------------------------------------------------------------------------
+
+
+def _register_menus() -> None:
+    """Register Meshy DCC entries in the Unreal Editor menu bar.
+
+    Creates a top-level "Meshy DCC" menu under the main menu bar with items for:
+    - Copy Instance ID — copy the instance UUID to clipboard
+    - Server Info — show instance metadata and server status
+    - Show MCP Server URL — display the MCP URL
+    - Restart / Stop MCP Server — lifecycle controls
+    - About Meshy DCC — version information
+
+    Uses ``unreal.ToolMenus`` (UE 5.0+).  Sections provide visual dividers
+    between groups.
+    """
+    global _menus_registered
+    if _menus_registered:
+        return
+
+    try:
+        import unreal  # noqa: PLC0415
+
+        tool_menus = unreal.ToolMenus.get()
+        if tool_menus is None:
+            logger.debug("[meshy-dcc-unreal] ToolMenus unavailable; skipping editor menu registration")
+            return
+
+        # Add a top-level "Meshy DCC" menu under the main menu bar
+        main_menu = tool_menus.extend_menu("MainFrame.MainMenu")
+        if main_menu is None:
+            logger.debug("[meshy-dcc-unreal] MainFrame.MainMenu unavailable; skipping editor menu registration")
+            return
+
+        dcc_menu = main_menu.add_sub_menu(
+            owner="MeshyDcc",
+            section_name="",
+            name="MeshyDcc",
+            label="Meshy DCC",
+            tool_tip="Meshy DCC server controls",
+        )
+
+        # ── Section: Instance ─────────────────────────────────────────────
+        dcc_menu.add_section("MeshyDccInstance", unreal.Text("Instance"))
+
+        # Copy Instance ID
+        copy_id_entry = unreal.ToolMenuEntry(
+            name="MeshyDcc.CopyInstanceId",
+            type=unreal.MultiBlockType.MENU_ENTRY,
+        )
+        copy_id_entry.set_label(unreal.Text("Copy Instance ID"))
+        copy_id_entry.set_tool_tip(unreal.Text("Copy the Meshy DCC instance UUID to clipboard"))
+        copy_id_entry.set_string_command(
+            type=unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="import meshy_dcc_unreal_init as m; m._copy_instance_id()",
+        )
+        dcc_menu.add_menu_entry("MeshyDccInstance", copy_id_entry)
+
+        # Server Info
+        server_info_entry = unreal.ToolMenuEntry(
+            name="MeshyDcc.ServerInfo",
+            type=unreal.MultiBlockType.MENU_ENTRY,
+        )
+        server_info_entry.set_label(unreal.Text("Server Info"))
+        server_info_entry.set_tool_tip(unreal.Text("Show instance metadata and server status"))
+        server_info_entry.set_string_command(
+            type=unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="import meshy_dcc_unreal_init as m; m._show_server_info()",
+        )
+        dcc_menu.add_menu_entry("MeshyDccInstance", server_info_entry)
+
+        # ── Section: Server ───────────────────────────────────────────────
+        dcc_menu.add_section("MeshyDccServer", unreal.Text("Server"))
+
+        # Show MCP URL
+        show_url_entry = unreal.ToolMenuEntry(
+            name="MeshyDcc.ShowUrl",
+            type=unreal.MultiBlockType.MENU_ENTRY,
+        )
+        show_url_entry.set_label(unreal.Text("Show MCP Server URL"))
+        show_url_entry.set_tool_tip(unreal.Text("Display the URL to connect your MCP agent to"))
+        show_url_entry.set_string_command(
+            type=unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="import meshy_dcc_unreal_init as m; m._show_url_dialog()",
+        )
+        dcc_menu.add_menu_entry("MeshyDccServer", show_url_entry)
+
+        # ── Section: Control ──────────────────────────────────────────────
+        dcc_menu.add_section("MeshyDccControl", unreal.Text("Control"))
+
+        # Restart Server
+        restart_entry = unreal.ToolMenuEntry(
+            name="MeshyDcc.Restart",
+            type=unreal.MultiBlockType.MENU_ENTRY,
+        )
+        restart_entry.set_label(unreal.Text("Restart MCP Server"))
+        restart_entry.set_tool_tip(unreal.Text("Stop and restart the MCP HTTP server"))
+        restart_entry.set_string_command(
+            type=unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="import meshy_dcc_unreal_init as m; m._restart()",
+        )
+        dcc_menu.add_menu_entry("MeshyDccControl", restart_entry)
+
+        # Stop Server
+        stop_entry = unreal.ToolMenuEntry(
+            name="MeshyDcc.Stop",
+            type=unreal.MultiBlockType.MENU_ENTRY,
+        )
+        stop_entry.set_label(unreal.Text("Stop MCP Server"))
+        stop_entry.set_tool_tip(unreal.Text("Stop the MCP HTTP server"))
+        stop_entry.set_string_command(
+            type=unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="import meshy_dcc_unreal_init as m; m._stop()",
+        )
+        dcc_menu.add_menu_entry("MeshyDccControl", stop_entry)
+
+        # ── Section: About ────────────────────────────────────────────────
+        dcc_menu.add_section("MeshyDccAbout", unreal.Text("About"))
+
+        # About Meshy DCC
+        about_entry = unreal.ToolMenuEntry(
+            name="MeshyDcc.About",
+            type=unreal.MultiBlockType.MENU_ENTRY,
+        )
+        about_entry.set_label(unreal.Text("About Meshy DCC"))
+        about_entry.set_tool_tip(unreal.Text("Show version information"))
+        about_entry.set_string_command(
+            type=unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="import meshy_dcc_unreal_init as m; m._show_about()",
+        )
+        dcc_menu.add_menu_entry("MeshyDccAbout", about_entry)
+
+        tool_menus.refresh_all_widgets()
+        _menus_registered = True
+        logger.debug("[meshy-dcc-unreal] Editor menus registered")
+
+    except Exception as exc:
+        logger.warning("[meshy-dcc-unreal] Could not register editor menus: %s", exc)
+
+
+def _unregister_menus() -> None:
+    global _menus_registered
+    try:
+        import unreal  # noqa: PLC0415
+
+        tool_menus = unreal.ToolMenus.get()
+        tool_menus.remove_menu("MainFrame.MainMenu.MeshyDcc")
+        tool_menus.refresh_all_widgets()
+        _menus_registered = False
+    except Exception as exc:
+        logger.debug("[meshy-dcc-unreal] Menu unregister skipped: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Notification helpers (callable from menu string commands)
+# ---------------------------------------------------------------------------
+
+
+def _show_notification(message: str) -> None:
+    """Show a brief on-screen notification in the Unreal Editor viewport."""
+    try:
+        import unreal  # noqa: PLC0415
+
+        unreal.EditorDialog.show_message(
+            title="Meshy DCC",
+            message=message,
+            message_type=unreal.AppMsgType.OK,
+        )
+    except Exception:
+        logger.info("[meshy-dcc-unreal] %s", message)
+
+
+def _show_url_dialog() -> None:
+    """Show a dialog with the current MCP server URL."""
+    _show_notification(
+        f"Connect your MCP agent to:\n\n{_server_url()}\n\n"
+        "Add this URL as an MCP server in Claude Desktop, Cursor, or any\n"
+        "MCP-compatible host using the 'streamable-http' transport."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Plugin entry point — called automatically by Unreal when init_unreal.py loads
+# ---------------------------------------------------------------------------
+
+
+def _initialize() -> None:
+    """Defer embedded startup until Unreal has entered its editor tick."""
+    global _tick_handle
+    if _runtime_mode == "sidecar":
+        logger.info("[meshy-dcc-unreal] Standalone sidecar selected; skipping the embedded server")
+        return
+    try:
+        import unreal  # noqa: PLC0415
+
+        # init_unreal.py is also evaluated by commandlets and MRQ. Starting the
+        # embedded HTTP server there can block engine startup; only the editor
+        # needs the interactive MCP lifecycle.
+        if unreal.is_editor():
+            _tick_handle = unreal.register_slate_post_tick_callback(_on_first_tick)
+    except Exception as exc:
+        logger.debug("[meshy-dcc-unreal] Menu registration deferred: %s", exc)
+
+
+# One-shot tick callback to register menus after the editor is fully initialised
+_tick_handle = None
+
+
+def _on_first_tick(delta: float) -> None:
+    global _tick_handle
+    if _handle is None:
+        try:
+            from meshy_dcc_core import capture_bootstrap_errors  # noqa: PLC0415
+
+            log_dir = _bootstrap_log_dir()
+            with capture_bootstrap_errors(
+                "unreal",
+                adapter_version=VERSION,
+                min_core_version="0.2.0",
+                phase="bootstrap",
+                log_dir=str(log_dir),
+                metadata={"runtime_mode": _runtime_mode},
+            ):
+                _start()
+            _clear_bootstrap_errors(log_dir)
+        except Exception as exc:
+            logger.error("[meshy-dcc-unreal] Initialisation failed: %s", exc)
+    _register_menus()
+    # Unregister this callback after first run
+    try:
+        import unreal  # noqa: PLC0415
+
+        if _tick_handle is not None:
+            unreal.unregister_slate_post_tick_callback(_tick_handle)
+            _tick_handle = None
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Run initialisation
+# ---------------------------------------------------------------------------
+
+# Unreal runs this file instead of importing it, and engine plugins ship files of
+# the same name, so ``import init_unreal`` would run a file again: a second tick
+# callback and server start, and from a worker thread an engine assertion. Menu
+# commands and tools reach this run through the module registered here instead.
+_NAMESPACE = globals()
+
+
+class _ThisRun(types.ModuleType):
+    def __getattr__(self, name: str):
+        try:
+            return _NAMESPACE[name]
+        except KeyError:
+            raise AttributeError(name) from None
+
+
+sys.modules.setdefault(MODULE_NAME, _ThisRun(MODULE_NAME))
+_initialize()

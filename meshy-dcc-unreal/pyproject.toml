@@ -1,0 +1,100 @@
+[build-system]
+requires = ["hatchling", "editables"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meshy-dcc-unreal"
+version = "0.1.0"
+description = "Unreal Editor adapter for Meshy DCC: a project plugin with a C++ editor module and a Python layer"
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["unreal", "unreal-engine", "mcp", "dcc", "ai", "llm", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Games/Entertainment",
+]
+
+dependencies = [
+    "meshy-dcc-core>=0.2.0,<0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
+    "ruff>=0.8.0",
+    "hatchling",
+    "editables",
+    "build",
+    "tomli; python_version < '3.11'",
+    "pyyaml>=5.0",
+    "jsonschema>=4.18",
+]
+
+[project.urls]
+Homepage = "https://github.com/meshy-dev/meshy-dcc-unreal"
+Repository = "https://github.com/meshy-dev/meshy-dcc-unreal"
+Issues = "https://github.com/meshy-dev/meshy-dcc-unreal/issues"
+
+[project.entry-points."meshy_dcc.adapters"]
+unreal = "meshy_dcc_unreal:UnrealMcpServer"
+
+[project.scripts]
+meshy-dcc-unreal = "meshy_dcc_unreal.install_cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meshy_dcc_unreal"]
+
+[tool.hatch.build]
+exclude = [
+    "/.venv",
+    "/.wheel-smoke",
+    "/dist",
+    "**/__pycache__",
+    "*.pyc",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short -m 'not e2e'"
+markers = [
+    "e2e: end-to-end tests that require a real Unreal Engine instance",
+]
+
+[tool.coverage.run]
+source = ["meshy_dcc_unreal"]
+branch = true
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["meshy_dcc_unreal"]

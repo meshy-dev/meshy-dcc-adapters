@@ -1,0 +1,100 @@
+import importlib.util
+from pathlib import Path
+
+import pytest
+
+from meshy_dcc_unreal.project_config import (
+    patch_console_variables,
+    read_console_variables,
+    validate_settings,
+)
+
+
+def test_project_config_path_discovers_embedded_plugin_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    import meshy_dcc_unreal.project_config as project_config
+
+    module_file = tmp_path / "Plugins" / "MeshyDccUnreal" / "python" / "meshy_dcc_unreal" / "project_config.py"
+    (tmp_path / "Config").mkdir()
+    (tmp_path / "Config" / "DefaultEngine.ini").write_text("", encoding="utf-8")
+    monkeypatch.setattr(project_config, "__file__", str(module_file))
+
+    assert project_config.project_config_path() == tmp_path / "Config" / "DefaultEngine.ini"
+
+
+def test_patch_console_variables_preserves_other_sections_and_creates_backup(tmp_path: Path):
+    path = tmp_path / "Config" / "DefaultEngine.ini"
+    path.parent.mkdir()
+    path.write_text(
+        "[ConsoleVariables]\nr.LumenScene.SurfaceCache.AtlasSize=4096\n\n[Other]\nKeep=1\n", encoding="utf-8"
+    )
+
+    result = patch_console_variables(path, {"r.LumenScene.SurfaceCache.AtlasSize": 8192})
+
+    assert result["changed"] == {"r.LumenScene.SurfaceCache.AtlasSize": 8192}
+    assert read_console_variables(path)["r.LumenScene.SurfaceCache.AtlasSize"] == "8192"
+    assert "Keep=1" in path.read_text(encoding="utf-8")
+    assert path.with_suffix(".ini.bak").exists()
+
+
+def test_validate_settings_rejects_unknown_keys_and_invalid_atlas():
+    with pytest.raises(ValueError, match="Unsupported renderer setting"):
+        validate_settings({"r.Unknown": 1})
+    with pytest.raises(ValueError, match="power of two"):
+        validate_settings({"r.LumenScene.SurfaceCache.AtlasSize": 5000})
+    with pytest.raises(ValueError, match="between 1024 and 8192"):
+        validate_settings({"r.LumenScene.SurfaceCache.AtlasSize": 16384})
+
+
+def test_patch_is_idempotent(tmp_path: Path):
+    path = tmp_path / "DefaultEngine.ini"
+    first = patch_console_variables(path, {"r.Nanite": 1})
+    second = patch_console_variables(path, {"r.Nanite": 1})
+
+    assert first["changed"] == {"r.Nanite": 1}
+    assert second["changed"] == {}
+
+
+def test_skill_handlers_publish_explicit_mcp_parameters():
+    from meshy_dcc_core.schema import tool_spec_from_callable
+
+    script = (
+        Path(__file__).parents[1] / "src/meshy_dcc_unreal/skills/unreal-project-config/scripts/apply_project_config.py"
+    )
+    spec = importlib.util.spec_from_file_location("unreal_project_config_apply", script)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    schema = tool_spec_from_callable(module.apply_project_config).input_schema
+
+    assert set(schema["properties"]) == {"settings"}
+    assert schema["properties"]["settings"]["anyOf"][0]["additionalProperties"] == {"type": "number"}
+
+
+def test_project_config_handlers_default_to_configured_allowlist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    root = Path(__file__).parents[1]
+    path = tmp_path / "Config" / "DefaultEngine.ini"
+    path.parent.mkdir()
+    path.write_text("[ConsoleVariables]\nr.Nanite=1\nr.Private=2\n", encoding="utf-8")
+
+    for name, filename in (
+        ("inspect_project_config", "inspect_project_config.py"),
+        ("verify_project_config", "verify_project_config.py"),
+    ):
+        script = root / "src/meshy_dcc_unreal/skills/unreal-project-config/scripts" / filename
+        spec = importlib.util.spec_from_file_location(f"unreal_project_config_{name}", script)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        monkeypatch.setattr(module, "project_config_path", lambda: path)
+        if name == "verify_project_config":
+            monkeypatch.setattr(module, "runtime_console_values", lambda keys: {})
+
+        result = getattr(module, name)()
+
+        assert result["success"] is True
+        assert result["context"]["values" if name == "inspect_project_config" else "disk_values"] == {"r.Nanite": "1"}
+
+        unsupported = getattr(module, name)(keys=["r.Private"])
+        assert unsupported["success"] is False
+        assert "Unsupported renderer setting" in unsupported["error"]
