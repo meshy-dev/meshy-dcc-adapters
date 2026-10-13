@@ -49,10 +49,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/meshy-dev/meshy-dcc-blender"
-Repository = "https://github.com/meshy-dev/meshy-dcc-blender"
-Issues = "https://github.com/meshy-dev/meshy-dcc-blender/issues"
-Changelog = "https://github.com/meshy-dev/meshy-dcc-blender/releases"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-blender"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
+Changelog = "https://github.com/meshy-dev/meshy-dcc-adapters/blob/main/meshy-dcc-blender/CHANGELOG.md"
 
 [project.scripts]
 meshy-dcc-blender = "meshy_dcc_blender.install:main"

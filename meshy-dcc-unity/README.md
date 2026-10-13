@@ -25,7 +25,7 @@ Open or restart the Unity project so Package Manager compiles **Meshy DCC Unity*
 meshy-dcc-unity
 ```
 
-See the [installation guide](https://github.com/meshy-dev/meshy-dcc-unity/blob/main/install.md) for
+See the [installation guide](https://github.com/meshy-dev/meshy-dcc-adapters/blob/main/meshy-dcc-unity/install.md) for
 JSON output, verification, upgrade, uninstall, rollback, and troubleshooting details. The legacy
 `meshy-dcc-unity-install` entry point remains available during migration.
 

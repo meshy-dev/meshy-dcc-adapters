@@ -43,9 +43,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/meshy-dev/meshy-dcc-unreal"
-Repository = "https://github.com/meshy-dev/meshy-dcc-unreal"
-Issues = "https://github.com/meshy-dev/meshy-dcc-unreal/issues"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-unreal"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
 
 [project.entry-points."meshy_dcc.adapters"]
 unreal = "meshy_dcc_unreal:UnrealMcpServer"

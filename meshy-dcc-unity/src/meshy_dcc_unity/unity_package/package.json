@@ -5,9 +5,9 @@
   "description": "Typed Unity Editor bridge for Meshy DCC.",
   "unity": "2018.4",
   "unityRelease": "25f1",
-  "documentationUrl": "https://github.com/meshy-dev/meshy-dcc-unity#readme",
-  "changelogUrl": "https://github.com/meshy-dev/meshy-dcc-unity/blob/main/CHANGELOG.md",
-  "licensesUrl": "https://github.com/meshy-dev/meshy-dcc-unity/blob/main/LICENSE",
+  "documentationUrl": "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-unity#readme",
+  "changelogUrl": "https://github.com/meshy-dev/meshy-dcc-adapters/blob/main/meshy-dcc-unity/CHANGELOG.md",
+  "licensesUrl": "https://github.com/meshy-dev/meshy-dcc-adapters/blob/main/meshy-dcc-unity/LICENSE",
   "author": {
     "name": "Meshy",
     "email": "support@meshy.ai",
