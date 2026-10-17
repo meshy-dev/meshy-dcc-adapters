@@ -431,7 +431,12 @@ def startup() -> Any:
             from meshy_dcc_3dsmax._safe_stop import attach_safe_stop  # noqa: PLC0415
             from meshy_dcc_3dsmax.server import get_server  # noqa: PLC0415
 
-            attach_safe_stop(get_server())
+            server = get_server()
+            if server is not None and getattr(server, "_max_dispatcher", None) is None:
+                # Without the main-thread pump, tools would call pymxs from server threads.
+                stop_sidecar_bridge()
+                raise RuntimeError("the main-thread pump did not install; the adapter stays off")
+            attach_safe_stop(server)
             print("meshy-dcc-3dsmax {} started".format(__version__))
             return started
     except Exception as exc:  # noqa: BLE001 - a startup script must not break 3ds Max

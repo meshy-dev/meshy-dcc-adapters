@@ -19,7 +19,8 @@ adapter this one was forked from.
   script it did not write. The script carries the package path base64-encoded,
   so it stays ASCII whatever the user name.
 - 3ds Max starts the adapter through `max_bootstrap.startup()`, which never
-  raises into 3ds Max. The default boot mode is now the in-process server
+  raises into 3ds Max, and stops the server again if the main-thread pump did
+  not install (tools would otherwise call `pymxs` from server threads). The default boot mode is now the in-process server
   (`server`) instead of the external sidecar, so the package needs no
   `meshy-dcc-server` binary; the server honours `MESHY_DCC_GATEWAY_PORT` and
   `MESHY_DCC_REGISTRY_DIR`.

@@ -1500,3 +1500,22 @@ class TestCapabilities:
         assert isinstance(caps_dict, dict)
         assert "dcc_name" in caps_dict
         assert caps_dict["dcc_name"] == "3dsmax"
+
+
+def test_startup_stays_off_without_a_main_thread_dispatcher(monkeypatch, capsys):
+    """A server whose main-thread pump failed must not serve tools from worker threads."""
+    import meshy_dcc_3dsmax.server as server_module
+    from meshy_dcc_3dsmax import max_bootstrap
+
+    stopped = []
+    server = types.SimpleNamespace(_max_dispatcher=None)
+    monkeypatch.setattr(max_bootstrap, "main", lambda: server)
+    monkeypatch.setattr(server_module, "get_server", lambda: server)
+    monkeypatch.setattr(max_bootstrap, "stop_sidecar_bridge", lambda: stopped.append(1))
+    assert max_bootstrap.startup() is None
+    assert stopped == [1]
+    assert "did not start" in capsys.readouterr().out
+
+    server._max_dispatcher = object()
+    monkeypatch.delenv("MESHY_DCC_START_OPERATION_ID", raising=False)
+    assert max_bootstrap.startup() is server
