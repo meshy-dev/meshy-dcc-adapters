@@ -166,7 +166,7 @@ tools:
       properties:
         mesh_path:
           type: string
-          description: Existing FBX, OBJ, DAE, PLY, or USD mesh path.
+          description: Existing FBX, OBJ, DAE, PLY, USD or glTF (.gltf, .glb) mesh path.
         project_path:
           type: string
           description: Target .spp path used as the default save path.
@@ -261,7 +261,7 @@ tools:
         mesh_path:
           type: string
           minLength: 1
-          description: Existing FBX, OBJ, DAE, PLY, or USD mesh path.
+          description: Existing FBX, OBJ, DAE, PLY, USD or glTF (.gltf, .glb) mesh path.
         import_cameras:
           type: boolean
           default: true

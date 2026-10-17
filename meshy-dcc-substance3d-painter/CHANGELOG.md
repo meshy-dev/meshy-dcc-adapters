@@ -1,158 +1,30 @@
 # Changelog
 
-## [0.6.3](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.6.2...v0.6.3) (2026-10-17)
-
-
-### Documentation
-
-* refresh the generated Meshy DCC host matrix pointer ([#50](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/issues/50)) ([5ba5b7f](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/5ba5b7f11ec11553d29c45df1623a99eb137cb08))
-
-## [0.6.2](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.6.1...v0.6.2) (2026-10-13)
-
-
-### Documentation
-
-* add the generated Meshy DCC host matrix pointer ([d595c0a](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/d595c0a355643df8069ae7dcdee1df70d1ca0e1a))
-* refresh the generated Meshy DCC host matrix pointer ([4e6510b](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/4e6510ba866583eaa50fc4a71cf2721b1f824c8c))
-
-## [0.6.1](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.6.0...v0.6.1) (2026-10-04)
-
-
-### Bug Fixes
-
-* drop the adapter's copy of Core's Install SOP artifact revision constant ([f8e8846](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/f8e88468b123025a28018ed0fcdfed9102a8506e))
-* report the Install SOP schema version, not the artifact revision ([373c694](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/373c694a48ccf4cb9e9c9f7f0189b49eb7d9240d))
-
-## [0.6.0](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.5.1...v0.6.0) (2026-09-19)
-
-
-### Features
-
-* **skills:** add material, compositing, and lighting domain skills ([#41](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/issues/41)) ([ee616e8](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/ee616e81d372607066405aeef4331ffb9a0a86ca))
-
-## [0.5.1](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.5.0...v0.5.1) (2026-08-30)
-
-
-### Bug Fixes
-
-* bind materialized result validator ([56570e1](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/56570e1af4588c1853ebb527e7e44a29e5fe368d))
-* freeze materialized host state across requests ([4ec1109](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/4ec1109c75c9f6fe44a89e33e7487e78398f3263))
-* harden materialized source boundary ([a41e635](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/a41e6357ffc1a892242943c72e8895b09c7f63fc))
-* harden materialized validator isolation ([3dc6f81](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/3dc6f819101b93393cd3d309baf4c926bf8831d9))
-* isolate materialized host cancellation state ([d7b6c03](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/d7b6c0344259afa879adefd04d2047d0be1374db))
-* isolate materialized result serialization ([9a2eb5e](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/9a2eb5ef483ea8629a977e64e66c1bb570e989c8))
-* isolate materialized runtime state ([cebc952](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/cebc952abc31792b3665b9a041c3e435328e10ff))
-* isolate materialized suffix aliases ([0df552a](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/0df552a9a4645d536986b01055a5afc9e11dff5e))
-* isolate materialized suffix side effects ([eb56f20](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/eb56f20b280730846ac2c1f00d04538a092fda0c))
-* isolate materialized validator and run suffix ([24636fa](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/24636fa4cb6e8d5704e320de8b95cd6c2b4909ca))
-* minimize materialized request facade ([781c168](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/781c1688f591827caf63376163bef1b2230e37d4))
-
-## [0.5.0](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.4.1...v0.5.0) (2026-08-27)
-
-
-### Features
-
-* add materialized script executor ([43d9402](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/43d9402bfef0d8ec766bcd7d24a3f5cac4c119a0))
-
-
-### Bug Fixes
-
-* harden materialized result isolation ([bb44be9](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/bb44be963b1d57eef6efc9d51b819fbee53277bd))
-* harden materialized script dispatch ([42892b8](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/42892b8735aba172e0f3226f2f6c7ff5e371c0bf))
-* isolate materialized response state ([d22078c](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/d22078cca0f51d1b61bd007577c962ecced911b1))
-* isolate materialized script execution ([7459051](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/7459051c973dff8460ca78ce09165eef403cae68))
-
-## [0.4.1](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.4.0...v0.4.1) (2026-08-26)
-
-
-### Bug Fixes
-
-* bind release step controls ([98c03ad](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/98c03ad30b1d8c75f201c2c05d6a098aed5417e9))
-* bind release workflow job controls ([d2293c9](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/d2293c9195e3c0c3e5dd45e72bb730bf4dc9d71f))
-* close release integrity races ([537ef42](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/537ef423c70f151482736f4eef14f9a95145d54f))
-* harden Painter server startup ([dd122e2](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/dd122e227b39b3fc3a6193529da9965c82318cfc))
-* harden release artifact delivery ([5b66f7d](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/5b66f7dabb1490abc03e2195da5efa48a3118a47))
-* make release lock test version-independent ([a5d7660](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/a5d76601784bce457f72bdd7d31f7cbad1ed7220))
-* support Python 3.9 release checks ([5758f4f](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/5758f4f8804ffd40bdea4b8e8f97fbb5a417036f))
-
-## [0.4.0](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.3.0...v0.4.0) (2026-08-25)
-
-
-### Features
-
-* add async mesh map baking ([83b4d81](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/83b4d8108b6236e13f9d9e63d8243935788f3319))
-* add Painter install lifecycle ([bbf2d41](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/bbf2d41a0f8504e1a7c0fd37b63fa1e0b7082b63))
-* add Painter layer and export authoring ([a42e9a8](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/a42e9a833d181b517df96c79d1a868a093829b61))
-* complete Painter project job lifecycle ([ff1e29d](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/ff1e29ddced8e89d26032712f8dd7c33dad1bb02))
-* report effective Painter color management ([c371b02](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/c371b025d53d18163948d7a23e074083e7860192))
-
-
-### Bug Fixes
-
-* align Painter project execution metadata ([28bfde2](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/28bfde2012f9604e30b5e7eae0377c7909739d1e))
-* bind Painter install provenance ([2090a4e](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/2090a4e9b17bd05eb656b887f86643fbc5175652))
-* harden Painter authoring contracts ([c1e5c4b](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/c1e5c4b0ccfef0cb80f381edd34ba1ceeab71665))
-* harden painter authoring error receipts ([e4fa64a](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/e4fa64a6b0ab7218358f70fc6aa473135b296553))
-* harden Painter install lifecycle ([3804e9a](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/3804e9abb4d193322ce33116cccee1dfa0701a27))
-* isolate Painter install probes ([06b13fe](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/06b13fe345c12744c53521da4b0177313c40ea50))
-* preserve painter host failures ([b313715](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/b31371586df3b947a2152459645549f5c884e5bb))
-* preserve Painter interpreter environment ([696043d](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/696043dac4b8a912bd746687efb75b213d0eb7df))
-* preserve Python 3.9 lock cleanup ([5405fc9](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/5405fc9d2f2f02b0f5f69a98ebe5806bf31420ac))
-
-## [0.3.0](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.2.0...v0.3.0) (2026-07-29)
-
-
-### Features
-
-* add safe Painter project switching ([4ca3e23](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/4ca3e233f5fb3355f38b6d6e88f8a055cadbc8b0))
-* add textured PBR lookdev workflow ([7301a03](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/7301a0312c24d6b2d853b08eba4b665a0569be17))
-
-## [0.2.0](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.1.3...v0.2.0) (2026-07-24)
-
-
-### Features
-
-* add unified Meshy DCC menu with Copy Instance ID ([9425946](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/9425946a6db48d92215b4ebf1229d13816e32d08))
-
-
-### Documentation
-
-* align agent workflow and branding ([71cee68](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/71cee68077b2ec4e49825ed3c2d68419129fce46))
-* document CLI install and updates ([72426f9](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/72426f92b391a0e7cab63a327cae63d0b0f7f35c))
-
-## [0.1.3](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.1.2...v0.1.3) (2026-07-16)
-
-
-### Bug Fixes
-
-* auto-start Painter adapter on a free port ([#7](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/issues/7)) ([b16f92c](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/b16f92c1d8ab0be2173ad625212d5f1e73ca9c12))
-
-## [0.1.2](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.1.1...v0.1.2) (2026-07-14)
-
-
-### Bug Fixes
-
-* document Painter material workflow ([d37f5b8](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/d37f5b8ac88265c6feac3dbe7c4244daa3a9e232))
-
-## [0.1.1](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/compare/v0.1.0...v0.1.1) (2026-07-13)
-
-
-### Bug Fixes
-
-* support pyside6 in painter ([#2](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/issues/2)) ([dc27ef4](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/dc27ef4dac2fa79a93f00d39a1b8ba45cb88765f))
-
-## 0.1.0 (2026-07-13)
-
-
-### Features
-
-* add Substance 3D Painter MCP adapter ([8a2a1cf](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/8a2a1cfae928f2fb4d1635ccd30b9b590bcd445b))
-
-
-### Bug Fixes
-
-* synchronize release version metadata ([d655971](https://github.com/meshy-dev/meshy-dcc-substance3d-painter/commit/d655971fa6cb20ddcad1156fbaef3de3bf64df45))
-
-## Changelog
-
-All notable changes to this project are documented in this file.
+## 0.1.0 (unreleased)
+
+First Meshy release. Versions restart at 0.1.0 and are unrelated to the
+adapter this one was forked from (dcc-mcp-substance3d-painter 0.6.3).
+
+- Meshy-owned adapter: the Python package is `meshy_dcc_substance3d_painter`,
+  the dcc type `substance3d_painter`, environment variables
+  `MESHY_DCC_SUBSTANCE3D_PAINTER_*`; it runs on `meshy_dcc_core` 0.2.x.
+- `packaging/build_package.py --platform macos-arm64|windows-x64` builds the
+  Meshy DCC package on any machine: this adapter and `meshy_dcc_core` in
+  `plugin/python/`, a pinned python-build-standalone CPython 3.11.15 (its
+  SHA-256 checked) for the installer, and `bin/meshy-dcc-substance3d-painter`
+  (`.cmd` on Windows). The package leaves out `direct_url.json`, which would
+  record local build paths.
+- New installer (`meshy-dcc-substance3d-painter install | uninstall |
+  status`): writes one startup loader into the user's Painter profile and
+  removes it again; it never overwrites or deletes a file it did not write.
+  It replaces the upstream installer, which loaded the adapter from a
+  separately installed Python environment.
+- Safe stop for instances launched by `meshy-dcc start-instance`: refuses
+  while the open project needs saving, or when Painter cannot tell, unless the
+  caller agreed to discard unsaved work.
+- The Painter version reported by the server and `ping` now comes from
+  `substance_painter.application.version()`; upstream read a module attribute
+  that does not exist and always reported a placeholder.
+- `create_project` and `reload_mesh` document glTF (`.gltf`, `.glb`) meshes,
+  which Painter imports.
+- Not verified on a real Painter yet.

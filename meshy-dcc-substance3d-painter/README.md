@@ -1,176 +1,106 @@
 # meshy-dcc-substance3d-painter
 
-<p align="center">
-  <img src="docs/assets/meshy-dcc-substance3d-painter.svg" alt="Meshy DCC · SUBSTANCE3D-PAINTER" width="600">
-</p>
+The Meshy DCC Core adapter for Adobe Substance 3D Painter. A startup plugin
+runs on Painter's own embedded Python, serves the adapter's tools over MCP,
+and registers Painter with the local `meshy-dcc` registry; host calls run on
+Painter's Qt main thread.
 
-<!-- meshy-dcc-coverage-pointer:start -->
-<!-- Generated from meshy-dcc-catalog.yml by scripts/generate_adapter_pointer.py in meshy-dcc/meshy-dcc-core. Do not edit by hand. -->
-## Part of the Meshy DCC host matrix
+**Experimental: not verified on a real Painter yet.** Everything below is
+written from the source and from Adobe's documentation, and checked only with
+unit tests, a fake-host contract test, and an install of the package through
+`meshy-dcc install` into a throwaway profile. Targets Painter 8.1 and later
+(Python 3.9+; Painter 10.1 and 11 run Python 3.11, Painter 12 Python 3.13)
+on macOS Apple silicon and Windows x64.
 
-**meshy-dcc-substance3d-painter** — Substance 3D Painter adapter for Meshy DCC.
+## With Meshy DCC
 
-It is one of **47 host adapters** in the Meshy DCC catalog. Every adapter speaks the same
-MCP protocol and builds on the same core runtime contract; each one exposes the tools
-its own host needs on top of that.
+`packaging/build_package.py` builds the Meshy DCC package for one platform:
 
-- [All host adapters and install metadata](https://www.meshy.ai/meshy-dcc/ecosystem)
-- [Host matrix on the core README](https://github.com/meshy-dev/meshy-dcc-core#readme)
-- [Showcase](https://www.meshy.ai/meshy-dcc/showcase)
-
-This block is generated from the catalog entry in
-[`meshy-dcc-catalog.yml`](https://github.com/meshy-dev/meshy-dcc-core/blob/main/meshy-dcc-catalog.yml).
-Re-run the generator after changing the catalog.
-<!-- meshy-dcc-coverage-pointer:end -->
-
-## Agent workflow
-
-AI agents should use the shared gateway through `meshy-dcc`; IDE users may
-continue to use the MCP endpoint. Prefer typed skills and tools over raw scripts.
-
-### Install or update the CLI
-
-`meshy-dcc` is the preferred control path for every shell-capable agent. If
-it is missing, ask the user before installing the latest official release:
-
-```bash
-# Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/meshy-dev/meshy-dcc-core/main/scripts/install-cli.sh | sh
-
-# Windows PowerShell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/meshy-dev/meshy-dcc-core/main/scripts/install-cli.ps1 | iex"
+```
+plugin/python/                      this adapter and meshy_dcc_core (what Painter imports)
+python/                             a relocatable CPython 3.11 that runs the installer
+bin/meshy-dcc-substance3d-painter   the installer (bin/meshy-dcc-substance3d-painter.cmd on Windows)
 ```
 
-Keep an official build current through the release manifest:
-
 ```bash
-meshy-dcc update check
-meshy-dcc update apply
+meshy-dcc install --dcc-type substance3d_painter --execute
+meshy-dcc start-instance --dcc-type substance3d_painter --project /path/to/work --wait-ready --yes
 ```
 
-`update apply` downloads and stages the latest CLI for the next launch. It
-does not update a running `meshy-dcc-server`; update that server in its own
-environment.
+The install extracts the package into the Meshy DCC data directory and runs
+`bin/meshy-dcc-substance3d-painter install --yes --json`. That writes one
+file, the startup loader
+`<Documents>/Adobe/Adobe Substance 3D Painter/python/startup/meshy_dcc_substance3d_painter_plugin.py`.
+Painter loads every module in that folder when it starts; the loader puts the
+package's `plugin/python` folder on `sys.path` and starts the adapter. Nothing
+is installed into Painter itself. On Windows, Documents is the shell's
+Documents folder, so a OneDrive-redirected one is followed.
+`MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE` points the installer at another
+Painter profile (tests use it).
+
+`install`, `uninstall` and `status` only report a plan without `--yes`. The
+installer never overwrites or deletes a file of that name that it did not
+write (exit 10).
+
+### Without the installer
+
+Painter also reads plugins from `SUBSTANCE_PAINTER_PLUGINS_PATH`. Point it at
+`plugin/python/meshy_dcc_substance3d_painter/painter` (the folder holding
+`startup/`) and add `plugin/python` to `PYTHONPATH` before starting Painter.
+
+### Uninstall
 
 ```bash
-meshy-dcc dcc-types
-meshy-dcc list
-meshy-dcc search --query "<task>" --dcc-type substance3d_painter
-meshy-dcc describe <tool-slug>
-meshy-dcc call <tool-slug> --json '{"key":"value"}'
+<package>/bin/meshy-dcc-substance3d-painter uninstall --yes
 ```
 
-`dcc-types` reports release-catalog support; `list` reports live sessions. If a
-tool belongs to an inactive progressive skill, call `meshy-dcc load-skill <skill-name> --dcc-type substance3d_painter` before retrying. For post-task improvement,
-attach a stable session id with `--meta-json`, query `meshy-dcc stats --range 24h --session-id <task-id>`, then pass the bounded evidence to the
-`review_skill_improvement` prompt from `meshy-dcc-skills-creator`.
+removes the loader (and the bytecode Painter's Python left next to it). The
+package itself lives under the Meshy DCC data directory,
+`meshy-dcc/adapters/meshy-dcc-substance3d-painter/` (macOS:
+`~/Library/Application Support`, Windows: `%APPDATA%`); delete that folder
+after the loader is gone. Without the package, deleting the loader file by
+hand is the whole uninstall. Painter picks up either change at its next start.
 
+### Safe stop
 
-Substance 3D Painter adapter for the DCC Model Context Protocol (MCP).
+A Painter launched by `start-instance` advertises a safe stop. It reads the
+open project's state and refuses while the project needs saving, or when
+Painter cannot tell, unless the request carries `discard_unsaved`; then it
+closes Painter with `substance_painter.application.close()`. A Painter the
+user opened is never stopped this way.
 
-It embeds a Streamable HTTP MCP server in Painter and routes host API calls
-through Painter's Qt main thread. Painter uses an OS-assigned port by default
-and advertises the endpoint through Meshy DCC discovery.
+## Skills
 
-## Install and load
+- `painter-project`: create a project from a mesh, open, save, save as,
+  close a clean project, reload the mesh; inspect the project, texture sets
+  and layer stack; fill, textured and paint layers, masks, generators, smart
+  materials; import resources; bake mesh maps as a job; build an export preset
+  and export textures with readback; `execute_materialized_script` for a
+  script materialized by core.
+- `painter-material`: per-layer channel inventory and uniform channel values.
+- `painter-compositing`: layer visibility, opacity, blending mode.
+- `painter-lighting`: environment map, exposure and rotation (Painter has no
+  light objects).
+- `painter-diagnostics`: `ping`, which proves the main-thread bridge answers.
 
-Use the agent-first lifecycle for preflight, a non-mutating plan, receipted
-installation, live verification, upgrades, and uninstall. See
-[install.md](install.md) for exact Windows, macOS, and Linux commands and the
-manual environment path.
-
-The lifecycle uses the released Core 0.20.15 Install SOP contract. Readiness is
-fail-closed unless the registry, independently observed process identity, and
-in-host diagnostics all bind the same Painter executable, start identity,
-process-owned loopback listener, adapter payload, and receipt. CI uses hermetic
-identity/probe fixtures; it does not claim to validate a real Adobe Painter
-launch.
-
-Set `MESHY_DCC_SUBSTANCE3D_PAINTER_PORT` before launching Painter only when a
-fixed port is required; `0` keeps automatic allocation. Standard
-`MESHY_DCC_GATEWAY_PORT` and `MESHY_DCC_REGISTRY_DIR` settings are also honoured.
-
-## Bundled skills
-
-`painter-project` provides typed tools for a complete material-authoring pass,
-plus `execute_materialized_script` for an unchanged Python FileRef returned by
-Core `materialize_script`:
-
-- inspect the project and texture sets;
-- create PBR fill layers;
-- search Painter resources and apply smart materials;
-- list export presets, save the `.spp`, and export textures.
-
-The tools use Painter resource and preset URLs supplied by Painter itself. They
-do not expose raw JavaScript, inline source, caller-selected paths, execution
-modes, or UI automation. A materialized FileRef is an integrity envelope, not a
-trust decision or a Python security sandbox: only materialize source that is
-trusted to run with the current Painter process privileges. Reflective code or
-background work intended to outlive the fixed request lifecycle is outside the
-supported contract. The materialized-script executor validates Core's
-scoped sidecar, file identity, digest, size, encoding, and expiry before the
-fixed `main()` entry point reaches Painter's main thread. It repeats the full
-FileRef check immediately before dispatch, clones and invokes the validated
-function with its prefix globals through a host callable captured before source
-entry, snapshots its strict JSON result when valid, and executes suffix source
-exactly once after every source-entered `main()` attempt in a quarantined
-side-effect phase. Direct `json` imports and executor-module imports resolve to
-request-private JSON state. The executor import is a minimal facade with no
-executor callables or canonical module state, so a retained facade cannot regain
-host globals after return. Prefix or suffix rebinding cannot change the captured
-entrypoint behavior or result, and suffix failures do not clobber the main
-outcome (including a stable rejection for invalid results).
-The suffix is side-effect-only: a `main()` that requires a helper, import, or
-mutable initialization introduced only by the suffix is rejected with the
-stable `script_suffix_dependency` error, so valid scripts must define those
-dependencies before `main()`.
-Cancellation remains bound to the exact host token and job captured before
-source entry; the executor restores the captured host ContextVar state,
-cancellation module bindings, validator alias, and canonical JSON serializer
-after both source phases. These guarantees cover the fixed executor contract;
-they must not be interpreted as isolation from arbitrary untrusted Python in
-the same process.
-Results accept only strict portable JSON: string-keyed plain objects, plain
-arrays, JSON scalars, and finite numbers, with maximum depth 64, 10,000 nodes,
-and 256 KiB of compact UTF-8 JSON. The byte limit covers the complete public
-response, including host-owned context and postcondition fields. Validation and
-normalization capabilities remain outside script-writable state. Source-entered
-failures never carry retry or rematerialization guidance.
-
-### Domain skills
-
-Alongside `painter-project`, the adapter bundles focused skills that map
-Painter's real native primitives onto their pipeline domains:
-
-- **`painter-material`** — channel-level material authoring: read a stack's
-  channel inventory, choose which channels a layer contributes, and write
-  uniform channel values.
-- **`painter-compositing`** — how a layer combines with the layers below it:
-  visibility, opacity, blending mode, and mask state.
-- **`painter-lighting`** — scene lighting. Painter has no light objects, so
-  lighting is the image-based environment: environment map, exposure, and
-  rotation.
-
-Every mutation is confirmed by reading the value back from Painter before the
-tool reports success. Where Painter exposes no readback for a value, the tool
-says so explicitly instead of implying verification it did not perform.
-
-Painter has no particle, dynamics, or animation system, so those domains have no
-native equivalent to expose. The closest real primitives are Painter's brush
-parameters and generators, and camera turntable plus texture-sequence export,
-which `painter-project` already covers.
+Every mutation reads the value back from Painter before it reports success.
 
 ## Development
 
 ```bash
-python -m pip install -e ".[dev]"
-python -m pytest
-ruff check src tests tools
-uv lock --check
-python -m build
+uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python --no-deps <meshy_dcc_core wheel>
+uv pip install --python .venv/bin/python pytest pytest-xdist pyyaml 'jsonschema>=4.18'
+PYTHONPATH=src .venv/bin/python -m pytest tests -n 2
+PYTHONPATH=src .venv/bin/python tools/lint_skills.py
+uv run --python 3.11 --no-project python packaging/build_package.py \
+    --core-wheel <meshy_dcc_core wheel for the platform> --platform macos-arm64 --output-dir dist
 ```
 
-Releases use release-please. The `release.yml` workflow builds one verified
-wheel/sdist bundle, publishes those exact files through the `pypi` environment
-using Trusted Publishing, and attaches the same checksummed files to the GitHub
-Release.
+`--platform windows-x64` builds the Windows package on any machine with the
+`win_amd64` core wheel. Both downloads of python-build-standalone CPython
+3.11.15 (release 20260504) are checked against pinned SHA-256 digests.
+
+## License
+
+MIT. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -1,78 +1,207 @@
-"""Agent-first installer entry point for Substance 3D Painter."""
+"""Install the Meshy DCC startup loader into Substance 3D Painter's user profile.
+
+Painter loads every module in ``<profile>/python/startup`` when it starts; the
+profile is ``<Documents>/Adobe/Adobe Substance 3D Painter``. ``install`` writes
+one module there, a loader that puts the folder holding this package and
+``meshy_dcc_core`` on ``sys.path`` and starts the adapter. ``uninstall``
+removes that module. Nothing else in the profile or the Painter install is
+touched, and a file of the same name that this installer did not write is
+never overwritten or deleted.
+
+    meshy-dcc-substance3d-painter install | uninstall | status [--yes] [--json]
+
+Without ``--yes``, install and uninstall only report what they would do.
+Exit codes: 0 done, 10 refused (a foreign file is in the way, or the payload
+is incomplete), 30 the profile could not be written.
+"""
 
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import os
 import sys
-from typing import Optional, Sequence
-
-import meshy_dcc_core
-from meshy_dcc_core.deployment import INSTALL_EXIT_PREFLIGHT
+from pathlib import Path
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from meshy_dcc_substance3d_painter.__version__ import __version__
-from meshy_dcc_substance3d_painter._installer import COMMAND, DCC_TYPE, SCHEMA_VERSION, run_lifecycle
+
+COMMAND = "meshy-dcc-substance3d-painter"
+DCC_TYPE = "substance3d_painter"
+PROFILE_ENV = "MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE"
+LOADER_NAME = "meshy_dcc_substance3d_painter_plugin.py"
+MARKER = '"""Meshy DCC startup loader for Substance 3D Painter.'
+EXIT_OK, EXIT_REFUSED, EXIT_WRITE = 0, 10, 30
+
+LOADER_TEMPLATE = (
+    MARKER + "\n\n"
+    "Written by `" + COMMAND + " install`; `" + COMMAND + " uninstall` removes it.\n"
+    '"""\n\n'
+    "import os\n"
+    "import sys\n\n"
+    "PAYLOAD = {payload!r}\n"
+    "if not os.path.isdir(PAYLOAD):\n"
+    "    raise ImportError(\n"
+    '        "Meshy DCC is no longer installed at " + PAYLOAD + ". Run `meshy-dcc install --dcc-type "\n'
+    '        "substance3d_painter`, or delete " + __file__\n'
+    "    )\n"
+    "if PAYLOAD not in sys.path:\n"
+    "    sys.path.insert(0, PAYLOAD)\n\n"
+    "from meshy_dcc_substance3d_painter.painter.startup.meshy_dcc_substance3d_painter_plugin import (  # noqa: E402\n"
+    "    close_plugin,\n"
+    "    start_plugin,\n"
+    ")\n\n"
+    '__all__ = ["close_plugin", "start_plugin"]\n'
+)
 
 
-class _ArgumentFailure(ValueError):
-    pass
+def documents_dir() -> Path:
+    """The user's Documents folder as Painter sees it (redirected folders included on Windows)."""
+    if os.name == "nt":
+        import ctypes  # noqa: PLC0415 - Windows only
+
+        buffer = ctypes.create_unicode_buffer(32768)
+        # CSIDL_PERSONAL: the shell's Documents folder, which follows OneDrive or policy redirection.
+        if ctypes.windll.shell32.SHGetFolderPathW(None, 5, None, 0, buffer) == 0 and buffer.value:
+            return Path(buffer.value)
+    return Path.home() / "Documents"
 
 
-class _LifecycleParser(argparse.ArgumentParser):
-    def error(self, message: str) -> None:
-        raise _ArgumentFailure("Invalid lifecycle arguments.")
+def profile_dir(environ: Mapping[str, str] = os.environ) -> Path:
+    override = environ.get(PROFILE_ENV, "").strip()
+    if override:
+        return Path(os.path.abspath(os.path.expanduser(override)))
+    return documents_dir() / "Adobe" / "Adobe Substance 3D Painter"
 
 
-def _parser() -> argparse.ArgumentParser:
-    parser = _LifecycleParser(prog=COMMAND)
-    parser.add_argument("verb", choices=("install", "status", "verify", "uninstall", "upgrade"))
-    parser.add_argument("--json", action="store_true", dest="as_json")
-    parser.add_argument("--yes", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--dcc-path")
-    parser.add_argument("--python", dest="python_path")
-    return parser
+def payload_dir() -> Path:
+    """The folder that holds this package and ``meshy_dcc_core`` (links are not followed)."""
+    return Path(os.path.abspath(__file__)).parents[1]
+
+
+def loader_path(environ: Mapping[str, str] = os.environ) -> Path:
+    return profile_dir(environ) / "python" / "startup" / LOADER_NAME
+
+
+def loader_source(payload: Path) -> str:
+    return LOADER_TEMPLATE.format(payload=str(payload))
+
+
+def read_loader(path: Path) -> Tuple[str, Optional[str]]:
+    """``(state, payload)``: state is ``missing``, ``ours`` or ``foreign``."""
+    if not path.exists() and not path.is_symlink():
+        return "missing", None
+    if path.is_symlink() or not path.is_file():
+        return "foreign", None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return "foreign", None
+    if not text.startswith(MARKER):
+        return "foreign", None
+    for line in text.splitlines():
+        if line.startswith("PAYLOAD = "):
+            try:
+                return "ours", str(ast.literal_eval(line[len("PAYLOAD = ") :]))
+            except (ValueError, SyntaxError):
+                break
+    return "ours", None
+
+
+def run(verb: str, yes: bool, environ: Mapping[str, str] = os.environ) -> Tuple[int, Dict[str, Any]]:
+    target = loader_path(environ)
+    payload = payload_dir()
+    state, recorded = read_loader(target)
+    result: Dict[str, Any] = {
+        "schema_version": 1,
+        "verb": verb,
+        "dcc_type": DCC_TYPE,
+        "adapter_version": __version__,
+        "profile": str(profile_dir(environ)),
+        "loader_path": str(target),
+        "payload": str(payload),
+        "applied": False,
+    }
+
+    def done(code: int, status: str, message: str) -> Tuple[int, Dict[str, Any]]:
+        result.update(status=status, message=message)
+        return code, result
+
+    if verb == "status":
+        result.update(installed_payload=recorded, payload_exists=bool(recorded) and os.path.isdir(recorded or ""))
+        if state == "missing":
+            return done(EXIT_OK, "not_installed", "No Meshy DCC loader in the Painter profile.")
+        if state == "foreign":
+            return done(EXIT_OK, "foreign", f"{target} exists but was not written by this installer.")
+        current = recorded == str(payload)
+        return done(
+            EXIT_OK,
+            "installed" if current else "installed_other",
+            "Painter loads Meshy DCC from " + str(recorded) + ("" if current else " (another package)."),
+        )
+
+    if state == "foreign":
+        return done(
+            EXIT_REFUSED,
+            "refused",
+            f"{target} was not written by this installer; move it out of Painter's startup folder, then retry.",
+        )
+
+    if verb == "uninstall":
+        if state == "missing":
+            return done(EXIT_OK, "not_installed", "Nothing to remove.")
+        if not yes:
+            return done(EXIT_OK, "planned", f"Would remove {target}.")
+        try:
+            target.unlink()
+            # Painter's Python leaves the loader's bytecode next to it; other plugins may share the folder.
+            cache = target.parent / "__pycache__"
+            for compiled in cache.glob(target.stem + ".*.pyc"):
+                compiled.unlink()
+            if cache.is_dir() and not any(cache.iterdir()):
+                cache.rmdir()
+        except OSError as exc:
+            return done(EXIT_WRITE, "failed", f"Could not remove {target}: {exc}")
+        result["applied"] = True
+        return done(EXIT_OK, "uninstalled", f"Removed {target}. Painter stops loading Meshy DCC at its next start.")
+
+    # install
+    if not (payload / "meshy_dcc_core").is_dir() or not (payload / "meshy_dcc_substance3d_painter").is_dir():
+        return done(EXIT_REFUSED, "refused", f"{payload} does not hold meshy_dcc_core and this adapter.")
+    source = loader_source(payload)
+    if state == "ours" and target.read_text(encoding="utf-8") == source:
+        return done(EXIT_OK, "current", "The Painter profile already loads this package.")
+    if not yes:
+        return done(EXIT_OK, "planned", f"Would write {target}, loading Meshy DCC from {payload}.")
+    temporary = target.with_name(f".{LOADER_NAME}.{os.getpid()}.tmp")
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary.write_text(source, encoding="utf-8")
+        os.replace(temporary, target)
+    except OSError as exc:
+        temporary.unlink(missing_ok=True)
+        return done(EXIT_WRITE, "failed", f"Could not write {target}: {exc}")
+    result["applied"] = True
+    return done(
+        EXIT_OK,
+        "installed",
+        f"Wrote {target}. Painter loads Meshy DCC the next time it starts; restart it if it is running.",
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    """Run the Painter lifecycle command."""
-    raw_arguments = list(sys.argv[1:] if argv is None else argv)
-    as_json = "--json" in raw_arguments
-    try:
-        args = _parser().parse_args(raw_arguments)
-    except _ArgumentFailure:
-        result = {
-            "schema_version": SCHEMA_VERSION,
-            "status": "failed",
-            "dcc_type": DCC_TYPE,
-            "adapter_version": __version__,
-            "core_version": str(meshy_dcc_core.__version__),
-            "steps": [{"id": "arguments", "status": "failed", "message": "Invalid lifecycle arguments."}],
-            "next_steps": [],
-            "receipt_path": None,
-            "verify": {
-                "directly_usable": False,
-                "failure_stage": "arguments",
-                "failure_reason": "Invalid lifecycle arguments.",
-            },
-        }
-        if as_json:
-            print(json.dumps(result, sort_keys=True))
-        else:
-            print("Painter lifecycle: invalid arguments", file=sys.stderr)
-        return INSTALL_EXIT_PREFLIGHT
-    outcome = run_lifecycle(
-        args.verb,
-        dcc_path=args.dcc_path,
-        python_path=args.python_path,
-        yes=args.yes,
-        dry_run=args.dry_run,
-    )
+    parser = argparse.ArgumentParser(prog=COMMAND, description=__doc__.splitlines()[0])
+    parser.add_argument("verb", choices=("install", "uninstall", "status"))
+    parser.add_argument("--yes", action="store_true", help="apply the change (default: report the plan)")
+    parser.add_argument("--json", action="store_true", dest="as_json")
+    args = parser.parse_args(argv)
+    code, result = run(args.verb, args.yes)
     if args.as_json:
-        print(json.dumps(outcome.result, sort_keys=True))
+        print(json.dumps(result, sort_keys=True))
     else:
-        print(f"Painter {args.verb}: {outcome.result['status']}")
-    return outcome.exit_code
+        print(result["message"], file=sys.stdout if code == EXIT_OK else sys.stderr)
+    return code
 
 
 if __name__ == "__main__":

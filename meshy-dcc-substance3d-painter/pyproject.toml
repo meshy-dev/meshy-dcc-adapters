@@ -45,7 +45,7 @@ packages = ["src/meshy_dcc_substance3d_painter"]
 artifacts = ["src/meshy_dcc_substance3d_painter/skills/**", "src/meshy_dcc_substance3d_painter/painter/**"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/meshy_dcc_substance3d_painter", "tests", "tools", "README.md", "install.md", "CHANGELOG.md", "LICENSE"]
+include = ["src/meshy_dcc_substance3d_painter", "tests", "tools", "packaging", "README.md", "CHANGELOG.md", "LICENSE", "NOTICE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

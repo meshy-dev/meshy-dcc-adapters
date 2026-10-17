@@ -49,12 +49,17 @@ class SubstancePainterMcpServer(DccServerBase):
             raise RuntimeError("Painter diagnostics skill could not be loaded")
 
     def _version_string(self) -> str:
-        try:
-            import substance_painter  # Lazy import: provided by Painter.
+        return painter_version()
 
-            return str(getattr(substance_painter, "version", "Substance 3D Painter"))
-        except Exception:
-            return "Substance 3D Painter"
+
+def painter_version() -> str:
+    """The running Painter's version, e.g. "11.0.2", or "unknown" outside Painter."""
+    try:
+        import substance_painter.application as application  # Lazy import: provided by Painter.
+
+        return str(application.version())
+    except Exception:
+        return "unknown"
 
 
 def start_server(host_dispatcher: object, port: Optional[int] = None) -> SubstancePainterMcpServer:

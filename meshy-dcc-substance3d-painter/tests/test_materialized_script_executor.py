@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from jsonschema import Draft202012Validator, ValidationError
 from meshy_dcc_core import materialize_script
 from meshy_dcc_core.cancellation import (
     CancelToken,
@@ -17,7 +18,6 @@ from meshy_dcc_core.cancellation import (
     set_cancel_token,
 )
 from meshy_dcc_core.script_materialization import SCRIPT_MATERIALIZATION_ROOT_ENV
-from jsonschema import Draft202012Validator, ValidationError
 from test_mesh_map_baking import McpClient, _job, _structured
 
 import meshy_dcc_substance3d_painter.materialized_script_executor as executor

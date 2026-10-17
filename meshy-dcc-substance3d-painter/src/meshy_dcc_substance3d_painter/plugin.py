@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from meshy_dcc_substance3d_painter._menu import add_menu, remove_menu
+from meshy_dcc_substance3d_painter._safe_stop import attach_safe_stop
 from meshy_dcc_substance3d_painter.dispatcher import PainterQtDispatcher
 from meshy_dcc_substance3d_painter.server import start_server, stop_server
 
@@ -17,7 +18,8 @@ def start_plugin() -> None:
     if _dispatcher is None:
         _dispatcher = PainterQtDispatcher()
         _dispatcher.install()
-    start_server(_dispatcher)
+    server = start_server(_dispatcher)
+    attach_safe_stop(server, _dispatcher)
     add_menu()
 
 
