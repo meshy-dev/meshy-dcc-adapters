@@ -307,7 +307,7 @@ def _platform_file_metadata(path: Path) -> dict[str, str]:
                 bundle_identity = re.sub(
                     r"[^a-z0-9]+",
                     " ",
-                    "%s %s %s" % (bundle_name, bundle_identifier, parent.parent.name).lower(),
+                    ("%s %s %s" % (bundle_name, bundle_identifier, parent.parent.name)).lower(),
                 )
                 if "maxon" not in bundle_identity or not any(
                     token in bundle_identity for token in ("cinema 4d", "cinema4d", "c4dpy")

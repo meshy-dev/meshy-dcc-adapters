@@ -254,6 +254,10 @@ def file_signature_matches(path: str, suffix: str) -> Tuple[bool, Optional[str]]
     return True, None
 
 
+# OBJ statements an exporter may write before the first vertex.
+_OBJ_PREAMBLE = {"mtllib", "o", "g", "s", "usemtl"}
+
+
 def _text_geometry_matches(path: str) -> Tuple[bool, Optional[str]]:
     try:
         with open(path, "r", encoding="utf-8", errors="replace") as stream:
@@ -261,9 +265,11 @@ def _text_geometry_matches(path: str) -> Tuple[bool, Optional[str]]:
                 stripped = line.strip()
                 if not stripped or stripped.startswith("#"):
                     continue
-                if stripped.split(" ", 1)[0].lower() in {"v", "vn", "vt", "f"}:
+                keyword = stripped.split(None, 1)[0].lower()
+                if keyword in {"v", "vn", "vt", "f"}:
                     return True, None
-                break
+                if keyword not in _OBJ_PREAMBLE:
+                    break
     except OSError as exc:
         return False, "the written file could not be re-read: %s" % exc
     return False, "the file contains no geometry keywords"

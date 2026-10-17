@@ -228,3 +228,31 @@ def test_doctor_surfaces_interpreter_drift_without_blocking_a_working_host(
     assert drift["observed"] == "3.9.7"
     assert result["verify"]["directly_usable"] is True
     assert result["_exit_code"] == 0
+
+
+def test_macos_bundle_metadata_names_the_release(tmp_path, monkeypatch) -> None:
+    """c4dpy.app's Info.plist gives the product version (this used to raise)."""
+    import plistlib
+
+    from meshy_dcc_c4d import install
+
+    bundle = tmp_path / "Maxon Cinema 4D 2026" / "c4dpy.app" / "Contents"
+    (bundle / "MacOS").mkdir(parents=True)
+    (bundle / "MacOS" / "c4dpy").write_bytes(b"binary")
+    (bundle / "Info.plist").write_bytes(
+        plistlib.dumps(
+            {
+                "CFBundleName": "c4dpy",
+                "CFBundleIdentifier": "net.maxon.c4dpy",
+                "CFBundleShortVersionString": "2026.1.0",
+                "CFBundleVersion": "2026.1.0",
+            }
+        )
+    )
+    monkeypatch.setattr(install.os, "name", "posix")
+    monkeypatch.setattr(install.sys, "platform", "darwin")
+
+    metadata = install._platform_file_metadata(bundle / "MacOS" / "c4dpy")
+
+    assert metadata["company"] == "Maxon"
+    assert metadata["product_version"] == "2026.1.0"

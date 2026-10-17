@@ -81,6 +81,8 @@ def test_transform_matches_reports_a_partial_transform_as_matching() -> None:
         (".dae", b"<html/>", False),
         (".obj", b"# comment\nv 0 0 0\nv 1 0 0\n", True),
         (".obj", b"# comment only\n", False),
+        (".obj", b"# Cinema 4D\nmtllib ./scene.mtl\n\no Cube\ng Cube\nv 0 0 0\n", True),
+        (".obj", b"mtllib ./scene.mtl\nnot geometry\nv 0 0 0\n", False),
         (".c4d", b"anything-at-all", True),  # opaque container: size only
     ],
 )
