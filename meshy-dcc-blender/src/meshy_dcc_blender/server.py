@@ -39,7 +39,7 @@ from . import (
     _semantic_index,
 )
 from .__version__ import __version__
-from .context_snapshot import BlenderContextSnapshotProvider
+from .context_snapshot import BlenderContextSnapshotProvider, collect_gateway_metadata
 from .host import BlenderInlineCallableDispatcher
 
 logger = logging.getLogger(__name__)
@@ -282,6 +282,8 @@ class BlenderMcpServer(DccServerBase):
         # surface was disabled by env var or the core call failed.
         self._project_tools: Optional[_project_tools.ProjectToolsIntegration] = None
         self._resources: Optional[_resources.BlenderResourceBinder] = None
+        # ``bpy.app.handlers`` wrappers that call :meth:`publish_scene`.
+        self._scene_handlers: List[Any] = []
 
         # ── Runtime readiness probe (three-state) ───────────────────────────
         self._readiness_timeout_secs: Optional[int] = _readiness.resolve_readiness_timeout_secs(None)
@@ -349,10 +351,32 @@ class BlenderMcpServer(DccServerBase):
             start_fn = getattr(self._blender_dispatcher, "start", None)
             if callable(start_fn):
                 start_fn()
+        if not self._scene_handlers:
+            self._scene_handlers = _resources._default_event_installer(self.publish_scene, ("load_post", "save_post"))
+        self.publish_scene()
         return self
+
+    def publish_scene(self) -> bool:
+        """Report the open .blend to the gateway registry: the scene the instance is listed with.
+
+        Runs at start and after every file open and save; an unsaved file clears it.
+        """
+        if not self.is_running:
+            return False
+        meta = collect_gateway_metadata(self._snapshot_provider_impl)
+        return bool(
+            self.update_gateway_metadata(
+                scene=meta["scene"] or "",
+                version=meta["version"],
+                documents=meta["documents"],
+                display_name=meta["display_name"],
+            )
+        )
 
     def stop(self) -> None:
         """Detach MCP resource handlers, stop the HTTP server and the dispatcher."""
+        _resources._default_event_remover(self._scene_handlers)
+        self._scene_handlers = []
         if self._resources is not None:
             try:
                 self._resources.unbind()

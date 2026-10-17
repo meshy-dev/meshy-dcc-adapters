@@ -100,10 +100,13 @@ def _default_event_installer(callback: Callable[[], None], handlers: tuple) -> L
 
     Returns the list of installed wrapper callables (for cleanup).  Best
     effort: unknown handler names are skipped, a missing ``bpy`` yields ``[]``.
+    The wrappers are persistent: Blender drops every other handler when it
+    loads a file, before ``load_post`` runs.
     """
     bpy = _bpy()
     if bpy is None:
         return []
+    persistent = getattr(bpy.app.handlers, "persistent", None)
     installed: List[Callable] = []
     for name in handlers:
         handler_list = getattr(bpy.app.handlers, name, None)
@@ -113,6 +116,8 @@ def _default_event_installer(callback: Callable[[], None], handlers: tuple) -> L
         def _wrapper(*_args: Any, _cb=callback) -> None:
             _cb()
 
+        if callable(persistent):
+            _wrapper = persistent(_wrapper)
         try:
             handler_list.append(_wrapper)
         except Exception as exc:  # noqa: BLE001
