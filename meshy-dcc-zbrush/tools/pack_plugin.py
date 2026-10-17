@@ -11,7 +11,7 @@ Usage::
 
 Output::
 
-    dist/plugin/dcc-mcp-zbrush-plugin-0.2.0.zip
+    dist/plugin/meshy-dcc-zbrush-plugin-0.2.0.zip
 """
 
 from __future__ import annotations
@@ -26,9 +26,9 @@ from pathlib import Path
 _SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = _SCRIPT_DIR.parent
 PLUGIN_ROOT = PROJECT_ROOT / "bridge" / "plugin"
-EMBEDDED_PLUGIN = PLUGIN_ROOT / "dcc_mcp_zbrush"
+EMBEDDED_PLUGIN = PLUGIN_ROOT / "meshy_dcc_zbrush"
 SIDECAR_PLUGIN = PLUGIN_ROOT / "mcp_socket_bridge.py"
-AUTOSTART_PLUGIN = PLUGIN_ROOT / "dcc_mcp_zbrush_plugin.py"
+AUTOSTART_PLUGIN = PLUGIN_ROOT / "meshy_dcc_zbrush_plugin.py"
 
 EXCLUDE_PARTS = {"__pycache__", ".git", ".DS_Store"}
 
@@ -39,7 +39,7 @@ def _read_version(project_root: Path) -> str:
         match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M)
         if match:
             return match.group(1)
-    version_file = project_root / "src" / "dcc_mcp_zbrush" / "__version__.py"
+    version_file = project_root / "src" / "meshy_dcc_zbrush" / "__version__.py"
     if version_file.exists():
         match = re.search(r'__version__\s*=\s*"([^"]+)"', version_file.read_text(encoding="utf-8"))
         if match:
@@ -50,7 +50,7 @@ def _read_version(project_root: Path) -> str:
 def _install_readme(version: str) -> str:
     return textwrap.dedent(
         f"""\
-        dcc-mcp-zbrush plugin {version}
+        meshy-dcc-zbrush plugin {version}
         ================================
 
         Requires ZBrush 2026.1+ and Python 3.10+ for the external sidecar.
@@ -58,7 +58,7 @@ def _install_readme(version: str) -> str:
         do not copy payload files over that file manually.
 
         Canonical instructions:
-        https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-zbrush/main/install.md
+        https://raw.githubusercontent.com/meshy-dev/meshy-dcc-zbrush/main/install.md
 
         Helper scripts in ``install/`` only delegate to the standard lifecycle
         command. They do not implement a second extraction path.
@@ -76,9 +76,9 @@ def _write_install_scripts(zf: zipfile.ZipFile, version: str) -> int:
           [string]$Python = "python"
         )
         $ErrorActionPreference = "Stop"
-        # dcc-mcp-zbrush install (standard receipt-driven lifecycle)
-        & $Python -m pip install "dcc-mcp-zbrush=={version}"
-        & dcc-mcp-zbrush install --mode $Mode --version "{version}" --dcc-path $DccPath --python $Python --asset-dir $Target --yes
+        # meshy-dcc-zbrush install (standard receipt-driven lifecycle)
+        & $Python -m pip install "meshy-dcc-zbrush=={version}"
+        & meshy-dcc-zbrush install --mode $Mode --version "{version}" --dcc-path $DccPath --python $Python --asset-dir $Target --yes
         """
     )
     macos = textwrap.dedent(
@@ -89,9 +89,9 @@ def _write_install_scripts(zf: zipfile.ZipFile, version: str) -> int:
         DCC_PATH="${{2:?Pass the ZBrush application path as argument 2}}"
         TARGET="${{3:?Pass the ZBrush Asset Directory as argument 3}}"
         PYTHON="${{PYTHON:-python3}}"
-        # dcc-mcp-zbrush install (standard receipt-driven lifecycle)
-        "$PYTHON" -m pip install "dcc-mcp-zbrush=={version}"
-        dcc-mcp-zbrush install --mode "$MODE" --version "{version}" --dcc-path "$DCC_PATH" --python "$PYTHON" --asset-dir "$TARGET" --yes
+        # meshy-dcc-zbrush install (standard receipt-driven lifecycle)
+        "$PYTHON" -m pip install "meshy-dcc-zbrush=={version}"
+        meshy-dcc-zbrush install --mode "$MODE" --version "{version}" --dcc-path "$DCC_PATH" --python "$PYTHON" --asset-dir "$TARGET" --yes
         """
     )
     zf.writestr("install/install-windows.ps1", windows)
@@ -114,7 +114,7 @@ def pack_plugin(output_dir: Path, version: str) -> Path:
         sys.exit(1)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"dcc-mcp-zbrush-plugin-{version}.zip"
+    output_path = output_dir / f"meshy-dcc-zbrush-plugin-{version}.zip"
     file_count = 0
 
     with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -126,11 +126,11 @@ def pack_plugin(output_dir: Path, version: str) -> Path:
                 continue
             if any(part in EXCLUDE_PARTS for part in file_path.parts):
                 continue
-            arcname = "embedded/dcc_mcp_zbrush/" + file_path.relative_to(EMBEDDED_PLUGIN).as_posix()
+            arcname = "embedded/meshy_dcc_zbrush/" + file_path.relative_to(EMBEDDED_PLUGIN).as_posix()
             zf.write(file_path, arcname)
             file_count += 1
 
-        zf.write(AUTOSTART_PLUGIN, "embedded/dcc_mcp_zbrush_plugin.py")
+        zf.write(AUTOSTART_PLUGIN, "embedded/meshy_dcc_zbrush_plugin.py")
         file_count += 1
 
         zf.write(SIDECAR_PLUGIN, "sidecar/mcp_socket_bridge.py")
@@ -143,7 +143,7 @@ def pack_plugin(output_dir: Path, version: str) -> Path:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Pack the dcc-mcp-zbrush ZBrush plugin ZIP.")
+    parser = argparse.ArgumentParser(description="Pack the meshy-dcc-zbrush ZBrush plugin ZIP.")
     parser.add_argument(
         "--output",
         type=Path,

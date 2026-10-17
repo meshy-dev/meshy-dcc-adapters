@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 import yaml
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_zbrush" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_zbrush" / "skills"
 _SKILL_DIRS = (
     "zbrush-scripting",
     "zbrush-scene",
@@ -35,7 +35,7 @@ def _load_script(skill_name: str, script_name: str) -> ModuleType:
 
 @pytest.mark.parametrize("skill_dir", _SKILL_DIRS)
 def test_validate_skill_clean(skill_dir: str) -> None:
-    from dcc_mcp_core import validate_skill
+    from meshy_dcc_core import validate_skill
 
     report = validate_skill(str(_SKILLS_ROOT / skill_dir))
     assert report.is_clean, report.issues
@@ -66,7 +66,7 @@ def test_skills_index_exists() -> None:
 
 
 def test_quiet_ui_actions_restore_feedback_and_normalize_subtool_paths() -> None:
-    from dcc_mcp_zbrush._skill_host import quiet_ui_actions, run_quiet_ui, subtool_name_from_path
+    from meshy_dcc_zbrush._skill_host import quiet_ui_actions, run_quiet_ui, subtool_name_from_path
 
     mock_zbc = MagicMock()
     with pytest.raises(RuntimeError, match="stop"):
@@ -87,14 +87,14 @@ def test_quiet_ui_actions_restore_feedback_and_normalize_subtool_paths() -> None
 
 
 def test_run_in_zbrush_can_return_a_domain_failure() -> None:
-    from dcc_mcp_zbrush._skill_host import run_in_zbrush
+    from meshy_dcc_zbrush._skill_host import run_in_zbrush
 
     failure = {"success": False, "error": "UVS_MISSING", "uv_bounds": [0.0, 0.0, 0.0, 0.0]}
     bridge = MagicMock()
     bridge.call.return_value = failure
     with (
-        patch("dcc_mcp_zbrush._version_probe.is_zbrush_available", return_value=False),
-        patch("dcc_mcp_zbrush.api.get_bridge", return_value=bridge),
+        patch("meshy_dcc_zbrush._version_probe.is_zbrush_available", return_value=False),
+        patch("meshy_dcc_zbrush.api.get_bridge", return_value=bridge),
     ):
         assert run_in_zbrush(lambda _zbc: {}, "bake", allow_domain_failure=True) == failure
         with pytest.raises(RuntimeError, match="UVS_MISSING"):
@@ -112,7 +112,7 @@ def test_pack_plugin_builds_zip(tmp_path) -> None:
 
     output = mod.pack_plugin(tmp_path, "0.2.0")
     assert output.is_file()
-    assert output.name == "dcc-mcp-zbrush-plugin-0.2.0.zip"
+    assert output.name == "meshy-dcc-zbrush-plugin-0.2.0.zip"
 
 
 class TestListSubtoolsSkill:
@@ -123,10 +123,10 @@ class TestListSubtoolsSkill:
         mock_zbc.get_subtool_status.side_effect = [0x01, 0x00]
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.list_subtools()
 
         assert result["success"] is True
@@ -139,7 +139,7 @@ def test_refine_active_subtool_uses_typed_zbrush_operations() -> None:
     mock_zbc.get_active_tool_path.return_value = "/ZBrush/signal_forge.ZTL"
 
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.refine_active_subtool(
@@ -173,7 +173,7 @@ def test_inspect_active_mesh_returns_machine_comparable_metrics() -> None:
     mock_zbc.get_active_tool_path.return_value = "/ZBrush/asset.ZTL"
 
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.inspect_active_mesh()
@@ -193,7 +193,7 @@ def test_remesh_active_subtool_duplicates_and_reports_face_counts() -> None:
     mock_zbc.get_active_tool_path.return_value = "/ZBrush/Fantasy Dragon remeshed"
 
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.remesh_active_subtool(target_face_count=50_000, duplicate=True)
@@ -216,7 +216,7 @@ def test_bake_active_subtool_map_reports_missing_uvs(tmp_path) -> None:
     mock_zbc.query_mesh3d.return_value = [0.0, 0.0, 0.0, 0.0]
 
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.bake_active_subtool_map(
@@ -255,7 +255,7 @@ def test_bake_active_subtool_map_uses_native_create_controls_and_restores_settin
     mock_zbc.press.side_effect = press
 
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.bake_active_subtool_map(
@@ -293,7 +293,7 @@ def test_create_wrinkle_brush_saves_non_empty_zbp_quietly(tmp_path) -> None:
 
     mock_zbc.press.side_effect = press
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.create_wrinkle_brush(output_path=str(output))
@@ -313,7 +313,7 @@ def test_load_wrinkle_brush_reapplies_global_draw_settings(tmp_path) -> None:
     mock_zbc.exists.return_value = True
     mock_zbc.get.side_effect = lambda path: mod._SETTINGS[path]
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.load_wrinkle_brush(brush_path=str(brush))
@@ -341,7 +341,7 @@ def test_capture_turntable_exports_frames_and_restores_transform(tmp_path) -> No
 
     mock_zbc.press.side_effect = press
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.capture_turntable(
@@ -367,7 +367,7 @@ def test_capture_turntable_rejects_capture_outside_edit_mode(tmp_path) -> None:
     mock_zbc.exists.return_value = True
     mock_zbc.get.return_value = 0
     with patch(
-        "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+        "meshy_dcc_zbrush._skill_host.run_in_zbrush",
         lambda embedded, *_a, **_k: embedded(mock_zbc),
     ):
         result = mod.capture_turntable(output_dir=str(tmp_path), angles=[0])

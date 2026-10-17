@@ -48,7 +48,7 @@ def test_zbrush_sdk_requests_are_serialized() -> None:
 
 
 def test_socket_client_timeout_exceeds_host_request_timeout() -> None:
-    from dcc_mcp_zbrush.bridge import DEFAULT_TIMEOUT_SEC
+    from meshy_dcc_zbrush.bridge import DEFAULT_TIMEOUT_SEC
 
     bridge = _load_bridge_plugin()
 
@@ -173,8 +173,8 @@ def test_bridge_bootstraps_when_loaded_by_zbrush(monkeypatch) -> None:
         "_start_bridge",
         lambda host, port: calls.append(("bridge", host, port)) or bridge_thread,
     )
-    monkeypatch.setenv("DCC_MCP_ZBRUSH_SOCKET_HOST", "127.0.0.1")
-    monkeypatch.setenv("DCC_MCP_ZBRUSH_SOCKET_PORT", "9910")
+    monkeypatch.setenv("MESHY_DCC_ZBRUSH_SOCKET_HOST", "127.0.0.1")
+    monkeypatch.setenv("MESHY_DCC_ZBRUSH_SOCKET_PORT", "9910")
 
     assert bridge.bootstrap_bridge() is bridge_thread
     assert calls == ["menu", ("bridge", "127.0.0.1", 9910)]
@@ -196,7 +196,7 @@ def test_bridge_bootstrap_continues_when_menu_registration_fails(monkeypatch) ->
 def test_bridge_bootstrap_failure_is_captured_for_lifecycle_verify(monkeypatch, tmp_path: Path) -> None:
     bridge = _load_bridge_plugin()
     error_log = tmp_path / "bootstrap-errors.jsonl"
-    monkeypatch.setenv("DCC_MCP_ZBRUSH_BOOTSTRAP_ERRORS", str(error_log))
+    monkeypatch.setenv("MESHY_DCC_ZBRUSH_BOOTSTRAP_ERRORS", str(error_log))
     monkeypatch.setattr(bridge, "_running_in_zbrush", lambda: True)
     monkeypatch.setattr(bridge, "_install_menu", lambda: True)
     monkeypatch.setattr(bridge, "_start_bridge", MagicMock(side_effect=RuntimeError("socket bind failed")))
@@ -220,11 +220,11 @@ def test_bridge_registers_official_palette_and_buttons() -> None:
     zbc.add_button.return_value = True
 
     assert bridge._install_menu(zbc) is True
-    zbc.add_palette.assert_called_once_with("DCC MCP", docking_bar=1)
+    zbc.add_palette.assert_called_once_with("Meshy DCC", docking_bar=1)
     assert [args.args[0] for args in zbc.add_button.call_args_list] == [
-        "DCC MCP:Copy Instance ID",
-        "DCC MCP:Server Info",
-        "DCC MCP:About DCC MCP",
+        "Meshy DCC:Copy Instance ID",
+        "Meshy DCC:Server Info",
+        "Meshy DCC:About Meshy DCC",
     ]
 
 
@@ -234,18 +234,18 @@ def test_bridge_menu_callbacks_accept_sender_and_dispatch_actions() -> None:
     zbc.exists.return_value = False
     zbc.add_palette.return_value = True
     zbc.add_button.return_value = True
-    bridge.dcc_mcp_copy_instance_id = MagicMock()
-    bridge.dcc_mcp_show_server_info = MagicMock()
-    bridge.dcc_mcp_show_about = MagicMock()
+    bridge.meshy_dcc_copy_instance_id = MagicMock()
+    bridge.meshy_dcc_show_server_info = MagicMock()
+    bridge.meshy_dcc_show_about = MagicMock()
 
     assert bridge._install_menu(zbc) is True
     callbacks = [args.args[2] for args in zbc.add_button.call_args_list]
     for callback in callbacks:
-        callback("DCC MCP:test")
+        callback("Meshy DCC:test")
 
-    bridge.dcc_mcp_copy_instance_id.assert_called_once_with()
-    bridge.dcc_mcp_show_server_info.assert_called_once_with()
-    bridge.dcc_mcp_show_about.assert_called_once_with()
+    bridge.meshy_dcc_copy_instance_id.assert_called_once_with()
+    bridge.meshy_dcc_show_server_info.assert_called_once_with()
+    bridge.meshy_dcc_show_about.assert_called_once_with()
 
 
 def test_bridge_qt_fallback_imports_pyside6_qtwidgets(monkeypatch) -> None:
@@ -272,11 +272,11 @@ def test_standalone_plugin_instance_id_fails_closed(monkeypatch) -> None:
     bridge = _load_bridge_plugin()
     show_message = MagicMock()
     monkeypatch.setattr(bridge, "_show_message", show_message)
-    monkeypatch.setenv("DCC_MCP_INSTANCE_ID", "must-not-be-used")
+    monkeypatch.setenv("MESHY_DCC_INSTANCE_ID", "must-not-be-used")
 
     bridge._fallback_copy_instance_id()
 
-    assert "dcc-mcp-cli list" in show_message.call_args.args[1]
+    assert "meshy-dcc list" in show_message.call_args.args[1]
 
 
 def test_bridge_dispatches_refine_active_subtool_on_host_thread() -> None:

@@ -1,4 +1,4 @@
-"""Basic tests for dcc-mcp-zbrush (no live ZBrush required)."""
+"""Basic tests for meshy-dcc-zbrush (no live ZBrush required)."""
 
 from __future__ import annotations
 
@@ -10,13 +10,13 @@ import pytest
 
 
 def test_import():
-    import dcc_mcp_zbrush
+    import meshy_dcc_zbrush
 
-    assert dcc_mcp_zbrush.__version__ == version("dcc-mcp-zbrush")
+    assert meshy_dcc_zbrush.__version__ == version("meshy-dcc-zbrush")
 
 
 def test_api_imports():
-    from dcc_mcp_zbrush import (
+    from meshy_dcc_zbrush import (
         SocketBridge,
         ZBrushMcpServer,
         is_zbrush_available,
@@ -32,13 +32,13 @@ def test_api_imports():
 
 
 def test_is_zbrush_available_false_outside_host():
-    from dcc_mcp_zbrush import is_zbrush_available
+    from meshy_dcc_zbrush import is_zbrush_available
 
     assert is_zbrush_available() is False
 
 
 def test_zb_success():
-    from dcc_mcp_zbrush import zb_success
+    from meshy_dcc_zbrush import zb_success
 
     result = zb_success("sculpt done", polygon_count=50000)
     assert result["success"] is True
@@ -46,14 +46,14 @@ def test_zb_success():
 
 
 def test_zb_error():
-    from dcc_mcp_zbrush import zb_error
+    from meshy_dcc_zbrush import zb_error
 
     result = zb_error("failed", error="ConnectionError")
     assert result["success"] is False
 
 
 def test_get_bridge_raises_when_disconnected():
-    from dcc_mcp_zbrush.api import ZBrushNotAvailableError, get_bridge, set_bridge
+    from meshy_dcc_zbrush.api import ZBrushNotAvailableError, get_bridge, set_bridge
 
     set_bridge(None)
     try:
@@ -64,7 +64,7 @@ def test_get_bridge_raises_when_disconnected():
 
 
 def test_get_bridge_reconnects_retained_sidecar():
-    from dcc_mcp_zbrush.api import get_bridge, set_bridge
+    from meshy_dcc_zbrush.api import get_bridge, set_bridge
 
     bridge = MagicMock()
     bridge.is_connected.return_value = False
@@ -78,24 +78,24 @@ def test_get_bridge_reconnects_retained_sidecar():
 
 
 def test_resolve_mode_defaults_to_sidecar_outside_zbrush():
-    from dcc_mcp_zbrush._env import resolve_mode
+    from meshy_dcc_zbrush._env import resolve_mode
 
     assert resolve_mode() == "sidecar"
 
 
 @pytest.mark.parametrize(("port", "expected"), [(None, 18765), (0, 0)])
 def test_server_dynamic_port_and_explicit_zero_override_env(monkeypatch, port, expected):
-    from dcc_mcp_zbrush import ZBrushMcpServer
+    from meshy_dcc_zbrush import ZBrushMcpServer
 
-    monkeypatch.setenv("DCC_MCP_ZBRUSH_PORT", "18765")
+    monkeypatch.setenv("MESHY_DCC_ZBRUSH_PORT", "18765")
     server = ZBrushMcpServer(port=port, mode="sidecar")
     assert server._config.port == expected
 
 
 def test_socket_bridge_ping(monkeypatch):
-    from dcc_mcp_zbrush.bridge import SocketBridge
+    from meshy_dcc_zbrush.bridge import SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
 
     def fake_send(data: bytes, timeout: float | None = None) -> bytes:
         payload = json.loads(data.decode("utf-8"))
@@ -108,9 +108,9 @@ def test_socket_bridge_ping(monkeypatch):
 
 
 def test_socket_bridge_transport_failure_clears_connection(monkeypatch):
-    from dcc_mcp_zbrush.bridge import SocketBridge
+    from meshy_dcc_zbrush.bridge import SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     bridge._connected = True
     monkeypatch.setattr(bridge, "_send", MagicMock(side_effect=ConnectionError("gone")))
 
@@ -121,10 +121,10 @@ def test_socket_bridge_transport_failure_clears_connection(monkeypatch):
 
 
 def test_bridge_busy_error_remains_retryable_at_tool_boundary(monkeypatch):
-    from dcc_mcp_zbrush import api
-    from dcc_mcp_zbrush.bridge import SocketBridge, ZBrushBridgeError
+    from meshy_dcc_zbrush import api
+    from meshy_dcc_zbrush.bridge import SocketBridge, ZBrushBridgeError
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     bridge._connected = True
     response = {
         "jsonrpc": "2.0",
@@ -161,21 +161,21 @@ def _ping_reply(busy: bool = False, active_method=None) -> bytes:
 
 
 def test_probe_reports_ready_when_zbrush_answers_idle(monkeypatch):
-    from dcc_mcp_zbrush.bridge import STATUS_READY, SocketBridge
+    from meshy_dcc_zbrush.bridge import STATUS_READY, SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     monkeypatch.setattr(bridge, "_send", lambda _data, **_kw: _ping_reply(busy=False))
 
     verdict = bridge.probe()
 
     assert verdict["status"] == STATUS_READY
-    assert verdict["endpoint"] == "127.0.0.1:9876"
+    assert verdict["endpoint"] == "127.0.0.1:19876"
 
 
 def test_probe_reports_busy_when_a_request_is_in_flight(monkeypatch):
-    from dcc_mcp_zbrush.bridge import STATUS_BUSY, SocketBridge
+    from meshy_dcc_zbrush.bridge import STATUS_BUSY, SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     monkeypatch.setattr(bridge, "_send", lambda _data, **_kw: _ping_reply(busy=True, active_method="execute_python"))
 
     verdict = bridge.probe()
@@ -185,9 +185,9 @@ def test_probe_reports_busy_when_a_request_is_in_flight(monkeypatch):
 
 
 def test_probe_reports_blocked_when_zbrush_stops_answering(monkeypatch):
-    from dcc_mcp_zbrush.bridge import STATUS_BLOCKED, SocketBridge
+    from meshy_dcc_zbrush.bridge import STATUS_BLOCKED, SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     monkeypatch.setattr(bridge, "_send", MagicMock(side_effect=TimeoutError("no reply")))
 
     verdict = bridge.probe()
@@ -198,9 +198,9 @@ def test_probe_reports_blocked_when_zbrush_stops_answering(monkeypatch):
 
 
 def test_probe_uses_the_short_timeout(monkeypatch):
-    from dcc_mcp_zbrush.bridge import PING_TIMEOUT_SEC, SocketBridge
+    from meshy_dcc_zbrush.bridge import PING_TIMEOUT_SEC, SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     seen = {}
 
     def fake_send(_data, timeout=None):
@@ -215,9 +215,9 @@ def test_probe_uses_the_short_timeout(monkeypatch):
 
 
 def test_normal_calls_keep_the_long_timeout(monkeypatch):
-    from dcc_mcp_zbrush.bridge import DEFAULT_TIMEOUT_SEC, SocketBridge
+    from meshy_dcc_zbrush.bridge import DEFAULT_TIMEOUT_SEC, SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     seen = {}
 
     def fake_send(_data, timeout=None):
@@ -233,9 +233,9 @@ def test_normal_calls_keep_the_long_timeout(monkeypatch):
 
 
 def test_connect_raises_blocked_instead_of_half_connecting(monkeypatch):
-    from dcc_mcp_zbrush.bridge import SocketBridge, ZBrushBlockedError
+    from meshy_dcc_zbrush.bridge import SocketBridge, ZBrushBlockedError
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     monkeypatch.setattr(bridge, "_send", MagicMock(side_effect=TimeoutError("no reply")))
 
     with pytest.raises(ZBrushBlockedError):
@@ -258,9 +258,9 @@ def _busy_response(active_method="execute_python"):
 
 def test_call_retries_busy_until_the_host_frees_up(monkeypatch):
     """A refused-but-servable call must be waited out, not surfaced as failure."""
-    from dcc_mcp_zbrush.bridge import SocketBridge
+    from meshy_dcc_zbrush.bridge import SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876, busy_backoff_sec=0)
+    bridge = SocketBridge(host="127.0.0.1", port=19876, busy_backoff_sec=0)
     replies = [
         _busy_response(),
         _busy_response(),
@@ -273,9 +273,9 @@ def test_call_retries_busy_until_the_host_frees_up(monkeypatch):
 
 
 def test_call_gives_up_after_the_configured_retries(monkeypatch):
-    from dcc_mcp_zbrush.bridge import SocketBridge, ZBrushBridgeError
+    from meshy_dcc_zbrush.bridge import SocketBridge, ZBrushBridgeError
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876, busy_retries=2, busy_backoff_sec=0)
+    bridge = SocketBridge(host="127.0.0.1", port=19876, busy_retries=2, busy_backoff_sec=0)
     attempts = []
     monkeypatch.setattr(
         bridge,
@@ -293,9 +293,9 @@ def test_call_gives_up_after_the_configured_retries(monkeypatch):
 
 def test_call_does_not_retry_blocked_or_non_retryable_errors(monkeypatch):
     """Only a servable busy host is waited out; everything else fails fast."""
-    from dcc_mcp_zbrush.bridge import SocketBridge, ZBrushBridgeError
+    from meshy_dcc_zbrush.bridge import SocketBridge, ZBrushBridgeError
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876, busy_retries=3, busy_backoff_sec=0)
+    bridge = SocketBridge(host="127.0.0.1", port=19876, busy_retries=3, busy_backoff_sec=0)
     attempts = []
     responses = [
         # -32001 but explicitly not retryable.
@@ -326,11 +326,11 @@ def test_call_does_not_retry_blocked_or_non_retryable_errors(monkeypatch):
 
 
 def test_busy_retry_backoff_grows_and_is_capped(monkeypatch):
-    from dcc_mcp_zbrush.bridge import SocketBridge
+    from meshy_dcc_zbrush.bridge import SocketBridge
 
     bridge = SocketBridge(
         host="127.0.0.1",
-        port=9876,
+        port=19876,
         busy_retries=4,
         busy_backoff_sec=0.1,
         busy_backoff_max_sec=0.3,
@@ -348,8 +348,8 @@ def test_busy_retry_backoff_grows_and_is_capped(monkeypatch):
 
 
 def test_blocked_error_maps_to_zbrush_blocked_at_tool_boundary():
-    from dcc_mcp_zbrush import api
-    from dcc_mcp_zbrush.bridge import ZBrushBlockedError
+    from meshy_dcc_zbrush import api
+    from meshy_dcc_zbrush.bridge import ZBrushBlockedError
 
     @api.with_zbrush
     def call_blocked(**_kwargs):
@@ -357,7 +357,7 @@ def test_blocked_error_maps_to_zbrush_blocked_at_tool_boundary():
         # with zb_error's message argument.
         raise ZBrushBlockedError(
             "stuck",
-            detail={"status": "blocked", "message": "verdict text", "endpoint": "127.0.0.1:9876"},
+            detail={"status": "blocked", "message": "verdict text", "endpoint": "127.0.0.1:19876"},
         )
 
     result = call_blocked()
@@ -372,9 +372,9 @@ def test_blocked_error_maps_to_zbrush_blocked_at_tool_boundary():
 
 def test_probe_reports_unreachable_when_nothing_listens(monkeypatch):
     """A missing plugin must not be diagnosed as a blocked main thread."""
-    from dcc_mcp_zbrush.bridge import STATUS_UNREACHABLE, SocketBridge
+    from meshy_dcc_zbrush.bridge import STATUS_UNREACHABLE, SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     monkeypatch.setattr(bridge, "_send", MagicMock(side_effect=ConnectionRefusedError("refused")))
 
     verdict = bridge.probe()
@@ -386,9 +386,9 @@ def test_probe_reports_unreachable_when_nothing_listens(monkeypatch):
 
 
 def test_connect_reports_unreachable_not_blocked(monkeypatch):
-    from dcc_mcp_zbrush.bridge import SocketBridge, ZBrushNotAvailableError
+    from meshy_dcc_zbrush.bridge import SocketBridge, ZBrushNotAvailableError
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     monkeypatch.setattr(bridge, "_send", MagicMock(side_effect=ConnectionRefusedError("refused")))
 
     with pytest.raises(ZBrushNotAvailableError):
@@ -399,9 +399,9 @@ def test_connect_reports_unreachable_not_blocked(monkeypatch):
 
 def test_probe_does_not_mutate_the_shared_timeout(monkeypatch):
     """Probes run concurrently with tool calls; the timeout must not leak."""
-    from dcc_mcp_zbrush.bridge import DEFAULT_TIMEOUT_SEC, PING_TIMEOUT_SEC, SocketBridge
+    from meshy_dcc_zbrush.bridge import DEFAULT_TIMEOUT_SEC, PING_TIMEOUT_SEC, SocketBridge
 
-    bridge = SocketBridge(host="127.0.0.1", port=9876)
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
     seen = {}
 
     def fake_send(_data, timeout=None):
@@ -423,7 +423,7 @@ def test_install_readiness_probe_leaves_core_default_intact():
     probe published, every bit except process/skill_catalog went false and
     readyz returned 503 even with a healthy host.
     """
-    from dcc_mcp_zbrush.server import ZBrushMcpServer
+    from meshy_dcc_zbrush.server import ZBrushMcpServer
 
     server = object.__new__(ZBrushMcpServer)
     server._bridge = MagicMock()
@@ -438,7 +438,7 @@ def test_readyz_reports_healthy_sidecar():
     import urllib.error
     import urllib.request
 
-    from dcc_mcp_zbrush import ZBrushMcpServer
+    from meshy_dcc_zbrush import ZBrushMcpServer
 
     server = ZBrushMcpServer(port=0, mode="sidecar", socket_port=19959, gateway_port=0)
     server.register_builtin_actions()
@@ -459,18 +459,18 @@ def test_readyz_reports_healthy_sidecar():
 
 
 def test_sidecar_retains_bridge_when_initial_connect_fails():
-    from dcc_mcp_zbrush.server import ZBrushMcpServer
+    from meshy_dcc_zbrush.server import ZBrushMcpServer
 
     server = object.__new__(ZBrushMcpServer)
     server._mode = "sidecar"
     server._socket_host = "127.0.0.1"
-    server._socket_port = 9876
+    server._socket_port = 19876
     bridge = MagicMock()
     bridge.connect.side_effect = ConnectionError("not started yet")
 
     with (
-        patch("dcc_mcp_zbrush.bridge.SocketBridge", return_value=bridge),
-        patch("dcc_mcp_zbrush.api.set_bridge") as set_bridge,
+        patch("meshy_dcc_zbrush.bridge.SocketBridge", return_value=bridge),
+        patch("meshy_dcc_zbrush.api.set_bridge") as set_bridge,
     ):
         server._init_sidecar_bridge()
 
@@ -478,7 +478,7 @@ def test_sidecar_retains_bridge_when_initial_connect_fails():
 
 
 def test_minimal_mode_config():
-    from dcc_mcp_zbrush._skill_loader import MINIMAL_SKILLS, build_minimal_mode_config
+    from meshy_dcc_zbrush._skill_loader import MINIMAL_SKILLS, build_minimal_mode_config
 
     cfg = build_minimal_mode_config()
     assert tuple(cfg.skills) == MINIMAL_SKILLS
@@ -486,7 +486,7 @@ def test_minimal_mode_config():
 
 
 def test_sidecar_executor_runs_skill_scripts_in_server_process():
-    from dcc_mcp_zbrush._executor import attach_inprocess_executor
+    from meshy_dcc_zbrush._executor import attach_inprocess_executor
 
     server = MagicMock()
 
@@ -496,11 +496,11 @@ def test_sidecar_executor_runs_skill_scripts_in_server_process():
     server.register_inprocess_executor.assert_called_once_with()
 
 
-@patch("dcc_mcp_zbrush.server.ZBrushMcpServer.start")
-@patch("dcc_mcp_zbrush.server.ZBrushMcpServer.register_builtin_actions")
+@patch("meshy_dcc_zbrush.server.ZBrushMcpServer.start")
+@patch("meshy_dcc_zbrush.server.ZBrushMcpServer.register_builtin_actions")
 def test_start_server_singleton(mock_register, mock_start):
-    import dcc_mcp_zbrush.server as server_mod
-    from dcc_mcp_zbrush import start_server, stop_server
+    import meshy_dcc_zbrush.server as server_mod
+    from meshy_dcc_zbrush import start_server, stop_server
 
     server_mod._server_instance = None
     mock_start.return_value = MagicMock(mode="sidecar", mcp_url="http://127.0.0.1:8765/mcp")

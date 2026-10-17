@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, call, patch
 
 import yaml
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_zbrush" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_zbrush" / "skills"
 _SKILL_DIR = "zbrush-import-to-scene"
 
 
@@ -25,7 +25,7 @@ def _load_script(script_name: str) -> ModuleType:
 
 
 def test_validate_skill_clean() -> None:
-    from dcc_mcp_core import validate_skill
+    from meshy_dcc_core import validate_skill
 
     report = validate_skill(str(_SKILLS_ROOT / _SKILL_DIR))
     assert report.is_clean, report.issues
@@ -75,10 +75,10 @@ class TestImportToSceneSkill:
         mod = _load_script("import_to_scene.py")
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.import_to_scene(
                     asset_id="arch/desk",
                     variants=[{"local_path": str(asset_file), "format": "obj"}],
@@ -108,7 +108,7 @@ class TestImportToSceneSkill:
         mod = _load_script("import_to_scene.py")
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
             result = mod.import_to_scene(
@@ -129,7 +129,7 @@ class TestImportToSceneSkill:
         mod = _load_script("import_to_scene.py")
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
             result = mod.import_to_scene(
@@ -149,8 +149,8 @@ class TestImportToSceneSkill:
         mod = _load_script("import_to_scene.py")
         run_in_zbrush = MagicMock()
 
-        with patch("dcc_mcp_zbrush._skill_host.run_in_zbrush", run_in_zbrush):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+        with patch("meshy_dcc_zbrush._skill_host.run_in_zbrush", run_in_zbrush):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.import_to_scene(
                     asset_id="arch/chair",
                     variants=[{"local_path": str(asset_file), "format": "obj"}],
@@ -165,10 +165,10 @@ class TestImportToSceneSkill:
         mock_zbc = self._make_mock_zbc()
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.import_to_scene(
                     asset_id="arch/missing",
                     variants=[{"local_path": "/nonexistent/path/asset.obj", "format": "obj"}],
@@ -180,7 +180,7 @@ class TestImportToSceneSkill:
     def test_empty_variants_returns_error(self) -> None:
         mod = _load_script("import_to_scene.py")
 
-        with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+        with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
             result = mod.import_to_scene(
                 asset_id="arch/empty",
                 variants=[],
@@ -204,8 +204,8 @@ class TestImportToSceneSkill:
             captured.append(r)
             return r
 
-        with patch("dcc_mcp_zbrush._skill_host.run_in_zbrush", fake_run):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+        with patch("meshy_dcc_zbrush._skill_host.run_in_zbrush", fake_run):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.import_to_scene(
                     asset_id="arch/highres",
                     variants=[
@@ -231,10 +231,10 @@ class TestImportToSceneSkill:
         mod = _load_script("import_to_scene.py")
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.import_to_scene(
                     asset_id="arch/pentagon",
                     variants=[{"local_path": str(asset_file), "format": "obj"}],
@@ -261,10 +261,10 @@ class TestImportToSceneSkill:
         mod = _load_script("import_to_scene.py")
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.import_to_scene(
                     asset_id="arch/quad",
                     variants=[{"local_path": str(asset_file), "format": "obj"}],
@@ -281,10 +281,10 @@ class TestImportToSceneSkill:
         mod = _load_script("import_to_scene.py")
 
         with patch(
-            "dcc_mcp_zbrush._skill_host.run_in_zbrush",
+            "meshy_dcc_zbrush._skill_host.run_in_zbrush",
             lambda embedded, *_a, **_k: embedded(mock_zbc),
         ):
-            with patch("dcc_mcp_zbrush.api.with_zbrush", lambda f: f):
+            with patch("meshy_dcc_zbrush.api.with_zbrush", lambda f: f):
                 result = mod.import_to_scene(
                     asset_id="arch/scene",
                     variants=[{"local_path": str(asset_file), "format": "usd"}],

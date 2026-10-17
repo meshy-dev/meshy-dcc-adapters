@@ -1,77 +1,77 @@
-# dcc-mcp-zbrush
+# meshy-dcc-zbrush
 
 <p align="center">
-  <img src="docs/assets/dcc-mcp-zbrush.svg" alt="DCC-MCP · ZBRUSH" width="600">
+  <img src="docs/assets/meshy-dcc-zbrush.svg" alt="Meshy DCC · ZBRUSH" width="600">
 </p>
 
-<!-- dcc-mcp-coverage-pointer:start -->
-<!-- Generated from dcc-mcp-catalog.yml by scripts/generate_adapter_pointer.py in dcc-mcp/dcc-mcp-core. Do not edit by hand. -->
-## Part of the DCC-MCP host matrix
+<!-- meshy-dcc-coverage-pointer:start -->
+<!-- Generated from meshy-dcc-catalog.yml by scripts/generate_adapter_pointer.py in meshy-dcc/meshy-dcc-core. Do not edit by hand. -->
+## Part of the Meshy DCC host matrix
 
-**dcc-mcp-zbrush** — ZBrush adapter for DCC-MCP.
+**meshy-dcc-zbrush** — ZBrush adapter for Meshy DCC.
 
-It is one of **47 host adapters** in the DCC-MCP catalog. Every adapter speaks the same
+It is one of **47 host adapters** in the Meshy DCC catalog. Every adapter speaks the same
 MCP protocol and builds on the same core runtime contract; each one exposes the tools
 its own host needs on top of that.
 
-- [All host adapters and install metadata](https://dcc-mcp.github.io/ecosystem)
-- [Host matrix on the core README](https://github.com/dcc-mcp/dcc-mcp-core#readme)
-- [Showcase](https://dcc-mcp.github.io/showcase)
+- [All host adapters and install metadata](https://www.meshy.ai/meshy-dcc/ecosystem)
+- [Host matrix on the core README](https://github.com/meshy-dev/meshy-dcc-core#readme)
+- [Showcase](https://www.meshy.ai/meshy-dcc/showcase)
 
 This block is generated from the catalog entry in
-[`dcc-mcp-catalog.yml`](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/dcc-mcp-catalog.yml).
+[`meshy-dcc-catalog.yml`](https://github.com/meshy-dev/meshy-dcc-core/blob/main/meshy-dcc-catalog.yml).
 Re-run the generator after changing the catalog.
-<!-- dcc-mcp-coverage-pointer:end -->
+<!-- meshy-dcc-coverage-pointer:end -->
 
 ## Agent workflow
 
-AI agents should use the shared gateway through `dcc-mcp-cli`; IDE users may
+AI agents should use the shared gateway through `meshy-dcc`; IDE users may
 continue to use the MCP endpoint. Prefer typed skills and tools over raw scripts.
 
 ### Install or update the CLI
 
-`dcc-mcp-cli` is the preferred control path for every shell-capable agent. If
+`meshy-dcc` is the preferred control path for every shell-capable agent. If
 it is missing, ask the user before installing the latest official release:
 
 ```bash
 # Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.sh | sh
+curl -fsSL https://raw.githubusercontent.com/meshy-dev/meshy-dcc-core/main/scripts/install-cli.sh | sh
 
 # Windows PowerShell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/meshy-dev/meshy-dcc-core/main/scripts/install-cli.ps1 | iex"
 ```
 
 Keep an official build current through the release manifest:
 
 ```bash
-dcc-mcp-cli update check
-dcc-mcp-cli update apply
+meshy-dcc update check
+meshy-dcc update apply
 ```
 
 `update apply` downloads and stages the latest CLI for the next launch. It
-does not update a running `dcc-mcp-server`; update that server in its own
+does not update a running `meshy-dcc-server`; update that server in its own
 environment.
 
 ```bash
-dcc-mcp-cli dcc-types
-dcc-mcp-cli list
-dcc-mcp-cli search --query "<task>" --dcc-type zbrush
-dcc-mcp-cli describe <tool-slug>
-dcc-mcp-cli call <tool-slug> --json '{"key":"value"}'
+meshy-dcc dcc-types
+meshy-dcc list
+meshy-dcc search --query "<task>" --dcc-type zbrush
+meshy-dcc describe <tool-slug>
+meshy-dcc call <tool-slug> --json '{"key":"value"}'
 ```
 
 `dcc-types` reports release-catalog support; `list` reports live sessions. If a
-tool belongs to an inactive progressive skill, call `dcc-mcp-cli load-skill <skill-name> --dcc-type zbrush` before retrying. For post-task improvement,
-attach a stable session id with `--meta-json`, query `dcc-mcp-cli stats --range 24h --session-id <task-id>`, then pass the bounded evidence to the
-`review_skill_improvement` prompt from `dcc-mcp-skills-creator`.
+tool belongs to an inactive progressive skill, call `meshy-dcc load-skill <skill-name> --dcc-type zbrush` before retrying. For post-task improvement,
+attach a stable session id with `--meta-json`, query `meshy-dcc stats --range 24h --session-id <task-id>`, then pass the bounded evidence to the
+`review_skill_improvement` prompt from `meshy-dcc-skills-creator`.
 
 
-[![PyPI](https://img.shields.io/pypi/v/dcc-mcp-zbrush)](https://pypi.org/project/dcc-mcp-zbrush/)
+[![PyPI](https://img.shields.io/pypi/v/meshy-dcc-zbrush)](https://pypi.org/project/meshy-dcc-zbrush/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status: Pre-Alpha](https://img.shields.io/badge/status-pre--alpha-orange)](https://github.com/dcc-mcp/dcc-mcp-zbrush)
+[![Status: Pre-Alpha](https://img.shields.io/badge/status-pre--alpha-orange)](https://github.com/meshy-dev/meshy-dcc-zbrush)
 
-ZBrush adapter for the [DCC Model Context Protocol](https://github.com/dcc-mcp/dcc-mcp-core) ecosystem.
+ZBrush adapter for the [DCC Model Context Protocol](https://github.com/meshy-dev/meshy-dcc-core) ecosystem.
 
 > **Requires ZBrush 2026.1+** with the official [Python SDK](https://developers.maxon.net/docs/zbrush/py/2026_1_0/index.html) (CPython 3.11 embedded in ZBrush).
 
@@ -79,14 +79,14 @@ ZBrush adapter for the [DCC Model Context Protocol](https://github.com/dcc-mcp/d
 
 ![Typed ZBrush workflow validating a five-million-face Fantasy Dragon before OBJ export](docs/images/zbrush-fantasy-dragon-showcase.png)
 
-Real ZBrush 2026 evidence from a typed, quiet high-poly workflow: **2,499,970 points / 5,000,000 faces**, inspected and exported as the active Dragon subtool. Fantasy Dragon model by [Artec 3D](https://www.artec3d.com/3d-models/fantasy-dragon), used under CC BY 4.0; the source model is not included in this repository. See the [full workflow and copyable prompt](https://dcc-mcp.github.io/showcase#zbrush-fantasy-dragon).
+Real ZBrush 2026 evidence from a typed, quiet high-poly workflow: **2,499,970 points / 5,000,000 faces**, inspected and exported as the active Dragon subtool. Fantasy Dragon model by [Artec 3D](https://www.artec3d.com/3d-models/fantasy-dragon), used under CC BY 4.0; the source model is not included in this repository. See the [full workflow and copyable prompt](https://www.meshy.ai/meshy-dcc/showcase#zbrush-fantasy-dragon).
 
 ## Quick install
 
 ### 1. Install a fixed wheel version
 
 ```bash
-python -m pip install "dcc-mcp-zbrush==<version>"
+python -m pip install "meshy-dcc-zbrush==<version>"
 ```
 
 The wheel includes the lifecycle CLI and the sidecar bridge payload.
@@ -97,8 +97,8 @@ Set `ZBRUSH_USER_ASSETS_DIR`, then run the standard lifecycle. The installer
 requires an explicit ZBrush path so it can prove the 2026.1+ host floor.
 
 ```bash
-dcc-mcp-zbrush install --version <version> --dcc-path "<ZBrush path>" --python python --dry-run --json
-dcc-mcp-zbrush install --version <version> --dcc-path "<ZBrush path>" --python python --yes --json
+meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush path>" --python python --dry-run --json
+meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush path>" --python python --yes --json
 ```
 
 The fixed release payload is SHA-256 verified before caching. Sidecar mode
@@ -109,27 +109,27 @@ candidate and returns exit `50`; the candidate is committed only after the
 exact ZBrush process, start identity, endpoint, version, and loaded module
 origins pass `verify`.
 
-See the [canonical lifecycle SOP](install.md) ([raw URL](https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-zbrush/main/install.md)).
+See the [canonical lifecycle SOP](install.md) ([raw URL](https://raw.githubusercontent.com/meshy-dev/meshy-dcc-zbrush/main/install.md)).
 
 ### 3. Restart ZBrush
 
 Launch or restart ZBrush, then start the external MCP sidecar:
 
 ```bash
-dcc-mcp-zbrush --mode sidecar --socket-port 9876
+meshy-dcc-zbrush --mode sidecar --socket-port 19876
 ```
 
-The plugin registers a top-level **DCC MCP** palette through the official
+The plugin registers a top-level **Meshy DCC** palette through the official
 ZBrush Python SDK with these actions:
 
 - **Copy Instance ID**
 - **Server Info**
-- **About DCC MCP**
+- **About Meshy DCC**
 
 Instance identity belongs to the MCP server. In embedded mode the first two
 actions read the public `DccServerBase` runtime context. The standalone
 sidecar plugin does not guess identity from environment variables or registry
-files; it directs you to `dcc-mcp-cli list` when that external context is not
+files; it directs you to `meshy-dcc list` when that external context is not
 available in the ZBrush process.
 
 ### 4. Verify host readiness
@@ -137,8 +137,8 @@ available in the ZBrush process.
 Verify the dynamically allocated instance URL:
 
 ```bash
-dcc-mcp-zbrush verify --version <version> --dcc-path "<ZBrush path>" --python python --json
-dcc-mcp-cli list
+meshy-dcc-zbrush verify --version <version> --dcc-path "<ZBrush path>" --python python --json
+meshy-dcc list
 ```
 
 ### 5. Configure your AI client
@@ -149,7 +149,7 @@ Add the MCP server to your AI client config (Cursor, Claude Desktop, etc.):
 {
   "mcpServers": {
     "zbrush": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -165,10 +165,10 @@ The supported integration paths are:
 
 | Mode | When to use | Stack |
 |------|-------------|-------|
-| **Sidecar + socket plugin** (recommended) | Production GUI and CI clients | External Python → TCP :9876 → main-thread bridge inside ZBrush |
+| **Sidecar + socket plugin** (recommended) | Production GUI and CI clients | External Python → TCP :19876 → main-thread bridge inside ZBrush |
 | **Embedded** (advanced) | Pure-Python experiments only | Python plugin inside ZBrush → `zbrush.commands` |
 
-Rust is **not** loaded inside ZBrush. The **`dcc-mcp-core` wheel** (PyO3) runs
+Rust is **not** loaded inside ZBrush. The **`meshy-dcc-core` wheel** (PyO3) runs
 in the external sidecar process; importing its extension module into the ZBrush
 2026 embedded VM is not a supported runtime path. The ZBrush-facing bridge is
 Python only and executes requests serially on the host main thread while
@@ -187,8 +187,8 @@ GoZ C++ SDK is for **mesh exchange between DCC apps**, not general MCP automatio
 ```
 Recommended sidecar mode:
 
-AI Agent → Gateway :9765 → OS-assigned MCP instance → ZBrushMcpServer
-         → TCP :9876 → mcp_socket_bridge.py (inside ZBrush) → zbrush.commands
+AI Agent → Gateway :19765 → OS-assigned MCP instance → ZBrushMcpServer
+         → TCP :19876 → mcp_socket_bridge.py (inside ZBrush) → zbrush.commands
 ```
 
 ## Features (v0.2.0)
@@ -197,25 +197,25 @@ AI Agent → Gateway :9765 → OS-assigned MCP instance → ZBrushMcpServer
 - Bundled skills: `zbrush-scripting`, `zbrush-scene`, `zbrush-subtool`, `zbrush-brush`, `zbrush-viewport`, `zbrush-interchange`, `zbrush-import-to-scene`
 - In-process executor for ZBrush's embedded Python VM
 - Optional socket bridge plugin for sidecar deployments
-- Top-level DCC MCP palette registered through `zbrush.commands`
-- Gateway election compatible with `dcc-mcp-core`
+- Top-level Meshy DCC palette registered through `zbrush.commands`
+- Gateway election compatible with `meshy-dcc-core`
 
 ## Requirements
 
 - ZBrush **2026.1+**
 - Python **3.10+** on the sidecar host (ZBrush itself ships 3.11)
-- `dcc-mcp-core >= 0.20.14, < 0.21.0`
+- `meshy-dcc-core >= 0.2.0, < 0.3.0`
 
 ## Environment variables
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `DCC_MCP_ZBRUSH_PORT` | OS-assigned | Optional fixed MCP instance port |
-| `DCC_MCP_ZBRUSH_MODE` | auto | `embedded` or `sidecar` |
-| `DCC_MCP_ZBRUSH_AUTOSTART` | `1` | Auto-start embedded server from plugin |
-| `DCC_MCP_ZBRUSH_SOCKET_PORT` | `9876` | Socket bridge port (sidecar) |
-| `DCC_MCP_GATEWAY_PORT` | `9765` | Gateway election port |
-| `DCC_MCP_MINIMAL` | `1` | Progressive skill loading |
+| `MESHY_DCC_ZBRUSH_PORT` | OS-assigned | Optional fixed MCP instance port |
+| `MESHY_DCC_ZBRUSH_MODE` | auto | `embedded` or `sidecar` |
+| `MESHY_DCC_ZBRUSH_AUTOSTART` | `1` | Auto-start embedded server from plugin |
+| `MESHY_DCC_ZBRUSH_SOCKET_PORT` | `19876` | Socket bridge port (sidecar) |
+| `MESHY_DCC_GATEWAY_PORT` | `19765` | Gateway election port |
+| `MESHY_DCC_MINIMAL` | `1` | Progressive skill loading |
 
 ## Bundled skills
 
@@ -233,7 +233,7 @@ AI Agent → Gateway :9765 → OS-assigned MCP instance → ZBrushMcpServer
 - **PYTHONPATH** — where Python looks for packages (`pip install` handles this)
 - **ZBRUSH_USER_ASSETS_DIR** / **ZBRUSH_PLUGIN_PATH** — plugin scan roots used by ZBrush 2026.1+
 
-`pip install dcc-mcp-zbrush` puts the Python package on `PYTHONPATH`. The
+`pip install meshy-dcc-zbrush` puts the Python package on `PYTHONPATH`. The
 lifecycle CLI installs host files transactionally; do not copy a bridge over
 the shared `Python/init.py` manually.
 
@@ -242,8 +242,8 @@ the shared `Python/init.py` manually.
 Skills lazy-import `zbrush.commands` and run on the main thread (`affinity: main`).
 
 ```python
-from dcc_mcp_core.skill import skill_entry
-from dcc_mcp_zbrush.api import import_zbc, with_zbrush, zb_success
+from meshy_dcc_core.skill import skill_entry
+from meshy_dcc_zbrush.api import import_zbc, with_zbrush, zb_success
 
 
 @skill_entry
@@ -263,7 +263,7 @@ The sidecar can also start first: it retains the bridge endpoint and retries
 the connection on the first tool call after ZBrush becomes available.
 
 ```bash
-dcc-mcp-zbrush --mode sidecar --socket-port 9876
+meshy-dcc-zbrush --mode sidecar --socket-port 19876
 ```
 
 ## Development

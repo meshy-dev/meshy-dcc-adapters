@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-command bootstrap installer for dcc-mcp-zbrush.
+"""One-command bootstrap installer for meshy-dcc-zbrush.
 
 Turns "user says one sentence to Agent" into a deterministic, limited-step
 invocation — no path guessing, no directory spelunking.
@@ -23,7 +23,7 @@ Usage::
 
 Steps (each skippable via --skip-*)::
 
-    1. pip install dcc-mcp-zbrush==<version>
+    1. pip install meshy-dcc-zbrush==<version>
     2. Download plugin ZIP from GitHub Releases + SHA256 verify
     3. Install at the ZBrush Python plugin scan root (mode-aware)
     4. Write MCP config (Cursor / Claude Desktop)
@@ -51,11 +51,11 @@ from typing import Optional, Tuple
 # Constants
 # ---------------------------------------------------------------------------
 
-GITHUB_REPO = "dcc-mcp/dcc-mcp-zbrush"
+GITHUB_REPO = "meshy-dcc/meshy-dcc-zbrush"
 GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
 RELEASES_URL = f"{GITHUB_API}/releases"
 MCP_PORT = 0
-GATEWAY_PORT = 9765
+GATEWAY_PORT = 19765
 
 MCP_CONFIG_TEMPLATE = {
     "mcpServers": {
@@ -191,8 +191,8 @@ def _parse_version(version_str: str) -> Tuple[int, ...]:
 
 
 def install_wheel(version: str, dry_run: bool = False) -> None:
-    """``pip install dcc-mcp-zbrush==<version>``."""
-    pkg = f"dcc-mcp-zbrush=={version}"
+    """``pip install meshy-dcc-zbrush==<version>``."""
+    pkg = f"meshy-dcc-zbrush=={version}"
     cmd = [sys.executable, "-m", "pip", "install", pkg]
     if dry_run:
         print(f"[DRY RUN] Would run: {' '.join(cmd)}")
@@ -223,7 +223,7 @@ def download_plugin_zip(version: str, output_dir: Path, dry_run: bool = False) -
     """
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:[A-Za-z0-9.-]+)?", version):
         raise ValueError("A fixed release version is required")
-    zip_name = f"dcc-mcp-zbrush-plugin-{version}.zip"
+    zip_name = f"meshy-dcc-zbrush-plugin-{version}.zip"
     zip_path = output_dir / zip_name
 
     # Fetch release info
@@ -231,7 +231,7 @@ def download_plugin_zip(version: str, output_dir: Path, dry_run: bool = False) -
     url = f"{RELEASES_URL}/tags/{tag}"
     req = urllib.request.Request(url)
     req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("User-Agent", "dcc-mcp-zbrush-bootstrap/1.0")
+    req.add_header("User-Agent", "meshy-dcc-zbrush-bootstrap/1.0")
 
     if dry_run:
         print(f"[DRY RUN] Would download {GITHUB_REPO} release {tag}")
@@ -328,7 +328,7 @@ def extract_plugin(
     if mode == "sidecar":
         raise RuntimeError(
             "Direct sidecar extraction is disabled because Python/init.py is shared; "
-            "use `dcc-mcp-zbrush install` for receipt-backed installation"
+            "use `meshy-dcc-zbrush install` for receipt-backed installation"
         )
 
     print(f"[3/5] Extracting {zip_path.name} → {plugin_dir} (mode={mode}) ...")
@@ -441,7 +441,7 @@ def print_health_check(mode: str, plugin_dir: Path) -> None:
     print(
         textwrap.dedent(f"""\
         ┌─────────────────────────────────────────────────────────────┐
-        │  ✓ dcc-mcp-zbrush bootstrap complete ({mode} mode)           │
+        │  ✓ meshy-dcc-zbrush bootstrap complete ({mode} mode)           │
         └─────────────────────────────────────────────────────────────┘
     """)
     )
@@ -452,7 +452,7 @@ def print_health_check(mode: str, plugin_dir: Path) -> None:
         print("     Plugin location:", plugin_dir)
         print()
         print("  2. Discover the running instance:")
-        print("     dcc-mcp-cli list")
+        print("     meshy-dcc list")
         print()
         print("  3. Expected response: MCP endpoint info or SSE stream.")
     else:
@@ -462,10 +462,10 @@ def print_health_check(mode: str, plugin_dir: Path) -> None:
         print("  2. Start ZBrush (the socket bridge auto-starts and listens).")
         print()
         print("  3. Start the sidecar MCP server:")
-        print("     dcc-mcp-zbrush --mode sidecar")
+        print("     meshy-dcc-zbrush --mode sidecar")
         print()
         print("  4. Discover the running instance:")
-        print("     dcc-mcp-cli list")
+        print("     meshy-dcc list")
         print()
         print("  Both modes support the same skills and tools.")
 
@@ -473,7 +473,7 @@ def print_health_check(mode: str, plugin_dir: Path) -> None:
     print("  Troubleshooting:")
     print("  - Connection refused → ZBrush not running or port blocked")
     print("  - Plugin not loading → check the ZBrush Asset Directory/plugin scan root above")
-    print("  - Fixed-port conflict → unset DCC_MCP_ZBRUSH_PORT or choose another value")
+    print("  - Fixed-port conflict → unset MESHY_DCC_ZBRUSH_PORT or choose another value")
     print()
 
 
@@ -484,7 +484,7 @@ def print_health_check(mode: str, plugin_dir: Path) -> None:
 
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
-        description="One-command bootstrap installer for dcc-mcp-zbrush.",
+        description="One-command bootstrap installer for meshy-dcc-zbrush.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
             Examples:
@@ -559,7 +559,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("✗ Review --dry-run first, then pass --yes", file=sys.stderr)
         return 10
 
-    print("dcc-mcp-zbrush bootstrap installer")
+    print("meshy-dcc-zbrush bootstrap installer")
     print(f"  Mode:     {args.mode}")
     print(f"  Version:  {version}")
     print(f"  Target:   {args.mcp_target}")
@@ -577,7 +577,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     # Step 2-3: fixed release resolution, verification, and receipt-backed install
     if not args.skip_plugin:
-        from dcc_mcp_zbrush.cli import main as lifecycle_main
+        from meshy_dcc_zbrush.cli import main as lifecycle_main
 
         lifecycle_args = [
             "install",

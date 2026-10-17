@@ -2,9 +2,9 @@
 
 ## Requirements
 
-This is the canonical install SOP for `dcc-mcp-zbrush`. ZBrush 2026.1 or
+This is the canonical install SOP for `meshy-dcc-zbrush`. ZBrush 2026.1 or
 newer is required. The external sidecar requires Python 3.10 or newer and
-`dcc-mcp-core >= 0.20.14, < 0.21.0`.
+`meshy-dcc-core >= 0.2.0, < 0.3.0`.
 
 ## Supported versions
 
@@ -17,7 +17,7 @@ host.
 Use a fixed release version. The lifecycle intentionally rejects `latest`.
 
 ```bash
-python -m pip install "dcc-mcp-zbrush==<version>"
+python -m pip install "meshy-dcc-zbrush==<version>"
 ```
 
 Identify the ZBrush executable/application and Asset Directory. Set the Asset
@@ -25,14 +25,14 @@ Directory explicitly instead of guessing a shared startup location:
 
 ```powershell
 $env:ZBRUSH_USER_ASSETS_DIR = "<ZBrush Asset Directory>"
-dcc-mcp-zbrush install --version <version> --dcc-path "<ZBrush.exe>" --python python --dry-run --json
-dcc-mcp-zbrush install --version <version> --dcc-path "<ZBrush.exe>" --python python --yes --json
+meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.exe>" --python python --dry-run --json
+meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.exe>" --python python --yes --json
 ```
 
 ```bash
 export ZBRUSH_USER_ASSETS_DIR="<ZBrush Asset Directory>"
-dcc-mcp-zbrush install --version <version> --dcc-path "<ZBrush.app>" --python python3 --dry-run --json
-dcc-mcp-zbrush install --version <version> --dcc-path "<ZBrush.app>" --python python3 --yes --json
+meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.app>" --python python3 --dry-run --json
+meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.app>" --python python3 --yes --json
 ```
 
 ## Manual path
@@ -41,7 +41,7 @@ The default `sidecar` mode installs a dedicated bridge module and appends one
 bounded managed import block to the shared `<AssetDir>/Python/init.py`. It
 never replaces that shared file. Existing bytes are backed up before the
 staged atomic replacement and recorded in
-`<AssetDir>/.dcc-mcp/receipts/zbrush.json`.
+`<AssetDir>/.meshy-dcc/receipts/zbrush.json`.
 
 Preflight accepts only a native Maxon-signed ZBrush product with canonical
 2026.1+ version metadata; a path or filename alone is never treated as a host.
@@ -59,13 +59,13 @@ bindings succeed; otherwise it restores the exact prior installation.
 ## Verify
 
 ```bash
-dcc-mcp-zbrush status --version <version> --dcc-path "<ZBrush path>" --python python --json
+meshy-dcc-zbrush status --version <version> --dcc-path "<ZBrush path>" --python python --json
 ```
 
 Restart ZBrush so it loads the managed bootstrap, then run:
 
 ```bash
-dcc-mcp-zbrush verify --version <version> --dcc-path "<ZBrush path>" --python python --json
+meshy-dcc-zbrush verify --version <version> --dcc-path "<ZBrush path>" --python python --json
 ```
 
 For sidecar mode, `verify` checks receipt and payload hashes, reads captured
@@ -74,8 +74,8 @@ session-info probe. A valid install is not reported as directly usable until
 that host probe succeeds. Afterward start the external process:
 
 ```bash
-dcc-mcp-zbrush --mode sidecar
-dcc-mcp-cli list
+meshy-dcc-zbrush --mode sidecar
+meshy-dcc list
 ```
 
 Embedded mode is advanced and Python-only. It does not load the Core native
@@ -89,8 +89,8 @@ the receipt.
 Review an upgrade plan before applying it:
 
 ```bash
-dcc-mcp-zbrush upgrade --version <new-version> --dcc-path "<ZBrush path>" --python python --dry-run --json
-dcc-mcp-zbrush upgrade --version <new-version> --dcc-path "<ZBrush path>" --python python --yes --json
+meshy-dcc-zbrush upgrade --version <new-version> --dcc-path "<ZBrush path>" --python python --dry-run --json
+meshy-dcc-zbrush upgrade --version <new-version> --dcc-path "<ZBrush path>" --python python --yes --json
 ```
 
 ## Uninstall
@@ -103,8 +103,8 @@ operator-created files remain in place. Any failed removal restores the
 receipt, payload, shared startup state, and backups before returning.
 
 ```bash
-dcc-mcp-zbrush uninstall --version <version> --dcc-path "<ZBrush path>" --python python --dry-run --json
-dcc-mcp-zbrush uninstall --version <version> --dcc-path "<ZBrush path>" --python python --yes --json
+meshy-dcc-zbrush uninstall --version <version> --dcc-path "<ZBrush path>" --python python --dry-run --json
+meshy-dcc-zbrush uninstall --version <version> --dcc-path "<ZBrush path>" --python python --yes --json
 ```
 
 ## JSON and exit codes
@@ -132,7 +132,7 @@ All lifecycle verbs accept `--json`, `--yes`, `--dry-run`, `--dcc-path`, and
   files, then retry. The installer stages replacements and rolls back a failed
   commit.
 - `bootstrap_failed`: inspect
-  `<AssetDir>/.dcc-mcp/bootstrap-errors.jsonl`; restart ZBrush after correcting
+  `<AssetDir>/.meshy-dcc/bootstrap-errors.jsonl`; restart ZBrush after correcting
   the reported SDK, import, or socket error.
 - `host_unavailable` / exit `40`: start or restart ZBrush and rerun `verify`.
   Gateway health alone is not proof that the in-process ZBrush bridge is ready.
@@ -141,4 +141,4 @@ All lifecycle verbs accept `--json`, `--yes`, `--dry-run`, `--dcc-path`, and
   ZIP.
 
 Canonical raw URL:
-<https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-zbrush/main/install.md>
+<https://raw.githubusercontent.com/meshy-dev/meshy-dcc-zbrush/main/install.md>

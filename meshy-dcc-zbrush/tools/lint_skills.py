@@ -14,7 +14,7 @@ except ImportError:
     yaml = None  # type: ignore[assignment]
 
 PROJECT_DCC = "zbrush"
-SKILLS_ROOT = Path(__file__).resolve().parent.parent / "src" / "dcc_mcp_zbrush" / "skills"
+SKILLS_ROOT = Path(__file__).resolve().parent.parent / "src" / "meshy_dcc_zbrush" / "skills"
 NAME_RE = re.compile(r"^[a-z0-9-]+$")
 
 
@@ -46,13 +46,13 @@ def lint_skill(skill_dir: Path, error_only: bool) -> list[str]:
     name = meta.get("name")
     if not name or not NAME_RE.match(str(name)):
         issues.append(f"ERROR {skill_dir.name}: invalid skill name {name!r}")
-    dcc_meta = (meta.get("metadata") or {}).get("dcc-mcp") or {}
+    dcc_meta = (meta.get("metadata") or {}).get("meshy-dcc") or {}
     if dcc_meta.get("dcc") != PROJECT_DCC:
-        issues.append(f"ERROR {skill_dir.name}: metadata.dcc-mcp.dcc must be {PROJECT_DCC!r}")
+        issues.append(f"ERROR {skill_dir.name}: metadata.meshy-dcc.dcc must be {PROJECT_DCC!r}")
     if not dcc_meta.get("layer"):
-        issues.append(f"WARNING {skill_dir.name}: missing metadata.dcc-mcp.layer")
+        issues.append(f"WARNING {skill_dir.name}: missing metadata.meshy-dcc.layer")
     if not dcc_meta.get("tools"):
-        issues.append(f"WARNING {skill_dir.name}: missing metadata.dcc-mcp.tools")
+        issues.append(f"WARNING {skill_dir.name}: missing metadata.meshy-dcc.tools")
 
     if not tools_yaml.is_file():
         issues.append(f"ERROR {skill_dir.name}: missing tools.yaml")

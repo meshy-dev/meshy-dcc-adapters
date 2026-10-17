@@ -1,11 +1,11 @@
 """ZBrush socket bridge plugin for sidecar MCP mode.
 
 Copy this file into ZStartup/ZPlugs64 or expose it via ZBRUSH_PLUGIN_PATH.
-It listens on TCP port 9876 (override with DCC_MCP_ZBRUSH_SOCKET_PORT) and
+It listens on TCP port 19876 (override with MESHY_DCC_ZBRUSH_SOCKET_PORT) and
 executes JSON-RPC requests against ``zbrush.commands``.
 
-Registers a top-level DCC MCP palette with Copy Instance ID, Server Info, and
-About DCC MCP actions through the official ZBrush Python SDK.
+Registers a top-level Meshy DCC palette with Copy Instance ID, Server Info, and
+About Meshy DCC actions through the official ZBrush Python SDK.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ _BRIDGE_INSTANCE_ID = str(uuid.uuid4())
 
 def _mark(message: str) -> None:
     """Append optional startup diagnostics without depending on host logging."""
-    log_path = os.environ.get("DCC_MCP_ZBRUSH_BRIDGE_LOG", "").strip()
+    log_path = os.environ.get("MESHY_DCC_ZBRUSH_BRIDGE_LOG", "").strip()
     if not log_path:
         return
     with open(log_path, "a", encoding="utf-8") as stream:
@@ -49,10 +49,10 @@ def _mark(message: str) -> None:
 
 
 def _capture_bootstrap_error(stage: str, error: BaseException) -> None:
-    """Persist a bounded JSONL startup error for ``dcc-mcp-zbrush verify``."""
-    configured = os.environ.get("DCC_MCP_ZBRUSH_BOOTSTRAP_ERRORS", "").strip()
+    """Persist a bounded JSONL startup error for ``meshy-dcc-zbrush verify``."""
+    configured = os.environ.get("MESHY_DCC_ZBRUSH_BOOTSTRAP_ERRORS", "").strip()
     default_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = configured or os.path.join(default_root, ".dcc-mcp", "bootstrap-errors.jsonl")
+    path = configured or os.path.join(default_root, ".meshy-dcc", "bootstrap-errors.jsonl")
     payload = {
         "timestamp": time.time(),
         "stage": stage,
@@ -170,8 +170,8 @@ def _import_zbc():
 
 
 # ── OBJ face-size preflight ──────────────────────────────────────────────
-# Mirrors dcc_mcp_zbrush._obj_preflight. This plugin is vendored into ZBrush
-# and may run without dcc-mcp-zbrush importable, so the logic is duplicated
+# Mirrors meshy_dcc_zbrush._obj_preflight. This plugin is vendored into ZBrush
+# and may run without meshy-dcc-zbrush importable, so the logic is duplicated
 # here rather than imported. Keep the two copies in step.
 
 _MAX_FACE_VERTICES = 4
@@ -182,7 +182,7 @@ _PREFLIGHT_MAX_BYTES = 256 * 1024 * 1024
 def _iter_obj_lines(stream):
     """Yield ``(line_number, content)`` with BOM, comments and continuations resolved.
 
-    Mirrors ``dcc_mcp_zbrush._obj_preflight._iter_obj_lines``. A UTF-8 BOM
+    Mirrors ``meshy_dcc_zbrush._obj_preflight._iter_obj_lines``. A UTF-8 BOM
     would otherwise hide a leading ``f`` record, and a trailing backslash
     continues a face onto the next line — counting per line under-counts it.
     Both cases would let an over-large face through to Tool:Import.
@@ -321,7 +321,7 @@ def _subtool_name(path: str) -> str:
 
 def _get_session_info() -> Dict[str, Any]:
     zbc = _import_zbc()
-    identity_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dcc_mcp_zbrush_install_identity.json")
+    identity_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meshy_dcc_zbrush_install_identity.json")
     try:
         with open(identity_path, "r", encoding="utf-8") as stream:
             install_identity = json.load(stream)
@@ -721,7 +721,7 @@ def _create_wrinkle_brush(output_path: str) -> Dict[str, Any]:
     _require_controls(zbc, "Brush:DamStandard", "Brush:Clone", "Brush:Save As")
     backup_path = ""
     if os.path.isfile(abs_path):
-        backup_path = f"{abs_path}.dcc-mcp-{os.getpid()}-{time.time_ns()}.bak"
+        backup_path = f"{abs_path}.meshy-dcc-{os.getpid()}-{time.time_ns()}.bak"
         os.replace(abs_path, backup_path)
     try:
         with _quiet_ui_actions(zbc):
@@ -1055,7 +1055,7 @@ def _serve_forever(host: str, port: int) -> None:
             server.bind((host, port))
             server.listen(5)
             _mark(f"listening {host}:{port}")
-            print(f"[dcc-mcp-zbrush] socket bridge listening on {host}:{port}")
+            print(f"[meshy-dcc-zbrush] socket bridge listening on {host}:{port}")
             while True:
                 conn, _addr = server.accept()
                 threading.Thread(target=_serve_client, args=(conn,), daemon=True).start()
@@ -1115,7 +1115,7 @@ def _start_bridge(host: str, port: int) -> threading.Thread:
             target=_serve_forever,
             args=(host, port),
             daemon=True,
-            name="dcc-mcp-zbrush-socket-bridge",
+            name="meshy-dcc-zbrush-socket-bridge",
         )
         _BRIDGE_THREAD.start()
     _install_main_thread_pump()
@@ -1135,8 +1135,8 @@ def bootstrap_bridge() -> Optional[threading.Thread]:
     _mark(f"bootstrap module={__name__} in_zbrush={_running_in_zbrush()}")
     if __name__ != "__main__" and not _running_in_zbrush():
         return None
-    host = os.environ.get("DCC_MCP_ZBRUSH_SOCKET_HOST", "127.0.0.1")
-    port = _env_int("DCC_MCP_ZBRUSH_SOCKET_PORT", 9876)
+    host = os.environ.get("MESHY_DCC_ZBRUSH_SOCKET_HOST", "127.0.0.1")
+    port = _env_int("MESHY_DCC_ZBRUSH_SOCKET_PORT", 19876)
     try:
         if not _install_menu():
             _mark("menu registration returned false")
@@ -1153,37 +1153,37 @@ def bootstrap_bridge() -> Optional[threading.Thread]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Unified DCC MCP menu actions (PIP-2905)
+# Unified Meshy DCC menu actions (PIP-2905)
 # ──────────────────────────────────────────────────────────────────────────────
-# The sidecar plugin must remain self-contained because dcc-mcp-zbrush runs in
+# The sidecar plugin must remain self-contained because meshy-dcc-zbrush runs in
 # an external process and may not be importable in ZBrush's embedded VM.
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-def dcc_mcp_copy_instance_id() -> None:
-    """Copy the DCC MCP instance UUID to the system clipboard."""
+def meshy_dcc_copy_instance_id() -> None:
+    """Copy the Meshy DCC instance UUID to the system clipboard."""
     try:
-        from dcc_mcp_zbrush._menu import copy_instance_id
+        from meshy_dcc_zbrush._menu import copy_instance_id
 
         copy_instance_id()
     except ImportError:
         _fallback_copy_instance_id()
 
 
-def dcc_mcp_show_server_info() -> None:
-    """Show DCC MCP server information."""
+def meshy_dcc_show_server_info() -> None:
+    """Show Meshy DCC server information."""
     try:
-        from dcc_mcp_zbrush._menu import show_server_info
+        from meshy_dcc_zbrush._menu import show_server_info
 
         show_server_info()
     except ImportError:
         _fallback_server_info()
 
 
-def dcc_mcp_show_about() -> None:
-    """Show About DCC MCP dialog."""
+def meshy_dcc_show_about() -> None:
+    """Show About Meshy DCC dialog."""
     try:
-        from dcc_mcp_zbrush._menu import show_about
+        from meshy_dcc_zbrush._menu import show_about
 
         show_about()
     except ImportError:
@@ -1210,18 +1210,18 @@ def _show_message(title: str, message: str) -> None:
             return
         except Exception:
             continue
-    print(f"[dcc-mcp-zbrush] {title}\n{message}")  # noqa: T201
+    print(f"[meshy-dcc-zbrush] {title}\n{message}")  # noqa: T201
 
 
-# ── fallback implementations when dcc-mcp-zbrush is not importable ────────
+# ── fallback implementations when meshy-dcc-zbrush is not importable ────────
 
 
 def _fallback_copy_instance_id() -> None:
     """Fail closed when the external sidecar identity is unavailable."""
     _show_message(
-        "DCC MCP — Copy Instance ID",
+        "Meshy DCC — Copy Instance ID",
         "Instance ID is owned by the external MCP server and is unavailable "
-        "inside this standalone plugin. Run `dcc-mcp-cli list` from a terminal.",
+        "inside this standalone plugin. Run `meshy-dcc list` from a terminal.",
     )
 
 
@@ -1229,7 +1229,7 @@ def _fallback_server_info() -> None:
     """Fallback: show server info using available tools."""
     import sys
 
-    gateway_port = os.environ.get("DCC_MCP_GATEWAY_PORT", "9765")
+    gateway_port = os.environ.get("MESHY_DCC_GATEWAY_PORT", "19765")
 
     try:
         import zbrush.commands as zbc  # noqa: PLC0415
@@ -1244,43 +1244,43 @@ def _fallback_server_info() -> None:
         f"ZBrush PID: {os.getpid()}\n"
         f"Gateway Port: {gateway_port}\n"
         f"Python: {sys.version.split()[0]}\n\n"
-        "Run `dcc-mcp-cli list` for the external server identity and URL."
+        "Run `meshy-dcc list` for the external server identity and URL."
     )
-    _show_message("DCC MCP — Server Info", msg)
+    _show_message("Meshy DCC — Server Info", msg)
 
 
 def _fallback_about() -> None:
     """Fallback: show about dialog."""
     msg = (
-        "dcc-mcp-zbrush\nDCC MCP — shared infrastructure for DCC automation.\nhttps://github.com/dcc-mcp/dcc-mcp-zbrush"
+        "meshy-dcc-zbrush\nMeshy DCC — shared infrastructure for DCC automation.\nhttps://github.com/meshy-dev/meshy-dcc-zbrush"
     )
-    _show_message("About DCC MCP", msg)
+    _show_message("About Meshy DCC", msg)
 
 
 def _on_copy_instance_id(_sender: str) -> None:
-    dcc_mcp_copy_instance_id()
+    meshy_dcc_copy_instance_id()
 
 
 def _on_show_server_info(_sender: str) -> None:
-    dcc_mcp_show_server_info()
+    meshy_dcc_show_server_info()
 
 
 def _on_show_about(_sender: str) -> None:
-    dcc_mcp_show_about()
+    meshy_dcc_show_about()
 
 
 def _install_menu(zbc: Any = None) -> bool:
-    """Install the top-level DCC MCP palette before entering the host pump."""
+    """Install the top-level Meshy DCC palette before entering the host pump."""
     zbc = zbc or _import_zbc()
-    if not zbc.exists("DCC MCP") and not zbc.add_palette("DCC MCP", docking_bar=1):
+    if not zbc.exists("Meshy DCC") and not zbc.add_palette("Meshy DCC", docking_bar=1):
         return False
     actions = (
-        ("Copy Instance ID", "Copy the DCC MCP instance UUID to the clipboard.", _on_copy_instance_id),
-        ("Server Info", "Show DCC MCP server and runtime information.", _on_show_server_info),
-        ("About DCC MCP", "Show adapter and ZBrush version information.", _on_show_about),
+        ("Copy Instance ID", "Copy the Meshy DCC instance UUID to the clipboard.", _on_copy_instance_id),
+        ("Server Info", "Show Meshy DCC server and runtime information.", _on_show_server_info),
+        ("About Meshy DCC", "Show adapter and ZBrush version information.", _on_show_about),
     )
     for label, info, callback in actions:
-        item_path = f"DCC MCP:{label}"
+        item_path = f"Meshy DCC:{label}"
         if not zbc.exists(item_path) and not zbc.add_button(item_path, info, callback):
             return False
     return True

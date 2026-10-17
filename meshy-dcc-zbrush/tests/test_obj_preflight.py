@@ -28,7 +28,7 @@ def bridge():
 
 
 def _adapter_scan(path, **kwargs):
-    from dcc_mcp_zbrush._obj_preflight import scan_obj_oversized_faces
+    from meshy_dcc_zbrush._obj_preflight import scan_obj_oversized_faces
 
     return scan_obj_oversized_faces(str(path), **kwargs)
 
@@ -221,7 +221,7 @@ def test_both_copies_agree_across_fixtures(tmp_path, bridge):
 
 class TestErrorPayloads:
     def test_preflight_error_names_the_offending_faces(self):
-        from dcc_mcp_zbrush._obj_preflight import obj_preflight_error
+        from meshy_dcc_zbrush._obj_preflight import obj_preflight_error
 
         payload = obj_preflight_error(
             {
@@ -237,14 +237,14 @@ class TestErrorPayloads:
         assert payload["imported_nodes"] == []
 
     def test_preflight_error_pluralises_multiple_faces(self):
-        from dcc_mcp_zbrush._obj_preflight import obj_preflight_error
+        from meshy_dcc_zbrush._obj_preflight import obj_preflight_error
 
         payload = obj_preflight_error({"ok": True, "oversized": [{"line": 1}, {"line": 2}]})
 
         assert "2 faces with more than 4 vertices" in payload["message"]
 
     def test_unverifiable_error_is_fail_closed(self):
-        from dcc_mcp_zbrush._obj_preflight import obj_preflight_unverifiable_error
+        from meshy_dcc_zbrush._obj_preflight import obj_preflight_unverifiable_error
 
         payload = obj_preflight_unverifiable_error({"ok": False, "reason": "UNREADABLE"})
 

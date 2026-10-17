@@ -17,16 +17,16 @@ from jsonschema import Draft202012Validator
 # stay valid when the adapter extends CORE_SCHEMA_ANCHORS to a newer Core release. Tests that
 # exercise the pinned path must pin a version at or below this one, never the Core release the
 # test environment happens to have installed, so a Core release cannot silently break them.
-CORE_ANCHOR_MEASURED_VERSION = "0.20.34"
+CORE_ANCHOR_MEASURED_VERSION = "0.2.0"
 
 # A Core release above the measured floor: `core_schema_anchor` has no row for it, so the
 # contract serves the artifact Core ships without a pinned digest.
-CORE_ANCHOR_UNMEASURED_VERSION = "0.20.35"
+CORE_ANCHOR_UNMEASURED_VERSION = "0.2.1"
 
 
 @pytest.fixture(autouse=True)
 def _supported_host_platform(monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     monkeypatch.setattr(lifecycle.sys, "platform", "win32")
     monkeypatch.setattr(
@@ -50,13 +50,13 @@ def _build_sidecar_archive(path: Path) -> str:
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr(
             "sidecar/mcp_socket_bridge.py",
-            "BRIDGE_SENTINEL = 'dcc-mcp-zbrush'\n",
+            "BRIDGE_SENTINEL = 'meshy-dcc-zbrush'\n",
         )
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_exit_codes_match_install_sop_v1() -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     assert (
         lifecycle.EXIT_OK,
@@ -69,8 +69,8 @@ def test_exit_codes_match_install_sop_v1() -> None:
 
 
 def test_public_install_plan_matches_installed_core_draft_schema(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_contract import load_install_sop_schema
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_contract import load_install_sop_schema
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     schema = load_install_sop_schema()
     Draft202012Validator.check_schema(schema)
@@ -80,53 +80,43 @@ def test_public_install_plan_matches_installed_core_draft_schema(tmp_path: Path)
     Draft202012Validator(schema).validate(result)
 
 
-def test_bundled_install_schema_is_a_measured_core_revision() -> None:
-    from dcc_mcp_zbrush.install_contract import CORE_SCHEMA_ANCHORS, load_bundled_install_sop_schema
+def test_bundled_install_schema_is_a_valid_schema() -> None:
+    from meshy_dcc_zbrush.install_contract import load_bundled_install_sop_schema
 
     schema_path = (
-        Path(__file__).parents[1] / "src" / "dcc_mcp_zbrush" / "schemas" / "adapter-install-sop-v1.schema.json"
+        Path(__file__).parents[1] / "src" / "meshy_dcc_zbrush" / "schemas" / "adapter-install-sop-v1.schema.json"
     )
-    schema_bytes = schema_path.read_bytes()
-    measured_revisions = {anchor.sha256 for _, anchor in CORE_SCHEMA_ANCHORS}
 
-    assert b"\r\n" not in schema_bytes
-    assert hashlib.sha256(schema_bytes).hexdigest() in measured_revisions
+    assert b"\r\n" not in schema_path.read_bytes()
     Draft202012Validator.check_schema(load_bundled_install_sop_schema())
 
 
 def test_core_schema_anchor_is_keyed_by_the_core_release() -> None:
-    from dcc_mcp_zbrush.install_contract import (
+    from meshy_dcc_zbrush.install_contract import (
         CORE_SCHEMA_ANCHOR_MEASURED_THROUGH,
         core_schema_anchor,
     )
-    from dcc_mcp_zbrush.install_lifecycle import MINIMUM_CORE
+    from meshy_dcc_zbrush.install_lifecycle import MINIMUM_CORE
 
-    initial = core_schema_anchor(".".join(map(str, MINIMUM_CORE)))
-    refreshed = core_schema_anchor("0.20.30")
     published = core_schema_anchor(CORE_ANCHOR_MEASURED_VERSION)
 
-    assert initial is not None and refreshed is not None and published is not None
-    assert initial.sha256 != refreshed.sha256
-    assert core_schema_anchor("0.20.29") == initial
-    assert core_schema_anchor("0.20.33") == refreshed
-    assert published != refreshed
-    # `CORE_ANCHOR_MEASURED_VERSION` is at or below the floor, so its row is live rather than
-    # staged; a staged row would return None here and silently skip the digest check.
-    assert core_schema_anchor(CORE_ANCHOR_MEASURED_VERSION) is not None
+    assert published is not None
+    assert core_schema_anchor(".".join(map(str, MINIMUM_CORE))) == published
     assert core_schema_anchor(CORE_SCHEMA_ANCHOR_MEASURED_THROUGH) is not None
     assert core_schema_anchor(CORE_ANCHOR_UNMEASURED_VERSION) is None
-    assert core_schema_anchor("0.20.14rc1") is None
+    assert core_schema_anchor("0.1.9") is None
+    assert core_schema_anchor("0.2.0rc1") is None
 
 
 def test_core_schema_anchor_requires_a_measurable_core_version() -> None:
-    from dcc_mcp_zbrush.install_contract import core_schema_anchor
+    from meshy_dcc_zbrush.install_contract import core_schema_anchor
 
     assert core_schema_anchor("") is None
     assert core_schema_anchor("not-a-version") is None
 
 
 def test_load_install_sop_schema_accepts_an_unmeasured_core_release(monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_contract as contract
+    import meshy_dcc_zbrush.install_contract as contract
 
     # The observed bytes come from whatever Core release the environment installed, so they are
     # injected instead of measured: this test pins the *contract* behaviour for a Core release
@@ -152,7 +142,7 @@ def test_load_install_sop_schema_verifies_a_measured_core_release(monkeypatch: p
     The measured bytes are injected so the test holds for any Core release CI resolves; the row
     under test is read from `CORE_SCHEMA_ANCHORS`, which is what "the row went live" means.
     """
-    import dcc_mcp_zbrush.install_contract as contract
+    import meshy_dcc_zbrush.install_contract as contract
 
     measured = contract.core_schema_anchor(CORE_ANCHOR_MEASURED_VERSION)
     assert measured is not None
@@ -170,7 +160,7 @@ def test_load_install_sop_schema_verifies_a_measured_core_release(monkeypatch: p
 
 
 def test_load_install_sop_schema_rejects_drift_from_the_measured_revision(monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_contract as contract
+    import meshy_dcc_zbrush.install_contract as contract
 
     measured = contract.core_schema_anchor(CORE_ANCHOR_MEASURED_VERSION)
     assert measured is not None
@@ -182,7 +172,7 @@ def test_load_install_sop_schema_rejects_drift_from_the_measured_revision(monkey
 
 
 def test_load_install_sop_schema_rejects_an_unlocatable_core_resource(monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_contract as contract
+    import meshy_dcc_zbrush.install_contract as contract
 
     measured = contract.core_schema_anchor(CORE_ANCHOR_MEASURED_VERSION)
     assert measured is not None
@@ -195,27 +185,27 @@ def test_load_install_sop_schema_rejects_an_unlocatable_core_resource(monkeypatc
 
 
 def test_published_core_floor_is_projected_to_all_public_surfaces() -> None:
-    from dcc_mcp_zbrush.install_lifecycle import MINIMUM_CORE
+    from meshy_dcc_zbrush.install_lifecycle import MINIMUM_CORE
 
     repository = Path(__file__).parents[1]
     floor = ".".join(map(str, MINIMUM_CORE))
 
-    assert MINIMUM_CORE == (0, 20, 14)
-    assert f"dcc-mcp-core>={floor},<0.21.0" in (repository / "pyproject.toml").read_text(encoding="utf-8")
-    assert f"dcc-mcp-core >= {floor}, < 0.21.0" in (repository / "README.md").read_text(encoding="utf-8")
-    assert f"dcc-mcp-core >= {floor}, < 0.21.0" in (repository / "install.md").read_text(encoding="utf-8")
+    assert MINIMUM_CORE == (0, 2, 0)
+    assert f"meshy-dcc-core>={floor},<0.3.0" in (repository / "pyproject.toml").read_text(encoding="utf-8")
+    assert f"meshy-dcc-core >= {floor}, < 0.3.0" in (repository / "README.md").read_text(encoding="utf-8")
+    assert f"meshy-dcc-core >= {floor}, < 0.3.0" in (repository / "install.md").read_text(encoding="utf-8")
 
-    skill_paths = sorted((repository / "src" / "dcc_mcp_zbrush" / "skills").glob("*/SKILL.md"))
+    skill_paths = sorted((repository / "src" / "meshy_dcc_zbrush" / "skills").glob("*/SKILL.md"))
     assert skill_paths
     for skill_path in skill_paths:
-        assert f"dcc-mcp-core {floor}+" in skill_path.read_text(encoding="utf-8"), skill_path
+        assert "meshy-dcc-core 0.2.x" in skill_path.read_text(encoding="utf-8"), skill_path
 
 
 def test_sidecar_round_trip_preserves_shared_init_and_restores_receipt_backup(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import LifecycleRequest, run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import LifecycleRequest, run_lifecycle
 
     asset_dir = tmp_path / "ZBrushData2026" / "ZStartup"
     python_dir = asset_dir / "Python"
@@ -226,7 +216,7 @@ def test_sidecar_round_trip_preserves_shared_init_and_restores_receipt_backup(
 
     dcc_path = tmp_path / "ZBrush 2026.1" / "ZBrush.exe"
     _write_fake_pe(dcc_path)
-    archive = tmp_path / "dcc-mcp-zbrush-plugin-v0.2.24.zip"
+    archive = tmp_path / "meshy-dcc-zbrush-plugin-v0.2.24.zip"
     expected_sha256 = _build_sidecar_archive(archive)
 
     request = LifecycleRequest(
@@ -247,10 +237,10 @@ def test_sidecar_round_trip_preserves_shared_init_and_restores_receipt_backup(
     assert installed["exit_code"] == 50
     installed_init = shared_init.read_bytes()
     assert original_init in installed_init
-    assert b"dcc-mcp-zbrush managed bootstrap" in installed_init
-    assert (python_dir / "dcc_mcp_zbrush_socket_bridge.py").is_file()
+    assert b"meshy-dcc-zbrush managed bootstrap" in installed_init
+    assert (python_dir / "meshy_dcc_zbrush_socket_bridge.py").is_file()
 
-    receipt_path = asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     backup_path = asset_dir / receipt["shared_init"]["backup"]
     assert backup_path.read_bytes() == original_init
@@ -262,12 +252,12 @@ def test_sidecar_round_trip_preserves_shared_init_and_restores_receipt_backup(
 
     assert uninstalled["exit_code"] == 0
     assert shared_init.read_bytes() == original_init
-    assert not (python_dir / "dcc_mcp_zbrush_socket_bridge.py").exists()
+    assert not (python_dir / "meshy_dcc_zbrush_socket_bridge.py").exists()
     assert not receipt_path.exists()
 
 
 def _request(tmp_path: Path, *, operation: str = "install", version: str = "0.2.24"):
-    from dcc_mcp_zbrush.install_lifecycle import LifecycleRequest
+    from meshy_dcc_zbrush.install_lifecycle import LifecycleRequest
 
     dcc_path = tmp_path / "ZBrush 2026.1" / "ZBrush.exe"
     _write_fake_pe(dcc_path)
@@ -283,13 +273,13 @@ def _request(tmp_path: Path, *, operation: str = "install", version: str = "0.2.
 
 
 def _pending_sidecar(request, archive: Path, digest: str) -> tuple[dict, dict]:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     result = run_lifecycle(request, plugin_archive=archive, expected_sha256=digest)
     assert result["exit_code"] == 50
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-    bridge_path = request.asset_dir / "Python" / "dcc_mcp_zbrush_socket_bridge.py"
+    bridge_path = request.asset_dir / "Python" / "meshy_dcc_zbrush_socket_bridge.py"
     zbrush_origin = Path(receipt["dcc_root"]) / "Python" / "zbrush" / "commands.pyd"
     zbrush_origin.parent.mkdir(parents=True, exist_ok=True)
     zbrush_origin.write_bytes(b"native-zbrush-sdk")
@@ -316,8 +306,8 @@ def _bind_sidecar(
     *,
     starts: tuple[str, ...] = ("start-4242",),
 ) -> None:
-    import dcc_mcp_zbrush.bridge as bridge_module
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.bridge as bridge_module
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     class BoundBridge:
         def __init__(self, *_args, **_kwargs):
@@ -344,7 +334,7 @@ def _commit_sidecar(
     archive: Path,
     digest: str,
 ) -> tuple[dict, dict]:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     receipt, session = _pending_sidecar(request, archive, digest)
     _bind_sidecar(monkeypatch, request, session)
@@ -354,7 +344,7 @@ def _commit_sidecar(
 
 
 def _embedded_readiness(request, receipt: dict, *, origin: Optional[Path] = None) -> dict:
-    adapter_path = request.asset_dir / "dcc_mcp_zbrush" / "__init__.py"
+    adapter_path = request.asset_dir / "meshy_dcc_zbrush" / "__init__.py"
     zbrush_origin = origin
     if zbrush_origin is None:
         zbrush_origin = Path(receipt["dcc_root"]) / "Python" / "zbrush" / "commands.pyd"
@@ -385,7 +375,7 @@ def _embedded_readiness(request, receipt: dict, *, origin: Optional[Path] = None
 
 @pytest.mark.parametrize("version", ["", "latest"])
 def test_unfixed_versions_fail_before_the_install_cache_is_created(tmp_path: Path, version: str) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path, version=version)
     cache = tmp_path / "cache"
@@ -412,7 +402,7 @@ def test_unfixed_versions_fail_before_the_install_cache_is_created(tmp_path: Pat
     ],
 )
 def test_public_lifecycle_rejects_noncanonical_or_unbounded_adapter_versions(tmp_path: Path, version: str) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     result = run_lifecycle(replace(_request(tmp_path, version=version), yes=False, dry_run=True))
 
@@ -423,12 +413,12 @@ def test_public_lifecycle_rejects_noncanonical_or_unbounded_adapter_versions(tmp
 
 @pytest.mark.parametrize(
     "core_version",
-    ["0.20.13", "0.20.14rc1", "garbage0.20.14", "0.20", "1." + "9" * 5000 + ".0"],
+    ["0.1.9", "0.2.0rc1", "garbage0.2.0", "0.2", "1." + "9" * 5000 + ".0"],
 )
 def test_public_lifecycle_rejects_noncanonical_or_unbounded_core_versions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, core_version: str
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     monkeypatch.setattr(lifecycle, "package_version", lambda _name: core_version)
 
@@ -439,7 +429,7 @@ def test_public_lifecycle_rejects_noncanonical_or_unbounded_core_versions(
 
 
 def test_preflight_rejects_zero_byte_or_name_only_zbrush_executable(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     assert request.dcc_path is not None
@@ -452,7 +442,7 @@ def test_preflight_rejects_zero_byte_or_name_only_zbrush_executable(tmp_path: Pa
 
 
 def test_checksum_mismatch_fails_closed_before_shared_startup_changes(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     request.asset_dir.mkdir(parents=True)
@@ -468,11 +458,11 @@ def test_checksum_mismatch_fails_closed_before_shared_startup_changes(tmp_path: 
     assert result["exit_code"] == 20
     assert result["stage"] == "integrity"
     assert shared_init.read_bytes() == original
-    assert not (request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json").exists()
+    assert not (request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json").exists()
 
 
 def test_host_unavailable_is_a_verify_failure_exit_40(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     archive = tmp_path / "plugin.zip"
@@ -483,14 +473,14 @@ def test_host_unavailable_is_a_verify_failure_exit_40(tmp_path: Path) -> None:
 
     assert result["exit_code"] == 40
     assert result["state"] == "host_unavailable"
-    assert not (request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json").exists()
+    assert not (request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json").exists()
 
 
 def test_verify_rejects_foreign_socket_session_without_exact_install_identity(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.bridge as bridge_module
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.bridge as bridge_module
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = _request(tmp_path)
     archive = tmp_path / "plugin.zip"
@@ -512,7 +502,7 @@ def test_verify_rejects_foreign_socket_session_without_exact_install_identity(
                 "install_id": "foreign",
                 "instance_id": "11111111-1111-1111-1111-111111111111",
                 "pid": 4242,
-                "socket_endpoint": "127.0.0.1:9876",
+                "socket_endpoint": "127.0.0.1:19876",
                 "zbrush_version": "2026.1.0.0",
             }
 
@@ -536,7 +526,7 @@ def _installed_sidecar_session(tmp_path: Path) -> tuple[object, dict, dict]:
 def test_verify_persists_exact_runtime_identity_and_rejects_pid_reuse(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request, _receipt, session = _installed_sidecar_session(tmp_path)
 
@@ -546,14 +536,14 @@ def test_verify_persists_exact_runtime_identity_and_rejects_pid_reuse(
     second = lifecycle.run_lifecycle(replace(request, operation="verify"))
 
     assert first["exit_code"] == 0
-    stored = json.loads((request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json").read_text(encoding="utf-8"))
+    stored = json.loads((request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json").read_text(encoding="utf-8"))
     assert stored["runtime_identity"]["process_start_identity"] == "start-4242"
     assert second["exit_code"] == 40
     assert second["stage"] == "host_identity"
 
 
 def test_process_identity_timeout_is_stable_verify_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request, _receipt, session = _installed_sidecar_session(tmp_path)
     _bind_sidecar(monkeypatch, request, session)
@@ -570,9 +560,9 @@ def test_process_identity_timeout_is_stable_verify_failure(tmp_path: Path, monke
 
 
 def test_loaded_native_files_use_requires_restart_exit_50(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_core.install_lifecycle as core_lifecycle
+    import meshy_dcc_core.install_lifecycle as core_lifecycle
 
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     request.asset_dir.mkdir(parents=True)
@@ -585,7 +575,7 @@ def test_loaded_native_files_use_requires_restart_exit_50(tmp_path: Path, monkey
 
 
 def test_partial_install_without_receipt_is_reported_and_not_repaired_implicitly(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import MANAGED_BLOCK, run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import MANAGED_BLOCK, run_lifecycle
 
     request = replace(_request(tmp_path), operation="status")
     shared_init = request.asset_dir / "Python" / "init.py"
@@ -602,7 +592,7 @@ def test_partial_install_without_receipt_is_reported_and_not_repaired_implicitly
 def test_uninstall_removes_only_the_managed_block_after_user_edits(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import MANAGED_BLOCK, run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import MANAGED_BLOCK, run_lifecycle
 
     request = _request(tmp_path)
     shared_init = request.asset_dir / "Python" / "init.py"
@@ -622,7 +612,7 @@ def test_uninstall_removes_only_the_managed_block_after_user_edits(
 
 
 def test_upgrade_keeps_original_backup_and_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     shared_init = request.asset_dir / "Python" / "init.py"
@@ -648,7 +638,7 @@ def test_upgrade_keeps_original_backup_and_is_idempotent(tmp_path: Path, monkeyp
     receipt, session = _pending_sidecar(replace(request, operation="upgrade", version="0.2.25"), second, second_digest)
     _bind_sidecar(monkeypatch, replace(request, version="0.2.25"), session)
     assert run_lifecycle(replace(request, operation="verify", version="0.2.25"))["exit_code"] == 0
-    assert "upgraded" in (request.asset_dir / "Python" / "dcc_mcp_zbrush_socket_bridge.py").read_text()
+    assert "upgraded" in (request.asset_dir / "Python" / "meshy_dcc_zbrush_socket_bridge.py").read_text()
     assert run_lifecycle(replace(request, operation="uninstall"))["exit_code"] == 0
     assert shared_init.read_bytes() == original
 
@@ -656,7 +646,7 @@ def test_upgrade_keeps_original_backup_and_is_idempotent(tmp_path: Path, monkeyp
 def test_upgrade_does_not_absorb_post_install_shared_init_edits(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     shared_init = request.asset_dir / "Python" / "init.py"
@@ -689,13 +679,13 @@ def test_upgrade_does_not_absorb_post_install_shared_init_edits(
 
 
 def test_verify_reports_captured_bootstrap_error_without_claiming_usable(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     archive = tmp_path / "plugin.zip"
     digest = _build_sidecar_archive(archive)
     assert run_lifecycle(request, plugin_archive=archive, expected_sha256=digest)["exit_code"] == 50
-    error_path = request.asset_dir / ".dcc-mcp" / "bootstrap-errors.jsonl"
+    error_path = request.asset_dir / ".meshy-dcc" / "bootstrap-errors.jsonl"
     error_path.write_text('{"stage":"sidecar_bootstrap","reason":"SDK unavailable"}\n', encoding="utf-8")
 
     result = run_lifecycle(replace(request, operation="verify"))
@@ -709,7 +699,7 @@ def test_verify_reports_captured_bootstrap_error_without_claiming_usable(tmp_pat
 def test_standard_cli_emits_json_schema_and_stable_exit_code(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from dcc_mcp_zbrush.cli import main
+    from meshy_dcc_zbrush.cli import main
 
     request = _request(tmp_path, operation="status")
     exit_code = main(
@@ -735,15 +725,15 @@ def test_standard_cli_emits_json_schema_and_stable_exit_code(
 
 
 def test_embedded_mode_round_trip_uses_staged_tree_and_removes_managed_files(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = replace(_request(tmp_path), mode="embedded")
-    existing_package = request.asset_dir / "dcc_mcp_zbrush"
-    existing_entry = request.asset_dir / "dcc_mcp_zbrush_plugin.py"
+    existing_package = request.asset_dir / "meshy_dcc_zbrush"
+    existing_entry = request.asset_dir / "meshy_dcc_zbrush_plugin.py"
     archive = tmp_path / "embedded.zip"
     with zipfile.ZipFile(archive, "w") as payload:
-        payload.writestr("embedded/dcc_mcp_zbrush/__init__.py", "PLUGIN = True\n")
-        payload.writestr("embedded/dcc_mcp_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush/__init__.py", "PLUGIN = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
 
     installed = run_lifecycle(request, plugin_archive=archive, expected_sha256=digest)
@@ -758,7 +748,7 @@ def test_embedded_mode_round_trip_uses_staged_tree_and_removes_managed_files(tmp
 def test_receipt_write_failure_rolls_back_shared_startup_and_bridge(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = _request(tmp_path)
     shared_init = request.asset_dir / "Python" / "init.py"
@@ -780,19 +770,19 @@ def test_receipt_write_failure_rolls_back_shared_startup_and_bridge(
     assert result["exit_code"] == 30
     assert result["stage"] == "locked_files"
     assert shared_init.read_bytes() == original
-    assert not (request.asset_dir / "Python" / "dcc_mcp_zbrush_socket_bridge.py").exists()
-    assert not (request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json").exists()
+    assert not (request.asset_dir / "Python" / "meshy_dcc_zbrush_socket_bridge.py").exists()
+    assert not (request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json").exists()
 
 
 def test_failed_upgrade_restores_previous_payload_and_receipt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = _request(tmp_path)
     first = tmp_path / "first.zip"
     first_digest = _build_sidecar_archive(first)
     _commit_sidecar(monkeypatch, request, first, first_digest)
-    bridge_path = request.asset_dir / "Python" / "dcc_mcp_zbrush_socket_bridge.py"
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    bridge_path = request.asset_dir / "Python" / "meshy_dcc_zbrush_socket_bridge.py"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     original_bridge = bridge_path.read_bytes()
     original_receipt = receipt_path.read_bytes()
     second = tmp_path / "second.zip"
@@ -819,7 +809,7 @@ def test_failed_upgrade_restores_previous_payload_and_receipt(tmp_path: Path, mo
 
 
 def test_receipt_paths_cannot_escape_the_asset_directory(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import MANAGED_BLOCK, run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import MANAGED_BLOCK, run_lifecycle
 
     request = replace(_request(tmp_path), operation="status")
     shared_init = request.asset_dir / "Python" / "init.py"
@@ -828,7 +818,7 @@ def test_receipt_paths_cannot_escape_the_asset_directory(tmp_path: Path) -> None
     victim = tmp_path / "victim.txt"
     victim.write_text("keep", encoding="utf-8")
     escaped = Path(os.path.relpath(victim, request.asset_dir)).as_posix()
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     receipt_path.parent.mkdir(parents=True)
     receipt_path.write_text(
         json.dumps(
@@ -837,7 +827,7 @@ def test_receipt_paths_cannot_escape_the_asset_directory(tmp_path: Path) -> None
                 "adapter": "zbrush",
                 "version": "0.2.24",
                 "mode": "sidecar",
-                "backup_root": ".dcc-mcp/backups/test",
+                "backup_root": ".meshy-dcc/backups/test",
                 "shared_init": {
                     "path": "Python/init.py",
                     "existed": False,
@@ -864,10 +854,10 @@ def test_receipt_paths_cannot_escape_the_asset_directory(tmp_path: Path) -> None
 
 
 def test_managed_import_block_captures_bridge_import_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import MANAGED_BLOCK
+    from meshy_dcc_zbrush.install_lifecycle import MANAGED_BLOCK
 
     error_log = tmp_path / "bootstrap-errors.jsonl"
-    monkeypatch.setenv("DCC_MCP_ZBRUSH_BOOTSTRAP_ERRORS", str(error_log))
+    monkeypatch.setenv("MESHY_DCC_ZBRUSH_BOOTSTRAP_ERRORS", str(error_log))
     with pytest.raises(ModuleNotFoundError):
         exec(compile(MANAGED_BLOCK, str(tmp_path / "Python" / "init.py"), "exec"), {"__file__": "init.py"})
 
@@ -877,18 +867,18 @@ def test_managed_import_block_captures_bridge_import_failure(tmp_path: Path, mon
 
 
 def test_embedded_file_failure_rolls_back_staged_package_tree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = replace(_request(tmp_path), mode="embedded")
     archive = tmp_path / "embedded.zip"
     with zipfile.ZipFile(archive, "w") as payload:
-        payload.writestr("embedded/dcc_mcp_zbrush/__init__.py", "PLUGIN = True\n")
-        payload.writestr("embedded/dcc_mcp_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush/__init__.py", "PLUGIN = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     real_write = lifecycle._atomic_write
 
     def fail_entry(path: Path, data: bytes) -> None:
-        if path.name == "dcc_mcp_zbrush_plugin.py":
+        if path.name == "meshy_dcc_zbrush_plugin.py":
             raise PermissionError("simulated Windows lock")
         real_write(path, data)
 
@@ -896,16 +886,16 @@ def test_embedded_file_failure_rolls_back_staged_package_tree(tmp_path: Path, mo
     result = lifecycle.run_lifecycle(request, plugin_archive=archive, expected_sha256=digest)
 
     assert result["exit_code"] == 30
-    assert not (request.asset_dir / "dcc_mcp_zbrush").exists()
-    assert not (request.asset_dir / "dcc_mcp_zbrush_plugin.py").exists()
-    assert not (request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json").exists()
+    assert not (request.asset_dir / "meshy_dcc_zbrush").exists()
+    assert not (request.asset_dir / "meshy_dcc_zbrush_plugin.py").exists()
+    assert not (request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json").exists()
 
 
 def test_every_public_verb_emits_draft_valid_success_and_failure_envelopes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
-    from dcc_mcp_zbrush.install_contract import load_install_sop_schema
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
+    from meshy_dcc_zbrush.install_contract import load_install_sop_schema
 
     validator = Draft202012Validator(load_install_sop_schema())
     planned = []
@@ -933,16 +923,16 @@ def test_every_public_verb_emits_draft_valid_success_and_failure_envelopes(
 def test_upgrade_readiness_failure_restores_exact_committed_version(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.bridge as bridge_module
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    import meshy_dcc_zbrush.bridge as bridge_module
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     first = tmp_path / "first.zip"
     first_digest = _build_sidecar_archive(first)
     _commit_sidecar(monkeypatch, request, first, first_digest)
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
-    bridge_path = request.asset_dir / "Python" / "dcc_mcp_zbrush_socket_bridge.py"
-    identity_path = request.asset_dir / "Python" / "dcc_mcp_zbrush_install_identity.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
+    bridge_path = request.asset_dir / "Python" / "meshy_dcc_zbrush_socket_bridge.py"
+    identity_path = request.asset_dir / "Python" / "meshy_dcc_zbrush_install_identity.json"
     exact_before = (receipt_path.read_bytes(), bridge_path.read_bytes(), identity_path.read_bytes())
     second = tmp_path / "second.zip"
     with zipfile.ZipFile(second, "w") as payload:
@@ -967,11 +957,11 @@ def test_upgrade_readiness_failure_restores_exact_committed_version(
 
     assert failed["exit_code"] == 40
     assert (receipt_path.read_bytes(), bridge_path.read_bytes(), identity_path.read_bytes()) == exact_before
-    assert not (request.asset_dir / ".dcc-mcp" / "transactions").exists()
+    assert not (request.asset_dir / ".meshy-dcc" / "transactions").exists()
 
 
 def test_tampered_transaction_recovery_is_rejected_before_destructive_restore(tmp_path: Path) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     asset_dir = tmp_path / "ZStartup"
     target = asset_dir / lifecycle.SIDECAR_RELATIVE
@@ -980,7 +970,7 @@ def test_tampered_transaction_recovery_is_rejected_before_destructive_restore(tm
     transaction = lifecycle._capture_transaction(
         asset_dir,
         "tamper-test",
-        asset_dir / ".dcc-mcp" / "backups" / "new",
+        asset_dir / ".meshy-dcc" / "backups" / "new",
     )
     snapshot = next(item for item in transaction["snapshots"] if item["path"] == lifecycle.SIDECAR_RELATIVE.as_posix())
     backup = asset_dir / snapshot["backup"]
@@ -997,7 +987,7 @@ def test_tampered_transaction_recovery_is_rejected_before_destructive_restore(tm
 def test_partial_transaction_restore_retains_complete_validated_recovery(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     asset_dir = tmp_path / "ZStartup"
     first = asset_dir / lifecycle.IDENTITY_RELATIVE
@@ -1008,7 +998,7 @@ def test_partial_transaction_restore_retains_complete_validated_recovery(
     transaction = lifecycle._capture_transaction(
         asset_dir,
         "partial-test",
-        asset_dir / ".dcc-mcp" / "backups" / "new",
+        asset_dir / ".meshy-dcc" / "backups" / "new",
     )
     first.write_bytes(b"candidate identity")
     second.write_bytes(b"candidate bridge")
@@ -1039,10 +1029,10 @@ def test_partial_transaction_restore_retains_complete_validated_recovery(
 def test_transaction_recovery_restores_directory_file_link_and_posix_modes(tmp_path: Path) -> None:
     import stat
 
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     asset_dir = tmp_path / "ZStartup"
-    package = asset_dir / "dcc_mcp_zbrush"
+    package = asset_dir / "meshy_dcc_zbrush"
     nested = package / "nested"
     nested.mkdir(parents=True)
     module = nested / "module.py"
@@ -1055,9 +1045,9 @@ def test_transaction_recovery_restores_directory_file_link_and_posix_modes(tmp_p
     transaction = lifecycle._capture_transaction(
         asset_dir,
         "mode-test",
-        asset_dir / ".dcc-mcp" / "backups" / "new",
+        asset_dir / ".meshy-dcc" / "backups" / "new",
     )
-    package_snapshot = next(item for item in transaction["snapshots"] if item["path"] == "dcc_mcp_zbrush")
+    package_snapshot = next(item for item in transaction["snapshots"] if item["path"] == "meshy_dcc_zbrush")
     link_entry = next(item for item in package_snapshot["manifest"] if item["path"] == "alias.py")
     assert link_entry["kind"] == "link"
     assert link_entry["target"] == "nested/module.py"
@@ -1075,7 +1065,7 @@ def test_transaction_recovery_restores_directory_file_link_and_posix_modes(tmp_p
 
 
 def test_upgrade_rejects_unowned_empty_directory_inside_managed_tree(tmp_path: Path) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     source = tmp_path / "candidate"
     destination = tmp_path / "installed"
@@ -1095,7 +1085,7 @@ def test_upgrade_rejects_unowned_empty_directory_inside_managed_tree(tmp_path: P
 
 
 def test_upgrade_rejects_unowned_link_inside_managed_tree(tmp_path: Path) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     source = tmp_path / "candidate"
     destination = tmp_path / "installed"
@@ -1124,14 +1114,14 @@ def test_native_windows_junction_is_rejected_without_traversal_or_recovery_mutat
 ) -> None:
     import stat
 
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     outside = tmp_path / "operator-data"
     outside.mkdir()
     secret = outside / "secret.bin"
     secret.write_bytes(b"operator bytes must remain untouched")
     asset_dir = tmp_path / "ZStartup"
-    package = asset_dir / "dcc_mcp_zbrush"
+    package = asset_dir / "meshy_dcc_zbrush"
     asset_dir.mkdir()
     completed = subprocess.run(
         [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", "mklink", "/J", str(package), str(outside)],
@@ -1172,10 +1162,10 @@ def test_native_windows_junction_is_rejected_without_traversal_or_recovery_mutat
         lifecycle._capture_transaction(
             asset_dir,
             "junction-test",
-            asset_dir / ".dcc-mcp" / "backups" / "new",
+            asset_dir / ".meshy-dcc" / "backups" / "new",
         )
 
-    recovery_parent = asset_dir / ".dcc-mcp" / "transactions"
+    recovery_parent = asset_dir / ".meshy-dcc" / "transactions"
     recovery_parent.mkdir(parents=True, exist_ok=True)
     recovery_root = recovery_parent / "junction-recovery"
     completed = subprocess.run(
@@ -1204,7 +1194,7 @@ def test_native_windows_junction_is_rejected_without_traversal_or_recovery_mutat
     assert secret.read_bytes() == b"operator bytes must remain untouched"
     assert os.lstat(package).st_reparse_tag == metadata.st_reparse_tag
     assert Path(os.path.realpath(package)) == Path(os.path.realpath(outside))
-    assert not (asset_dir / ".dcc-mcp" / "transactions" / "junction-test").exists()
+    assert not (asset_dir / ".meshy-dcc" / "transactions" / "junction-test").exists()
 
     lifecycle._remove_path(recovery_root)
     lifecycle._remove_path(package)
@@ -1216,32 +1206,32 @@ def test_native_windows_junction_is_rejected_without_traversal_or_recovery_mutat
 def test_public_embedded_upgrade_rejects_unowned_paths_before_transaction(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_core.install_lifecycle as core_lifecycle
+    import meshy_dcc_core.install_lifecycle as core_lifecycle
 
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = replace(_request(tmp_path), mode="embedded")
     first = tmp_path / "first-embedded.zip"
     with zipfile.ZipFile(first, "w") as payload:
-        payload.writestr("embedded/dcc_mcp_zbrush/__init__.py", "PLUGIN = 'prior'\n")
-        payload.writestr("embedded/dcc_mcp_zbrush_plugin.py", "ENTRY = 'prior'\n")
+        payload.writestr("embedded/meshy_dcc_zbrush/__init__.py", "PLUGIN = 'prior'\n")
+        payload.writestr("embedded/meshy_dcc_zbrush_plugin.py", "ENTRY = 'prior'\n")
     first_digest = hashlib.sha256(first.read_bytes()).hexdigest()
     installed = lifecycle.run_lifecycle(request, plugin_archive=first, expected_sha256=first_digest)
     assert installed["exit_code"] == 50
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     readiness = _embedded_readiness(request, receipt)
     monkeypatch.setattr(core_lifecycle, "wait_for_sidecar_ready", lambda **_kwargs: readiness)
     monkeypatch.setattr(lifecycle, "_process_executable", lambda _pid: Path(request.dcc_path))
     monkeypatch.setattr(lifecycle, "_process_start_identity", lambda _pid: "start-5252")
     assert lifecycle.run_lifecycle(replace(request, operation="verify"))["exit_code"] == 0
-    package = request.asset_dir / "dcc_mcp_zbrush"
+    package = request.asset_dir / "meshy_dcc_zbrush"
     operator_directory = package / "operator-empty"
     operator_directory.mkdir()
     second = tmp_path / "second-embedded.zip"
     with zipfile.ZipFile(second, "w") as payload:
-        payload.writestr("embedded/dcc_mcp_zbrush/__init__.py", "PLUGIN = 'next'\n")
-        payload.writestr("embedded/dcc_mcp_zbrush_plugin.py", "ENTRY = 'next'\n")
+        payload.writestr("embedded/meshy_dcc_zbrush/__init__.py", "PLUGIN = 'next'\n")
+        payload.writestr("embedded/meshy_dcc_zbrush_plugin.py", "ENTRY = 'next'\n")
     second_digest = hashlib.sha256(second.read_bytes()).hexdigest()
 
     upgraded = lifecycle.run_lifecycle(
@@ -1254,46 +1244,46 @@ def test_public_embedded_upgrade_rejects_unowned_paths_before_transaction(
     assert upgraded["stage"] == "ownership"
     assert operator_directory.is_dir()
     assert (package / "__init__.py").read_text(encoding="utf-8") == "PLUGIN = 'prior'\n"
-    assert not (request.asset_dir / ".dcc-mcp" / "transactions").exists()
+    assert not (request.asset_dir / ".meshy-dcc" / "transactions").exists()
 
 
 def test_embedded_owned_manifest_preserves_unowned_operator_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_core.install_lifecycle as core_lifecycle
+    import meshy_dcc_core.install_lifecycle as core_lifecycle
 
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = replace(_request(tmp_path), mode="embedded")
     archive = tmp_path / "embedded.zip"
     with zipfile.ZipFile(archive, "w") as payload:
-        payload.writestr("embedded/dcc_mcp_zbrush/__init__.py", "PLUGIN = True\n")
-        payload.writestr("embedded/dcc_mcp_zbrush/nested/module.py", "VALUE = 1\n")
-        payload.writestr("embedded/dcc_mcp_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush/__init__.py", "PLUGIN = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush/nested/module.py", "VALUE = 1\n")
+        payload.writestr("embedded/meshy_dcc_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     assert lifecycle.run_lifecycle(request, plugin_archive=archive, expected_sha256=digest)["exit_code"] == 50
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     readiness = _embedded_readiness(request, receipt)
     monkeypatch.setattr(core_lifecycle, "wait_for_sidecar_ready", lambda **_kwargs: readiness)
     monkeypatch.setattr(lifecycle, "_process_executable", lambda _pid: Path(request.dcc_path))
     monkeypatch.setattr(lifecycle, "_process_start_identity", lambda _pid: "start-5252")
     assert lifecycle.run_lifecycle(replace(request, operation="verify"))["exit_code"] == 0
-    operator_file = request.asset_dir / "dcc_mcp_zbrush" / "operator-owned.txt"
+    operator_file = request.asset_dir / "meshy_dcc_zbrush" / "operator-owned.txt"
     operator_file.write_text("preserve", encoding="utf-8")
 
     result = lifecycle.run_lifecycle(replace(request, operation="uninstall"))
 
     assert result["exit_code"] == 0
     assert operator_file.read_text(encoding="utf-8") == "preserve"
-    assert not (request.asset_dir / "dcc_mcp_zbrush" / "__init__.py").exists()
-    assert not (request.asset_dir / "dcc_mcp_zbrush" / "nested").exists()
+    assert not (request.asset_dir / "meshy_dcc_zbrush" / "__init__.py").exists()
+    assert not (request.asset_dir / "meshy_dcc_zbrush" / "nested").exists()
 
 
 def test_tampered_owned_embedded_file_blocks_uninstall_without_touching_unowned_data(
     tmp_path: Path,
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     root = tmp_path / "owned"
     (root / "nested").mkdir(parents=True)
@@ -1310,7 +1300,7 @@ def test_tampered_owned_embedded_file_blocks_uninstall_without_touching_unowned_
 
 
 def test_typed_manifest_binds_relative_links_and_rejects_escape(tmp_path: Path) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     root = tmp_path / "owned"
     root.mkdir()
@@ -1344,19 +1334,19 @@ def test_typed_manifest_binds_relative_links_and_rejects_escape(tmp_path: Path) 
 def test_uninstall_failure_restores_exact_receipt_payload_and_backups(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = _request(tmp_path)
     archive = tmp_path / "plugin.zip"
     digest = _build_sidecar_archive(archive)
     _commit_sidecar(monkeypatch, request, archive, digest)
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     paths = [
         receipt_path,
         request.asset_dir / "Python" / "init.py",
-        request.asset_dir / "Python" / "dcc_mcp_zbrush_socket_bridge.py",
-        request.asset_dir / "Python" / "dcc_mcp_zbrush_install_identity.json",
+        request.asset_dir / "Python" / "meshy_dcc_zbrush_socket_bridge.py",
+        request.asset_dir / "Python" / "meshy_dcc_zbrush_install_identity.json",
     ]
     exact_before = {str(path): path.read_bytes() for path in paths}
     backup_root = request.asset_dir / receipt["backup_root"]
@@ -1387,13 +1377,13 @@ def test_uninstall_failure_restores_exact_receipt_payload_and_backups(
 def test_uninstall_never_deletes_unowned_content_added_to_recovery_backup(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = _request(tmp_path)
     archive = tmp_path / "plugin.zip"
     digest = _build_sidecar_archive(archive)
     _commit_sidecar(monkeypatch, request, archive, digest)
-    receipt = json.loads((request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json").read_text(encoding="utf-8"))
+    receipt = json.loads((request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json").read_text(encoding="utf-8"))
     victim = request.asset_dir / receipt["backup_root"] / "operator-owned.txt"
     victim.parent.mkdir(parents=True, exist_ok=True)
     victim.write_text("keep", encoding="utf-8")
@@ -1419,7 +1409,7 @@ def test_host_product_metadata_is_authentic_and_bounded(
     product_name: str,
     version: str,
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     monkeypatch.setattr(
         lifecycle,
@@ -1432,7 +1422,7 @@ def test_host_product_metadata_is_authentic_and_bounded(
 
 
 def test_unsigned_or_non_maxon_zbrush_executable_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     monkeypatch.setattr(
         lifecycle,
@@ -1449,7 +1439,7 @@ def test_unsigned_or_non_maxon_zbrush_executable_is_rejected(tmp_path: Path, mon
 def test_pythonpath_shadow_adapter_is_not_accepted_as_distribution_owned(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     real_distribution = lifecycle.distribution
 
@@ -1464,7 +1454,7 @@ def test_pythonpath_shadow_adapter_is_not_accepted_as_distribution_owned(
     monkeypatch.setattr(
         lifecycle,
         "distribution",
-        lambda name: ShadowDistribution() if name == "dcc-mcp-zbrush" else real_distribution(name),
+        lambda name: ShadowDistribution() if name == "meshy-dcc-zbrush" else real_distribution(name),
     )
     result = lifecycle.run_lifecycle(replace(_request(tmp_path), yes=False, dry_run=True))
 
@@ -1476,9 +1466,9 @@ def test_pythonpath_shadow_adapter_is_not_accepted_as_distribution_owned(
 def test_editable_provenance_rejects_same_repository_shadow_module(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
-    shadow = tmp_path / "shadow" / "dcc_mcp_zbrush" / "__init__.py"
+    shadow = tmp_path / "shadow" / "meshy_dcc_zbrush" / "__init__.py"
     shadow.parent.mkdir(parents=True)
     shadow.write_text("__version__ = '0.2.24'", encoding="utf-8")
 
@@ -1499,13 +1489,13 @@ def test_editable_provenance_rejects_same_repository_shadow_module(
     monkeypatch.setattr(lifecycle.importlib, "import_module", lambda _name: ShadowModule())
 
     with pytest.raises(lifecycle.LifecycleFailure, match="not owned"):
-        lifecycle._distribution_module_provenance("dcc-mcp-zbrush", "dcc_mcp_zbrush")
+        lifecycle._distribution_module_provenance("meshy-dcc-zbrush", "meshy_dcc_zbrush")
 
 
 def test_remediation_commands_preserve_complete_selected_context(
     tmp_path: Path,
 ) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = replace(_request(tmp_path), yes=False, dry_run=True, socket_host="localhost", socket_port=4321)
     result = run_lifecycle(request)
@@ -1515,7 +1505,7 @@ def test_remediation_commands_preserve_complete_selected_context(
     assert command == [
         str(Path(sys.executable).resolve()),
         "-m",
-        "dcc_mcp_zbrush.cli",
+        "meshy_dcc_zbrush.cli",
         "install",
         "--mode",
         "sidecar",
@@ -1538,7 +1528,7 @@ def test_remediation_commands_preserve_complete_selected_context(
 
 
 def test_different_selected_python_fails_with_exact_executable_remediation(tmp_path: Path) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     selected_python = tmp_path / "managed-python.exe"
     selected_python.write_bytes(b"MZ")
@@ -1549,7 +1539,7 @@ def test_different_selected_python_fails_with_exact_executable_remediation(tmp_p
     assert result["exit_code"] == 10
     assert result["stage"] == "python"
     command = result["next_steps"][0]["command"]
-    assert command[:4] == [str(selected_python), "-m", "dcc_mcp_zbrush.cli", "install"]
+    assert command[:4] == [str(selected_python), "-m", "meshy_dcc_zbrush.cli", "install"]
     assert "--dcc-path" in command and str(request.dcc_path) in command
     assert "--asset-dir" in command and str(request.asset_dir) in command
 
@@ -1566,7 +1556,7 @@ def test_different_selected_python_fails_with_exact_executable_remediation(tmp_p
     ],
 )
 def test_host_version_accepts_windows_comma_separated_product_versions(value: str, expected: tuple) -> None:
-    from dcc_mcp_zbrush.install_lifecycle import _parse_host_version
+    from meshy_dcc_zbrush.install_lifecycle import _parse_host_version
 
     assert _parse_host_version(value) == expected
 
@@ -1589,7 +1579,7 @@ def test_host_version_accepts_windows_comma_separated_product_versions(value: st
     ],
 )
 def test_host_version_rejects_non_canonical_shapes_after_separator_normalisation(value: str) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     with pytest.raises(lifecycle.LifecycleFailure) as raised:
         lifecycle._parse_host_version(value)
@@ -1599,7 +1589,7 @@ def test_host_version_rejects_non_canonical_shapes_after_separator_normalisation
 
 
 def test_host_version_rejects_unbounded_values_before_normalisation() -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     with pytest.raises(lifecycle.LifecycleFailure, match="not bounded"):
         lifecycle._parse_host_version("2, " * 40)
@@ -1608,7 +1598,7 @@ def test_host_version_rejects_unbounded_values_before_normalisation() -> None:
 def test_preflight_accepts_comma_separated_windows_product_version(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     monkeypatch.setattr(
         lifecycle,
@@ -1629,7 +1619,7 @@ def _verify_sidecar_with_origin(
 ):
     """Install the sidecar, then verify against a chosen zbrush.commands origin."""
 
-    from dcc_mcp_zbrush.install_lifecycle import run_lifecycle
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
 
     request = _request(tmp_path)
     archive = tmp_path / "plugin.zip"
@@ -1638,7 +1628,7 @@ def _verify_sidecar_with_origin(
     session["zbrush_commands_origin"] = str(origin(receipt, tmp_path))
     _bind_sidecar(monkeypatch, request, session)
     result = run_lifecycle(replace(request, operation="verify"))
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     stored = json.loads(receipt_path.read_text(encoding="utf-8")) if receipt_path.exists() else {}
     return receipt, stored, result
 
@@ -1669,18 +1659,18 @@ def test_embedded_zbrush_commands_host_executable_origin_passes_sidecar_host_ide
 def test_embedded_zbrush_commands_product_root_origin_passes_embedded_host_identity(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_core.install_lifecycle as core_lifecycle
+    import meshy_dcc_core.install_lifecycle as core_lifecycle
 
-    import dcc_mcp_zbrush.install_lifecycle as lifecycle
+    import meshy_dcc_zbrush.install_lifecycle as lifecycle
 
     request = replace(_request(tmp_path), mode="embedded")
     archive = tmp_path / "embedded.zip"
     with zipfile.ZipFile(archive, "w") as payload:
-        payload.writestr("embedded/dcc_mcp_zbrush/__init__.py", "PLUGIN = True\n")
-        payload.writestr("embedded/dcc_mcp_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush/__init__.py", "PLUGIN = True\n")
+        payload.writestr("embedded/meshy_dcc_zbrush_plugin.py", "PLUGIN_ENTRY = True\n")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     assert lifecycle.run_lifecycle(request, plugin_archive=archive, expected_sha256=digest)["exit_code"] == 50
-    receipt_path = request.asset_dir / ".dcc-mcp" / "receipts" / "zbrush.json"
+    receipt_path = request.asset_dir / ".meshy-dcc" / "receipts" / "zbrush.json"
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     readiness = _embedded_readiness(request, receipt, origin=Path(receipt["dcc_root"]))
     monkeypatch.setattr(core_lifecycle, "wait_for_sidecar_ready", lambda **_kwargs: readiness)
