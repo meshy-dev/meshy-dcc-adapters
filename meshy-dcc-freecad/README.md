@@ -1,0 +1,416 @@
+# meshy-dcc-freecad
+
+Meshy DCC adapter for FreeCAD: typed, durable parametric modeling and CAD
+exchange, and Meshy model import (GLB, OBJ, STL).
+
+Verified with FreeCAD 1.1.4 on macOS arm64 through `meshy-dcc`: install,
+start-instance, GLB import with read-back, save copy and reopen in a new
+service, and safe stop; the real-FreeCAD test lanes pass there except
+`render_view`, which macOS cannot run headlessly (see below). Windows x64 is
+packaged but not yet checked on a real host.
+
+The adapter is a service, not a FreeCAD plugin: it runs beside FreeCAD, starts
+a fresh `FreeCADCmd` (safe mode, throwaway user config) for every call, and
+works on `.FCStd` files inside one project directory. Nothing is installed into
+FreeCAD or its preferences, and no FreeCAD window opens. Each mutating call
+saves the document and reads it back before it reports success; open the file
+in FreeCAD to look at the result.
+
+## With Meshy DCC
+
+`packaging/build_package.py` builds the Meshy DCC package: a relocatable
+CPython with `meshy_dcc_core` and this adapter, plus `bin/meshy-dcc-freecad`
+(`.cmd` on Windows). FreeCAD's own Python is not used for the service.
+
+```bash
+meshy-dcc install --dcc-type freecad --project /path/to/cad-project --execute
+meshy-dcc start-instance --dcc-type freecad --project /path/to/cad-project --wait-ready --yes
+meshy-dcc load-skill freecad-modeling --instance-id <short>
+meshy-dcc call freecad.<short>.freecad_modeling__import_geometry --wait \
+  --json '{"document_path":"/path/to/cad-project/scene.FCStd","input_path":"/path/to/cad-project/models/model.glb","object_name":"Model"}'
+meshy-dcc stop-instance --dcc-type freecad --instance-id <short>
+```
+
+`install` extracts the package and runs `bin/meshy-dcc-freecad install
+--project <dir> --dcc-path <FreeCAD>`: it finds FreeCADCmd next to the FreeCAD
+the operator named (`FreeCAD.app`, `FreeCAD.exe` or FreeCADCmd itself), checks
+it with `verify` (a real FreeCADCmd run against the compatibility matrix), and
+writes `.meshy-dcc/launch-plan.json` (it ignores itself for version control).
+`start-instance` then runs the service with the project as its only allowed
+root, so documents and the models to import must sit inside the project.
+
+A service launched by `start-instance` advertises a safe stop. Calls save as
+they go, so there is never unsaved work; a stop is refused while a FreeCAD
+call is still running unless it carries `discard_unsaved`, which cancels the
+call and leaves its document as it was.
+
+## Capabilities
+
+- Detect FreeCADCmd and report the actual FreeCAD/Python runtime.
+- Discover every `.FCStd` under the allowed roots without opening one
+  (`list_documents`): bounded, paginated, with size, modification time, and a
+  bounded SHA-256.
+- Create, inspect, recompute, validate, copy, and dependency-safely edit FCStd
+  documents.
+- Render a document view to a PNG headlessly and prove the frame is not a waste
+  image before returning it.
+- Add and update boxes, cylinders, spheres, cones, tori, wedges, and helices
+  with typed dimensions and placements.
+- Scale, copy, and mirror objects into a new object named by the caller.
+- Create parametric union, cut, and intersection features.
+- Import STEP, IGES, BREP, STL, OBJ and GLB geometry, and export STEP, IGES,
+  BREP, STL, OBJ and 3MF. A GLB (Meshy's model format) lands as a mesh in
+  millimetres with glTF's Y-up turned into FreeCAD's Z-up, without materials.
+- Fillet and chamfer edges on an existing solid, with a feasibility pre-check
+  that refuses a radius or distance the adjacent faces cannot absorb.
+- Build linear and polar patterns (up to 1000 instances) and mirror a solid
+  across a base plane.
+- Return object links, placements, shape/mesh topology counts, volume, area,
+  bounding boxes, file size, and SHA-256 provenance.
+
+No inline Python, module paths, or FreeCAD command-line flags are accepted, and
+the typed tools dispatch only through the packaged method-dispatch driver.
+
+The single exception is `run_script`, an escape hatch for work no typed tool
+covers. It accepts a **path to a `.py` file** — never source text — resolves it,
+requires it to lie inside `MESHY_DCC_FREECAD_ALLOWED_ROOTS`, and runs it in a
+disposable FreeCADCmd child started with `--safe-mode` and a throwaway user
+config, so no user workbench, plugin, or macro is loaded. **It is not a
+sandbox**: the script runs as the operator's account with that account's full
+privileges, and allowed roots constrain only which file may be named. Its own
+timeout ceiling (`MESHY_DCC_FREECAD_MAX_SCRIPT_TIMEOUT_SECS`, 300s by default) is
+far below the 1800s document ceiling, so a script that hangs is killed in
+minutes. There is no script management surface.
+
+## Requirements
+
+This adapter spans **two separate Python interpreters**. They have different
+versions, different `sys.path`, and different site-packages:
+
+| Side | What runs there | Python version | Who owns that version |
+| --- | --- | --- | --- |
+| Wrapper (service side) | the `meshy-dcc-freecad` CLI, server, and `doctor`, plus the process that launches `FreeCADCmd` | **3.7+** (`requires-python = ">=3.7"`) | the Meshy DCC package's CPython 3.11, or the environment you install the wheel into |
+| Host (FreeCAD side) | `src/meshy_dcc_freecad/freecad_driver.py` and every skill script | **3.10+** — the interpreter FreeCAD is built against and ships (3.11 in FreeCAD 1.0 and 1.1) | your FreeCAD installation |
+
+- `meshy-dcc-core` 0.2.x in the **wrapper** environment.
+- A FreeCAD version covered by the compatibility matrix below, with either a working
+  `FreeCADCmd`/`freecadcmd` or an explicitly configured compatible executable Python
+  interpreter and installed native FreeCAD library for the opt-in `python-module`
+  backend. See [native-library configuration](docs/python-module-backend.md).
+
+Because the two interpreters are separate:
+
+- **Do not create a Python 3.7 virtualenv and expect `import FreeCAD` to work in
+  it.** The wrapper runs fine on 3.7, but FreeCAD's modules exist only inside
+  FreeCAD's own Python, which is 3.10 or newer in every supported release.
+- Installing the wheel into FreeCAD's interpreter is neither required nor
+  supported; the wrapper drives the host by launching `FreeCADCmd` with the
+  packaged driver.
+- `meshy-dcc-freecad doctor --json` reports the host interpreter as
+  `checks.runtime.python_version`, next to `checks.runtime.freecad_version`. See
+  [install.md](install.md#host-python-interpreter) for how to read and
+  cross-check both.
+
+### FreeCAD compatibility matrix
+
+Supported host versions are declared in
+[`compat_matrix.json`](src/meshy_dcc_freecad/compat_matrix.json) — that file is the
+contract, this section only points at it:
+
+| FreeCAD | Status |
+| --- | --- |
+| 1.0.x | supported |
+| 1.1.x | supported |
+| anything else | rejected with an explicit error code |
+
+The matrix entries record Linux runs on **1.0.2** and **1.1.4** from before
+the fork; Meshy has run the real-host test lanes on 1.1.4 for macOS arm64.
+Both releases ship Python 3.11 as the host interpreter. A version outside the
+matrix is **not** silently
+downgraded to "probably fine":
+`meshy-dcc-freecad doctor --json` fails with an `error_code`
+(`freecad_host_version_unsupported`, `freecad_host_version_unverified`,
+`freecad_host_version_unlisted`, or `freecad_host_version_unparsable`), the
+supported ranges, and the command that pins a supported one. The same matrix is
+re-checked inside FreeCAD before any geometry work, so a skipped preflight does
+not turn into a silent modelling bug.
+
+## Standalone
+
+Without `meshy-dcc install`, install the wheel next to `meshy_dcc_core`, prove
+the FreeCAD runtime, then start the service:
+
+```text
+python -m pip install --upgrade meshy-dcc-freecad
+meshy-dcc-freecad doctor --json
+meshy-dcc-freecad verify --json
+meshy-dcc-freecad serve --project /path/to/cad-project --freecad /path/to/FreeCADCmd
+```
+
+See [install.md](install.md) for Windows, macOS, and Linux discovery, stable
+doctor exits, configuration, wheel upgrades, uninstall, and troubleshooting.
+FreeCAD remains OS/package-manager owned; the adapter does not download or
+cache external binaries.
+
+## Configuration
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `MESHY_DCC_FREECAD_EXECUTABLE` | Exact FreeCADCmd executable or install directory | `PATH` and standard locations |
+| `MESHY_DCC_FREECAD_ALLOWED_ROOTS` | `os.pathsep`-separated document/import/export roots | server working directory |
+| `MESHY_DCC_FREECAD_MAX_DOCUMENT_BYTES` | Maximum FCStd input size | 2 GiB |
+| `MESHY_DCC_FREECAD_MAX_TIMEOUT_SECS` | Maximum per-call deadline | 1800 seconds |
+| `MESHY_DCC_FREECAD_SNAPSHOT_DIR` | Snapshot store; must resolve inside allowed roots | `<first allowed root>/.meshy-dcc-freecad/snapshots` |
+| `MESHY_DCC_FREECAD_MAX_SNAPSHOTS` | Maximum stored snapshots | 50 |
+| `MESHY_DCC_FREECAD_MAX_SNAPSHOT_BYTES` | Maximum total snapshot store size | 1 GiB |
+| `MESHY_DCC_FREECAD_PORT` | Fixed adapter port when direct addressing is required | OS-assigned |
+| `MESHY_DCC_FREECAD_PARTS_LIBRARY` | `os.pathsep`-separated local standard-parts library directories | none — `list_parts` reports `parts_library_unavailable` |
+
+The service is a standalone Meshy DCC instance with no GUI PID. Every operation
+launches a clean FreeCADCmd process in safe mode with a temporary user config.
+
+## Recoverability
+
+Every call is a process-level commit, so there is no in-process undo stack to
+rewind. Recoverability is explicit instead: `create_snapshot` copies a
+document's bytes into the snapshot store, and `restore_snapshot` puts them back.
+
+```text
+create_snapshot  {document_path, label?}               -> snapshot_id, document_sha256
+list_snapshots   {document_path?}                      -> snapshots, limits, orphan report
+restore_snapshot {document_path, snapshot_id, expected_sha256?}
+                                                       -> restored_sha256, undo_snapshot_id
+delete_snapshot  {snapshot_id}                         -> frees one slot
+```
+
+Snapshots are byte copies, so they never spawn FreeCAD and keep working when
+the host is unavailable. Passing `expected_sha256` makes a restore refuse
+rather than overwrite work done after the caller read the document, and a
+restore always snapshots the state it replaces — so a mistaken restore is just
+another restore. A deleted document is recreated from a snapshot rather than
+refused, with `undo_snapshot_id` null because there was no state to preserve.
+The store lives inside `MESHY_DCC_FREECAD_ALLOWED_ROOTS` and is capped; when it
+is full the call fails with `snapshot_limit_exceeded` and cleanup guidance
+instead of evicting anything. See [docs/snapshots.md](docs/snapshots.md).
+
+## Agent workflow
+
+```bash
+meshy-dcc list
+meshy-dcc search --query "FreeCAD create boolean export STEP"
+meshy-dcc load-skill freecad-session --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-sketch --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-modeling --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-modify --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-parts --dcc-type freecad --instance-id <instance-short>
+```
+
+Typical sequence: `list_documents` → `create_document` → `add_primitive` →
+`transform_object` → `boolean_operation` → `fillet_edges` → `linear_pattern` →
+`validate_document` → `export_geometry`.
+
+### Standard parts
+
+`freecad-parts` adds `list_parts` and `insert_part`. The library is a set of
+local directories configured through `MESHY_DCC_FREECAD_PARTS_LIBRARY`:
+
+```bash
+meshy-dcc call list_parts --category Fasteners --query M8
+meshy-dcc call insert_part --document_path projects/enclosure.FCStd \
+  --part_ref fasteners/iso4014-m8x40.step --object_name BoltM8x40 \
+  --translation '[10, 20, 0]'
+```
+
+The adapter is offline-only: it never downloads, extracts, or caches a library,
+and writes nothing outside the directories the operator named. `part_ref` is
+the relative path `list_parts` returned and nothing else — references
+containing `..`, absolute paths, backslashes, URL schemes, and anything that
+resolves outside a library root (including through a symlink) are refused
+before a file is read, each with a stable error code. Follow an insert with
+`validate_document`.
+
+The parametric path starts with a sketch instead:
+`create_sketch` → `add_sketch_geometry` → `add_sketch_constraint` →
+`get_sketch_info`. `get_sketch_info` reports `dof` and `feature_ready`, and a
+sketch with unconstrained degrees of freedom is never reported as usable for a
+feature — the adapter accepts no arbitrary Python, so there is no way to repair
+a silently under-constrained profile afterwards.
+
+`scale_object`, `copy_object`, and `mirror_object` always write to a **new**
+object named by the caller. FreeCAD accepts a `Shape` assignment on a parametric
+primitive and then ignores it, so an in-place variant would report success while
+the geometry stayed the same. A copy of a primitive keeps its parametric type; a
+scaled result becomes a plain `Part::Feature`; a mirror that keeps its source
+stays a live `Part::Mirroring` linked to it, and one that drops the source bakes
+the geometry and removes it. Every 3MF export is asserted to declare the
+millimetre unit, because a consumer scales the model by that declaration.
+
+## Safety contract
+
+- Requested documents and geometry stay under configured allowed roots.
+- `list_documents` is a read-only filesystem listing: no FreeCAD process, no
+  opened document, no recompute, no write. A `root` outside the allowed roots
+  is refused with `AllowedRootsError` rather than silently returning nothing.
+  Entries per page (200), the serialized size of the returned `entries` array
+  (256 KiB), and directory entries visited are each capped, and a listing
+  stopped by one of those caps says so through `truncated` plus
+  `scan_budget_exhausted`. The 256 KiB figure counts the per-entry JSON
+  character length summed over the emitted entries (no comma or bracket
+  separators) and bounds the `entries` array alone; the response envelope
+  (`roots`, `pattern`, counters, and the like) is not counted against it.
+  Bytes read for checksums are capped too, but that one is not a stopping
+  condition: exhausting it turns later digests `unavailable` while enumeration
+  continues, reported separately by `read_budget_exhausted` — so it can be
+  true while `truncated` is false.
+- Existing outputs require explicit `overwrite=true`.
+- Every `save_copy` call with `overwrite=false`, plain or presentation,
+  publishes exclusively: a sibling hard link where the output filesystem
+  supports one, otherwise an exclusive create (`O_CREAT|O_EXCL`) plus copy on
+  volumes without hard-link support (FAT/exFAT, some SMB/FUSE mounts). Both
+  refuse a destination created during the native call; only the hard link is a
+  single atomic inode commit. Publication fails if neither is available —
+  retry with `overwrite=true` or publish to a filesystem with hard-link
+  support. Explicit overwrite uses atomic replacement.
+- FCStd mutations happen on sibling staging copies and replace the original
+  only after a successful, non-empty save.
+- Failed mutations leave the original document byte-for-byte unchanged.
+- Object names, dimensional fields, placements, formats, tessellation, result
+  size, process output, and deadlines are bounded.
+- Cancellation and timeouts terminate the owned FreeCADCmd process.
+- Cascade removal is explicit and reports every removed dependent.
+- Parts-library references are resolved and containment-checked against the
+  configured roots before anything is read; a caller never names a file.
+
+FreeCAD Python API reference: <https://www.freecad.org/api/>
+
+## Optional native-library backend
+
+The default is still FreeCADCmd. A separately configured `python-module` backend runs the same typed driver in a fresh compatible interpreter and installed FreeCAD library, with isolated temporary user directories. It is opt-in and has no automatic fallback. See [configuration and exact qualification](docs/python-module-backend.md).
+
+### Native presentation copies
+
+`save_copy` accepts an optional bounded `visible_objects` list and a standard
+`view` (`isometric`, `front`, `top`, `right`). With this explicit opt-in it uses
+FreeCAD's installed GUI library to save view-provider visibility and an
+orthographic camera. Selections must be top-level non-container objects;
+Groups, LinkGroups, Parts, Bodies and their members are rejected before changing visibility because a
+hidden parent can hide or override a child's local state. Other objects remain
+editable but hidden. The original
+file stays unchanged; presentation mode refuses replacing the source even when
+overwrite is set. GUI-library availability is required; this is not a claim of
+offscreen OpenGL rendering.
+
+The isolated native process disables view animation before selecting the camera,
+verifies visibility, orthographic type and native quaternion orientation against
+the request, then saves and reopens its staging file. It verifies camera values
+(single-precision serialization tolerance of 1e-6), object names, links, topology
+counts, placement, volumes and analytic bounds (double precision tolerance 1e-10 relative,
+1e-9 absolute). Analytic bounds explicitly exclude GUI triangulation caches.
+A cancellation check precedes final publication. No FCStd XML or binary data is
+rewritten outside native FreeCAD APIs. Native raster thumbnails are disabled in
+this isolated process because an offscreen host may lack an OpenGL context.
+
+No-overwrite copy publication uses a sibling hard link to publish the complete
+native file without replacing a destination created during the native call;
+the output filesystem must support this operation. Where it does not, the same
+exclusive publication falls back to an exclusive create plus copy, which keeps
+the refusal but not the single atomic inode commit; a failure names hard links
+and the `overwrite=true` escape hatch. Explicit overwrite continues to use
+atomic replacement. These readbacks cover recorded geometry metrics,
+not full BRep or mesh connectivity equivalence. Source qualification and the
+supported-host GUI persistence gate are recorded in
+[presentation-copy validation](docs/validation/presentation-copy.md).
+
+Optional `appearances` entries contain only `object_name`, three `rgb` numbers,
+and `opacity`. Each number must be finite and in `[0, 1]`; names must be unique
+members of `visible_objects` with non-null top-level Part features and initially
+uniform native face RGB and transparency. FreeCAD's integer-percent transparency rounds
+the requested opacity to 1% resolution (transparency ties round upward). The
+response reports that applied value. RGB is also normalized to the native
+8-bit-per-channel save format using float32 scaling and nearest-integer rounding
+with ties upward. The response retains original values in `presentation_request`
+and reports applied colors/opacity in `presentation.appearances`. All entries are validated before any
+view-provider changes; scalar properties and every native face material are
+checked before saving and after reopening. Only named parts change appearance.
+
+Optional `frame_margin` is a finite fraction in `[0, 1]` added at each side of
+the fitted orthographic camera height: final height is
+`fitted_height * (1 + 2 * frame_margin)`. It does not guarantee pixel padding or
+fix the capture aspect ratio. Omitting it preserves the existing fit behavior.
+Both options require an explicit `visible_objects` selection. These controls
+save native presentation state; they do not render an image or add a material
+execution interface. See the [appearance qualification gate](docs/validation/appearance-copy.md)
+for the source evidence and native tests still required for this enhancement.
+
+### Headless render snapshots
+
+`render_view` captures a document view to a PNG so an agent can see what it
+built instead of reading coordinates blind. It runs in the same isolated
+process-per-call architecture as every other tool, so none of the
+long-lived-GUI-thread failure modes apply.
+
+**The image is not returned by default.** `include_image` defaults to `false`:
+the default response is text — whether the render is usable, the pixel summary,
+the view, and what was in frame. Asking for the PNG on every call is how a
+visual-feedback feature becomes a context-cost problem.
+
+**The frame is verified before it is returned, and a waste frame is refused
+rather than handed back.** Two detectors, because there are two failure modes:
+
+| Failure | Error code | Refused when |
+| --- | --- | --- |
+| capture never reached the scene (flat fill) | `degenerate_render` | one luminance level, or luminance spread below 1.0, or one colour covering more than 99.9% of the frame |
+| background rendered, model did not | `empty_render` | fewer than 0.5% of pixels differ from the empty scene at the same camera |
+
+The second detector exists because **FreeCAD's default 3D-view background is a
+linear gradient and it is baked into the saved PNG**, so an entirely empty
+render already has plenty of pixel variance and would pass any "is it
+monochrome?" check. Every render is therefore captured twice — once as
+requested, once with every object hidden at the identical camera — and the pair
+is compared. Comparing against the empty scene is also a non-background pixel
+share measurement that needs no knowledge of what the background is.
+
+Both failures carry the full pixel summary, both captures' statistics, the
+measured fraction, the reasons, and remediation. Nothing is published to
+`output_path` unless the verdict passes.
+
+**The render is read-only with respect to the document.** Framing the scene
+means moving the camera and changing visibility, so the native camera,
+visibility and selection are recorded first and restored afterwards — including
+when the capture fails, because the restore runs in a `finally`. That
+restoration is itself a byte-exact read-back check
+(`render.view_state_restored`): `getCamera()` round-trips byte for byte through
+`setCamera()`, so the comparison has no tolerance and any difference is a real
+move. Both snapshots are returned as `view_state_before` and
+`view_state_after`, so the claim is visible rather than asserted in a comment.
+The document is never saved, and the source file stays byte-for-byte unchanged.
+
+Bounds and behaviour:
+
+- `width`/`height` default and cap at 1280×720, minimum 16×16.
+- `visible_objects` is optional; omitted selects every top-level non-container
+  object, using the same container rejection `save_copy` applies.
+- `view` is `isometric`, `front`, `top` or `right`.
+- `appearances` and `frame_margin` work here as they do in `save_copy`, change
+  only this render, and require an explicit `visible_objects`.
+- `output_path` is optional and must end with `.png` inside the allowed roots.
+  Omitted means render, measure and discard — no artefact is left behind.
+  Publication follows the same rules as `save_copy`, including `overwrite`.
+- `include_image` attaches the PNG as base64, capped at 4 MiB; larger renders
+  must be published with `output_path` and read as a file.
+
+It requires the installed FreeCAD GUI library, the Qt offscreen platform and a
+working software GL path. A host without `FreeCADGui` cannot render, and
+`get_capabilities` reports `render_view` as `host_limited` with remediation
+instead of letting the first call be the discovery. The adapter sets
+`LIBGL_ALWAYS_SOFTWARE=1` on the child process (overridable) and disables
+FreeCAD's notification area, which can deadlock under the offscreen platform.
+
+On macOS, Qt's offscreen platform has no OpenGL context, and FreeCADCmd crashes
+when it creates the 3D view (seen with FreeCAD 1.1.4 on macOS arm64). There
+`get_capabilities` reports `render_view` as `host_limited` and the tool refuses
+with `render_host_limited` before starting FreeCAD.
+
+See the [headless render qualification](docs/validation/render-view.md) record
+for the host API facts this relies on, the evidence per layer, and what is
+explicitly not claimed.
