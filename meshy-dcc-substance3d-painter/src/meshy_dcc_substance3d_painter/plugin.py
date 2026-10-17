@@ -1,0 +1,33 @@
+"""Painter plugin lifecycle entry points."""
+
+from __future__ import annotations
+
+from typing import Optional
+
+from meshy_dcc_substance3d_painter._menu import add_menu, remove_menu
+from meshy_dcc_substance3d_painter._safe_stop import attach_safe_stop
+from meshy_dcc_substance3d_painter.dispatcher import PainterQtDispatcher
+from meshy_dcc_substance3d_painter.server import start_server, stop_server
+
+_dispatcher: Optional[PainterQtDispatcher] = None
+
+
+def start_plugin() -> None:
+    """Start MCP when Painter enables this plugin."""
+    global _dispatcher
+    if _dispatcher is None:
+        _dispatcher = PainterQtDispatcher()
+        _dispatcher.install()
+    server = start_server(_dispatcher)
+    attach_safe_stop(server, _dispatcher)
+    add_menu()
+
+
+def close_plugin() -> None:
+    """Stop MCP and detach the Qt timer when Painter disables this plugin."""
+    global _dispatcher
+    remove_menu()
+    stop_server()
+    if _dispatcher is not None:
+        _dispatcher.uninstall()
+        _dispatcher = None

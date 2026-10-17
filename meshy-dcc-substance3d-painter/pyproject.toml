@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meshy-dcc-substance3d-painter"
+version = "0.1.0"
+description = "Meshy DCC adapter for Adobe Substance 3D Painter"
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["substance-3d-painter", "substance", "mcp", "dcc", "ai", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+dependencies = ["meshy-dcc-core>=0.2.0,<0.3.0"]
+
+[project.scripts]
+meshy-dcc-substance3d-painter = "meshy_dcc_substance3d_painter.install_cli:main"
+
+[project.optional-dependencies]
+dev = ["jsonschema>=4.23", "packaging>=24.0", "pytest>=7.0", "ruff>=0.8.0", "pyyaml>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-substance3d-painter"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
+Changelog = "https://github.com/meshy-dev/meshy-dcc-adapters/blob/main/meshy-dcc-substance3d-painter/CHANGELOG.md"
+
+[project.entry-points."meshy_dcc.adapters"]
+substance3d_painter = "meshy_dcc_substance3d_painter:SubstancePainterMcpServer"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meshy_dcc_substance3d_painter"]
+artifacts = ["src/meshy_dcc_substance3d_painter/skills/**", "src/meshy_dcc_substance3d_painter/painter/**"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/meshy_dcc_substance3d_painter", "tests", "tools", "packaging", "README.md", "CHANGELOG.md", "LICENSE", "NOTICE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "C4"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["meshy_dcc_substance3d_painter"]
