@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import types
 
-from dcc_mcp_3dsmax._render_advanced import configure_renderer, set_renderer
+from meshy_dcc_3dsmax._render_advanced import configure_renderer, set_renderer
 
 
 class _ArnoldRenderer:

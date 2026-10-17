@@ -4,7 +4,7 @@
 
 param(
     [string]$MaxVersion = $env:MAX_VERSION,
-    # tools/ → repository root (dcc-mcp-3dsmax), not the monorepo parent
+    # tools/ → repository root (meshy-dcc-3dsmax), not the monorepo parent
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
@@ -16,7 +16,7 @@ if ([string]::IsNullOrEmpty($MaxVersion)) {
 # Detect 3ds Max scripts directory
 $AppData = $env:APPDATA
 $ScriptsDir = Join-Path $AppData "Autodesk\3ds Max $MaxVersion\scripts"
-$Target = Join-Path $ScriptsDir "dcc_mcp_3dsmax"
+$Target = Join-Path $ScriptsDir "meshy_dcc_3dsmax"
 
 Write-Host "🔗 Setting up 3ds Max dev symlinks (3ds Max $MaxVersion)..." -ForegroundColor Cyan
 Write-Host "   Project  : $ProjectRoot" -ForegroundColor Gray
@@ -45,11 +45,11 @@ if (Test-Path $Target) {
 }
 
 # Source directory
-$SourceDir = Join-Path $ProjectRoot "src\dcc_mcp_3dsmax"
+$SourceDir = Join-Path $ProjectRoot "src\meshy_dcc_3dsmax"
 
 if (!(Test-Path -LiteralPath $SourceDir)) {
     Write-Host "   ❌ Source not found: $SourceDir" -ForegroundColor Red
-    Write-Host "   Fix: run this script from the dcc-mcp-3dsmax repo (or pass -ProjectRoot)." -ForegroundColor Yellow
+    Write-Host "   Fix: run this script from the meshy-dcc-3dsmax repo (or pass -ProjectRoot)." -ForegroundColor Yellow
     exit 1
 }
 
@@ -74,4 +74,4 @@ Write-Host ""
 Write-Host "   Next: start 3ds Max $MaxVersion and run in MAXScript Listener:" -ForegroundColor Cyan
 Write-Host "      python.ExecuteFile @""$Target\__init__.py""" -ForegroundColor Gray
 Write-Host "   Then install the menu with:" -ForegroundColor Cyan
-Write-Host "      python.Execute ""import dcc_mcp_3dsmax; dcc_mcp_3dsmax.install_menu(); dcc_mcp_3dsmax.install_shutdown_callback()""" -ForegroundColor Gray
+Write-Host "      python.Execute ""import meshy_dcc_3dsmax; meshy_dcc_3dsmax.install_menu(); meshy_dcc_3dsmax.install_shutdown_callback()""" -ForegroundColor Gray

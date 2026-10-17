@@ -14,13 +14,13 @@ if ([string]::IsNullOrEmpty($MaxVersion)) {
 # Detect 3ds Max scripts directory
 $AppData = $env:APPDATA
 $ScriptsDir = Join-Path $AppData "Autodesk\3ds Max $MaxVersion\scripts"
-$Target = Join-Path $ScriptsDir "dcc_mcp_3dsmax"
+$Target = Join-Path $ScriptsDir "meshy_dcc_3dsmax"
 
 Write-Host "🧹 Removing 3ds Max dev symlinks..." -ForegroundColor Cyan
 Write-Host "   Scripts  : $ScriptsDir" -ForegroundColor Gray
 Write-Host ""
 
-# Remove dcc_mcp_3dsmax symlink/directory
+# Remove meshy_dcc_3dsmax symlink/directory
 if (Test-Path $Target) {
     $targetItem = Get-Item $Target
     if ($targetItem.LinkType) {
@@ -34,15 +34,15 @@ if (Test-Path $Target) {
     Write-Host "   ⚠️  $Target not found (already removed?)" -ForegroundColor Yellow
 }
 
-# Remove dcc_mcp_core.pth file if exists
-$corePth = Join-Path $ScriptsDir "dcc_mcp_core.pth"
+# Remove meshy_dcc_core.pth file if exists
+$corePth = Join-Path $ScriptsDir "meshy_dcc_core.pth"
 if (Test-Path $corePth) {
     Remove-Item $corePth -Force
     Write-Host "   ✅ Removed: $corePth" -ForegroundColor Green
 }
 
 # Remove startup script if exists
-$startupScript = Join-Path $ScriptsDir "dcc_mcp_3dsmax_startup.py"
+$startupScript = Join-Path $ScriptsDir "meshy_dcc_3dsmax_startup.py"
 if (Test-Path $startupScript) {
     Remove-Item $startupScript -Force
     Write-Host "   ✅ Removed: $startupScript" -ForegroundColor Green

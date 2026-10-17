@@ -1,9 +1,9 @@
-"""Import an FBX file into 3ds Max via the dcc-mcp-3dsmax adapter.
+"""Import an FBX file into 3ds Max via the meshy-dcc-3dsmax adapter.
 
 Usage (inside 3ds Max MAXScript Listener):
 
-    import dcc_mcp_3dsmax
-    dcc_mcp_3dsmax.start_server()
+    import meshy_dcc_3dsmax
+    meshy_dcc_3dsmax.start_server()
 
 Then from MCP client:
 

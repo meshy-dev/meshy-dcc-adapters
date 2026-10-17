@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-mesh-ops"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-mesh-ops"
 
 
 def _load_action(script_name: str):
@@ -966,7 +966,7 @@ def test_truncated_parameter_read_is_reported(monkeypatch):
     result = _load_action("action_get_modifier_stack.py").main(node_names=["hero_mesh"])
     entry = result["data"]["nodes"][0]["modifiers"][0]
 
-    from dcc_mcp_3dsmax._mesh_ops import MODIFIER_PROPERTY_LIMIT
+    from meshy_dcc_3dsmax._mesh_ops import MODIFIER_PROPERTY_LIMIT
 
     assert len(entry["parameters"]) == MODIFIER_PROPERTY_LIMIT
     assert entry["parameters_truncated"] is True

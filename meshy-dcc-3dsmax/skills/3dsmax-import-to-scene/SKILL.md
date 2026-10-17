@@ -2,11 +2,11 @@
 name: 3dsmax-import-to-scene
 description: >-
   Agent-facing skill for importing asset descriptors into Autodesk 3ds Max.
-  Use this skill when a contract payload from dcc_mcp_core.asset_import needs
+  Use this skill when a contract payload from meshy_dcc_core.asset_import needs
   to be turned into scene nodes.
 license: MIT
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: 3dsmax
     layer: operator
     stage: authoring

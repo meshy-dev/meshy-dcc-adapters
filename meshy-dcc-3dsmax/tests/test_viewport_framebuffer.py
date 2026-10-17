@@ -18,10 +18,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dcc_mcp_3dsmax import _viewport_utils as viewport_utils  # noqa: E402
+from meshy_dcc_3dsmax import _viewport_utils as viewport_utils  # noqa: E402
 
-VIEWPORT_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-viewport"
-RENDER_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-render"
+VIEWPORT_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-viewport"
+RENDER_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-render"
 
 
 def _load_action(script_name: str):
@@ -501,12 +501,12 @@ def test_agent_viewport_close_verifies_the_host_released_it(monkeypatch):
     runtime.enable_agent_viewport_factory()
     action = _load_action("action_agent_viewport.py")
     action.main(action="ensure")
-    handle = runtime.agent_viewports["dcc_mcp_agent_viewport"]
+    handle = runtime.agent_viewports["meshy_dcc_agent_viewport"]
     closed: list = []
 
     def close():
         closed.append(True)
-        runtime.agent_viewports.pop("dcc_mcp_agent_viewport", None)
+        runtime.agent_viewports.pop("meshy_dcc_agent_viewport", None)
 
     handle.close = close
 
@@ -523,7 +523,7 @@ def test_agent_viewport_close_reports_a_host_that_keeps_it(monkeypatch):
     runtime.enable_agent_viewport_factory()
     action = _load_action("action_agent_viewport.py")
     action.main(action="ensure")
-    handle = runtime.agent_viewports["dcc_mcp_agent_viewport"]
+    handle = runtime.agent_viewports["meshy_dcc_agent_viewport"]
     handle.close = lambda: None
     # A host that keeps reporting the viewport after close() must be reported.
     runtime.getExtendedViewport = lambda name: handle
@@ -545,7 +545,7 @@ def test_agent_viewport_close_reports_a_close_that_raises(monkeypatch):
     runtime.enable_agent_viewport_factory()
     action = _load_action("action_agent_viewport.py")
     action.main(action="ensure")
-    handle = runtime.agent_viewports["dcc_mcp_agent_viewport"]
+    handle = runtime.agent_viewports["meshy_dcc_agent_viewport"]
     handle.close = _raise_busy
 
     result = action.main(action="close")
@@ -563,7 +563,7 @@ def test_agent_viewport_close_reports_a_host_with_no_close_contract(monkeypatch)
     runtime.enable_agent_viewport_factory()
     action = _load_action("action_agent_viewport.py")
     action.main(action="ensure")
-    handle = runtime.agent_viewports["dcc_mcp_agent_viewport"]
+    handle = runtime.agent_viewports["meshy_dcc_agent_viewport"]
     handle.close = None
     runtime.getExtendedViewport = lambda name: None
 
@@ -636,8 +636,8 @@ def test_agent_viewport_registry_is_scoped_to_the_host(monkeypatch):
     action.main(action="ensure")
 
     other = _Runtime(rect=(0, 0, 640, 480))
-    assert viewport_utils.find_agent_viewport(other, "dcc_mcp_agent_viewport") is None
-    assert viewport_utils.find_agent_viewport(runtime, "dcc_mcp_agent_viewport") is not None
+    assert viewport_utils.find_agent_viewport(other, "meshy_dcc_agent_viewport") is None
+    assert viewport_utils.find_agent_viewport(runtime, "meshy_dcc_agent_viewport") is not None
 
 
 def test_set_viewport_applies_options_and_reports_the_readback(monkeypatch):

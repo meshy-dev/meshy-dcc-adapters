@@ -18,9 +18,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dcc_mcp_3dsmax import _light_providers as providers  # noqa: E402
+from meshy_dcc_3dsmax import _light_providers as providers  # noqa: E402
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-camera-lighting"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-camera-lighting"
 
 
 def _load_action(script_name: str):

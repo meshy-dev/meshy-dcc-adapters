@@ -193,7 +193,7 @@ batch, those extra steps consume undo entries that belong to earlier work.
 
 `3dsmax-scene__scene_patch` needs N edits to collapse into one undo entry —
 the MAXScript equivalent of `undo "label" ( ... )`.
-`dcc_mcp_3dsmax._undo_utils.undo_step()` provides that on the Python side: it
+`meshy_dcc_3dsmax._undo_utils.undo_step()` provides that on the Python side: it
 opens a hold with `theHold.Begin()`, and closes it with `theHold.Accept(label)`
 on success or `theHold.Cancel()` on an exception. Because the whole batch runs
 inside that hold, one call leaves one host entry and therefore one `undo_last`

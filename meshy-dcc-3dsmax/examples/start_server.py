@@ -1,22 +1,22 @@
-r"""Example: Start dcc-mcp-3dsmax server inside 3ds Max.
+r"""Example: Start meshy-dcc-3dsmax server inside 3ds Max.
 
 Run this script in the 3ds Max MAXScript Listener:
 
-    python.ExecuteFile @"G:\PycharmProjects\github\dcc-mcp-3dsmax\examples\start_server.py"
+    python.ExecuteFile @"G:\PycharmProjects\github\meshy-dcc-3dsmax\examples\start_server.py"
 """
 
 # Import future modules
 from __future__ import annotations
 
 # Import local modules
-import dcc_mcp_3dsmax
+import meshy_dcc_3dsmax
 
 # Start the MCP server
-print("Starting dcc-mcp-3dsmax server...")
-server = dcc_mcp_3dsmax.start_server()
+print("Starting meshy-dcc-3dsmax server...")
+server = meshy_dcc_3dsmax.start_server()
 
 print(f"Server started on port {server.port}")
-print("MCP gateway: http://127.0.0.1:9765/mcp")
+print("MCP gateway: http://127.0.0.1:19765/mcp")
 
 # Discover available skills
 print("\nDiscovering skills...")
@@ -33,5 +33,5 @@ try:
         time.sleep(1)
 except KeyboardInterrupt:
     print("\nStopping server...")
-    dcc_mcp_3dsmax.stop_server()
+    meshy_dcc_3dsmax.stop_server()
     print("Server stopped.")

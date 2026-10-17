@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dcc_mcp_3dsmax import _fbx_time as fbx_time  # noqa: E402
+from meshy_dcc_3dsmax import _fbx_time as fbx_time  # noqa: E402
 
 KTIME = fbx_time.KTIME_UNITS_PER_SECOND
 

@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS_DIR = ROOT / "src" / "dcc_mcp_3dsmax" / "skills"
+SKILLS_DIR = ROOT / "src" / "meshy_dcc_3dsmax" / "skills"
 INDEX_DOC = ROOT / "docs" / "BUNDLED_SKILLS.md"
 
 REQUIRED_ANNOTATIONS = {
@@ -66,13 +66,13 @@ def test_bundled_skill_metadata_and_tools_are_ci_validatable():
 
     for skill_dir in skill_dirs:
         metadata = _frontmatter(skill_dir)
-        dcc_mcp = metadata["metadata"]["dcc-mcp"]
-        assert dcc_mcp["dcc"] == "3dsmax"
-        assert dcc_mcp["layer"] == "domain"
-        assert dcc_mcp["stage"] in {"scene", "authoring"}
-        assert dcc_mcp["tools"] == "tools.yaml"
-        assert isinstance(dcc_mcp.get("search-hint"), str) and dcc_mcp["search-hint"].strip()
-        assert isinstance(dcc_mcp.get("tags"), str) and dcc_mcp["tags"].strip()
+        meshy_dcc = metadata["metadata"]["meshy-dcc"]
+        assert meshy_dcc["dcc"] == "3dsmax"
+        assert meshy_dcc["layer"] == "domain"
+        assert meshy_dcc["stage"] in {"scene", "authoring"}
+        assert meshy_dcc["tools"] == "tools.yaml"
+        assert isinstance(meshy_dcc.get("search-hint"), str) and meshy_dcc["search-hint"].strip()
+        assert isinstance(meshy_dcc.get("tags"), str) and meshy_dcc["tags"].strip()
 
         for tool in _tools(skill_dir):
             tool_name = tool.get("name")
@@ -132,7 +132,7 @@ def test_every_bundled_tool_declares_produces():
 
 def test_asset_source_loads_one_registered_handler_through_the_real_core_loader():
     """The minimum supported Core must accept the shipped asset-source manifest."""
-    from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions
+    from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
 
     server = MaxMcpServer(
         options=MaxServerOptions(
@@ -199,7 +199,7 @@ def test_bundled_skill_files_are_included_in_built_wheel(tmp_path):
         names = set(zf.namelist())
 
     for skill_dir in _skill_dirs():
-        package_prefix = "dcc_mcp_3dsmax/skills/{}/".format(skill_dir.name)
+        package_prefix = "meshy_dcc_3dsmax/skills/{}/".format(skill_dir.name)
         assert package_prefix + "SKILL.md" in names
         assert package_prefix + "tools.yaml" in names
         for script_path in skill_dir.glob("*.py"):

@@ -10,8 +10,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 ROOT = Path(__file__).resolve().parents[1]
-SCENE_DIR = ROOT / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-scene"
-DISPLAY_DIR = ROOT / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-display"
+SCENE_DIR = ROOT / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-scene"
+DISPLAY_DIR = ROOT / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-display"
 
 
 def _load_action(skill_dir: Path, script_name: str):

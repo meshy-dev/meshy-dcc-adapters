@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-geometry-io"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-geometry-io"
 
 
 def _load_action(script_name: str):
@@ -168,7 +168,7 @@ def test_generic_import_and_obj_export_run_through_adapter_executor(monkeypatch,
     obj_input.write_text("obj", encoding="utf-8")
     obj_output = tmp_path / "scene.obj"
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     imported = run_skill_script(str(SKILL_DIR / "action_import_geometry.py"), {"file_path": str(obj_input)})
     exported = run_skill_script(

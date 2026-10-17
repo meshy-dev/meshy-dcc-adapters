@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-camera-lighting"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-camera-lighting"
 
 
 def _load_action(script_name: str):
@@ -117,7 +117,7 @@ def test_camera_and_light_read_tools_list_key_properties(monkeypatch):
 def test_camera_workflow_creates_and_sets_active_camera(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     created = run_skill_script(
         str(SKILL_DIR / "action_create_camera.py"),

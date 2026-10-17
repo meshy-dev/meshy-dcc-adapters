@@ -3,16 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dcc-mcp-3dsmax"
-version = "0.2.16"
-description = "3ds Max plugin for the DCC Model Context Protocol (MCP) ecosystem — embeds a Streamable HTTP MCP server directly inside 3ds Max"
-authors = [{ name = "Long Hao", email = "hal.long@outlook.com" }]
+name = "meshy-dcc-3dsmax"
+version = "0.1.0"
+description = "3ds Max adapter for Meshy DCC: scene, import, material and render tools on the host's own Python"
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.7"
 keywords = ["3dsmax", "3ds-max", "mcp", "dcc", "ai", "llm", "model-context-protocol"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -27,17 +27,7 @@ classifiers = [
 ]
 
 dependencies = [
-    # Core 0.20.22 restores the zero-backport Python 3.7 runtime contract.
-    # 0.20.24 is required for the native (Rust) Install SOP v1 validator, which
-    # replaces the third-party ``jsonschema`` runtime dependency.
-    #
-    # The upper bound is pinned to the 0.20.x series: ``<1.0.0`` admitted any
-    # future minor, so a Core minor release could silently break this adapter's
-    # CI (0.20.34 changed the Install SOP schema version). Failing at dependency
-    # resolution is louder and cheaper than failing 98 tests. Runtime installs
-    # into a user's 3ds Max stay permissive via MAX_CORE_VERSION in install_cli.
-    "dcc-mcp-core>=0.20.24,<0.21.0",
-    "dcc-mcp-server>=0.20.22,<0.21.0",
+    "meshy-dcc-core>=0.2.0,<0.3.0",
 ]
 
 [project.optional-dependencies]
@@ -56,19 +46,18 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dcc-mcp/dcc-mcp-3dsmax"
-Repository = "https://github.com/dcc-mcp/dcc-mcp-3dsmax"
-Issues = "https://github.com/dcc-mcp/dcc-mcp-3dsmax/issues"
-Changelog = "https://github.com/dcc-mcp/dcc-mcp-3dsmax/releases"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-3dsmax"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
 
-[project.entry-points."dcc_mcp.adapters"]
-3dsmax = "dcc_mcp_3dsmax:MaxMcpServer"
+[project.entry-points."meshy_dcc.adapters"]
+3dsmax = "meshy_dcc_3dsmax:MaxMcpServer"
 
 [project.scripts]
-dcc-mcp-3dsmax = "dcc_mcp_3dsmax.install_cli:main"
+meshy-dcc-3dsmax = "meshy_dcc_3dsmax.install_cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dcc_mcp_3dsmax"]
+packages = ["src/meshy_dcc_3dsmax"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -84,7 +73,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["dcc_mcp_3dsmax"]
+source = ["meshy_dcc_3dsmax"]
 branch = true
 omit = ["tests/*"]
 

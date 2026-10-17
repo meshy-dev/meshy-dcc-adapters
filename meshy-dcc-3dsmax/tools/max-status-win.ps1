@@ -14,7 +14,7 @@ if ([string]::IsNullOrEmpty($MaxVersion)) {
 # Detect 3ds Max scripts directory
 $AppData = $env:APPDATA
 $ScriptsDir = Join-Path $AppData "Autodesk\3ds Max $MaxVersion\scripts"
-$Target = Join-Path $ScriptsDir "dcc_mcp_3dsmax"
+$Target = Join-Path $ScriptsDir "meshy_dcc_3dsmax"
 
 Write-Host "📋 3ds Max dev link status:" -ForegroundColor Cyan
 Write-Host "   Scripts dir: $ScriptsDir"
@@ -24,30 +24,30 @@ if (Test-Path $Target) {
     $targetItem = Get-Item $Target
     if ($targetItem.LinkType) {
         $realPath = (Get-Item $Target).Target
-        Write-Host "   ✅ dcc_mcp_3dsmax → $realPath (symlink)" -ForegroundColor Green
+        Write-Host "   ✅ meshy_dcc_3dsmax → $realPath (symlink)" -ForegroundColor Green
     } else {
-        Write-Host "   ⚠️  dcc_mcp_3dsmax exists (copied, not linked)" -ForegroundColor Yellow
+        Write-Host "   ⚠️  meshy_dcc_3dsmax exists (copied, not linked)" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "   ❌ dcc_mcp_3dsmax not found" -ForegroundColor Red
+    Write-Host "   ❌ meshy_dcc_3dsmax not found" -ForegroundColor Red
 }
 
-# Check dcc_mcp_core.pth file
-$corePth = Join-Path $ScriptsDir "dcc_mcp_core.pth"
+# Check meshy_dcc_core.pth file
+$corePth = Join-Path $ScriptsDir "meshy_dcc_core.pth"
 if (Test-Path $corePth) {
     $corePath = Get-Content $corePth -First 1
-    Write-Host "   ✅ dcc_mcp_core.pth exists (points to: $corePath)" -ForegroundColor Green
+    Write-Host "   ✅ meshy_dcc_core.pth exists (points to: $corePath)" -ForegroundColor Green
 } else {
-    $coreLink = Join-Path $ScriptsDir "dcc_mcp_core"
+    $coreLink = Join-Path $ScriptsDir "meshy_dcc_core"
     if (Test-Path $coreLink) {
-        Write-Host "   ✅ dcc_mcp_core → $((Get-Item $coreLink).Target) (symlink)" -ForegroundColor Green
+        Write-Host "   ✅ meshy_dcc_core → $((Get-Item $coreLink).Target) (symlink)" -ForegroundColor Green
     } else {
-        Write-Host "   ❌ dcc_mcp_core not found in scripts directory" -ForegroundColor Red
+        Write-Host "   ❌ meshy_dcc_core not found in scripts directory" -ForegroundColor Red
     }
 }
 
 # Check startup script
-$startupScript = Join-Path $ScriptsDir "dcc_mcp_3dsmax_startup.py"
+$startupScript = Join-Path $ScriptsDir "meshy_dcc_3dsmax_startup.py"
 if (Test-Path $startupScript) {
     Write-Host "   ✅ Startup script exists: $startupScript" -ForegroundColor Green
 } else {

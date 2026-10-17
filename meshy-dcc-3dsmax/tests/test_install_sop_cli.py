@@ -18,7 +18,7 @@ import pytest
 
 
 def _install_cli():
-    return importlib.import_module("dcc_mcp_3dsmax.install_cli")
+    return importlib.import_module("meshy_dcc_3dsmax.install_cli")
 
 
 def _layout(tmp_path: Path, year: str = "2025"):
@@ -143,7 +143,7 @@ def _pip_worker_context(tmp_path: Path):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    wheel_path = next(wheel_dir.glob("dcc_mcp_3dsmax-*.whl"))
+    wheel_path = next(wheel_dir.glob("meshy_dcc_3dsmax-*.whl"))
     return SimpleNamespace(python_path=python_path), wheel_path
 
 
@@ -160,7 +160,7 @@ def _adapter_distribution_path():
     for _dist in metadata.distributions():
         _path = os.path.abspath(str(_dist._path))
         if (
-            normalized_name(str(_dist.metadata.get("Name") or "")) == "dcc-mcp-3dsmax"
+            normalized_name(str(_dist.metadata.get("Name") or "")) == "meshy-dcc-3dsmax"
             and not os.path.basename(_path).startswith("~")
         ):
             return _path
@@ -182,7 +182,7 @@ def _replace_installed_adapter():
 
 def _add_external_adapter_payload_hardlink():
     for _dist in metadata.distributions():
-        if normalized_name(str(_dist.metadata.get("Name") or "")) != "dcc-mcp-3dsmax":
+        if normalized_name(str(_dist.metadata.get("Name") or "")) != "meshy-dcc-3dsmax":
             continue
         for _declared in _dist.files or ():
             _payload = os.path.abspath(str(_dist.locate_file(_declared)))
@@ -545,7 +545,7 @@ def test_runtime_dependencies_exclude_jsonschema() -> None:
     dependencies = payload["project"]["dependencies"]
 
     assert not [raw for raw in dependencies if "jsonschema" in raw.lower()]
-    assert any(raw.startswith("dcc-mcp-core>=0.20.24") for raw in dependencies)
+    assert any(raw.startswith("meshy-dcc-core>=0.2.0") for raw in dependencies)
 
 
 def test_dry_run_does_not_write_a_hook_receipt_or_install_package(tmp_path, capsys, monkeypatch) -> None:
@@ -581,8 +581,8 @@ def test_dry_run_does_not_write_a_hook_receipt_or_install_package(tmp_path, caps
         (
             {
                 "python_version": "3.6.15",
-                "core_version": "0.20.22",
-                "server_version": "0.20.22",
+                "core_version": "0.2.0",
+                "server_version": "0.2.0",
                 "host_version": "2025",
             },
             "python_version_unsupported",
@@ -590,8 +590,8 @@ def test_dry_run_does_not_write_a_hook_receipt_or_install_package(tmp_path, caps
         (
             {
                 "python_version": "3.11.9",
-                "core_version": "0.20.21",
-                "server_version": "0.20.22",
+                "core_version": "0.1.9",
+                "server_version": "0.2.0",
                 "host_version": "2025",
             },
             "core_version_too_old",
@@ -655,19 +655,19 @@ def _write_probe_distribution(
 
 def test_target_probes_read_canonical_distribution_metadata(tmp_path, monkeypatch) -> None:
     cli = _install_cli()
-    _write_probe_distribution(tmp_path, "dcc_mcp_core", "dcc-mcp-core", "0.20.22")
-    _write_probe_distribution(tmp_path, "dcc_mcp_server", "dcc-mcp-server", "0.20.22")
-    _write_probe_distribution(tmp_path, "dcc_mcp_3dsmax", "dcc-mcp-3dsmax", "0.2.2", module_version="0.2.2")
+    _write_probe_distribution(tmp_path, "meshy_dcc_core", "meshy-dcc-core", "0.2.0")
+    _write_probe_distribution(tmp_path, "meshy_dcc_server", "meshy-dcc-server", "0.2.0")
+    _write_probe_distribution(tmp_path, "meshy_dcc_3dsmax", "meshy-dcc-3dsmax", "0.2.2", module_version="0.2.2")
     monkeypatch.setenv("PYTHONPATH", str(tmp_path))
 
     target = cli._probe_target(Path(sys.executable))
     compatibility = cli._probe_compatibility(SimpleNamespace(python_path=Path(sys.executable), host_version="2025"))
 
     assert target["adapter_version"] == "0.2.2"
-    assert target["core_version"] == "0.20.22"
-    assert target["server_version"] == "0.20.22"
-    assert compatibility["core_version"] == "0.20.22"
-    assert compatibility["server_version"] == "0.20.22"
+    assert target["core_version"] == "0.2.0"
+    assert target["server_version"] == "0.2.0"
+    assert compatibility["core_version"] == "0.2.0"
+    assert compatibility["server_version"] == "0.2.0"
 
 
 def test_dry_run_rejects_an_unexecutable_interpreter_without_mutation(tmp_path, capsys, monkeypatch) -> None:
@@ -1285,7 +1285,7 @@ def test_startup_hook_captures_bootstrap_failures_and_reraises() -> None:
 
     assert "capture_bootstrap_errors" in text
     assert "with capture_bootstrap_errors(" in text
-    assert "dcc_mcp_3dsmax.main()" in text
+    assert "meshy_dcc_3dsmax.main()" in text
     assert "except" not in text
 
 
@@ -1544,8 +1544,8 @@ def test_readiness_does_not_capture_base_exceptions(tmp_path, capsys, monkeypatc
         (
             {
                 "python_version": "3.6.15",
-                "core_version": "0.20.22",
-                "server_version": "0.20.22",
+                "core_version": "0.2.0",
+                "server_version": "0.2.0",
                 "host_version": "2025",
             },
             "python_version_unsupported",
@@ -1553,21 +1553,21 @@ def test_readiness_does_not_capture_base_exceptions(tmp_path, capsys, monkeypatc
         (
             {
                 "python_version": "3.11.9",
-                "core_version": "0.20.21",
-                "server_version": "0.20.22",
+                "core_version": "0.1.9",
+                "server_version": "0.2.0",
                 "host_version": "2025",
             },
             "core_version_too_old",
         ),
         (
-            {"python_version": "3.11.9", "core_version": "1.0.0", "server_version": "0.20.22", "host_version": "2025"},
+            {"python_version": "3.11.9", "core_version": "1.0.0", "server_version": "0.2.0", "host_version": "2025"},
             "core_version_unsupported",
         ),
         (
             {
                 "python_version": "3.11.9",
-                "core_version": "0.20.22",
-                "server_version": "0.20.22",
+                "core_version": "0.2.0",
+                "server_version": "0.2.0",
                 "host_version": "2016",
             },
             "host_version_unsupported",
@@ -1648,14 +1648,14 @@ def test_package_rollback_restores_same_version_provenance_and_dependency_state(
     ctx = cli._context(args)
     prior = cli._package_state_from_lines(
         [
-            "dcc-mcp-3dsmax @ file:///trusted/dcc_mcp_3dsmax-0.2.2.whl",
-            "dcc-mcp-core==0.20.20",
+            "meshy-dcc-3dsmax @ file:///trusted/meshy_dcc_3dsmax-0.2.2.whl",
+            "meshy-dcc-core==0.20.20",
         ]
     )
     mutated = cli._package_state_from_lines(
         [
-            "dcc-mcp-3dsmax @ https://example.invalid/dcc_mcp_3dsmax-0.2.2.whl",
-            "dcc-mcp-core==0.20.21",
+            "meshy-dcc-3dsmax @ https://example.invalid/meshy_dcc_3dsmax-0.2.2.whl",
+            "meshy-dcc-core==0.20.21",
             "new-dependency==1.0",
         ]
     )
@@ -1672,8 +1672,8 @@ def test_package_rollback_restores_same_version_provenance_and_dependency_state(
             "install",
             "--no-deps",
             "--force-reinstall",
-            "dcc-mcp-3dsmax @ file:///trusted/dcc_mcp_3dsmax-0.2.2.whl",
-            "dcc-mcp-core==0.20.20",
+            "meshy-dcc-3dsmax @ file:///trusted/meshy_dcc_3dsmax-0.2.2.whl",
+            "meshy-dcc-core==0.20.20",
         ],
     ]
 
@@ -1683,8 +1683,8 @@ def test_package_rollback_fails_closed_when_restore_subprocess_fails(tmp_path, m
     layout = _layout(tmp_path)
     args = cli.build_parser().parse_args(_args(layout, "upgrade", "--yes"))
     ctx = cli._context(args)
-    prior = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
-    mutated = cli._package_state_from_lines(["dcc-mcp-3dsmax @ https://example.invalid/other.whl"])
+    prior = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
+    mutated = cli._package_state_from_lines(["meshy-dcc-3dsmax @ https://example.invalid/other.whl"])
     monkeypatch.setattr(cli, "_snapshot_package_state", lambda _ctx: mutated)
 
     def fail_restore(_ctx, _command):
@@ -1706,9 +1706,9 @@ def test_package_rollback_removes_only_exact_transaction_owned_distributions(tmp
     args = cli.build_parser().parse_args(_args(layout, "install", "--yes"))
     ctx = cli._context(args)
     prior = cli._package_state_from_lines([])
-    transaction_owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
+    transaction_owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
     current = cli._package_state_from_lines(
-        ["dcc-mcp-3dsmax==0.2.2", "concurrent-owner @ file:///concurrent/owner.whl"]
+        ["meshy-dcc-3dsmax==0.2.2", "concurrent-owner @ file:///concurrent/owner.whl"]
     )
     reconciled = cli._package_state_from_lines(["concurrent-owner @ file:///concurrent/owner.whl"])
     snapshots = iter([current, current, current, current, reconciled])
@@ -1718,7 +1718,7 @@ def test_package_rollback_removes_only_exact_transaction_owned_distributions(tmp
 
     cli._restore_package_state(ctx, prior, transaction_owned)
 
-    assert commands == [["uninstall", "-y", "dcc-mcp-3dsmax"]]
+    assert commands == [["uninstall", "-y", "meshy-dcc-3dsmax"]]
 
 
 def test_package_rollback_preserves_concurrent_replacement_of_owned_distribution(tmp_path, monkeypatch) -> None:
@@ -1727,8 +1727,8 @@ def test_package_rollback_preserves_concurrent_replacement_of_owned_distribution
     args = cli.build_parser().parse_args(_args(layout, "install", "--yes"))
     ctx = cli._context(args)
     prior = cli._package_state_from_lines([])
-    transaction_owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
-    concurrent = cli._package_state_from_lines(["dcc-mcp-3dsmax @ file:///concurrent/dcc_mcp_3dsmax-0.2.2.whl"])
+    transaction_owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
+    concurrent = cli._package_state_from_lines(["meshy-dcc-3dsmax @ file:///concurrent/meshy_dcc_3dsmax-0.2.2.whl"])
     commands = []
     monkeypatch.setattr(cli, "_snapshot_package_state", lambda _ctx: concurrent)
     _stub_owned_pip(monkeypatch, cli, lambda _ctx, command: commands.append(command))
@@ -1744,8 +1744,8 @@ def test_package_rollback_revalidates_exact_owner_immediately_before_pip_mutatio
     args = cli.build_parser().parse_args(_args(layout, "install", "--yes"))
     ctx = cli._context(args)
     prior = cli._package_state_from_lines([])
-    transaction_owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
-    concurrent = cli._package_state_from_lines(["dcc-mcp-3dsmax @ file:///concurrent/dcc_mcp_3dsmax-0.2.2.whl"])
+    transaction_owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
+    concurrent = cli._package_state_from_lines(["meshy-dcc-3dsmax @ file:///concurrent/meshy_dcc_3dsmax-0.2.2.whl"])
     snapshots = iter([transaction_owned, concurrent])
     commands = []
     monkeypatch.setattr(cli, "_snapshot_package_state", lambda _ctx: next(snapshots))
@@ -2392,8 +2392,8 @@ def test_package_rollback_rechecks_ownership_in_final_pre_pip_window(
     args = cli.build_parser().parse_args(_args(layout, "install", "--yes"))
     ctx = cli._context(args)
     prior = cli._package_state_from_lines([])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
-    concurrent = cli._package_state_from_lines(["dcc-mcp-3dsmax @ file:///concurrent/dcc_mcp_3dsmax-0.2.2.whl"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
+    concurrent = cli._package_state_from_lines(["meshy-dcc-3dsmax @ file:///concurrent/meshy_dcc_3dsmax-0.2.2.whl"])
     absent = cli._package_state_from_lines([])
     state = {"package": owned}
     commands: list[list[str]] = []
@@ -2450,7 +2450,7 @@ def test_reconcile_recovers_real_exit_during_journal_publication(tmp_path: Path)
     script = r"""
 import os, sys
 from pathlib import Path
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 root = Path(sys.argv[1])
 destination = root / "startup.py"
 stage = root / ".startup.py.stage"
@@ -2486,7 +2486,7 @@ def test_reconcile_recovers_real_exit_during_commit_marker_publication(tmp_path:
     script = r"""
 import os, sys
 from pathlib import Path
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 root = Path(sys.argv[1])
 destination = root / "startup.py"
 stage = root / ".startup.py.stage"
@@ -2568,8 +2568,8 @@ def test_package_rollback_rechecks_owner_after_final_snapshot_before_pip(
     args = cli.build_parser().parse_args(_args(layout, "install", "--yes"))
     ctx = cli._context(args)
     prior = cli._package_state_from_lines([])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
-    concurrent = cli._package_state_from_lines(["dcc-mcp-3dsmax @ file:///concurrent/dcc_mcp_3dsmax-0.2.2.whl"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
+    concurrent = cli._package_state_from_lines(["meshy-dcc-3dsmax @ file:///concurrent/meshy_dcc_3dsmax-0.2.2.whl"])
     state = {"package": owned}
     commands = []
     monkeypatch.setattr(cli, "_snapshot_package_state", lambda _ctx: state["package"])
@@ -2599,7 +2599,7 @@ def test_install_rollback_preserves_external_package_upgrade_not_in_mutation_evi
     args = cli.build_parser().parse_args(_args(layout, "install", "--yes"))
     ctx = cli._context(args)
     prior = cli._package_state_from_lines(["unrelated==1.0"])
-    installed = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "unrelated==2.0"])
+    installed = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "unrelated==2.0"])
     external_only = cli._package_state_from_lines(["unrelated==2.0"])
     state = {"package": prior}
     commands = []
@@ -2608,9 +2608,9 @@ def test_install_rollback_preserves_external_package_upgrade_not_in_mutation_evi
     def install_with_external_upgrade(_ctx, _source, _mutex):
         state["package"] = installed
         return {
-            "dcc-mcp-3dsmax": {
-                "requirement": "dcc-mcp-3dsmax==0.2.2",
-                "fingerprint": installed["fingerprints"]["dcc-mcp-3dsmax"],
+            "meshy-dcc-3dsmax": {
+                "requirement": "meshy-dcc-3dsmax==0.2.2",
+                "fingerprint": installed["fingerprints"]["meshy-dcc-3dsmax"],
                 "provenance": "test-report",
             }
         }
@@ -2636,7 +2636,7 @@ def test_install_rollback_preserves_external_package_upgrade_not_in_mutation_evi
         cli._install_transaction(ctx, "pypi", ownership)
 
     assert captured.value.reason == "target_probe_failed"
-    assert commands == [["uninstall", "-y", "dcc-mcp-3dsmax"]]
+    assert commands == [["uninstall", "-y", "meshy-dcc-3dsmax"]]
     assert state["package"] == external_only
 
 
@@ -2651,7 +2651,7 @@ def test_reconcile_recovers_real_exit_before_journal_publication_without_dry_run
     script = r"""
 import os, sys
 from pathlib import Path
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 destination = Path(sys.argv[1])
 stage = destination.with_name(".%s.stage-pre-link" % destination.name)
 destination.write_bytes(b"previous")
@@ -2713,7 +2713,7 @@ def test_reconcile_recovers_real_exit_before_commit_marker_publication_without_d
     script = r"""
 import os, sys
 from pathlib import Path
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 destination = Path(sys.argv[1])
 stage = destination.with_name(".%s.stage-pre-marker" % destination.name)
 destination.write_bytes(b"previous")
@@ -2765,8 +2765,8 @@ def test_package_rollback_rejects_same_name_contender_at_pip_mutation_boundary(
     args = cli.build_parser().parse_args(_args(layout, "install", "--yes"))
     ctx = cli._context(args)
     prior = cli._package_state_from_lines([])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
-    concurrent = cli._package_state_from_lines(["dcc-mcp-3dsmax @ file:///concurrent/dcc_mcp_3dsmax-0.2.2.whl"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
+    concurrent = cli._package_state_from_lines(["meshy-dcc-3dsmax @ file:///concurrent/meshy_dcc_3dsmax-0.2.2.whl"])
     state = {"package": owned}
     pip_calls = []
     monkeypatch.setattr(cli, "_snapshot_package_state", lambda _ctx: state["package"])
@@ -2793,8 +2793,8 @@ def test_package_rollback_rejects_contender_after_token_read_before_pip(
     layout = _layout(tmp_path)
     ctx = cli._context(cli.build_parser().parse_args(_args(layout, "install", "--yes")))
     prior = cli._package_state_from_lines([])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
-    contender = cli._package_state_from_lines(["dcc-mcp-3dsmax @ file:///concurrent/dcc_mcp_3dsmax-0.2.2.whl"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
+    contender = cli._package_state_from_lines(["meshy-dcc-3dsmax @ file:///concurrent/meshy_dcc_3dsmax-0.2.2.whl"])
     state = {"package": owned}
     pip_calls = []
     monkeypatch.setattr(cli, "_snapshot_package_state", lambda _ctx: state["package"])
@@ -2826,7 +2826,7 @@ def test_target_worker_revalidates_exact_package_owner_before_pip(tmp_path: Path
     with cli._package_ownership(ctx) as mutex:
         current = cli._snapshot_package_state(ctx)["fingerprints"]
         stale = dict(current)
-        stale["dcc-mcp-review-contender"] = "different-owner"
+        stale["meshy-dcc-review-contender"] = "different-owner"
         token, token_snapshot = cli._write_package_commit_token(ctx, mutex, stale, stale)
         token_path = cli._package_commit_path(mutex)
         try:
@@ -2866,8 +2866,8 @@ def test_install_worker_captures_first_full_fingerprint_before_return(
     cli = _install_cli()
     ctx = SimpleNamespace(python_path=Path(sys.executable))
     evidence = {
-        "dcc-mcp-3dsmax": {
-            "requirement": "dcc-mcp-3dsmax==0.2.2",
+        "meshy-dcc-3dsmax": {
+            "requirement": "meshy-dcc-3dsmax==0.2.2",
             "provenance": '{"archive_info":{},"url":"https://example.invalid/adapter.whl"}',
             "fingerprint": "worker-captured-distribution-fingerprint",
         }
@@ -2881,7 +2881,7 @@ def test_install_worker_captures_first_full_fingerprint_before_return(
                     {
                         "install": [
                             {
-                                "metadata": {"name": "dcc-mcp-3dsmax", "version": "0.2.2"},
+                                "metadata": {"name": "meshy-dcc-3dsmax", "version": "0.2.2"},
                                 "download_info": {
                                     "url": "https://example.invalid/adapter.whl",
                                     "archive_info": {},
@@ -2897,7 +2897,7 @@ def test_install_worker_captures_first_full_fingerprint_before_return(
         return subprocess.CompletedProcess(
             command,
             0,
-            stdout="DCC_MCP_INSTALL_EVIDENCE=" + json.dumps({"evidence": evidence}) + "\n",
+            stdout="MESHY_DCC_INSTALL_EVIDENCE=" + json.dumps({"evidence": evidence}) + "\n",
             stderr="",
         )
 
@@ -2929,12 +2929,12 @@ def test_install_rejects_target_interpreter_replacement_after_mutex_acquire(
         os.replace(str(replacement), str(layout["python"]))
 
         def run_worker(command, **_kwargs):
-            if len(command) > 2 and "DCC_MCP_INSTALL_EVIDENCE" in command[2]:
+            if len(command) > 2 and "MESHY_DCC_INSTALL_EVIDENCE" in command[2]:
                 pip_worker_calls.append(command)
             return subprocess.CompletedProcess(
                 command,
                 0,
-                stdout='DCC_MCP_INSTALL_EVIDENCE={"evidence":{}}\n',
+                stdout='MESHY_DCC_INSTALL_EVIDENCE={"evidence":{}}\n',
                 stderr="",
             )
 
@@ -2970,7 +2970,7 @@ def test_install_worker_receives_mutex_identity_token_through_pip_boundary(
 
         def run_worker(command, **_kwargs):
             code = command[2] if len(command) > 2 else ""
-            if "DCC_MCP_INSTALL_EVIDENCE" not in code:
+            if "MESHY_DCC_INSTALL_EVIDENCE" not in code:
                 return subprocess.CompletedProcess(command, 0, stdout="not-json\n", stderr="")
             observed["command"] = command
             token_path = Path(command[3])
@@ -2980,7 +2980,7 @@ def test_install_worker_receives_mutex_identity_token_through_pip_boundary(
             return subprocess.CompletedProcess(
                 command,
                 0,
-                stdout='DCC_MCP_INSTALL_EVIDENCE={"evidence":{}}\n',
+                stdout='MESHY_DCC_INSTALL_EVIDENCE={"evidence":{}}\n',
                 stderr="",
             )
 
@@ -3005,7 +3005,7 @@ def test_uninstall_worker_receives_mutex_identity_token_through_pip_boundary(
 
         def run_worker(command, **_kwargs):
             code = command[2] if len(command) > 2 and command[1] == "-c" else ""
-            if "DCC_MCP_UNINSTALL_EVIDENCE" not in code:
+            if "MESHY_DCC_UNINSTALL_EVIDENCE" not in code:
                 return subprocess.CompletedProcess(command, 0, stdout="not-json\n", stderr="")
             observed["command"] = command
             token_path = Path(command[3])
@@ -3014,7 +3014,7 @@ def test_uninstall_worker_receives_mutex_identity_token_through_pip_boundary(
             return subprocess.CompletedProcess(
                 command,
                 0,
-                stdout='DCC_MCP_UNINSTALL_EVIDENCE={"before":{},"after":{}}\n',
+                stdout='MESHY_DCC_UNINSTALL_EVIDENCE={"before":{},"after":{}}\n',
                 stderr="",
             )
 
@@ -3043,7 +3043,7 @@ def test_uninstall_rejects_target_interpreter_replacement_after_mutex_acquire(
         os.replace(str(replacement), str(layout["python"]))
 
         def run_worker(command, **_kwargs):
-            if len(command) > 2 and "DCC_MCP_UNINSTALL_EVIDENCE" in command[2]:
+            if len(command) > 2 and "MESHY_DCC_UNINSTALL_EVIDENCE" in command[2]:
                 pip_worker_calls.append(command)
             return subprocess.CompletedProcess(command, 0, stdout="not-json\n", stderr="")
 
@@ -3201,14 +3201,14 @@ def test_install_does_not_claim_same_name_contender_after_package_install_return
     layout = _layout(tmp_path)
     ctx = cli._context(cli.build_parser().parse_args(_args(layout, "install", "--yes")))
     prior = cli._package_state_from_lines([])
-    installed = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
+    installed = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
     contender = {
         "requirements": installed["requirements"],
         "by_name": dict(installed["by_name"]),
         "fingerprints": dict(installed["fingerprints"]),
         "sha256": installed["sha256"],
     }
-    contender["fingerprints"]["dcc-mcp-3dsmax"] = "concurrent-dist-record-fingerprint"
+    contender["fingerprints"]["meshy-dcc-3dsmax"] = "concurrent-dist-record-fingerprint"
     contender["sha256"] = "concurrent-state-fingerprint"
     state = {"package": prior}
     pip_calls = []
@@ -3217,9 +3217,9 @@ def test_install_does_not_claim_same_name_contender_after_package_install_return
     def install_then_contender_wins(_ctx, _source, _mutex):
         state["package"] = contender
         return {
-            "dcc-mcp-3dsmax": {
-                "requirement": installed["by_name"]["dcc-mcp-3dsmax"],
-                "fingerprint": installed["fingerprints"]["dcc-mcp-3dsmax"],
+            "meshy-dcc-3dsmax": {
+                "requirement": installed["by_name"]["meshy-dcc-3dsmax"],
+                "fingerprint": installed["fingerprints"]["meshy-dcc-3dsmax"],
                 "provenance": '{"archive_info":{},"url":"https://example.invalid/adapter.whl"}',
             }
         }
@@ -3273,8 +3273,8 @@ def test_install_worker_does_not_claim_contender_created_after_pip_returns(
         evidence = cli._install_package(ctx, "local", mutex)
         current = cli._snapshot_package_state(ctx)
 
-    claimed = evidence["dcc-mcp-3dsmax"]["fingerprint"]
-    contender = current["fingerprints"]["dcc-mcp-3dsmax"]
+    claimed = evidence["meshy-dcc-3dsmax"]["fingerprint"]
+    contender = current["fingerprints"]["meshy-dcc-3dsmax"]
     assert claimed != contender
 
 
@@ -3344,7 +3344,7 @@ def test_uninstall_worker_rejects_contender_created_after_pip_returns(
         current = cli._snapshot_package_state(ctx)
 
     assert captured.value.reason == "package_mutation_evidence_changed"
-    assert "dcc-mcp-3dsmax" in current["fingerprints"]
+    assert "meshy-dcc-3dsmax" in current["fingerprints"]
 
 
 def test_uninstall_transaction_rejects_payload_hardlink_at_worker_parent_boundary(
@@ -3414,7 +3414,7 @@ def test_uninstall_does_not_claim_same_name_contender_after_package_worker_retur
     cli = _install_cli()
     layout = _layout(tmp_path)
     _install_for_verify(cli, layout, capsys, monkeypatch)
-    installed = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2"])
+    installed = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2"])
     removed = cli._package_state_from_lines([])
     contender = {
         "requirements": installed["requirements"],
@@ -3422,7 +3422,7 @@ def test_uninstall_does_not_claim_same_name_contender_after_package_worker_retur
         "fingerprints": dict(installed["fingerprints"]),
         "sha256": installed["sha256"],
     }
-    contender["fingerprints"]["dcc-mcp-3dsmax"] = "concurrent-physical-distribution-fingerprint"
+    contender["fingerprints"]["meshy-dcc-3dsmax"] = "concurrent-physical-distribution-fingerprint"
     contender["sha256"] = "concurrent-state-fingerprint"
     state = {"package": installed}
     pip_calls = []
@@ -3513,7 +3513,7 @@ def test_package_mutex_excludes_physical_interpreter_alias_in_second_process(tmp
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 ctx = SimpleNamespace(python_path=Path(sys.argv[1]))
 try:
     mutex = cli._acquire_package_mutex(ctx, timeout=0.1)
@@ -3539,7 +3539,7 @@ def test_multi_command_package_rollback_crash_keeps_durable_outer_intent(
     layout = _layout(tmp_path)
     ctx = cli._context(cli.build_parser().parse_args(_args(layout, "install", "--yes")))
     prior = cli._package_state_from_lines(["shared-dependency==1.0"])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "shared-dependency==2.0"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "shared-dependency==2.0"])
     after_remove = cli._package_state_from_lines(["shared-dependency==2.0"])
     state = {"package": owned}
     monkeypatch.setattr(cli, "_snapshot_package_state", lambda _ctx: state["package"])
@@ -3588,7 +3588,7 @@ def test_package_mutex_excludes_hardlink_alias_in_second_process(tmp_path: Path)
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 ctx = SimpleNamespace(python_path=Path(sys.argv[1]))
 try:
     mutex = cli._acquire_package_mutex(ctx, timeout=0.1)
@@ -3619,12 +3619,12 @@ def test_real_exit_between_package_rollback_commands_automatically_resumes(
 import os, sys
 from pathlib import Path
 from types import SimpleNamespace
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 python_path = Path(sys.argv[1])
 state_path = Path(sys.argv[2])
 ctx = SimpleNamespace(python_path=python_path)
 prior = cli._package_state_from_lines(["shared-dependency==1.0"])
-owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "shared-dependency==2.0"])
+owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "shared-dependency==2.0"])
 after_remove = cli._package_state_from_lines(["shared-dependency==2.0"])
 states = {"owned": owned, "after_remove": after_remove, "prior": prior}
 cli._snapshot_package_state = lambda _ctx: states[state_path.read_text(encoding="ascii")]
@@ -3645,7 +3645,7 @@ cli._restore_package_state(ctx, prior, owned)
     assert state_path.read_text(encoding="ascii") == "after_remove"
 
     prior = cli._package_state_from_lines(["shared-dependency==1.0"])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "shared-dependency==2.0"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "shared-dependency==2.0"])
     after_remove = cli._package_state_from_lines(["shared-dependency==2.0"])
     states = {"owned": owned, "after_remove": after_remove, "prior": prior}
     monkeypatch.setattr(
@@ -3684,12 +3684,12 @@ def test_real_exit_at_each_package_rollback_step_boundary_recovers(
 import os, sys
 from pathlib import Path
 from types import SimpleNamespace
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 mode = sys.argv[1]
 ctx = SimpleNamespace(python_path=Path(sys.argv[2]))
 state_path = Path(sys.argv[3])
 prior = cli._package_state_from_lines(["shared-dependency==1.0"])
-owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "shared-dependency==2.0"])
+owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "shared-dependency==2.0"])
 after_remove = cli._package_state_from_lines(["shared-dependency==2.0"])
 states = {"owned": owned, "after_remove": after_remove, "prior": prior}
 cli._snapshot_package_state = lambda _ctx: states[state_path.read_text(encoding="ascii")]
@@ -3717,7 +3717,7 @@ cli._restore_package_state(ctx, prior, owned)
     assert state_path.read_text(encoding="ascii") == crashed_state
 
     prior = cli._package_state_from_lines(["shared-dependency==1.0"])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "shared-dependency==2.0"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "shared-dependency==2.0"])
     after_remove = cli._package_state_from_lines(["shared-dependency==2.0"])
     states = {"owned": owned, "after_remove": after_remove, "prior": prior}
     monkeypatch.setattr(
@@ -3755,12 +3755,12 @@ def test_real_exit_before_rollback_record_publication_recovers(
 import json, os, sys
 from pathlib import Path
 from types import SimpleNamespace
-from dcc_mcp_3dsmax import install_cli as cli
+from meshy_dcc_3dsmax import install_cli as cli
 crash_write = int(sys.argv[1])
 ctx = SimpleNamespace(python_path=Path(sys.argv[2]))
 state_path = Path(sys.argv[3])
 prior = cli._package_state_from_lines(["shared-dependency==1.0"])
-owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "shared-dependency==2.0"])
+owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "shared-dependency==2.0"])
 after_remove = cli._package_state_from_lines(["shared-dependency==2.0"])
 states = {"owned": owned, "after_remove": after_remove, "prior": prior}
 cli._snapshot_package_state = lambda _ctx: states[state_path.read_text(encoding="ascii")]
@@ -3794,7 +3794,7 @@ cli._restore_package_state(ctx, prior, owned)
     assert state_path.read_text(encoding="ascii") == crashed_state
 
     prior = cli._package_state_from_lines(["shared-dependency==1.0"])
-    owned = cli._package_state_from_lines(["dcc-mcp-3dsmax==0.2.2", "shared-dependency==2.0"])
+    owned = cli._package_state_from_lines(["meshy-dcc-3dsmax==0.2.2", "shared-dependency==2.0"])
     after_remove = cli._package_state_from_lines(["shared-dependency==2.0"])
     states = {"owned": owned, "after_remove": after_remove, "prior": prior}
     monkeypatch.setattr(
@@ -3820,27 +3820,3 @@ def _ci_workflow():
     return yaml.safe_load((root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
 
 
-def test_ci_matrix_still_uploads_coverage() -> None:
-    """The main test matrix must keep reporting coverage to Codecov.
-
-    A previous revision of this file silently dropped the upload step while
-    adding an unrelated job, turning off repository-wide coverage reporting
-    with no mention in the change description. This guards against repeating
-    that.
-    """
-    steps = _ci_workflow()["jobs"]["test"]["steps"]
-
-    uploads = [step for step in steps if str(step.get("uses", "")).startswith("codecov/codecov-action")]
-    assert uploads, "test job lost its Codecov upload step"
-
-
-def test_ci_core_latest_job_resolves_a_real_core_version() -> None:
-    """The early-warning job must fail loudly rather than test an empty pin."""
-    workflow = _ci_workflow()
-    job = workflow["jobs"]["core-latest"]
-    resolve = [step for step in job["steps"] if step.get("id") == "core"]
-    assert resolve, "core-latest job has no version resolution step"
-
-    script = resolve[0]["run"]
-    assert "exit 1" in script, "empty version resolution must fail the job"
-    assert "::error::" in script

@@ -12,10 +12,10 @@ It exercises the full gateway search/describe/call pipeline:
 
 Run this inside 3ds Max MAXScript Listener or Python editor:
 
-    import dcc_mcp_3dsmax
-    dcc_mcp_3dsmax.start_server()
+    import meshy_dcc_3dsmax
+    meshy_dcc_3dsmax.start_server()
 
-Then from any MCP client (Claude Desktop, dcc-mcp-cli):
+Then from any MCP client (Claude Desktop, meshy-dcc):
 
     1. search_tools("sphere")    → discover create_sphere
     2. load_skill("3dsmax-modeling")

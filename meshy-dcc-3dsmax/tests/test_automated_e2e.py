@@ -1,4 +1,4 @@
-"""Automated E2E debug tests for dcc-mcp-3dsmax.
+"""Automated E2E debug tests for meshy-dcc-3dsmax.
 
 Run: pytest tests/test_automated_e2e.py -v
 """
@@ -132,7 +132,7 @@ def _install_fake_pymxs(monkeypatch):
     return rt
 
 
-SKILLS_DIR = Path(__file__).parent.parent / "src" / "dcc_mcp_3dsmax" / "skills"
+SKILLS_DIR = Path(__file__).parent.parent / "src" / "meshy_dcc_3dsmax" / "skills"
 EXPECTED_SKILLS = {
     "3dsmax-animation",
     "3dsmax-asset-import",
@@ -165,23 +165,23 @@ class TestEnvironment:
         assert sys.version_info >= (3, 7)
 
     def test_package_import(self):
-        import dcc_mcp_3dsmax
+        import meshy_dcc_3dsmax
 
-        assert dcc_mcp_3dsmax.__version__
+        assert meshy_dcc_3dsmax.__version__
 
     def test_core_import(self):
-        from dcc_mcp_core import DccServerBase, DccServerOptions
+        from meshy_dcc_core import DccServerBase, DccServerOptions
 
         assert DccServerOptions and DccServerBase
 
     def test_all_submodules(self):
         for m in [
-            "dcc_mcp_3dsmax",
-            "dcc_mcp_3dsmax.server",
-            "dcc_mcp_3dsmax.api",
-            "dcc_mcp_3dsmax._executor",
-            "dcc_mcp_3dsmax.max_bootstrap",
-            "dcc_mcp_3dsmax.capabilities",
+            "meshy_dcc_3dsmax",
+            "meshy_dcc_3dsmax.server",
+            "meshy_dcc_3dsmax.api",
+            "meshy_dcc_3dsmax._executor",
+            "meshy_dcc_3dsmax.max_bootstrap",
+            "meshy_dcc_3dsmax.capabilities",
         ]:
             __import__(m)
 
@@ -228,25 +228,25 @@ class TestSkillDiscovery:
 # ═══════════════════════════════════════════════════════════════════════════
 class TestServerLifecycle:
     def test_create_and_stop(self):
-        from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions
+        from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
 
         s = MaxMcpServer(options=MaxServerOptions(port=0, enable_gateway_failover=False, job_storage_path=""))
         assert s and not s.is_running
         s.stop()
 
     def test_register_builtins(self):
-        from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions
+        from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
 
         s = MaxMcpServer(options=MaxServerOptions(port=0, enable_gateway_failover=False, job_storage_path=""))
         s.register_builtin_actions(include_bundled=True)
         s.stop()
 
     def test_options_to_core(self):
-        from dcc_mcp_3dsmax.server import MaxServerOptions
+        from meshy_dcc_3dsmax.server import MaxServerOptions
 
         opts = MaxServerOptions(
             port=0,
-            gateway_port=9765,
+            gateway_port=19765,
             server_name="test",
             server_version="0.1.7",
             enable_gateway_failover=False,
@@ -256,7 +256,7 @@ class TestServerLifecycle:
         assert core and core.server_name == "test"
 
     def test_singleton_reuse(self):
-        from dcc_mcp_3dsmax.server import MaxServerOptions, start_server, stop_server
+        from meshy_dcc_3dsmax.server import MaxServerOptions, start_server, stop_server
 
         stop_server()
         try:
@@ -269,7 +269,7 @@ class TestServerLifecycle:
             stop_server()
 
     def test_prepare_no_http(self):
-        from dcc_mcp_3dsmax.server import MaxServerOptions, prepare_server, stop_server
+        from meshy_dcc_3dsmax.server import MaxServerOptions, prepare_server, stop_server
 
         try:
             s = prepare_server(options=MaxServerOptions(port=0, enable_gateway_failover=False, job_storage_path=""))
@@ -283,7 +283,7 @@ class TestServerLifecycle:
 # ═══════════════════════════════════════════════════════════════════════════
 class TestExecutor:
     def test_run_and_return(self, tmp_path):
-        from dcc_mcp_3dsmax._executor import run_skill_script
+        from meshy_dcc_3dsmax._executor import run_skill_script
 
         (tmp_path / "action.py").write_text(
             "def main(name='world', count=1):\n    return {'success': True, 'message': f'Hello {name}', 'count': count}\n"
@@ -292,27 +292,27 @@ class TestExecutor:
         assert r == {"success": True, "message": "Hello Alice", "count": 5}
 
     def test_reject_non_dict(self, tmp_path):
-        from dcc_mcp_3dsmax._executor import run_skill_script
+        from meshy_dcc_3dsmax._executor import run_skill_script
 
         (tmp_path / "bad.py").write_text("def main():\n    return 42\n")
         r = run_skill_script(str(tmp_path / "bad.py"), {})
         assert r["success"] is False and "must return a dict" in r["message"]
 
     def test_missing_script(self):
-        from dcc_mcp_3dsmax._executor import run_skill_script
+        from meshy_dcc_3dsmax._executor import run_skill_script
 
         r = run_skill_script("/nonexistent/script.py", {})
         assert r["success"] is False and "not found" in r["message"]
 
     def test_exception_caught(self, tmp_path):
-        from dcc_mcp_3dsmax._executor import run_skill_script
+        from meshy_dcc_3dsmax._executor import run_skill_script
 
         (tmp_path / "error.py").write_text("def main():\n    raise RuntimeError('Boom!')\n")
         r = run_skill_script(str(tmp_path / "error.py"), {})
         assert r["success"] is False and "Boom!" in r.get("message", "")
 
     def test_all_builtin_actions(self, monkeypatch):
-        from dcc_mcp_3dsmax._executor import run_skill_script
+        from meshy_dcc_3dsmax._executor import run_skill_script
 
         _install_fake_pymxs(monkeypatch)
         for d in SKILLS_DIR.iterdir():
@@ -324,7 +324,7 @@ class TestExecutor:
                 assert "status" in r or "success" in r, f"{d.name}/{sf.name}: missing status/success: {r}"
 
     def test_thread_safety(self, tmp_path):
-        from dcc_mcp_3dsmax._executor import run_skill_script
+        from meshy_dcc_3dsmax._executor import run_skill_script
 
         (tmp_path / "slow.py").write_text(
             "import time\ndef main(delay=0.01):\n    time.sleep(delay)\n    return {'success': True}\n"
@@ -350,7 +350,7 @@ class TestExecutor:
 # ═══════════════════════════════════════════════════════════════════════════
 class TestApiHelpers:
     def test_responses(self):
-        from dcc_mcp_3dsmax.api import max_error, max_from_exception, max_success, max_warning
+        from meshy_dcc_3dsmax.api import max_error, max_from_exception, max_success, max_warning
 
         for fn, status in [(max_success, "success"), (max_error, "error"), (max_warning, "warning")]:
             assert fn("msg", extra=1)["status"] == status
@@ -358,7 +358,7 @@ class TestApiHelpers:
         assert r["status"] == "error" and r["exception_type"] == "ValueError"
 
     def test_params(self):
-        from dcc_mcp_3dsmax.api import (
+        from meshy_dcc_3dsmax.api import (
             MissingParamError,
             get_param,
             missing_param_error,
@@ -378,14 +378,14 @@ class TestApiHelpers:
         assert missing_param_error("r")["status"] == "error"
 
     def test_is_max_available(self, monkeypatch):
-        from dcc_mcp_3dsmax.api import is_max_available
+        from meshy_dcc_3dsmax.api import is_max_available
 
         assert is_max_available() is False
         _install_fake_pymxs(monkeypatch)
         assert is_max_available() is True
 
     def test_with_max_decorator(self, monkeypatch):
-        from dcc_mcp_3dsmax.api import with_max
+        from meshy_dcc_3dsmax.api import with_max
 
         @with_max
         def f():
@@ -410,7 +410,7 @@ class TestSidecarBridge:
         return json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode())
 
     def test_health_check(self):
-        import dcc_mcp_3dsmax.sidecar.bridge as bridge_module
+        import meshy_dcc_3dsmax.sidecar.bridge as bridge_module
 
         bridge_module.stop_bridge()
         b = bridge_module.start_bridge(port=0)
@@ -421,7 +421,7 @@ class TestSidecarBridge:
             bridge_module.stop_bridge()
 
     def test_dispatch_action(self, tmp_path):
-        import dcc_mcp_3dsmax.sidecar.bridge as bridge_module
+        import meshy_dcc_3dsmax.sidecar.bridge as bridge_module
 
         bridge_module.stop_bridge()
         (tmp_path / "action.py").write_text("def main(value=42):\n    return {'success': True, 'value': value}\n")
@@ -436,7 +436,7 @@ class TestSidecarBridge:
             bridge_module.stop_bridge()
 
     def test_dispatch_builtin_scene_action(self, monkeypatch):
-        import dcc_mcp_3dsmax.sidecar.bridge as bridge_module
+        import meshy_dcc_3dsmax.sidecar.bridge as bridge_module
 
         _install_fake_pymxs(monkeypatch)
         bridge_module.stop_bridge()
@@ -452,7 +452,7 @@ class TestSidecarBridge:
             bridge_module.stop_bridge()
 
     def test_404(self):
-        import dcc_mcp_3dsmax.sidecar.bridge as bridge_module
+        import meshy_dcc_3dsmax.sidecar.bridge as bridge_module
 
         bridge_module.stop_bridge()
         b = bridge_module.start_bridge(port=0)
@@ -463,7 +463,7 @@ class TestSidecarBridge:
             bridge_module.stop_bridge()
 
     def test_stop_restart(self):
-        import dcc_mcp_3dsmax.sidecar.bridge as bridge_module
+        import meshy_dcc_3dsmax.sidecar.bridge as bridge_module
 
         bridge_module.stop_bridge()
         p1 = bridge_module.start_bridge(port=0).server_address[1]
@@ -474,7 +474,7 @@ class TestSidecarBridge:
 
     def test_sidecar_resolve_bundled_action(self, monkeypatch):
         _install_fake_pymxs(monkeypatch)
-        from dcc_mcp_3dsmax.sidecar._dispatcher import _resolve_bundled_script_path, dispatch_payload
+        from meshy_dcc_3dsmax.sidecar._dispatcher import _resolve_bundled_script_path, dispatch_payload
 
         p = _resolve_bundled_script_path("3dsmax-scene__get_scene_info")
         assert p and p.name == "action_get_scene_info.py"
@@ -487,14 +487,14 @@ class TestSidecarBridge:
 # ═══════════════════════════════════════════════════════════════════════════
 class TestDispatchers:
     def test_standalone(self):
-        from dcc_mcp_3dsmax.dispatcher import MaxStandaloneDispatcher
+        from meshy_dcc_3dsmax.dispatcher import MaxStandaloneDispatcher
 
         d = MaxStandaloneDispatcher()
         assert d.dispatch_callable(lambda x: x * 2, 21) == 42
 
     def test_extra_kwargs_passed_to_callable(self):
         """Extra keyword args beyond named params are forwarded to the callable."""
-        from dcc_mcp_3dsmax.dispatcher import MaxStandaloneDispatcher
+        from meshy_dcc_3dsmax.dispatcher import MaxStandaloneDispatcher
 
         d = MaxStandaloneDispatcher()
         r = d.dispatch_callable(lambda **kw: kw, extra_data="hello")
@@ -502,7 +502,7 @@ class TestDispatchers:
 
     def test_exception_wraps_in_runtime_error(self):
         """Exceptions from callable are wrapped as RuntimeError by dispatch_callable."""
-        from dcc_mcp_3dsmax.dispatcher import MaxStandaloneDispatcher
+        from meshy_dcc_3dsmax.dispatcher import MaxStandaloneDispatcher
 
         d = MaxStandaloneDispatcher()
         with pytest.raises(RuntimeError, match="test"):
@@ -514,41 +514,41 @@ class TestDispatchers:
 # ═══════════════════════════════════════════════════════════════════════════
 class TestBootstrapModes:
     def test_default_runtime(self, monkeypatch):
-        from dcc_mcp_3dsmax import max_bootstrap
+        from meshy_dcc_3dsmax import max_bootstrap
 
-        monkeypatch.delenv("DCC_MCP_3DSMAX_BOOT_MODE", raising=False)
+        monkeypatch.delenv("MESHY_DCC_3DSMAX_BOOT_MODE", raising=False)
         monkeypatch.setattr(max_bootstrap, "start_sidecar_bridge", lambda: {"mode": "sidecar"})
         assert max_bootstrap.main() == {"mode": "sidecar"}
 
     def test_sidecar(self, monkeypatch):
-        from dcc_mcp_3dsmax import max_bootstrap
+        from meshy_dcc_3dsmax import max_bootstrap
 
-        monkeypatch.setenv("DCC_MCP_3DSMAX_BOOT_MODE", "runtime")
+        monkeypatch.setenv("MESHY_DCC_3DSMAX_BOOT_MODE", "runtime")
         monkeypatch.setattr(max_bootstrap, "start_sidecar_bridge", lambda: {"mode": "sidecar"})
         assert max_bootstrap.main() == {"mode": "sidecar"}
 
     def test_embedded(self, monkeypatch):
-        from dcc_mcp_3dsmax import max_bootstrap
+        from meshy_dcc_3dsmax import max_bootstrap
 
-        monkeypatch.setenv("DCC_MCP_3DSMAX_BOOT_MODE", "embedded")
+        monkeypatch.setenv("MESHY_DCC_3DSMAX_BOOT_MODE", "embedded")
         monkeypatch.setattr(max_bootstrap, "_register_process_cleanup", lambda: None)
         monkeypatch.setattr(max_bootstrap, "_install_max_integration", lambda: None)
         monkeypatch.setattr(max_bootstrap, "start_embedded_sidecar_bridge", lambda: {"mode": "embedded-runtime"})
         assert max_bootstrap.main() == {"mode": "embedded-runtime"}
 
     def test_server(self, monkeypatch):
-        from dcc_mcp_3dsmax import max_bootstrap
+        from meshy_dcc_3dsmax import max_bootstrap
 
-        monkeypatch.setenv("DCC_MCP_3DSMAX_BOOT_MODE", "server")
+        monkeypatch.setenv("MESHY_DCC_3DSMAX_BOOT_MODE", "server")
         monkeypatch.setattr(max_bootstrap, "_register_process_cleanup", lambda: None)
         monkeypatch.setattr(max_bootstrap, "_install_max_integration", lambda: None)
         monkeypatch.setattr(max_bootstrap, "start_embedded_server", lambda **kw: {"mode": "server"})
         assert max_bootstrap.main() == {"mode": "server"}
 
     def test_invalid_raises(self, monkeypatch):
-        from dcc_mcp_3dsmax import max_bootstrap
+        from meshy_dcc_3dsmax import max_bootstrap
 
-        monkeypatch.setenv("DCC_MCP_3DSMAX_BOOT_MODE", "bad")
+        monkeypatch.setenv("MESHY_DCC_3DSMAX_BOOT_MODE", "bad")
         monkeypatch.setattr(max_bootstrap, "_register_process_cleanup", lambda: None)
         monkeypatch.setattr(max_bootstrap, "_install_max_integration", lambda: None)
         with pytest.raises(ValueError, match="unsupported"):
@@ -560,7 +560,7 @@ class TestBootstrapModes:
 # ═══════════════════════════════════════════════════════════════════════════
 class TestVersionAndCapabilities:
     def test_version_label_2024(self, monkeypatch):
-        from dcc_mcp_3dsmax import max_bootstrap
+        from meshy_dcc_3dsmax import max_bootstrap
 
         monkeypatch.setitem(
             sys.modules, "pymxs", types.SimpleNamespace(runtime=types.SimpleNamespace(maxVersion=lambda: (26000,)))
@@ -568,7 +568,7 @@ class TestVersionAndCapabilities:
         assert max_bootstrap._max_version_label() == "2024"
 
     def test_capabilities_structure(self):
-        import dcc_mcp_3dsmax.capabilities as caps
+        import meshy_dcc_3dsmax.capabilities as caps
 
         cap_list = caps.get_3dsmax_capabilities()
         assert isinstance(cap_list, list) and len(cap_list) > 0
@@ -584,7 +584,7 @@ class TestVersionAndCapabilities:
 class TestFullMcpLifecycle:
     def test_full_start_register_stop(self, monkeypatch):
         _install_fake_pymxs(monkeypatch)
-        from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions, stop_server
+        from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions, stop_server
 
         stop_server()
         s = MaxMcpServer(options=MaxServerOptions(port=0, enable_gateway_failover=False, job_storage_path=""))
@@ -605,7 +605,7 @@ class TestFullMcpLifecycle:
         Some actions need specific required params (script, code, offset, node_name).
         Those are expected to return error responses, not crash.
         """
-        from dcc_mcp_3dsmax._executor import run_skill_script
+        from meshy_dcc_3dsmax._executor import run_skill_script
 
         _install_fake_pymxs(monkeypatch)
 
@@ -640,15 +640,15 @@ class TestFullMcpLifecycle:
 # ── final summary when run directly ───────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 70)
-    print("  dcc-mcp-3dsmax Automated E2E Debug")
+    print("  meshy-dcc-3dsmax Automated E2E Debug")
     print("=" * 70)
     print(f"  Python: {sys.version}")
-    import dcc_mcp_3dsmax
+    import meshy_dcc_3dsmax
 
-    print(f"  Package: dcc-mcp-3dsmax {dcc_mcp_3dsmax.__version__}")
-    import dcc_mcp_core
+    print(f"  Package: meshy-dcc-3dsmax {meshy_dcc_3dsmax.__version__}")
+    import meshy_dcc_core
 
-    print(f"  Core:    dcc-mcp-core {getattr(dcc_mcp_core, '__version__', '?')}")
+    print(f"  Core:    meshy-dcc-core {getattr(meshy_dcc_core, '__version__', '?')}")
     print(f"  Skills dir: {SKILLS_DIR}")
     print()
     print("  Run: pytest tests/test_automated_e2e.py -v")

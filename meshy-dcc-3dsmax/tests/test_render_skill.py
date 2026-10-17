@@ -10,8 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-render"
-LOOKDEV_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-lookdev"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-render"
+LOOKDEV_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-lookdev"
 
 
 def _load_action(script_name: str):
@@ -132,7 +132,7 @@ def test_render_output_tools_validate_paths_and_create_artifacts(monkeypatch, tm
     capture_path.write_text("old", encoding="utf-8")
     preview_path = tmp_path / "preview.avi"
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     blocked = _load_action("action_capture_viewport.py").main(str(capture_path), overwrite=False)
     captured = _load_action("action_capture_viewport.py").main(str(capture_path), overwrite=True)
@@ -254,7 +254,7 @@ def test_color_management_declares_verified_frame_buffer_transform(monkeypatch, 
     config.write_text("ocio_profile_version: 2", encoding="utf-8")
     output_path = tmp_path / "beauty.png"
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     configured = run_skill_script(
         str(LOOKDEV_SKILL_DIR / "action_set_color_management.py"),

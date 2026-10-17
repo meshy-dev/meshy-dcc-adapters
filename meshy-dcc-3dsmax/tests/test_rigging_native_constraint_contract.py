@@ -144,7 +144,7 @@ class _Runtime:
 
 
 def test_constraint_readback_uses_native_target_list_without_synthetic_fields():
-    from dcc_mcp_3dsmax._rig_constraint_contract import create_constraint
+    from meshy_dcc_3dsmax._rig_constraint_contract import create_constraint
 
     runtime = _Runtime()
     result = create_constraint(
@@ -162,7 +162,7 @@ def test_constraint_readback_uses_native_target_list_without_synthetic_fields():
 
 
 def test_constraint_rejects_non_finite_weight_before_native_construction():
-    from dcc_mcp_3dsmax._rig_constraint_contract import create_constraint
+    from meshy_dcc_3dsmax._rig_constraint_contract import create_constraint
 
     runtime = _Runtime()
     result = create_constraint(
@@ -179,7 +179,7 @@ def test_constraint_rejects_non_finite_weight_before_native_construction():
 
 
 def test_parent_constraint_applies_and_reads_back_maintain_offset():
-    from dcc_mcp_3dsmax._rig_constraint_contract import create_constraint
+    from meshy_dcc_3dsmax._rig_constraint_contract import create_constraint
 
     preserved_runtime = _Runtime()
     preserved = create_constraint(
@@ -212,7 +212,7 @@ def test_parent_constraint_applies_and_reads_back_maintain_offset():
 
 
 def test_parent_constraint_fails_closed_when_offset_cannot_be_applied():
-    from dcc_mcp_3dsmax._rig_constraint_contract import create_constraint
+    from meshy_dcc_3dsmax._rig_constraint_contract import create_constraint
 
     runtime = _Runtime(writable_parent_offset=False)
     result = create_constraint(
@@ -229,7 +229,7 @@ def test_parent_constraint_fails_closed_when_offset_cannot_be_applied():
 
 
 def test_parent_offset_readback_uses_host_quaternion_components():
-    from dcc_mcp_3dsmax._rig_constraint_contract import _numeric_components
+    from meshy_dcc_3dsmax._rig_constraint_contract import _numeric_components
 
     value = _HostQuaternion()
     assert _numeric_components(value, 4) == (0.0, 0.0, 0.0, 1.0)
@@ -237,7 +237,7 @@ def test_parent_offset_readback_uses_host_quaternion_components():
 
 
 def test_parent_target_readback_matches_fresh_host_wrapper_by_handle():
-    from dcc_mcp_3dsmax._rig_constraint_contract import create_constraint
+    from meshy_dcc_3dsmax._rig_constraint_contract import create_constraint
 
     runtime = _Runtime(wrap_parent_target=True)
     result = create_constraint(

@@ -15,9 +15,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dcc_mcp_3dsmax import _undo_utils  # noqa: E402
+from meshy_dcc_3dsmax import _undo_utils  # noqa: E402
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-undo"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-undo"
 SKILLS_DIR = SKILL_DIR.parent
 
 
@@ -605,7 +605,7 @@ def test_undo_step_refuses_a_nested_hold(monkeypatch):
             assert inner["engaged"] is False
             assert "already open" in inner["reason"]
 
-    assert runtime.theHold.accept_calls == ["dcc-mcp edit"]
+    assert runtime.theHold.accept_calls == ["meshy-dcc edit"]
 
 
 def test_undo_step_reports_a_failing_begin(monkeypatch):

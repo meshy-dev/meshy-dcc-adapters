@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-validation"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-validation"
 
 
 def _load_action(script_name: str):
@@ -114,7 +114,7 @@ def test_material_and_pivot_validators_report_ready_nodes(monkeypatch, tmp_path)
 def test_asset_readiness_runner_aggregates_selected_validators(monkeypatch, tmp_path):
     _install_fake_pymxs(monkeypatch, tmp_path)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_run_asset_readiness_checks.py"),

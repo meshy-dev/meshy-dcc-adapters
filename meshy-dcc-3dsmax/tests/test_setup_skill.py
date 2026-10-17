@@ -5,11 +5,11 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[1] / "skills" / "dcc-mcp-3dsmax-setup" / "scripts" / "setup_dcc_mcp_3dsmax.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "skills" / "meshy-dcc-3dsmax-setup" / "scripts" / "setup_meshy_dcc_3dsmax.py"
 
 
 def _load_setup_module():
-    spec = importlib.util.spec_from_file_location("setup_dcc_mcp_3dsmax", SCRIPT)
+    spec = importlib.util.spec_from_file_location("setup_meshy_dcc_3dsmax", SCRIPT)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -25,12 +25,12 @@ def test_startup_script_starts_runtime_from_checkout(tmp_path):
     text = setup.build_startup_script(source="local", repo_root=repo)
 
     assert "sys.path.insert(0, path)" in text
-    assert "DCC_MCP_3DSMAX_ROOT" in text
-    assert "dcc_mcp_3dsmax.install_menu()" in text
-    assert "dcc_mcp_3dsmax.install_shutdown_callback()" in text
-    assert "dcc_mcp_3dsmax.main()" in text
+    assert "MESHY_DCC_3DSMAX_ROOT" in text
+    assert "meshy_dcc_3dsmax.install_menu()" in text
+    assert "meshy_dcc_3dsmax.install_shutdown_callback()" in text
+    assert "meshy_dcc_3dsmax.main()" in text
     assert "capture_bootstrap_errors" in text
-    assert "DCC_MCP_GATEWAY_PORT" not in text
+    assert "MESHY_DCC_GATEWAY_PORT" not in text
 
 
 def test_startup_script_enforces_the_public_core_and_server_range(tmp_path):
@@ -40,16 +40,16 @@ def test_startup_script_enforces_the_public_core_and_server_range(tmp_path):
 
     text = setup.build_startup_script(source="local", repo_root=repo)
 
-    assert "min_core_version = '0.20.24'" in text
-    assert "max_core_version = '1.0.0'" in text
-    assert "min_server_version = '0.20.22'" in text
-    assert "max_server_version = '1.0.0'" in text
+    assert "min_core_version = '0.2.0'" in text
+    assert "max_core_version = '0.3.0'" in text
+    assert "min_server_version = '0.2.0'" in text
+    assert "max_server_version = '0.3.0'" in text
     assert "*.dist-info/METADATA" in text
     assert "from email.parser import Parser" in text
-    assert "getattr(dcc_mcp_core, '__version__'" not in text
+    assert "getattr(meshy_dcc_core, '__version__'" not in text
     assert "re.fullmatch('[0-9]+(?:[.][0-9]+)*', value)" in text
-    assert "unsupported dcc-mcp-core version" in text
-    assert "unsupported dcc-mcp-server version" in text
+    assert "unsupported meshy-dcc-core version" in text
+    assert "unsupported meshy-dcc-server version" in text
 
 
 def test_write_startup_hook_installs_and_generates_copy(tmp_path):

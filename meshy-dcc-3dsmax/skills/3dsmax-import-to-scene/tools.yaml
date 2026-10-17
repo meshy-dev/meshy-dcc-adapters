@@ -1,7 +1,7 @@
 tools:
   - name: import_to_scene
     description: Import an asset descriptor payload into 3ds Max.
-    source_file: ../src/dcc_mcp_3dsmax/skills/3dsmax-import-to-scene/action_import_to_scene.py
+    source_file: ../src/meshy_dcc_3dsmax/skills/3dsmax-import-to-scene/action_import_to_scene.py
     execution: sync
     affinity: main
     input_schema:

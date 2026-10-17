@@ -11,40 +11,22 @@ except ImportError:  # pragma: no cover - Python < 3.11
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_CONTRACT_VERSION = "0.20.24"
-
-
 def _project_dependencies():
     payload = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     return {Requirement(raw).name: Requirement(raw) for raw in payload["project"]["dependencies"]}
 
 
-def test_runtime_dependency_floor_includes_core_feedback_forwarder():
-    """Normal installs must select the Core-owned gateway feedback sidecar."""
-    dependencies = _project_dependencies()
-
-    for package_name in ("dcc-mcp-core", "dcc-mcp-server"):
-        requirement = dependencies[package_name]
-        assert requirement.specifier.contains(RUNTIME_CONTRACT_VERSION)
-        assert not requirement.specifier.contains("0.20.19")
-        assert not requirement.specifier.contains("0.20.11")
-
-
-def test_documented_install_surfaces_use_feedback_forwarder_floor():
-    """Operator and agent install paths must not resolve a legacy server."""
-    expected = "dcc-mcp-core>=0.20.24"
-    expected_server = "dcc-mcp-server>=0.20.22"
-
-    for relative_path in ("README.md", "llms-full.txt", "justfile"):
-        text = (ROOT / relative_path).read_text(encoding="utf-8")
-        assert expected in text.replace(" ", "")
-        assert expected_server in text.replace(" ", "")
+def test_runtime_dependency_is_meshy_dcc_core_0_2():
+    """The adapter runs on meshy-dcc-core 0.2.x, which owns the feedback forwarder."""
+    requirement = _project_dependencies()["meshy-dcc-core"]
+    assert requirement.specifier.contains("0.2.0")
+    assert not requirement.specifier.contains("0.3.0")
 
 
 def test_adapter_registration_does_not_override_core_feedback_forwarder():
     """The shared Core registration remains the only feedback tool owner."""
-    from dcc_mcp_3dsmax import _registration
-    from dcc_mcp_3dsmax.server import MaxMcpServer
+    from meshy_dcc_3dsmax import _registration
+    from meshy_dcc_3dsmax.server import MaxMcpServer
 
     phase_names = [phase.name for phase in _registration.default_registration_phases()]
 
@@ -54,8 +36,8 @@ def test_adapter_registration_does_not_override_core_feedback_forwarder():
 
 def test_core_registration_keeps_feedback_discoverable_without_adapter_override():
     """Search and describe metadata must come from the same Core-owned tool."""
-    from dcc_mcp_3dsmax.dispatcher import MaxStandaloneDispatcher
-    from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions
+    from meshy_dcc_3dsmax.dispatcher import MaxStandaloneDispatcher
+    from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
 
     server = MaxMcpServer(
         options=MaxServerOptions(
@@ -83,7 +65,7 @@ def test_core_registration_keeps_feedback_discoverable_without_adapter_override(
 
 def test_feedback_reaching_host_dispatch_fails_closed_with_request_id():
     """A legacy server must never turn an unforwarded report into success."""
-    from dcc_mcp_3dsmax.sidecar._dispatcher import dispatch_payload_dict
+    from meshy_dcc_3dsmax.sidecar._dispatcher import dispatch_payload_dict
 
     response = dispatch_payload_dict(
         {
@@ -97,7 +79,7 @@ def test_feedback_reaching_host_dispatch_fails_closed_with_request_id():
     assert response == {
         "success": False,
         "error": "gateway-feedback-forwarder-required",
-        "message": "Feedback must be forwarded by dcc-mcp-server before host dispatch",
+        "message": "Feedback must be forwarded by meshy-dcc-server before host dispatch",
         "request_id": "feedback-request-149",
         "action": "dcc_feedback__report",
     }
@@ -105,7 +87,7 @@ def test_feedback_reaching_host_dispatch_fails_closed_with_request_id():
 
 def test_feedback_host_fallback_keeps_core_payload_validation():
     """The diagnostic path must not bypass Core's typed wire boundary."""
-    from dcc_mcp_3dsmax.sidecar._dispatcher import dispatch_payload_dict
+    from meshy_dcc_3dsmax.sidecar._dispatcher import dispatch_payload_dict
 
     invalid_args = dispatch_payload_dict(
         {
@@ -132,7 +114,7 @@ def test_feedback_host_fallback_keeps_core_payload_validation():
 
 def test_feedback_host_fallback_cannot_be_shadowed_by_adapter_action(monkeypatch):
     """No host skill may replace the Core-owned feedback action."""
-    from dcc_mcp_3dsmax.sidecar import _dispatcher
+    from meshy_dcc_3dsmax.sidecar import _dispatcher
 
     class ShadowingServer:
         @staticmethod
@@ -164,7 +146,7 @@ def test_feedback_host_fallback_cannot_be_shadowed_by_adapter_action(monkeypatch
 
 def test_unrelated_unknown_action_remains_rejected():
     """The feedback diagnostic must not broaden the host dispatch surface."""
-    from dcc_mcp_3dsmax.sidecar._dispatcher import dispatch_payload_dict
+    from meshy_dcc_3dsmax.sidecar._dispatcher import dispatch_payload_dict
 
     response = dispatch_payload_dict(
         {

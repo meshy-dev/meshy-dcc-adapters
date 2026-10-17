@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-scene"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-scene"
 
 
 def _load_action(script_name: str):
@@ -765,7 +765,7 @@ def test_create_object_accepts_class_when_superclass_is_callable(monkeypatch):
 
 def test_create_object_rejects_unproven_symbol_even_when_flag_unset(monkeypatch):
     _install_fake_pymxs(monkeypatch)
-    monkeypatch.delenv("DCC_MCP_3DSMAX_DISABLE_ARBITRARY_SCRIPT", raising=False)
+    monkeypatch.delenv("MESHY_DCC_3DSMAX_DISABLE_ARBITRARY_SCRIPT", raising=False)
 
     # The class gate is unconditional; it must not depend on the flag.
     result = _load_action("action_create_object.py").main(object_type="unlistedGlobalFunc")
@@ -786,18 +786,18 @@ def test_create_object_rejects_blacklisted_destructive_global(monkeypatch):
 
 def test_create_object_rejects_unproven_symbol_when_arbitrary_script_disabled(monkeypatch):
     _install_fake_pymxs(monkeypatch)
-    monkeypatch.setenv("DCC_MCP_3DSMAX_DISABLE_ARBITRARY_SCRIPT", "1")
+    monkeypatch.setenv("MESHY_DCC_3DSMAX_DISABLE_ARBITRARY_SCRIPT", "1")
 
     result = _load_action("action_create_object.py").main(object_type="unlistedGlobalFunc")
 
     assert result["success"] is False
-    assert "DCC_MCP_3DSMAX_DISABLE_ARBITRARY_SCRIPT" in result["message"]
+    assert "MESHY_DCC_3DSMAX_DISABLE_ARBITRARY_SCRIPT" in result["message"]
     assert result["data"]["arbitrary_script_disabled"] is True
 
 
 def test_create_object_fails_closed_when_flag_set_and_no_class_predicate(monkeypatch):
     _install_fake_pymxs(monkeypatch)
-    monkeypatch.setenv("DCC_MCP_3DSMAX_DISABLE_ARBITRARY_SCRIPT", "1")
+    monkeypatch.setenv("MESHY_DCC_3DSMAX_DISABLE_ARBITRARY_SCRIPT", "1")
     monkeypatch.delattr(_FakeRuntime, "superClassOf")
 
     # Even a genuine class cannot be proven, so the call must fail closed.
@@ -810,7 +810,7 @@ def test_create_object_fails_closed_when_flag_set_and_no_class_predicate(monkeyp
 
 def test_create_object_allows_proven_class_even_when_flag_set(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
-    monkeypatch.setenv("DCC_MCP_3DSMAX_DISABLE_ARBITRARY_SCRIPT", "1")
+    monkeypatch.setenv("MESHY_DCC_3DSMAX_DISABLE_ARBITRARY_SCRIPT", "1")
 
     # The flag must not over-block: a proven creatable class still works.
     result = _load_action("action_create_object.py").main(object_type="Teapot", name="flagged_teapot")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-check an assembled dcc-mcp-3dsmax release payload."""
+"""Smoke-check an assembled meshy-dcc-3dsmax release payload."""
 
 from __future__ import annotations
 
@@ -18,13 +18,13 @@ from pathlib import Path, PurePosixPath
 from typing import Optional, Tuple
 
 ASSET_SOURCE_ACTION = "3dsmax_asset_source__search_assets"
-PACKAGE_NAME = "dcc-mcp-3dsmax"
+PACKAGE_NAME = "meshy-dcc-3dsmax"
 TARGET_PLATFORM = "win64"
-MIN_CORE_VERSION = "0.20.24"
-MAX_CORE_VERSION = "1.0.0"
-MIN_SERVER_VERSION = "0.20.22"
-MAX_SERVER_VERSION = "1.0.0"
-RUNTIME_MANIFEST_NAME = "dcc-mcp-runtime-manifest.json"
+MIN_CORE_VERSION = "0.2.0"
+MAX_CORE_VERSION = "0.3.0"
+MIN_SERVER_VERSION = "0.2.0"
+MAX_SERVER_VERSION = "0.3.0"
+RUNTIME_MANIFEST_NAME = "meshy-dcc-runtime-manifest.json"
 _WINDOWS_RESERVED_NAMES = {
     "aux",
     "clock$",
@@ -116,8 +116,8 @@ def _reject_adapter_runtime_backfills_paths(paths) -> None:
 
 def _mzp_run_text(version: str) -> str:
     return (
-        'name "dcc-mcp-3dsmax"\n'
-        f'description "dcc-mcp-3dsmax {version} drag-and-drop installer"\n'
+        'name "meshy-dcc-3dsmax"\n'
+        f'description "meshy-dcc-3dsmax {version} drag-and-drop installer"\n'
         "version 1\n"
         'run "install.ms"\n'
         'drop "install.ms"\n'
@@ -135,7 +135,7 @@ def _trusted_control_files(version: str):
             "install.ms": install,
             "mzp.run": _mzp_run_text(version).encode("utf-8"),
             "payload/README.txt": (packaging_root / "README.txt").read_bytes(),
-            "payload/startup/dcc_mcp_3dsmax_startup.ms": (template_root / "dcc_mcp_3dsmax_startup.ms").read_bytes(),
+            "payload/startup/meshy_dcc_3dsmax_startup.ms": (template_root / "meshy_dcc_3dsmax_startup.ms").read_bytes(),
         }
     except (OSError, UnicodeError) as exc:
         raise RuntimeError("MZP trusted control templates are unavailable") from exc
@@ -364,7 +364,7 @@ def verify_release_versions(payload: Path, source: Path, expected_version: str) 
 
     observed = {}
     for lane in ("python", "python37"):
-        version_file = payload / lane / "dcc_mcp_3dsmax" / "__version__.py"
+        version_file = payload / lane / "meshy_dcc_3dsmax" / "__version__.py"
         observed[lane] = _declared_adapter_version(version_file)
     if set(observed.values()) != {expected_version}:
         raise RuntimeError("release version mismatch: adapter runtime roots do not match expected version")
@@ -405,20 +405,20 @@ def _distribution_metadata_version(root: Path, distribution: str) -> str:
 
 def verify_runtime_dependency_versions(root: Path) -> None:
     """Execute the same strict dependency boundary as the MZP install/startup templates."""
-    core = _strict_runtime_version(_distribution_metadata_version(root, "dcc-mcp-core"), "dcc-mcp-core")
-    server = _strict_runtime_version(_distribution_metadata_version(root, "dcc-mcp-server"), "dcc-mcp-server")
+    core = _strict_runtime_version(_distribution_metadata_version(root, "meshy-dcc-core"), "meshy-dcc-core")
+    server = _strict_runtime_version(_distribution_metadata_version(root, "meshy-dcc-server"), "meshy-dcc-server")
     if not (
         _strict_runtime_version(MIN_CORE_VERSION, "Core minimum")
         <= core
         < _strict_runtime_version(MAX_CORE_VERSION, "Core maximum")
     ):
-        raise RuntimeError("unsupported dcc-mcp-core version in release payload")
+        raise RuntimeError("unsupported meshy-dcc-core version in release payload")
     if not (
         _strict_runtime_version(MIN_SERVER_VERSION, "Server minimum")
         <= server
         < _strict_runtime_version(MAX_SERVER_VERSION, "Server maximum")
     ):
-        raise RuntimeError("unsupported dcc-mcp-server version in release payload")
+        raise RuntimeError("unsupported meshy-dcc-server version in release payload")
 
 
 def verify_asset_source_handler(server) -> None:
@@ -452,10 +452,10 @@ def main() -> None:
 
         verify_runtime_dependency_versions(root)
 
-        import dcc_mcp_core._core  # noqa: F401, PLC0415
+        import meshy_dcc_core._core  # noqa: F401, PLC0415
 
-        import dcc_mcp_3dsmax  # noqa: PLC0415
-        from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions  # noqa: PLC0415
+        import meshy_dcc_3dsmax  # noqa: PLC0415
+        from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions  # noqa: PLC0415
 
         server = MaxMcpServer(options=MaxServerOptions(port=0, enable_gateway_failover=False, job_storage_path=""))
         try:
@@ -463,7 +463,7 @@ def main() -> None:
             verify_asset_source_handler(server)
         finally:
             server.stop()
-        print("release payload import-registration OK: root={} adapter={}".format(root, dcc_mcp_3dsmax.__version__))
+        print("release payload import-registration OK: root={} adapter={}".format(root, meshy_dcc_3dsmax.__version__))
     finally:
         if cleanup is not None:
             try:

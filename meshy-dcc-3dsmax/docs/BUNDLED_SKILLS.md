@@ -1,8 +1,8 @@
 # Bundled 3ds Max Skills
 
-This index lists the default skill families shipped with `dcc-mcp-3dsmax` and
+This index lists the default skill families shipped with `meshy-dcc-3dsmax` and
 the atomic tools each family exports. Tool names are shown as they are exposed
-through the DCC-MCP skill loader.
+through the Meshy DCC skill loader.
 
 | Skill family | Stage | Exported tools |
 | --- | --- | --- |

@@ -45,7 +45,7 @@ $RECYCLE.BIN/
 htmlcov/
 *.cover
 
-# Dcc-mcp
+# Meshy DCC
 .kinds_cache/
 
 # Multica local runtime context. The daemon may write these into a bound

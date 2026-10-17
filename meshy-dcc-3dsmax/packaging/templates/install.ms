@@ -1,28 +1,28 @@
--- dcc-mcp-3dsmax {{VERSION}} drag-and-drop installer.
+-- meshy-dcc-3dsmax {{VERSION}} drag-and-drop installer.
 (
-    fn _dccMcpNormalizePath value =
+    fn _meshyDccNormalizePath value =
     (
         substituteString value "\\" "/"
     )
 
-    local sourceRoot = _dccMcpNormalizePath (getFilenamePath (getSourceFileName()))
-    local userScripts = _dccMcpNormalizePath (getDir #userScripts)
-    local userStartupScripts = _dccMcpNormalizePath (getDir #userStartupScripts)
-    fn _dccMcpInstall =
+    local sourceRoot = _meshyDccNormalizePath (getFilenamePath (getSourceFileName()))
+    local userScripts = _meshyDccNormalizePath (getDir #userScripts)
+    local userStartupScripts = _meshyDccNormalizePath (getDir #userStartupScripts)
+    fn _meshyDccInstall =
     (
         local py = ""
         py += "from pathlib import Path\n"
         py += "from email.parser import Parser\n"
         py += "import os, re, shutil, sys, time, uuid\n"
         py += "source = Path(r'''" + sourceRoot + "''')\n"
-        py += "install_dir = Path(r'''" + userScripts + "''') / 'dcc_mcp_3dsmax'\n"
+        py += "install_dir = Path(r'''" + userScripts + "''') / 'meshy_dcc_3dsmax'\n"
         py += "versions_dir = install_dir / 'versions'\n"
         py += "current_file = install_dir / 'current.txt'\n"
-        py += "uninstall_marker = Path(r'''" + userScripts + "''') / 'dcc_mcp_3dsmax_uninstall_pending'\n"
-        py += "legacy_uninstall_marker = install_dir / 'dcc_mcp_3dsmax_uninstall_pending'\n"
+        py += "uninstall_marker = Path(r'''" + userScripts + "''') / 'meshy_dcc_3dsmax_uninstall_pending'\n"
+        py += "legacy_uninstall_marker = install_dir / 'meshy_dcc_3dsmax_uninstall_pending'\n"
         py += "uninstall_markers = [uninstall_marker, legacy_uninstall_marker]\n"
         py += "startup_dir = Path(r'''" + userStartupScripts + "''')\n"
-        py += "startup_script = startup_dir / 'dcc_mcp_3dsmax_startup.ms'\n"
+        py += "startup_script = startup_dir / 'meshy_dcc_3dsmax_startup.ms'\n"
         py += "version_name = '{{VERSION}}'\n"
         py += "_SAFE_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}\\Z')\n"
         py += "_RESERVED_NAMES = {'CON', 'PRN', 'AUX', 'NUL'} | {'COM' + str(i) for i in range(1, 10)} | {'LPT' + str(i) for i in range(1, 10)}\n"
@@ -52,7 +52,7 @@
         py += "def _import_bound(pkg, pkg_id):\n"
         py += "    with os.scandir(str(pkg)) as _pkg_handle:\n"
         py += "        _controlled(pkg, pkg.parent, 'runtime package', pkg_id)\n"
-        py += "        module = __import__('dcc_mcp_3dsmax')\n"
+        py += "        module = __import__('meshy_dcc_3dsmax')\n"
         py += "        _controlled(pkg, pkg.parent, 'runtime package', pkg_id)\n"
         py += "        return module\n"
         py += "def _clear_path(path, allow_restart=False):\n"
@@ -68,7 +68,7 @@
         py += "        if os.path.lexists(str(path)): raise RuntimeError('cleanup target reappeared')\n"
         py += "        return {'success': True, 'status': 'removed'}\n"
         py += "    try:\n"
-        py += "        from dcc_mcp_core.install_lifecycle import safe_remove_tree\n"
+        py += "        from meshy_dcc_core.install_lifecycle import safe_remove_tree\n"
         py += "    except Exception:\n"
         py += "        _controlled(path, path.parent, 'cleanup target', before)\n"
         py += "        raise RuntimeError('runtime cleanup helper unavailable; refusing recursive delete')\n"
@@ -114,10 +114,10 @@
         py += "    with os.scandir(str(startup_dir)) as _startup_handle:\n"
         py += "        startup_parent_id = _controlled(startup_dir, startup_dir.parent, 'startup directory')\n"
         py += "        startup_before = _controlled(startup_script, startup_dir, 'startup script', allow_missing=True)\n"
-        py += "        startup_tmp = startup_dir / ('.dcc_mcp_3dsmax_startup.' + uuid.uuid4().hex + '.tmp')\n"
+        py += "        startup_tmp = startup_dir / ('.meshy_dcc_3dsmax_startup.' + uuid.uuid4().hex + '.tmp')\n"
         py += "        try:\n"
         py += "            _controlled(startup_tmp, startup_dir, 'startup temporary', allow_missing=True)\n"
-        py += "            with open(str(root / 'startup' / 'dcc_mcp_3dsmax_startup.ms'), 'rb') as startup_src, os.fdopen(os.open(str(startup_tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0), 0o600), 'wb') as startup_dst:\n"
+        py += "            with open(str(root / 'startup' / 'meshy_dcc_3dsmax_startup.ms'), 'rb') as startup_src, os.fdopen(os.open(str(startup_tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0), 0o600), 'wb') as startup_dst:\n"
         py += "                shutil.copyfileobj(startup_src, startup_dst)\n"
         py += "            startup_tmp_id = _controlled(startup_tmp, startup_dir, 'startup temporary')\n"
         py += "            _controlled(startup_dir, startup_dir.parent, 'startup directory', startup_parent_id)\n"
@@ -144,13 +144,13 @@
         py += "        sys.path.insert(0, str(pkg))\n"
         py += "    try:\n"
         py += "        _controlled(pkg, current_root, 'runtime package', pkg_id)\n"
-        py += "        dcc_mcp_3dsmax = _import_bound(pkg, pkg_id)\n"
+        py += "        meshy_dcc_3dsmax = _import_bound(pkg, pkg_id)\n"
         py += "    except ModuleNotFoundError:\n"
         py += "        return\n"
         py += "    try:\n"
-        py += "        dcc_mcp_3dsmax.stop_sidecar_bridge()\n"
+        py += "        meshy_dcc_3dsmax.stop_sidecar_bridge()\n"
         py += "    except Exception as exc:\n"
-        py += "        raise RuntimeError('Failed to stop dcc-mcp-3dsmax sidecar before ' + action + ': %s' % exc) from exc\n"
+        py += "        raise RuntimeError('Failed to stop meshy-dcc-3dsmax sidecar before ' + action + ': %s' % exc) from exc\n"
         py += "def _clear_uninstall_markers():\n"
         py += "    for marker in uninstall_markers:\n"
         py += "        try:\n"
@@ -163,7 +163,7 @@
         py += "            pass\n"
         py += "def _clear_adapter_modules():\n"
         py += "    for name in list(sys.modules):\n"
-        py += "        if name == 'dcc_mcp_3dsmax' or name.startswith('dcc_mcp_3dsmax.'):\n"
+        py += "        if name == 'meshy_dcc_3dsmax' or name.startswith('meshy_dcc_3dsmax.'):\n"
         py += "            sys.modules.pop(name, None)\n"
         py += "def _cleanup_obsolete_payloads(active_key):\n"
         py += "    if (not _SAFE_NAME.fullmatch(active_key or '') or active_key.rstrip(' .') != active_key or active_key.split('.')[0].upper() in _RESERVED_NAMES): raise RuntimeError('invalid active version name')\n"
@@ -189,9 +189,9 @@
         py += "        try:\n"
         py += "            result = _clear_path(path, allow_restart=True)\n"
         py += "            if result.get('requires_restart'):\n"
-        py += "                print('Old dcc-mcp-3dsmax payload cleanup requires restart:', path, result.get('message'))\n"
+        py += "                print('Old meshy-dcc-3dsmax payload cleanup requires restart:', path, result.get('message'))\n"
         py += "        except Exception as exc:\n"
-        py += "            print('Failed to cleanup old dcc-mcp-3dsmax payload:', path, exc)\n"
+        py += "            print('Failed to cleanup old meshy-dcc-3dsmax payload:', path, exc)\n"
         py += "def _activate_runtime(root):\n"
         py += "    _controlled(root, versions_dir, 'active version')\n"
         py += "    _clear_adapter_modules()\n"
@@ -200,15 +200,15 @@
         py += "    _controlled(pkg, root, 'runtime package', pkg_id)\n"
         py += "    if str(pkg) not in sys.path:\n"
         py += "        sys.path.insert(0, str(pkg))\n"
-        py += "    os.environ.setdefault('DCC_MCP_SERVER_ROOT', str(pkg))\n"
-        py += "    from dcc_mcp_core import capture_bootstrap_errors\n"
-        py += "    min_core_version = '0.20.24'\n"
-        py += "    max_core_version = '1.0.0'\n"
-        py += "    min_server_version = '0.20.22'\n"
-        py += "    max_server_version = '1.0.0'\n"
+        py += "    os.environ.setdefault('MESHY_DCC_SERVER_ROOT', str(pkg))\n"
+        py += "    from meshy_dcc_core import capture_bootstrap_errors\n"
+        py += "    min_core_version = '0.2.0'\n"
+        py += "    max_core_version = '0.3.0'\n"
+        py += "    min_server_version = '0.2.0'\n"
+        py += "    max_server_version = '0.3.0'\n"
         py += "    def _release_version(value):\n"
         py += "        if not isinstance(value, str) or re.fullmatch('[0-9]+(?:[.][0-9]+)*', value) is None:\n"
-        py += "            raise RuntimeError('invalid DCC MCP runtime version')\n"
+        py += "            raise RuntimeError('invalid Meshy DCC runtime version')\n"
         py += "        return tuple(int(part) for part in value.split('.'))\n"
         py += "    def _distribution_version(distribution):\n"
         py += "        expected = re.sub('[-_.]+', '-', distribution).lower()\n"
@@ -227,20 +227,20 @@
         py += "            raise RuntimeError('ambiguous ' + distribution + ' metadata')\n"
         py += "        return matches[0]\n"
         py += "    def _require_runtime_versions():\n"
-        py += "        core = _release_version(_distribution_version('dcc-mcp-core'))\n"
-        py += "        server = _release_version(_distribution_version('dcc-mcp-server'))\n"
+        py += "        core = _release_version(_distribution_version('meshy-dcc-core'))\n"
+        py += "        server = _release_version(_distribution_version('meshy-dcc-server'))\n"
         py += "        if not (_release_version(min_core_version) <= core < _release_version(max_core_version)):\n"
-        py += "            raise RuntimeError('unsupported dcc-mcp-core version')\n"
+        py += "            raise RuntimeError('unsupported meshy-dcc-core version')\n"
         py += "        if not (_release_version(min_server_version) <= server < _release_version(max_server_version)):\n"
-        py += "            raise RuntimeError('unsupported dcc-mcp-server version')\n"
-        py += "    with capture_bootstrap_errors('3dsmax', adapter_version='{{VERSION}}', min_core_version='0.20.24', phase='mzp_install', log_dir=str(install_dir / 'bootstrap-errors')):\n"
+        py += "            raise RuntimeError('unsupported meshy-dcc-server version')\n"
+        py += "    with capture_bootstrap_errors('3dsmax', adapter_version='{{VERSION}}', min_core_version='0.2.0', phase='mzp_install', log_dir=str(install_dir / 'bootstrap-errors')):\n"
         py += "        _require_runtime_versions()\n"
         py += "        _controlled(pkg, root, 'runtime package', pkg_id)\n"
-        py += "        dcc_mcp_3dsmax = _import_bound(pkg, pkg_id)\n"
-        py += "        dcc_mcp_3dsmax.remove_menu()\n"
-        py += "        dcc_mcp_3dsmax.install_menu()\n"
-        py += "        dcc_mcp_3dsmax.install_shutdown_callback()\n"
-        py += "        dcc_mcp_3dsmax.main()\n"
+        py += "        meshy_dcc_3dsmax = _import_bound(pkg, pkg_id)\n"
+        py += "        meshy_dcc_3dsmax.remove_menu()\n"
+        py += "        meshy_dcc_3dsmax.install_menu()\n"
+        py += "        meshy_dcc_3dsmax.install_shutdown_callback()\n"
+        py += "        meshy_dcc_3dsmax.main()\n"
         py += "_stop_existing('install')\n"
         py += "_clear_adapter_modules()\n"
         py += "_controlled(install_dir, install_dir.parent, 'install', allow_missing=True)\n"
@@ -279,32 +279,32 @@
         py += "_copy_startup(version_dir)\n"
         py += "_cleanup_obsolete_payloads(key)\n"
         py += "_activate_runtime(version_dir)\n"
-        py += "print('Installed dcc-mcp-3dsmax', version_name, 'to', version_dir)\n"
+        py += "print('Installed meshy-dcc-3dsmax', version_name, 'to', version_dir)\n"
         try
         (
             python.Execute py
-            messageBox "dcc-mcp-3dsmax installed and runtime startup requested." title:"dcc-mcp-3dsmax"
+            messageBox "meshy-dcc-3dsmax installed and runtime startup requested." title:"meshy-dcc-3dsmax"
         )
         catch
         (
-            messageBox ("dcc-mcp-3dsmax install failed:\n" + getCurrentException()) title:"dcc-mcp-3dsmax"
+            messageBox ("meshy-dcc-3dsmax install failed:\n" + getCurrentException()) title:"meshy-dcc-3dsmax"
         )
     )
 
-    fn _dccMcpUninstall =
+    fn _meshyDccUninstall =
     (
         local py = ""
         py += "from pathlib import Path\n"
         py += "import os, re, shutil, sys\n"
         py += "source = Path(r'''" + sourceRoot + "''')\n"
-        py += "install_dir = Path(r'''" + userScripts + "''') / 'dcc_mcp_3dsmax'\n"
+        py += "install_dir = Path(r'''" + userScripts + "''') / 'meshy_dcc_3dsmax'\n"
         py += "versions_dir = install_dir / 'versions'\n"
         py += "current_file = install_dir / 'current.txt'\n"
-        py += "uninstall_marker = Path(r'''" + userScripts + "''') / 'dcc_mcp_3dsmax_uninstall_pending'\n"
-        py += "legacy_uninstall_marker = install_dir / 'dcc_mcp_3dsmax_uninstall_pending'\n"
+        py += "uninstall_marker = Path(r'''" + userScripts + "''') / 'meshy_dcc_3dsmax_uninstall_pending'\n"
+        py += "legacy_uninstall_marker = install_dir / 'meshy_dcc_3dsmax_uninstall_pending'\n"
         py += "uninstall_markers = [uninstall_marker, legacy_uninstall_marker]\n"
         py += "startup_dir = Path(r'''" + userStartupScripts + "''')\n"
-        py += "startup_script = Path(r'''" + userStartupScripts + "''') / 'dcc_mcp_3dsmax_startup.ms'\n"
+        py += "startup_script = Path(r'''" + userStartupScripts + "''') / 'meshy_dcc_3dsmax_startup.ms'\n"
         py += "_SAFE_NAME = re.compile(r'[A-Za-z0-9][A-Za-z0-9._-]{0,127}\\Z')\n"
         py += "_REPARSE_POINT = 0x400\n"
         py += "def _is_link_or_reparse(path):\n"
@@ -353,16 +353,16 @@
         py += "    sys.path.insert(0, str(pkg))\n"
         py += "try:\n"
         py += "    _controlled(pkg, active_root, 'runtime package', pkg_id)\n"
-        py += "    import dcc_mcp_3dsmax\n"
-        py += "    dcc_mcp_3dsmax.stop_sidecar_bridge()\n"
-        py += "    dcc_mcp_3dsmax.remove_menu()\n"
+        py += "    import meshy_dcc_3dsmax\n"
+        py += "    meshy_dcc_3dsmax.stop_sidecar_bridge()\n"
+        py += "    meshy_dcc_3dsmax.remove_menu()\n"
         py += "except ModuleNotFoundError:\n"
         py += "    pass\n"
         py += "except Exception as exc:\n"
-        py += "    raise RuntimeError('Failed to stop dcc-mcp-3dsmax sidecar before uninstall: {}'.format(exc)) from exc\n"
+        py += "    raise RuntimeError('Failed to stop meshy-dcc-3dsmax sidecar before uninstall: {}'.format(exc)) from exc\n"
         py += "def _clear_adapter_modules():\n"
         py += "    for name in list(sys.modules):\n"
-        py += "        if name == 'dcc_mcp_3dsmax' or name.startswith('dcc_mcp_3dsmax.'):\n"
+        py += "        if name == 'meshy_dcc_3dsmax' or name.startswith('meshy_dcc_3dsmax.'):\n"
         py += "            sys.modules.pop(name, None)\n"
         py += "def _clear_uninstall_markers():\n"
         py += "    for marker in uninstall_markers:\n"
@@ -386,7 +386,7 @@
         py += "            if os.path.lexists(str(path)): raise RuntimeError('cleanup target reappeared')\n"
         py += "            return {'success': True, 'status': 'removed'}\n"
         py += "        try:\n"
-        py += "            from dcc_mcp_core.install_lifecycle import safe_remove_tree\n"
+        py += "            from meshy_dcc_core.install_lifecycle import safe_remove_tree\n"
         py += "        except Exception:\n"
         py += "            _controlled(path, path.parent, 'cleanup target', before)\n"
         py += "            raise RuntimeError('runtime cleanup helper unavailable; refusing recursive delete')\n"
@@ -414,15 +414,15 @@
         py += "        startup_script.unlink()\n"
         py += "        if os.path.lexists(str(startup_script)): raise RuntimeError('startup script reappeared')\n"
         py += "    _clear_uninstall_markers()\n"
-        py += "    print('Uninstalled dcc-mcp-3dsmax from', install_dir)\n"
+        py += "    print('Uninstalled meshy-dcc-3dsmax from', install_dir)\n"
         py += "except PermissionError as exc:\n"
         py += "    uninstall_marker.parent.mkdir(parents=True, exist_ok=True)\n"
         py += "    startup_dir.mkdir(parents=True, exist_ok=True)\n"
         py += "    startup_parent_id = _controlled(startup_dir, startup_dir.parent, 'startup directory')\n"
         py += "    uninstall_marker.write_text('pending\\n', encoding='utf-8')\n"
         py += "    startup_before = _controlled(startup_script, startup_dir, 'startup script', allow_missing=True)\n"
-        py += "    startup_tmp = startup_dir / ('.dcc_mcp_3dsmax_startup.' + __import__('uuid').uuid4().hex + '.tmp')\n"
-        py += "    with open(str(source / 'payload' / 'startup' / 'dcc_mcp_3dsmax_startup.ms'), 'rb') as startup_src, os.fdopen(os.open(str(startup_tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0), 0o600), 'wb') as startup_dst:\n"
+        py += "    startup_tmp = startup_dir / ('.meshy_dcc_3dsmax_startup.' + __import__('uuid').uuid4().hex + '.tmp')\n"
+        py += "    with open(str(source / 'payload' / 'startup' / 'meshy_dcc_3dsmax_startup.ms'), 'rb') as startup_src, os.fdopen(os.open(str(startup_tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0), 0o600), 'wb') as startup_dst:\n"
         py += "        shutil.copyfileobj(startup_src, startup_dst)\n"
         py += "    startup_tmp_id = _controlled(startup_tmp, startup_dir, 'startup temporary')\n"
         py += "    _controlled(startup_dir, startup_dir.parent, 'startup directory', startup_parent_id)\n"
@@ -431,36 +431,36 @@
         py += "    elif os.path.lexists(str(startup_script)): raise RuntimeError('startup script owner changed')\n"
         py += "    os.replace(str(startup_tmp), str(startup_script))\n"
         py += "    _controlled(startup_script, startup_dir, 'startup script')\n"
-        py += "    print('dcc-mcp-3dsmax uninstall requires a 3ds Max restart; staged cleanup for', install_dir, 'because:', exc)\n"
+        py += "    print('meshy-dcc-3dsmax uninstall requires a 3ds Max restart; staged cleanup for', install_dir, 'because:', exc)\n"
         try
         (
             python.Execute py
-            messageBox "dcc-mcp-3dsmax uninstall requested. Restart 3ds Max to finish if files were in use." title:"dcc-mcp-3dsmax"
+            messageBox "meshy-dcc-3dsmax uninstall requested. Restart 3ds Max to finish if files were in use." title:"meshy-dcc-3dsmax"
         )
         catch
         (
-            messageBox ("dcc-mcp-3dsmax uninstall failed:\n" + getCurrentException()) title:"dcc-mcp-3dsmax"
+            messageBox ("meshy-dcc-3dsmax uninstall failed:\n" + getCurrentException()) title:"meshy-dcc-3dsmax"
         )
     )
 
-    rollout dccMcpInstaller "dcc-mcp-3dsmax" width:280 height:110
+    rollout meshyDccInstaller "meshy-dcc-3dsmax" width:280 height:110
     (
-        label infoLbl "Choose an action for dcc-mcp-3dsmax:" pos:[20,16]
+        label infoLbl "Choose an action for meshy-dcc-3dsmax:" pos:[20,16]
         button installBtn "Install" width:110 height:28 pos:[20,50]
         button uninstallBtn "Uninstall" width:110 height:28 pos:[145,50]
 
         on installBtn pressed do
         (
-            destroyDialog dccMcpInstaller
-            _dccMcpInstall()
+            destroyDialog meshyDccInstaller
+            _meshyDccInstall()
         )
 
         on uninstallBtn pressed do
         (
-            destroyDialog dccMcpInstaller
-            _dccMcpUninstall()
+            destroyDialog meshyDccInstaller
+            _meshyDccUninstall()
         )
     )
 
-    createDialog dccMcpInstaller style:#(#style_titlebar, #style_border, #style_sysmenu)
+    createDialog meshyDccInstaller style:#(#style_titlebar, #style_border, #style_sysmenu)
 )

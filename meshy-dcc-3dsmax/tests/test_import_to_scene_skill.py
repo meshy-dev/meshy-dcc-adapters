@@ -7,7 +7,7 @@ import sys
 import types
 from pathlib import Path
 
-from dcc_mcp_core.asset_import import (
+from meshy_dcc_core.asset_import import (
     AssetAttribution,
     AssetDescriptor,
     AssetFileVariant,
@@ -22,7 +22,7 @@ from dcc_mcp_core.asset_import import (
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-import-to-scene"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-import-to-scene"
 
 
 def _load_action():

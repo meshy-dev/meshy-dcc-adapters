@@ -20,9 +20,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from dcc_mcp_3dsmax import _undo_utils  # noqa: E402
+from meshy_dcc_3dsmax import _undo_utils  # noqa: E402
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-mesh-ops"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-mesh-ops"
 UNDO_DOC = Path(__file__).resolve().parents[1] / "docs" / "UNDO.md"
 
 

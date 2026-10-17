@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-ROOT = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax"
+ROOT = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax"
 MATERIALS_DIR = ROOT / "skills" / "3dsmax-materials"
 RENDER_DIR = ROOT / "skills" / "3dsmax-render"
 

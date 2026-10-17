@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-rigging"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-rigging"
 
 
 def _load_action(script_name: str):
@@ -165,7 +165,7 @@ def test_rigging_read_tools_report_state_and_optional_systems(monkeypatch):
 def test_rigging_deformer_and_constraint_workflow_through_executor(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     applied = run_skill_script(
         str(SKILL_DIR / "action_apply_deformer_modifier.py"),

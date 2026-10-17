@@ -1,7 +1,7 @@
-# Install dcc-mcp-3dsmax
+# Install meshy-dcc-3dsmax
 
 This is the authoritative install runbook for the 3ds Max adapter. The
-agent-first CLI emits the shared DCC-MCP Install SOP v1 report and owns only
+agent-first CLI emits the shared Meshy DCC Install SOP v1 report and owns only
 the adapter package, startup hook, and receipt. It does not change the shared
 Core catalog.
 
@@ -11,7 +11,7 @@ Core catalog.
   Autodesk 3ds Max is Windows-only.
 - Autodesk 3ds Max 2017 or later with Python 3 and `pymxs`.
 - The target `3dsmaxpy.exe` or embedded `Python\python.exe`.
-- `dcc-mcp-core>=0.20.24` and `dcc-mcp-server>=0.20.22`. The lifecycle CLI
+- `meshy-dcc-core>=0.20.24` and `meshy-dcc-server>=0.20.22`. The lifecycle CLI
   installs these through the adapter dependency set and verifies the Core
   version in the target interpreter before reporting success.
 - Permission to write the user's 3ds Max `userStartupScripts` directory.
@@ -35,14 +35,14 @@ host is still required for final readiness and scene-tool validation.
 Install the public package in the environment used to run the lifecycle CLI:
 
 ```powershell
-python -m pip install --upgrade dcc-mcp-3dsmax
+python -m pip install --upgrade meshy-dcc-3dsmax
 ```
 
 Then run the standard lifecycle command with explicit host and interpreter
 paths. `--json` writes exactly one Install SOP v1 object to stdout.
 
 ```powershell
-dcc-mcp-3dsmax install --json --yes `
+meshy-dcc-3dsmax install --json --yes `
   --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" `
   --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
 ```
@@ -53,7 +53,7 @@ the mutation path, then emits executable `next_steps[]` without installing a
 package, hook, or receipt.
 
 ```powershell
-dcc-mcp-3dsmax install --json --dry-run `
+meshy-dcc-3dsmax install --json --dry-run `
   --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" `
   --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
 ```
@@ -77,7 +77,7 @@ for an explicitly managed receipt location.
 ## Manual path
 
 The release MZP remains the 3ds Max drag-and-drop path. Download the immutable
-`dcc-mcp-3dsmax-<version>-win64.mzp` release asset and drag it into the 3ds Max
+`meshy-dcc-3dsmax-<version>-win64.mzp` release asset and drag it into the 3ds Max
 viewport. The installer stages a versioned payload, changes `current.txt` only
 after staging succeeds, installs the startup hook, and defers locked cleanup
 until restart.
@@ -87,7 +87,7 @@ receipt to remove an MZP payload. For repository development only, the legacy
 setup helper remains available:
 
 ```powershell
-python skills/dcc-mcp-3dsmax-setup/scripts/setup_dcc_mcp_3dsmax.py --source local
+python skills/meshy-dcc-3dsmax-setup/scripts/setup_meshy_dcc_3dsmax.py --source local
 ```
 
 ## Verify
@@ -96,8 +96,8 @@ After installation, close and reopen 3ds Max so the startup hook can run, then
 verify from a shell:
 
 ```powershell
-dcc-mcp-3dsmax status --json --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
-dcc-mcp-3dsmax verify --json --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
+meshy-dcc-3dsmax status --json --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
+meshy-dcc-3dsmax verify --json --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
 ```
 
 Verification checks receipt ownership, independent regular-file identity, and
@@ -121,8 +121,8 @@ licensed host.
 Plan and apply upgrades through the same receipt-owned transaction:
 
 ```powershell
-dcc-mcp-3dsmax upgrade --json --dry-run --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
-dcc-mcp-3dsmax upgrade --json --yes --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
+meshy-dcc-3dsmax upgrade --json --dry-run --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
+meshy-dcc-3dsmax upgrade --json --yes --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
 ```
 
 The selected host, target Python, and any already-installed Core are checked
@@ -145,8 +145,8 @@ restart-and-verify next step instead of deleting the live installation.
 Preview and then consume the owned receipt:
 
 ```powershell
-dcc-mcp-3dsmax uninstall --json --dry-run --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
-dcc-mcp-3dsmax uninstall --json --yes --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
+meshy-dcc-3dsmax uninstall --json --dry-run --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
+meshy-dcc-3dsmax uninstall --json --yes --dcc-path "C:\Program Files\Autodesk\3ds Max 2025" --python "C:\Program Files\Autodesk\3ds Max 2025\Python\python.exe"
 ```
 
 Uninstall verifies the recorded path and digest, restores any startup hook
@@ -167,7 +167,7 @@ Pass the exact `--dcc-path`, `--python`, and, for a custom profile,
 
 ### `core_version_too_old`
 
-Upgrade `dcc-mcp-3dsmax` in the selected target interpreter. Do not claim the
+Upgrade `meshy-dcc-3dsmax` in the selected target interpreter. Do not claim the
 host is usable until verification sees Core 0.20.24 or newer.
 
 ### `package_rollback_incomplete` or `transaction_rollback_incomplete`
@@ -197,5 +197,5 @@ files or the receipt by hand.
 
 Inspect the bounded bootstrap-error directory named in the receipt and the
 gateway/sidecar diagnostics. Confirm the host is open and the startup hook ran.
-The public MCP URL remains `http://127.0.0.1:9765/mcp`; the per-instance port
+The public MCP URL remains `http://127.0.0.1:19765/mcp`; the per-instance port
 is intentionally ephemeral.

@@ -14,9 +14,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from dcc_mcp_3dsmax._executor import run_skill_script  # noqa: E402
+from meshy_dcc_3dsmax._executor import run_skill_script  # noqa: E402
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-scene"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-scene"
 TOOLS_YAML = SKILL_DIR / "tools.yaml"
 
 
@@ -245,7 +245,7 @@ def test_inspect_max_file_warns_when_the_version_reader_is_missing(monkeypatch, 
 
 
 def test_inspect_max_file_reports_unreadable_paths(monkeypatch, tmp_path):
-    from dcc_mcp_3dsmax import _max_file_io
+    from meshy_dcc_3dsmax import _max_file_io
 
     source = _write_max(tmp_path)
     _install(monkeypatch, _FakeRuntime({str(source): ["hero"]}))
@@ -319,7 +319,7 @@ def test_batch_file_info_rejects_unbounded_batches(monkeypatch):
     _install(monkeypatch, _FakeRuntime())
 
     assert _run("action_batch_file_info.py", {"file_paths": []})["data"]["failure_reason"] == "invalid_file_paths"
-    from dcc_mcp_3dsmax._max_file_io import MAX_BATCH_FILES
+    from meshy_dcc_3dsmax._max_file_io import MAX_BATCH_FILES
 
     exactly_max = ["C:/scenes/{}.max".format(index) for index in range(MAX_BATCH_FILES)]
     _install(monkeypatch, _FakeRuntime())
@@ -569,7 +569,7 @@ def test_merge_from_file_fails_on_a_missing_source_file(monkeypatch, tmp_path):
 
 
 def test_batch_readers_warn_above_the_recommended_batch_size(monkeypatch, tmp_path):
-    from dcc_mcp_3dsmax._max_file_io import RECOMMENDED_BATCH_FILES
+    from meshy_dcc_3dsmax._max_file_io import RECOMMENDED_BATCH_FILES
 
     paths = []
     names = {}
@@ -590,7 +590,7 @@ def test_batch_readers_warn_above_the_recommended_batch_size(monkeypatch, tmp_pa
 
     small = _run("action_batch_file_info.py", {"file_paths": paths[:RECOMMENDED_BATCH_FILES]})
     assert small["data"]["warnings"] == []
-    from dcc_mcp_3dsmax._max_file_io import match_object_names
+    from meshy_dcc_3dsmax._max_file_io import match_object_names
 
     names = ["PROP_One", "prop_two", "hero"]
     assert match_object_names(names, "prop", case_sensitive=True) == ["prop_two"]
@@ -743,7 +743,7 @@ def test_external_max_file_tools_are_typed_main_thread_contracts():
     }
     assert new_tools.issubset(by_name)
 
-    from dcc_mcp_3dsmax._undo_utils import VALID_GRANULARITIES
+    from meshy_dcc_3dsmax._undo_utils import VALID_GRANULARITIES
 
     for name in new_tools:
         tool = by_name[name]

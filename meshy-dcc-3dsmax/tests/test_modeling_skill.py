@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-modeling"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-modeling"
 
 
 class _Point3:
@@ -138,7 +138,7 @@ def test_lathe_profile_runs_through_executor_and_reads_back_native_state(monkeyp
     runtime = _FakeRuntime()
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_lathe_profile.py"),
@@ -193,7 +193,7 @@ def test_lathe_profile_rejects_unbounded_inputs_before_scene_mutation(monkeypatc
     runtime = _FakeRuntime()
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     params = {"profile_points": [[0.0, 0.0], [1.0, 2.0]]}
     params.update(overrides)
@@ -210,7 +210,7 @@ def test_lathe_profile_rolls_back_when_native_modifier_readback_differs(monkeypa
     runtime = _FakeRuntime(tamper_modifier=True)
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_lathe_profile.py"),
@@ -230,7 +230,7 @@ def test_lathe_profile_rolls_back_when_native_creation_raises(monkeypatch):
     runtime = _FakeRuntime(fail_add_modifier=True)
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_lathe_profile.py"),
@@ -250,7 +250,7 @@ def test_lathe_profile_does_not_claim_rollback_when_native_delete_is_a_noop(monk
     runtime = _FakeRuntime(tamper_modifier=True, delete_is_noop=True)
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_lathe_profile.py"),
@@ -269,7 +269,7 @@ def test_lathe_profile_rollback_uses_exact_handle_and_preserves_same_name_node(m
     runtime = _FakeRuntime(tamper_modifier=True, same_name_survivor=True)
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_lathe_profile.py"),
@@ -291,7 +291,7 @@ def test_lathe_profile_does_not_claim_rollback_when_handle_readback_raises(monke
     runtime = _FakeRuntime(tamper_modifier=True, handle_lookup_raises=True)
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_lathe_profile.py"),
@@ -315,7 +315,7 @@ def test_lathe_profile_does_not_claim_rollback_without_max_ops_readback(monkeypa
     runtime = _FakeRuntime(tamper_modifier=True, **runtime_kwargs)
     monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(SKILL_DIR / "action_lathe_profile.py"),

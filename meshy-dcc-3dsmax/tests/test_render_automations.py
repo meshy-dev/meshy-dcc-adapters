@@ -19,10 +19,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dcc_mcp_3dsmax import _render_signals as signals  # noqa: E402
-from dcc_mcp_3dsmax import _viewport_utils as viewport_utils  # noqa: E402
+from meshy_dcc_3dsmax import _render_signals as signals  # noqa: E402
+from meshy_dcc_3dsmax import _viewport_utils as viewport_utils  # noqa: E402
 
-RENDER_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-render"
+RENDER_SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-render"
 
 # 3ds Max only runs on Windows, so paths carry backslashes. Built from chr(92)
 # to keep the literals in this file unambiguous.

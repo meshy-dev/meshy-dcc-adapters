@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-materials"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-materials"
 
 
 def _load_action(script_name: str):
@@ -167,7 +167,7 @@ def test_material_creation_attribute_and_bitmap_tools(monkeypatch, tmp_path):
     texture = tmp_path / "hero_basecolor.png"
     texture.write_text("png", encoding="utf-8")
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     physical = _load_action("action_create_physical_material.py").main(
         "HeroPhysical",

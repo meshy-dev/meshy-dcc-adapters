@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-animation"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-animation"
 
 
 def _load_action(script_name: str):
@@ -102,7 +102,7 @@ def test_timeline_mutations_update_runtime(monkeypatch):
 def test_keyframe_workflow_and_curve_exchange_through_executor(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     set_key = run_skill_script(
         str(SKILL_DIR / "action_set_transform_keyframe.py"),

@@ -1,0 +1,21 @@
+"""List rigging state."""
+
+from __future__ import annotations
+
+from typing import Any, Dict, Optional
+
+from meshy_dcc_3dsmax._rig_state_contract import rig_state
+from meshy_dcc_3dsmax._rigging_utils import resolve_rig_targets
+from meshy_dcc_3dsmax.api import get_runtime, with_max
+
+
+@with_max
+def main(
+    node_names: Optional[list] = None, handles: Optional[list] = None, use_selection: bool = False
+) -> Dict[str, Any]:
+    """List controllers, constraints, deformers, and skinning state."""
+    rt = get_runtime()
+    targets = resolve_rig_targets(rt, node_names=node_names, handles=handles, use_selection=use_selection)
+    if not targets.get("success"):
+        return targets
+    return rig_state(rt, targets["objects"])

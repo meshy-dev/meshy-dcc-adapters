@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble a drag-and-drop 3ds Max MZP installer for dcc-mcp-3dsmax.
+"""Assemble a drag-and-drop 3ds Max MZP installer for meshy-dcc-3dsmax.
 
 The output is a ZIP-compatible ``.mzp`` archive with an MZP control file
 (``mzp.run``) at the archive root. The control file runs ``install.ms`` when
@@ -35,10 +35,10 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import InvalidWheelFilename, canonicalize_name, parse_wheel_filename
 from packaging.version import InvalidVersion, Version
 
-PACKAGE_NAME = "dcc-mcp-3dsmax"
-PY_PACKAGE_NAME = "dcc_mcp_3dsmax"
-CORE_PACKAGE_NAME = "dcc_mcp_core"
-SERVER_PACKAGE_NAME = "dcc_mcp_server"
+PACKAGE_NAME = "meshy-dcc-3dsmax"
+PY_PACKAGE_NAME = "meshy_dcc_3dsmax"
+CORE_PACKAGE_NAME = "meshy_dcc_core"
+SERVER_PACKAGE_NAME = "meshy_dcc_server"
 TARGET_PLATFORM = "win64"
 _RELEASE_VERSION_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+\Z")
 
@@ -48,7 +48,7 @@ def _validate_release_version(version: str) -> str:
     if not isinstance(version, str) or _RELEASE_VERSION_RE.fullmatch(version) is None:
         raise ValueError("version must match X.Y.Z")
     return version
-RUNTIME_MANIFEST_NAME = "dcc-mcp-runtime-manifest.json"
+RUNTIME_MANIFEST_NAME = "meshy-dcc-runtime-manifest.json"
 _WINDOWS_RESERVED_NAMES = {
     "aux",
     "clock$",
@@ -232,15 +232,15 @@ def _satisfies_release_specifier(version: str, specifier) -> bool:
     try:
         parsed = Version(version)
     except InvalidVersion as exc:
-        raise RuntimeError(f"selected dcc-mcp-server wheel has invalid PEP 440 version: {version!r}") from exc
+        raise RuntimeError(f"selected meshy-dcc-server wheel has invalid PEP 440 version: {version!r}") from exc
     return specifier.contains(parsed, prereleases=True)
 
 
 def _server_requirement_specifier(requirement: Requirement):
-    if _normalized_distribution(requirement.name) != "dcc-mcp-server":
+    if _normalized_distribution(requirement.name) != "meshy-dcc-server":
         return None
     if requirement.url or requirement.extras or not str(requirement.specifier):
-        raise RuntimeError(f"dcc-mcp-core has a missing or invalid dcc-mcp-server specifier: {requirement!r}")
+        raise RuntimeError(f"meshy-dcc-core has a missing or invalid meshy-dcc-server specifier: {requirement!r}")
     return requirement.specifier
 
 
@@ -279,12 +279,12 @@ def verify_python37_runtime_contract(
     cp37_wheels = [wheel for wheel in core_wheels if "cp37-cp37m" in wheel.name]
     abi3_wheels = [wheel for wheel in core_wheels if "cp38-abi3" in wheel.name]
     if len(cp37_wheels) != 1:
-        raise RuntimeError(f"expected one dcc-mcp-core cp37 wheel, found {[wheel.name for wheel in cp37_wheels]}")
+        raise RuntimeError(f"expected one meshy-dcc-core cp37 wheel, found {[wheel.name for wheel in cp37_wheels]}")
     if len(abi3_wheels) != 1 or len(core_wheels) != 2:
-        raise RuntimeError(f"expected one dcc-mcp-core cp38-abi3 wheel, found {[wheel.name for wheel in abi3_wheels]}")
-    core_metadata = _verified_wheel_metadata(cp37_wheels[0], "dcc-mcp-core", expected_core_version)
-    abi3_metadata = _verified_wheel_metadata(abi3_wheels[0], "dcc-mcp-core", expected_core_version)
-    server_metadata = _verified_wheel_metadata(server_wheel, "dcc-mcp-server", expected_server_version)
+        raise RuntimeError(f"expected one meshy-dcc-core cp38-abi3 wheel, found {[wheel.name for wheel in abi3_wheels]}")
+    core_metadata = _verified_wheel_metadata(cp37_wheels[0], "meshy-dcc-core", expected_core_version)
+    abi3_metadata = _verified_wheel_metadata(abi3_wheels[0], "meshy-dcc-core", expected_core_version)
+    server_metadata = _verified_wheel_metadata(server_wheel, "meshy-dcc-server", expected_server_version)
 
     runtime_requirements = _runtime_requirements(core_metadata, "3.7.9")
     modern_requirements = _runtime_requirements(abi3_metadata, "3.12.0")
@@ -296,11 +296,11 @@ def verify_python37_runtime_contract(
     server_requirements = [requirement for requirement, _specifier in server_contracts]
     if len(server_requirements) != len(runtime_requirements):
         raise RuntimeError(
-            f"unclosed dcc-mcp-core Python 3.7 runtime dependencies: "
+            f"unclosed meshy-dcc-core Python 3.7 runtime dependencies: "
             f"{sorted(str(requirement) for requirement in runtime_requirements if requirement not in server_requirements)}"
         )
     if len(server_requirements) != 1:
-        raise RuntimeError(f"expected one dcc-mcp-server runtime requirement, found {server_requirements}")
+        raise RuntimeError(f"expected one meshy-dcc-server runtime requirement, found {server_requirements}")
     if sorted(_evaluated_requirement_key(requirement) for requirement in modern_requirements) != sorted(
         _evaluated_requirement_key(requirement) for requirement in runtime_requirements
     ):
@@ -314,22 +314,22 @@ def verify_python37_runtime_contract(
         }
     )
     if server_runtime_requirements:
-        raise RuntimeError(f"unclosed dcc-mcp-server runtime dependencies: {server_runtime_requirements}")
+        raise RuntimeError(f"unclosed meshy-dcc-server runtime dependencies: {server_runtime_requirements}")
     server_specifier = server_contracts[0][1]
     if not _satisfies_release_specifier(expected_server_version, server_specifier):
         raise RuntimeError(
-            f"server wheel version {expected_server_version} does not satisfy dcc-mcp-core requirement {server_specifier}"
+            f"server wheel version {expected_server_version} does not satisfy meshy-dcc-core requirement {server_specifier}"
         )
 
 
 def resolve_core_version(project_root: Path) -> str:
-    """Resolve the latest PyPI dcc-mcp-core version satisfying pyproject."""
-    return resolve_dependency_version(project_root, "dcc-mcp-core")
+    """Resolve the latest PyPI meshy-dcc-core version satisfying pyproject."""
+    return resolve_dependency_version(project_root, "meshy-dcc-core")
 
 
 def resolve_server_version(project_root: Path) -> str:
-    """Resolve the latest PyPI dcc-mcp-server version satisfying pyproject."""
-    return resolve_dependency_version(project_root, "dcc-mcp-server")
+    """Resolve the latest PyPI meshy-dcc-server version satisfying pyproject."""
+    return resolve_dependency_version(project_root, "meshy-dcc-server")
 
 
 def _declared_dependency(project_root: Path, distribution: str) -> Requirement:
@@ -441,11 +441,11 @@ def _non_yanked_wheel_filenames(distribution: str, version: str, files) -> List[
 def _has_required_non_yanked_wheels(distribution: str, version: str, files) -> bool:
     filenames = _non_yanked_wheel_filenames(distribution, version, files)
     normalized = _normalized_distribution(distribution)
-    if normalized == "dcc-mcp-core":
+    if normalized == "meshy-dcc-core":
         return all(
             sum(_wheel_has_exact_tag(filename, *tag) for filename in filenames) == 1 for tag in _core_wheel_tags()
         )
-    if normalized == "dcc-mcp-server":
+    if normalized == "meshy-dcc-server":
         return sum(_wheel_has_exact_tag(filename, "py3", "none", "win_amd64") for filename in filenames) == 1
     return bool(filenames)
 
@@ -489,20 +489,20 @@ def _download_verified_wheel(url: str, expected_sha256: str, target: Path) -> No
 
 
 def download_core_wheels(version: str, dest: Path) -> List[Path]:
-    """Download Windows dcc-mcp-core wheels needed by the offline installer."""
-    pypi_url = f"https://pypi.org/pypi/dcc-mcp-core/{version}/json"
+    """Download Windows meshy-dcc-core wheels needed by the offline installer."""
+    pypi_url = f"https://pypi.org/pypi/meshy-dcc-core/{version}/json"
     print(f"Querying {pypi_url}")
     with urllib.request.urlopen(pypi_url, timeout=30) as resp:
         data = json.loads(resp.read())
 
     files = data.get("releases", {}).get(version, []) or data.get("urls", [])
-    wheel_map = _non_yanked_wheel_map("dcc-mcp-core", version, files)
+    wheel_map = _non_yanked_wheel_map("meshy-dcc-core", version, files)
 
     downloaded: List[Path] = []
     for (pattern, label), tag in zip(_core_wheel_patterns(), _core_wheel_tags()):
         matches = [filename for filename in wheel_map if _wheel_has_exact_tag(filename, *tag)]
         if len(matches) != 1:
-            raise RuntimeError(f"Expected one dcc-mcp-core wheel for {label} ({pattern}), found {sorted(matches)}")
+            raise RuntimeError(f"Expected one meshy-dcc-core wheel for {label} ({pattern}), found {sorted(matches)}")
         filename = matches[0]
         target = dest / filename
         print(f"Downloading {filename}")
@@ -514,17 +514,17 @@ def download_core_wheels(version: str, dest: Path) -> List[Path]:
 
 
 def download_server_wheel(version: str, dest: Path) -> Path:
-    """Download the Windows dcc-mcp-server wheel needed by the sidecar installer."""
-    pypi_url = f"https://pypi.org/pypi/dcc-mcp-server/{version}/json"
+    """Download the Windows meshy-dcc-server wheel needed by the sidecar installer."""
+    pypi_url = f"https://pypi.org/pypi/meshy-dcc-server/{version}/json"
     print(f"Querying {pypi_url}")
     with urllib.request.urlopen(pypi_url, timeout=30) as resp:
         data = json.loads(resp.read())
 
     files = data.get("releases", {}).get(version, []) or data.get("urls", [])
-    wheel_map = _non_yanked_wheel_map("dcc-mcp-server", version, files)
+    wheel_map = _non_yanked_wheel_map("meshy-dcc-server", version, files)
     matches = [filename for filename in wheel_map if _wheel_has_exact_tag(filename, "py3", "none", "win_amd64")]
     if len(matches) != 1:
-        raise RuntimeError(f"Expected one Windows dcc-mcp-server wheel for version {version}, found {sorted(matches)}")
+        raise RuntimeError(f"Expected one Windows meshy-dcc-server wheel for version {version}, found {sorted(matches)}")
 
     filename = matches[0]
     target = dest / filename
@@ -666,8 +666,8 @@ def _manifest_entries(document, lane: str):
 def _mzp_run_text(version: str) -> str:
     _validate_release_version(version)
     return (
-        f'name "dcc-mcp-3dsmax"\n'
-        f'description "dcc-mcp-3dsmax {version} drag-and-drop installer"\n'
+        f'name "meshy-dcc-3dsmax"\n'
+        f'description "meshy-dcc-3dsmax {version} drag-and-drop installer"\n'
         "version 1\n"
         'run "install.ms"\n'
         'drop "install.ms"\n'
@@ -684,7 +684,7 @@ def _trusted_control_files(version: str):
             "install.ms": _render_template("install.ms", VERSION=version).encode("utf-8"),
             "mzp.run": _mzp_run_text(version).encode("utf-8"),
             "payload/README.txt": (packaging_root / "README.txt").read_bytes(),
-            "payload/startup/dcc_mcp_3dsmax_startup.ms": (_template_dir() / "dcc_mcp_3dsmax_startup.ms").read_bytes(),
+            "payload/startup/meshy_dcc_3dsmax_startup.ms": (_template_dir() / "meshy_dcc_3dsmax_startup.ms").read_bytes(),
         }
     except (OSError, UnicodeError) as exc:
         raise RuntimeError("MZP trusted control templates are unavailable") from exc
@@ -897,9 +897,9 @@ def _write_utf8_lf(path: Path, text: str) -> None:
 
 
 def write_startup_template(package_root: Path) -> None:
-    startup = package_root / "startup" / "dcc_mcp_3dsmax_startup.ms"
+    startup = package_root / "startup" / "meshy_dcc_3dsmax_startup.ms"
     startup.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(_template_dir() / "dcc_mcp_3dsmax_startup.ms", startup)
+    shutil.copy2(_template_dir() / "meshy_dcc_3dsmax_startup.ms", startup)
 
 
 def write_mzp_run(package_root: Path, version: str) -> None:
@@ -1058,7 +1058,7 @@ def assemble(project_root: Path, version: str, output: Path) -> Path:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Assemble dcc-mcp-3dsmax MZP installer")
+    parser = argparse.ArgumentParser(description="Assemble meshy-dcc-3dsmax MZP installer")
     parser.add_argument("--version", required=True, help="Package version, for example 0.1.0")
     parser.add_argument("--output", default="dist/mzp", help="Output directory")
     parser.add_argument("--project-root", default=".", help="Project root")

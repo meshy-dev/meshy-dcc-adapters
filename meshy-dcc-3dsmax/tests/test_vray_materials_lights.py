@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-SKILLS = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills"
+SKILLS = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills"
 MATERIALS_DIR = SKILLS / "3dsmax-materials"
 LOOKDEV_DIR = SKILLS / "3dsmax-lookdev"
 LIGHTING_DIR = SKILLS / "3dsmax-camera-lighting"
@@ -692,7 +692,7 @@ def test_create_vray_light_rejects_unsupported_enum_values(monkeypatch):
 
 
 def test_create_vray_light_rolls_back_when_light_creation_raises(monkeypatch):
-    import dcc_mcp_3dsmax._vray_utils as vray_utils
+    import meshy_dcc_3dsmax._vray_utils as vray_utils
 
     runtime = _install_pymxs(monkeypatch, _VRayRuntime())
     real_summary = vray_utils.light_summary
@@ -771,7 +771,7 @@ def test_assign_bitmap_texture_reports_the_native_connection(monkeypatch, tmp_pa
 
 
 def test_glossiness_keeps_the_declared_native_order():
-    from dcc_mcp_3dsmax._renderer_materials import numeric_plans
+    from meshy_dcc_3dsmax._renderer_materials import numeric_plans
 
     plans = numeric_plans("vray", "glossiness")
     native = [attribute for attribute, _transform, _prereqs in plans if attribute.startswith("reflection")]

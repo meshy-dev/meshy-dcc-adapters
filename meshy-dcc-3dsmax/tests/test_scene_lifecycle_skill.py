@@ -10,9 +10,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from dcc_mcp_3dsmax._executor import run_skill_script
+from meshy_dcc_3dsmax._executor import run_skill_script
 
-SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-scene"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-scene"
 
 
 class _FakeRuntime:

@@ -1,7 +1,7 @@
 """Unit tests for the 3ds Max core-integration modules.
 
 Covers the parity work bringing :class:`MaxMcpServer` up to the Maya adapter's
-``dcc-mcp-core`` interface integrations — readiness probe, capability manifest,
+``meshy-dcc-core`` interface integrations — readiness probe, capability manifest,
 context snapshot, project tools, resources binder, semantic augmentation and
 the Qt UI inspector.
 
@@ -20,13 +20,13 @@ import pytest
 # Add src to path for testing.
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dcc_mcp_3dsmax import _capability_manifest as capmod
-from dcc_mcp_3dsmax import _project_tools as projmod
-from dcc_mcp_3dsmax import _qt_inspector as qtmod
-from dcc_mcp_3dsmax import _readiness as readymod
-from dcc_mcp_3dsmax import _resources as resmod
-from dcc_mcp_3dsmax import _semantic_index as semmod
-from dcc_mcp_3dsmax import context_snapshot as ctxmod
+from meshy_dcc_3dsmax import _capability_manifest as capmod
+from meshy_dcc_3dsmax import _project_tools as projmod
+from meshy_dcc_3dsmax import _qt_inspector as qtmod
+from meshy_dcc_3dsmax import _readiness as readymod
+from meshy_dcc_3dsmax import _resources as resmod
+from meshy_dcc_3dsmax import _semantic_index as semmod
+from meshy_dcc_3dsmax import context_snapshot as ctxmod
 
 # ===========================================================================
 # Fakes
@@ -224,7 +224,7 @@ def test_max_mcp_server_readiness_report_contract_with_ui_dispatcher():
     dispatcher, dcc, host_execution_bridge, and main_thread_executor.
     A fake async dispatcher with ``run_complete=True`` must flip all four.
     """
-    from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions
+    from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
 
     dispatcher = _FakeAsyncDispatcher(run_complete=True)
     server = MaxMcpServer(
@@ -265,7 +265,7 @@ def test_max_mcp_server_readiness_report_contract_with_ui_dispatcher():
 
 def test_max_mcp_server_readiness_main_thread_executor_pending_before_pump():
     """When the pump has NOT completed, main_thread_executor stays False."""
-    from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions
+    from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
 
     dispatcher = _FakeAsyncDispatcher(run_complete=False)
     server = MaxMcpServer(
@@ -530,10 +530,10 @@ def test_resources_publish_scene_explicit_payload():
 
 def test_startup_passes_only_one_execution_mode(monkeypatch):
     """Core 0.17.36+ rejects dispatcher+execution_bridge set simultaneously; adapter passes only one."""
-    from dcc_mcp_core import HostExecutionBridge
+    from meshy_dcc_core import HostExecutionBridge
 
-    from dcc_mcp_3dsmax.dispatcher import MaxUiDispatcher
-    from dcc_mcp_3dsmax.server import MaxMcpServer, MaxServerOptions
+    from meshy_dcc_3dsmax.dispatcher import MaxUiDispatcher
+    from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
 
     dispatcher = MaxUiDispatcher()
     bridge = HostExecutionBridge(
@@ -585,7 +585,7 @@ def test_semantic_embedder_kind(monkeypatch):
 def test_semantic_augment_appends_recall():
     index = semmod.MaxSemanticIndex.build(embedder_kind="hashed")
     if index is None:
-        pytest.skip("dcc-mcp-core lacks VectorSkillIndex (needs >=0.17.38)")
+        pytest.skip("meshy-dcc-core lacks VectorSkillIndex (needs >=0.17.38)")
     summaries = [
         _FakeSummary("3dsmax-modeling", "create and model primitives and meshes"),
         _FakeSummary("3dsmax-transform", "move rotate scale nodes"),
@@ -601,7 +601,7 @@ def test_semantic_augment_appends_recall():
 def test_semantic_augment_noop_without_query():
     index = semmod.MaxSemanticIndex.build(embedder_kind="hashed")
     if index is None:
-        pytest.skip("dcc-mcp-core lacks VectorSkillIndex (needs >=0.17.38)")
+        pytest.skip("meshy-dcc-core lacks VectorSkillIndex (needs >=0.17.38)")
     base = [_FakeSummary("3dsmax-scene")]
     assert index.augment(base, None, base) == base
 

@@ -8,8 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-ANIMATION_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-animation"
-RIGGING_DIR = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-rigging"
+ANIMATION_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-animation"
+RIGGING_DIR = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-rigging"
 
 
 class _Context:
@@ -128,7 +128,7 @@ def _install_fake_pymxs(monkeypatch):
 def test_batch_keyframes_round_trip_through_public_executor(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     written = run_skill_script(
         str(ANIMATION_DIR / "action_set_keyframes.py"),
@@ -163,7 +163,7 @@ def test_batch_keyframes_round_trip_through_public_executor(monkeypatch):
     )
 
     assert readback["success"] is True, readback
-    assert readback["data"]["curve_data"]["schema"] == "dcc-mcp/anim-curves@1"
+    assert readback["data"]["curve_data"]["schema"] == "meshy-dcc/anim-curves@1"
     assert readback["data"]["curve_data"]["fps"] == 24.0
     curves = readback["data"]["curve_data"]["curves"]
     assert [curve["target"] for curve in curves] == [
@@ -182,13 +182,13 @@ def test_batch_keyframes_round_trip_through_public_executor(monkeypatch):
 def test_curve_import_validates_complete_payload_before_mutation(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     invalid = run_skill_script(
         str(ANIMATION_DIR / "action_import_anim_curves.py"),
         {
             "curve_data": {
-                "schema": "dcc-mcp/anim-curves@1",
+                "schema": "meshy-dcc/anim-curves@1",
                 "fps": 24,
                 "curves": [
                     {
@@ -215,13 +215,13 @@ def test_curve_import_converts_source_fps_to_runtime_frames(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
     runtime.frameRate = 30.0
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     imported = run_skill_script(
         str(ANIMATION_DIR / "action_import_anim_curves.py"),
         {
             "curve_data": {
-                "schema": "dcc-mcp/anim-curves@1",
+                "schema": "meshy-dcc/anim-curves@1",
                 "fps": 24,
                 "curves": [
                     {
@@ -243,7 +243,7 @@ def test_curve_import_converts_source_fps_to_runtime_frames(monkeypatch):
 def test_skin_weights_round_trip_through_native_skinops(monkeypatch):
     _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     before = run_skill_script(
         str(RIGGING_DIR / "action_get_skin_weights.py"),
@@ -286,7 +286,7 @@ def test_copy_weights_maps_bones_by_name_and_verifies_target(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
     runtime.objects[-2].modifiers[0].weights[2] = {1: 0.2, 2: 0.8}
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     copied = run_skill_script(
         str(RIGGING_DIR / "action_copy_weights.py"),
@@ -310,14 +310,14 @@ def test_pose_data_round_trips_with_transform_readback(monkeypatch):
     runtime.objects[0].position = [1.0, 2.0, 3.0]
     runtime.objects[0].rotation = [4.0, 5.0, 6.0]
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     saved = run_skill_script(
         str(RIGGING_DIR / "action_save_pose.py"),
         {"node_names": ["rotor_main"]},
     )
     assert saved["success"] is True, saved
-    assert saved["data"]["pose_data"]["schema"] == "dcc-mcp/pose@1"
+    assert saved["data"]["pose_data"]["schema"] == "meshy-dcc/pose@1"
 
     runtime.objects[0].position = [10.0, 20.0, 30.0]
     runtime.objects[0].rotation = [40.0, 50.0, 60.0]
@@ -335,7 +335,7 @@ def test_pose_data_round_trips_with_transform_readback(monkeypatch):
 def test_create_constraint_preserves_offset_and_reads_back_target(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     created = run_skill_script(
         str(RIGGING_DIR / "action_create_constraint.py"),
@@ -359,7 +359,7 @@ def test_create_constraint_preserves_offset_and_reads_back_target(monkeypatch):
 def test_create_control_applies_bounded_shape_color_and_readback(monkeypatch):
     runtime = _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     created = run_skill_script(
         str(RIGGING_DIR / "action_create_control.py"),
@@ -382,7 +382,7 @@ def test_create_control_applies_bounded_shape_color_and_readback(monkeypatch):
 def test_rig_state_exports_normalization_assertion_surface(monkeypatch):
     _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     state = run_skill_script(
         str(RIGGING_DIR / "action_list_rig_state.py"),
@@ -390,7 +390,7 @@ def test_rig_state_exports_normalization_assertion_surface(monkeypatch):
     )
 
     assert state["success"] is True, state
-    assert state["data"]["schema"] == "dcc-mcp/rig-state@1"
+    assert state["data"]["schema"] == "meshy-dcc/rig-state@1"
     assert state["data"]["joints"]["count"] == 0
     assert state["data"]["skins"][0]["vertex_count"] == 2
     assert state["data"]["skins"][0]["unnormalized_vertices"] == 0
@@ -400,7 +400,7 @@ def test_skin_weight_file_round_trip_is_explicit_and_verified(monkeypatch, tmp_p
     runtime = _install_fake_pymxs(monkeypatch)
     output_path = tmp_path / "hero.skin-weights.json"
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     exported = run_skill_script(
         str(RIGGING_DIR / "action_export_skin_weights.py"),
@@ -457,7 +457,7 @@ def test_get_anim_curves_reads_native_component_values_and_tangents(monkeypatch)
     runtime.getKeyTime = lambda controller, index: controller.keys[index - 1].time
     runtime.getKey = lambda controller, index: controller.keys[index - 1]
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(ANIMATION_DIR / "action_get_anim_curves.py"),
@@ -479,7 +479,7 @@ def test_get_anim_curves_reads_native_component_values_and_tangents(monkeypatch)
 def test_batch_keyframes_preserves_distinct_in_and_out_tangents(monkeypatch):
     _install_fake_pymxs(monkeypatch)
 
-    from dcc_mcp_3dsmax._executor import run_skill_script
+    from meshy_dcc_3dsmax._executor import run_skill_script
 
     result = run_skill_script(
         str(ANIMATION_DIR / "action_set_keyframes.py"),

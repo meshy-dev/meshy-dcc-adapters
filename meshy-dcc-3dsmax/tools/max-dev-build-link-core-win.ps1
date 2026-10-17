@@ -1,18 +1,18 @@
-# Build dcc-mcp-core with the target 3ds Max's Python, then link core + dcc-mcp-3dsmax into
+# Build meshy-dcc-core with the target 3ds Max's Python, then link core + meshy-dcc-3dsmax into
 # 3ds Max's scripts directory for live debugging (no wheel copy).
 #
 # Prerequisites: Rust (cargo) on PATH, Git, optional vx on PATH for stubgen fallback.
 #
 # Usage:
 #   .\tools\max-dev-build-link-core-win.ps1 -MaxVersion 2024
-#   .\tools\max-dev-build-link-core-win.ps1 -MaxVersion 2024 -CoreRepo G:\path\to\dcc-mcp-core
+#   .\tools\max-dev-build-link-core-win.ps1 -MaxVersion 2024 -CoreRepo G:\path\to\meshy-dcc-core
 #   .\tools\max-dev-build-link-core-win.ps1 -MaxVersion 2024 -LaunchMax
 #
 # Environment:
-#   DCC_MCP_CORE_REPO — override path to dcc-mcp-core (default: sibling of this git repo)
+#   MESHY_DCC_CORE_REPO — override path to meshy-dcc-core (default: sibling of this git repo)
 #
-# 3ds Max 2022+ bundles Python. We use this Python to build dcc-mcp-core with maturin develop,
-# then symlink both dcc_mcp_core and dcc_mcp_3dsmax into 3ds Max's scripts directory.
+# 3ds Max 2022+ bundles Python. We use this Python to build meshy-dcc-core with maturin develop,
+# then symlink both meshy_dcc_core and meshy_dcc_3dsmax into 3ds Max's scripts directory.
 
 param(
     [string]$MaxVersion = "2024",
@@ -29,17 +29,17 @@ if (-not $MaxRoot) {
 }
 
 if (-not $CoreRepo) {
-    if ($env:DCC_MCP_CORE_REPO) {
-        $CoreRepo = $env:DCC_MCP_CORE_REPO
+    if ($env:MESHY_DCC_CORE_REPO) {
+        $CoreRepo = $env:MESHY_DCC_CORE_REPO
     } else {
-        $sibling = Join-Path (Split-Path $MaxRoot -Parent) "dcc-mcp-core"
+        $sibling = Join-Path (Split-Path $MaxRoot -Parent) "meshy-dcc-core"
         if (Test-Path (Join-Path $sibling "Cargo.toml")) {
             $CoreRepo = $sibling
         }
     }
 }
 if (-not $CoreRepo -or -not (Test-Path (Join-Path $CoreRepo "Cargo.toml"))) {
-    Write-Error "dcc-mcp-core not found. Clone it next to dcc-mcp-3dsmax or set DCC_MCP_CORE_REPO / -CoreRepo."
+    Write-Error "meshy-dcc-core not found. Clone it next to meshy-dcc-3dsmax or set MESHY_DCC_CORE_REPO / -CoreRepo."
 }
 
 $CoreRepo = (Resolve-Path $CoreRepo).Path
@@ -94,7 +94,7 @@ if ([version]$PyTag -ge [version]"3.8") {
     Write-Host "   Features: DEV (no abi3)" -ForegroundColor Gray
 }
 
-Write-Host "=== dcc-mcp-core (maturin develop via 3ds Max Python) ===" -ForegroundColor Cyan
+Write-Host "=== meshy-dcc-core (maturin develop via 3ds Max Python) ===" -ForegroundColor Cyan
 Write-Host "   Core repo : $CoreRepo"
 Write-Host "   Python    : $MaxPython"
 Write-Host ""
@@ -111,7 +111,7 @@ if (-not $SkipBuild) {
         & $MaxPython -m pip install -q --upgrade pip
         & $MaxPython -m pip install -q maturin
 
-        $coreNativeDir = Join-Path $CoreRepo "python\dcc_mcp_core"
+        $coreNativeDir = Join-Path $CoreRepo "python\meshy_dcc_core"
         Get-ChildItem -Path $coreNativeDir -Filter "_core*.pyd" -ErrorAction SilentlyContinue | ForEach-Object {
             Write-Host "   Removing stale $($_.Name) before rebuild" -ForegroundColor Gray
             Remove-Item $_.FullName -Force
@@ -121,30 +121,30 @@ if (-not $SkipBuild) {
         & $MaxPython -m maturin develop --features $DevFeatures
         if ($LASTEXITCODE -ne 0) { throw "maturin develop failed" }
 
-        # Build the standalone dcc-mcp-server binary for sidecar mode
-        Write-Host "   cargo build --release -p dcc-mcp-server ..." -ForegroundColor Gray
-        & cargo build --release -p dcc-mcp-server
-        if ($LASTEXITCODE -ne 0) { throw "cargo build dcc-mcp-server failed" }
+        # Build the standalone meshy-dcc-server binary for sidecar mode
+        Write-Host "   cargo build --release -p meshy-dcc-server ..." -ForegroundColor Gray
+        & cargo build --release -p meshy-dcc-server
+        if ($LASTEXITCODE -ne 0) { throw "cargo build meshy-dcc-server failed" }
     } finally {
         Pop-Location
     }
 
-    $corePkg = Join-Path $CoreRepo "python\dcc_mcp_core"
+    $corePkg = Join-Path $CoreRepo "python\meshy_dcc_core"
     if (-not (Test-Path $corePkg)) {
         Write-Error "Expected package dir missing after build: $corePkg"
     }
-    Write-Host "   ✅ dcc_mcp_core built under $corePkg" -ForegroundColor Green
+    Write-Host "   ✅ meshy_dcc_core built under $corePkg" -ForegroundColor Green
 } else {
     Write-Host "   SkipBuild: not rebuilding core" -ForegroundColor Yellow
 }
 
 # Resolve the sidecar binary path
-$ServerBin = Join-Path $CoreRepo "target\release\dcc-mcp-server.exe"
+$ServerBin = Join-Path $CoreRepo "target\release\meshy-dcc-server.exe"
 if (-not (Test-Path $ServerBin)) {
-    Write-Host "   ⚠️  dcc-mcp-server.exe not found at $ServerBin" -ForegroundColor Yellow
+    Write-Host "   ⚠️  meshy-dcc-server.exe not found at $ServerBin" -ForegroundColor Yellow
     $ServerBin = $null
 } else {
-    Write-Host "   ✅ dcc-mcp-server binary at $ServerBin" -ForegroundColor Green
+    Write-Host "   ✅ meshy-dcc-server binary at $ServerBin" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -152,9 +152,9 @@ Write-Host "=== 3ds Max scripts link (core + 3dsmax) ===" -ForegroundColor Cyan
 
 # 3ds Max scripts directory
 $ScriptsDir = Join-Path $env:APPDATA "Autodesk\3ds Max $MaxVersion\scripts"
-$Target = Join-Path $ScriptsDir "dcc_mcp_3dsmax"
-$Pkg3dsMax = Join-Path $MaxRoot "src\dcc_mcp_3dsmax"
-$PkgCore = Join-Path $CoreRepo "python\dcc_mcp_core"
+$Target = Join-Path $ScriptsDir "meshy_dcc_3dsmax"
+$Pkg3dsMax = Join-Path $MaxRoot "src\meshy_dcc_3dsmax"
+$PkgCore = Join-Path $CoreRepo "python\meshy_dcc_core"
 $PkgCoreParent = Join-Path $CoreRepo "python"
 
 if (-not (Test-Path $Pkg3dsMax)) { Write-Error "Missing $Pkg3dsMax" }
@@ -166,62 +166,62 @@ if (Test-Path $Target) {
     Write-Host "   Removed old $Target" -ForegroundColor Gray
 }
 
-# Create symbolic link for dcc_mcp_3dsmax
+# Create symbolic link for meshy_dcc_3dsmax
 try {
     New-Item -ItemType SymbolicLink -Path $Target -Target $Pkg3dsMax -ErrorAction Stop | Out-Null
     Write-Host "   ✅ $Target → $Pkg3dsMax" -ForegroundColor Green
 } catch {
-    Write-Error "Symlink dcc_mcp_3dsmax failed (enable Windows Developer Mode or run elevated): $_"
+    Write-Error "Symlink meshy_dcc_3dsmax failed (enable Windows Developer Mode or run elevated): $_"
 }
 
-# For dcc_mcp_core, create a .pth file in scripts directory to add to sys.path
-$corePthPath = Join-Path $ScriptsDir "dcc_mcp_core.pth"
+# For meshy_dcc_core, create a .pth file in scripts directory to add to sys.path
+$corePthPath = Join-Path $ScriptsDir "meshy_dcc_core.pth"
 try {
     $PkgCoreParent | Out-File -FilePath $corePthPath -Encoding ASCII
-    Write-Host "   ✅ Created $corePthPath (adds dcc_mcp_core parent to sys.path)" -ForegroundColor Green
+    Write-Host "   ✅ Created $corePthPath (adds meshy_dcc_core parent to sys.path)" -ForegroundColor Green
 } catch {
     Write-Host "   ⚠️  Cannot create .pth file: $_" -ForegroundColor Yellow
     
     # Fallback: create symlink
-    $coreLinkPath = Join-Path $ScriptsDir "dcc_mcp_core"
+    $coreLinkPath = Join-Path $ScriptsDir "meshy_dcc_core"
     try {
         if (Test-Path $coreLinkPath) { Remove-Item $coreLinkPath -Force }
         New-Item -ItemType SymbolicLink -Path $coreLinkPath -Target $PkgCore -ErrorAction Stop | Out-Null
         Write-Host "   ✅ $coreLinkPath → $PkgCore" -ForegroundColor Green
     } catch {
-        Write-Host "   ⚠️  Cannot symlink dcc_mcp_core: $_" -ForegroundColor Yellow
+        Write-Host "   ⚠️  Cannot symlink meshy_dcc_core: $_" -ForegroundColor Yellow
     }
 }
 
 # Create a startup script to set up environment
-$StartupScript = Join-Path $ScriptsDir "dcc_mcp_3dsmax_startup.py"
+$StartupScript = Join-Path $ScriptsDir "meshy_dcc_3dsmax_startup.py"
 $startupContent = @"
-# dcc-mcp-3dsmax startup script (auto-generated by max-dev-build-link-core-win.ps1)
-# This file adds dcc_mcp_core and dcc_mcp_3dsmax to sys.path
+# meshy-dcc-3dsmax startup script (auto-generated by max-dev-build-link-core-win.ps1)
+# This file adds meshy_dcc_core and meshy_dcc_3dsmax to sys.path
 
 import sys
 from pathlib import Path
 
-# Add dcc_mcp_core to path
+# Add meshy_dcc_core to path
 core_path = r"$PkgCoreParent"
 if core_path not in sys.path:
     sys.path.insert(0, core_path)
 
 # Verify imports
 try:
-    import dcc_mcp_core
-    print("✓ dcc_mcp_core loaded from: $PkgCore")
+    import meshy_dcc_core
+    print("✓ meshy_dcc_core loaded from: $PkgCore")
 except ImportError as e:
-    print(f"✗ Failed to import dcc_mcp_core: {e}")
+    print(f"✗ Failed to import meshy_dcc_core: {e}")
 
 try:
-    import dcc_mcp_3dsmax
-    print("✓ dcc_mcp_3dsmax loaded")
-    dcc_mcp_3dsmax.install_menu()
-    dcc_mcp_3dsmax.install_shutdown_callback()
-    print("✓ dcc-mcp-3dsmax menu and shutdown callback installed")
+    import meshy_dcc_3dsmax
+    print("✓ meshy_dcc_3dsmax loaded")
+    meshy_dcc_3dsmax.install_menu()
+    meshy_dcc_3dsmax.install_shutdown_callback()
+    print("✓ meshy-dcc-3dsmax menu and shutdown callback installed")
 except ImportError as e:
-    print(f"✗ Failed to import dcc_mcp_3dsmax: {e}")
+    print(f"✗ Failed to import meshy_dcc_3dsmax: {e}")
 "@
 
 try {
@@ -234,11 +234,11 @@ try {
 Write-Host ""
 Write-Host "Done. Start 3ds Max $MaxVersion and in MAXScript Listener run:" -ForegroundColor Cyan
 Write-Host "   python.ExecuteFile @\"$StartupScript\"" -ForegroundColor Gray
-Write-Host "This installs the DCC MCP menu; use DCC MCP > Start Sidecar to start the bridge." -ForegroundColor Gray
+Write-Host "This installs the Meshy DCC menu; use Meshy DCC > Start Sidecar to start the bridge." -ForegroundColor Gray
 Write-Host ""
 Write-Host "MCP (Streamable HTTP, default):" -ForegroundColor Cyan
-Write-Host "   http://127.0.0.1:9765/mcp"
-Write-Host "Docs: See dcc-mcp-3dsmax docs for Cursor/3ds Max MCP setup" -ForegroundColor Gray
+Write-Host "   http://127.0.0.1:19765/mcp"
+Write-Host "Docs: See meshy-dcc-3dsmax docs for Cursor/3ds Max MCP setup" -ForegroundColor Gray
 
 if ($LaunchMax -and (Test-Path $MaxExe)) {
     Write-Host "Launching $MaxExe ..." -ForegroundColor Cyan

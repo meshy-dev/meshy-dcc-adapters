@@ -13,8 +13,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-MODELING_DIR = ROOT / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-modeling"
-MESH_OPS_DIR = ROOT / "src" / "dcc_mcp_3dsmax" / "skills" / "3dsmax-mesh-ops"
+MODELING_DIR = ROOT / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-modeling"
+MESH_OPS_DIR = ROOT / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-mesh-ops"
 
 
 # ── Fake pymxs runtime ─────────────────────────────────────────────────
@@ -1654,8 +1654,8 @@ def test_persistence_is_verified_through_the_native_user_property_channel(monkey
     node = runtime.getNodeByName("duct_profile")
     # The payload has to live in the native user property buffer, not in a
     # Python attribute the wrapper drops when the call returns.
-    assert "dcc_mcp_curve_model" in node.user_properties
-    assert runtime.getUserPropVal(node, "dcc_mcp_curve_model").startswith("{")
+    assert "meshy_dcc_curve_model" in node.user_properties
+    assert runtime.getUserPropVal(node, "meshy_dcc_curve_model").startswith("{")
 
 
 def test_persistence_fails_closed_when_the_native_channel_is_unavailable(monkeypatch):
