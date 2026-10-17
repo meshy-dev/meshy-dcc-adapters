@@ -147,14 +147,17 @@ def build(platform: str, core_wheel: Path, python_archive: Path | None, output_d
 
 
 def strip_build_paths(site: Path) -> None:
-    """Drop ``direct_url.json``: it records the local paths the wheels were installed from."""
+    """Drop what uv records about this build: the local paths the wheels came
+    from (``direct_url.json``) and when it cached them (``uv_cache.json``), so
+    the same sources give the same zip."""
     for record in site.glob("*.dist-info/RECORD"):
-        direct_url = record.with_name("direct_url.json")
-        if direct_url.exists():
-            direct_url.unlink()
-            prefix = f"{record.parent.name}/direct_url.json,"
-            lines = record.read_text(encoding="utf-8").splitlines(keepends=True)
-            record.write_text("".join(line for line in lines if not line.startswith(prefix)), encoding="utf-8")
+        for name in ("direct_url.json", "uv_cache.json"):
+            extra = record.with_name(name)
+            if extra.exists():
+                extra.unlink()
+                prefix = f"{record.parent.name}/{name},"
+                lines = record.read_text(encoding="utf-8").splitlines(keepends=True)
+                record.write_text("".join(line for line in lines if not line.startswith(prefix)), encoding="utf-8")
 
 
 def write_zip(root: Path, archive: Path) -> None:
