@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from dcc_mcp_houdini import HoudiniMcpServer
-from dcc_mcp_houdini._env import ENV_PROJECT_TOOLS, ENV_RESOURCES
+from meshy_dcc_houdini import HoudiniMcpServer
+from meshy_dcc_houdini._env import ENV_PROJECT_TOOLS, ENV_RESOURCES
 
 
 def _make_server() -> HoudiniMcpServer:

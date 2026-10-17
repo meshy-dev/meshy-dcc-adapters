@@ -14,11 +14,11 @@ from unittest.mock import patch
 
 import pytest
 import yaml
-from dcc_mcp_core import McpHttpConfig, create_skill_server
-from dcc_mcp_core.host import QueueDispatcher, StandaloneHost
+from meshy_dcc_core import McpHttpConfig, create_skill_server
+from meshy_dcc_core.host import QueueDispatcher, StandaloneHost
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 _SKILL_ROOT = _SKILLS_ROOT / "houdini-animation"
 
 
@@ -395,8 +395,8 @@ def test_loop_validator_discovery_load_and_call_path(monkeypatch, tmp_path: Path
     assert metadata["idempotent"] is True
 
     monkeypatch.setenv("MCP_LOG_LEVEL", "WARN")
-    monkeypatch.setenv("DCC_MCP_LOG_LEVEL", "WARN")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_LOG_LEVEL", "WARN")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     config = McpHttpConfig(port=0, server_name="houdini-animation-loop-test")
     config.gateway_port = 0
     dispatcher = QueueDispatcher()

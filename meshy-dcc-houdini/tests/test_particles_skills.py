@@ -13,7 +13,7 @@ from domain_graph_fakes import scene
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
-_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-particles"
+_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-particles"
 
 
 def _load(name):
@@ -235,7 +235,7 @@ def test_skill_package_registers_expected_tools() -> None:
 
 
 def test_pop_type_maps_and_shared_base_node_type() -> None:
-    from dcc_mcp_houdini._domain_graph import base_node_type
+    from meshy_dcc_houdini._domain_graph import base_node_type
 
     module = _load("_particles_common.py")
     assert set(module.FORCE_TYPES) == {"force", "wind", "drag", "vortex", "attract", "axis"}
@@ -290,7 +290,7 @@ def test_inspect_particles_counts_without_instantiating_points():
 
 
 def test_next_free_input_is_shared_with_domain_graph() -> None:
-    from dcc_mcp_houdini import _domain_graph
+    from meshy_dcc_houdini import _domain_graph
 
     assert hasattr(_domain_graph, "next_free_input")
     assert _load("_particles_common.py").next_free_input is _domain_graph.next_free_input

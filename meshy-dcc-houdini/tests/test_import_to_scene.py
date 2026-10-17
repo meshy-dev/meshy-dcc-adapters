@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 _SCRIPT_DIR = _SKILLS_ROOT / "houdini-import-to-scene" / "scripts"
 _SCRIPT = _SCRIPT_DIR / "import_to_scene.py"
 
@@ -497,8 +497,8 @@ class TestMaterialModeIsNotSilent:
                 }
             ],
         )
-        monkeypatch.setenv("DCC_MCP_TEST_ASSETS", str(tmp_path))
-        descriptor = _descriptor(Path("$DCC_MCP_TEST_ASSETS/showcase.glb"), "glb")
+        monkeypatch.setenv("MESHY_DCC_TEST_ASSETS", str(tmp_path))
+        descriptor = _descriptor(Path("$MESHY_DCC_TEST_ASSETS/showcase.glb"), "glb")
 
         result = script.import_to_scene(descriptor, material_mode="as_authored")
 
@@ -592,7 +592,7 @@ class TestGeometryImportUnchanged:
         result = script.import_to_scene(_descriptor(carrier, "fbx"), material_mode="skip")
 
         assert result["context"]["imported_nodes"] == ["/obj/showcase_gltf", "/obj/showcase_gltf/file1"]
-        assert hou.registry["/obj/showcase_gltf"].user_data["dcc_mcp_asset_id"] == "showcase_gltf"
+        assert hou.registry["/obj/showcase_gltf"].user_data["meshy_dcc_asset_id"] == "showcase_gltf"
 
     def test_missing_file_still_fails(self, script: ModuleType, hou: FakeHou, tmp_path: Path) -> None:
         carrier = tmp_path / "missing.bgeo"

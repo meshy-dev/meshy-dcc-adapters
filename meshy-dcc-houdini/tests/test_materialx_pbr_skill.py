@@ -11,7 +11,7 @@ from unittest.mock import patch
 from domain_graph_fakes import Node
 from skill_loader import skill_script_import_context
 
-_SCRIPTS = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills" / "houdini-materials" / "scripts"
+_SCRIPTS = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills" / "houdini-materials" / "scripts"
 
 
 def _load_script(name: str) -> ModuleType:

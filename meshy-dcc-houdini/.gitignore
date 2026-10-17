@@ -58,7 +58,7 @@ htmlcov/
 # Just
 .justfile-recipe-cmd*
 
-# Downloaded dev tools (dcc-mcp-cli binary fetched by tools/install_dcc_mcp_cli.py)
+# Downloaded dev tools
 .tools-bin/
 
 # Multica local runtime context. The daemon may write these into a bound

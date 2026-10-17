@@ -1,4 +1,4 @@
-"""Validate bundled Houdini skills against the current dcc-mcp-core contract."""
+"""Validate bundled Houdini skills against the current meshy-dcc-core contract."""
 
 from __future__ import annotations
 
@@ -12,16 +12,16 @@ from typing import List, Optional
 
 import yaml
 
-try:  # dcc-mcp-core is a runtime dep, but keep the structural linter usable without it
-    from dcc_mcp_core import validate_skill
+try:  # meshy-dcc-core is a runtime dep, but keep the structural linter usable without it
+    from meshy_dcc_core import validate_skill
 except ImportError:  # pragma: no cover - exercised only in lean (prek) environments
     validate_skill = None
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DEFAULT_SKILLS_DIR = ROOT / "src" / "dcc_mcp_houdini" / "skills"
+DEFAULT_SKILLS_DIR = ROOT / "src" / "meshy_dcc_houdini" / "skills"
 
 REQUIRED_FIELDS = {"name", "description", "metadata"}
-REQUIRED_DCC_MCP_FIELDS = {"dcc", "layer", "version", "tags", "search-hint", "tools"}
+REQUIRED_MESHY_DCC_FIELDS = {"dcc", "layer", "version", "tags", "search-hint", "tools"}
 REQUIRED_TOOL_FIELDS = {
     "name",
     "description",
@@ -38,19 +38,19 @@ VALID_AFFINITY = {"main", "any"}
 SAFETY_FIELDS = {"read_only", "destructive", "idempotent"}
 
 
-def _find_dcc_mcp_cli() -> Optional[str]:
-    exe = shutil.which("dcc-mcp-cli")
+def _find_meshy_dcc_cli() -> Optional[str]:
+    exe = shutil.which("meshy-dcc")
     if exe:
         return exe
     if sys.platform == "win32":
-        candidate = pathlib.Path.home() / "AppData" / "Local" / "dcc-mcp" / "bin" / "dcc-mcp-cli.exe"
+        candidate = pathlib.Path.home() / "AppData" / "Local" / "meshy-dcc" / "bin" / "meshy-dcc.exe"
         if candidate.is_file():
             return str(candidate)
     return None
 
 
 class CliLintResult:
-    """Structured outcome of a ``dcc-mcp-cli lint`` invocation."""
+    """Structured outcome of a ``meshy-dcc lint`` invocation."""
 
     def __init__(
         self,
@@ -70,7 +70,7 @@ class CliLintResult:
         self.version = version
 
 
-def _dcc_mcp_cli_version(cli: str) -> str:
+def _meshy_dcc_cli_version(cli: str) -> str:
     try:
         proc = subprocess.run([cli, "--version"], check=False, capture_output=True, text=True)
     except OSError:
@@ -79,15 +79,15 @@ def _dcc_mcp_cli_version(cli: str) -> str:
 
 
 def lint_skills_with_cli(skills_dir: pathlib.Path, warnings_as_errors: bool = False) -> Optional[CliLintResult]:
-    """Run the standalone dcc-mcp-cli linter when it is installed.
+    """Run the standalone meshy-dcc linter when it is installed.
 
     Returns ``None`` when the CLI is not available so callers can fall back to
-    the in-process ``dcc-mcp-core`` validator. Otherwise the parsed
+    the in-process ``meshy-dcc-core`` validator. Otherwise the parsed
     :class:`CliLintResult` carries the human-readable errors plus the structured
     counts the CLI reports (``checked`` / ``errors`` / ``warnings`` / ``failed``)
     so the caller can surface an accurate summary.
     """
-    cli = _find_dcc_mcp_cli()
+    cli = _find_meshy_dcc_cli()
     if cli is None:
         return None
 
@@ -97,13 +97,13 @@ def lint_skills_with_cli(skills_dir: pathlib.Path, warnings_as_errors: bool = Fa
     cmd.append(str(skills_dir))
     proc = subprocess.run(cmd, cwd=str(ROOT), check=False, capture_output=True, text=True)
     output = (proc.stdout or proc.stderr).strip()
-    version = _dcc_mcp_cli_version(cli)
+    version = _meshy_dcc_cli_version(cli)
     try:
         payload = json.loads(output) if output else {}
     except json.JSONDecodeError:
         # The CLI did not emit JSON (older build or hard failure): treat any
         # non-zero exit as a single opaque error so CI still fails loudly.
-        message = output or "dcc-mcp-cli lint failed with exit code {}".format(proc.returncode)
+        message = output or "meshy-dcc lint failed with exit code {}".format(proc.returncode)
         return CliLintResult(errors=[message] if proc.returncode else [], failed=bool(proc.returncode), version=version)
 
     errors: List[str] = []
@@ -115,7 +115,7 @@ def lint_skills_with_cli(skills_dir: pathlib.Path, warnings_as_errors: bool = Fa
 
     failed = bool(payload.get("failed", False)) or proc.returncode != 0
     if failed and not errors:
-        errors.append(output or "dcc-mcp-cli lint failed with exit code {}".format(proc.returncode))
+        errors.append(output or "meshy-dcc lint failed with exit code {}".format(proc.returncode))
 
     return CliLintResult(
         errors=errors,
@@ -150,18 +150,18 @@ def lint_skills(
 ) -> List[str]:
     """Return validation errors for all bundled skill directories.
 
-    The generic SKILL.md / tools.yaml contract is validated by dcc-mcp-core,
+    The generic SKILL.md / tools.yaml contract is validated by meshy-dcc-core,
     which is the authoritative source of truth. Precision order:
 
-    1. ``dcc-mcp-cli lint`` — the standalone binary; matches the runtime loader
+    1. ``meshy-dcc lint`` — the standalone binary; matches the runtime loader
        exactly and is the most precise (preferred locally and in CI).
-    2. ``dcc_mcp_core.validate_skill`` — the same Rust validator exposed through
+    2. ``meshy_dcc_core.validate_skill`` — the same Rust validator exposed through
        the Python API (used when the wheel is installed but the CLI binary is
        not).
     3. Built-in structural heuristics — last-resort fallback when neither
-       dcc-mcp-cli nor dcc-mcp-core is importable (lean prek environments).
+       meshy-dcc nor meshy-dcc-core is importable (lean prek environments).
 
-    Pass ``require_cli=True`` to fail hard when the standalone ``dcc-mcp-cli``
+    Pass ``require_cli=True`` to fail hard when the standalone ``meshy-dcc``
     binary is unavailable instead of silently dropping to a weaker validator —
     use this in CI to guarantee the runtime loader's validator is what gates the
     skills.
@@ -181,7 +181,7 @@ def lint_skills(
         errors.extend(cli_result.errors)
         version = " ({})".format(cli_result.version) if cli_result.version else ""
         print(
-            "validator: dcc-mcp-cli{ver} — checked={checked} errors={errs} warnings={warns}".format(
+            "validator: meshy-dcc{ver} — checked={checked} errors={errs} warnings={warns}".format(
                 ver=version,
                 checked=cli_result.checked,
                 errs=cli_result.error_count,
@@ -190,17 +190,17 @@ def lint_skills(
         )
     elif require_cli:
         return [
-            "dcc-mcp-cli is required (--require-cli) but was not found on PATH. "
-            "Install it with `python tools/install_dcc_mcp_cli.py` or remove --require-cli."
+            "meshy-dcc is required (--require-cli) but was not found on PATH. "
+            "Put meshy-dcc on PATH or remove --require-cli."
         ]
     elif validate_skill is not None:
         generic_mode = "core"
-        print("validator: dcc-mcp-core.validate_skill (Python API; dcc-mcp-cli not found)")
+        print("validator: meshy-dcc-core.validate_skill (Python API; meshy-dcc not found)")
     else:
         generic_mode = "builtin"
         print(
-            "notice: dcc-mcp-cli and dcc-mcp-core are both unavailable; "
-            "ran built-in structural checks only (install dcc-mcp-core for precise validation)",
+            "notice: meshy-dcc and meshy-dcc-core are both unavailable; "
+            "ran built-in structural checks only (install meshy-dcc-core for precise validation)",
             file=sys.stderr,
         )
 
@@ -231,7 +231,7 @@ def _lint_skill_dir(skill_dir: pathlib.Path, errors: List[str], *, generic_mode:
             errors.append("{}: empty or missing front matter".format(name))
         return
 
-    # Generic contract validation — delegate to dcc-mcp-core when possible.
+    # Generic contract validation — delegate to meshy-dcc-core when possible.
     if generic_mode == "core":
         report = validate_skill(str(skill_dir))
         if report.has_errors:
@@ -245,21 +245,21 @@ def _lint_skill_dir(skill_dir: pathlib.Path, errors: List[str], *, generic_mode:
 
 
 def _lint_builtin_contract(skill_dir: pathlib.Path, front: dict, errors: List[str]) -> None:
-    """Last-resort structural checks used only when dcc-mcp-core is unavailable."""
+    """Last-resort structural checks used only when meshy-dcc-core is unavailable."""
     name = skill_dir.name
     missing = REQUIRED_FIELDS - set(front.keys())
     if missing:
         errors.append("{}: missing fields: {}".format(name, sorted(missing)))
 
-    dcc_mcp = front.get("metadata", {}).get("dcc-mcp", {})
-    missing_dcc_mcp = REQUIRED_DCC_MCP_FIELDS - set(dcc_mcp.keys())
-    if missing_dcc_mcp:
-        errors.append("{}: missing metadata.dcc-mcp fields: {}".format(name, sorted(missing_dcc_mcp)))
+    meshy_dcc = front.get("metadata", {}).get("meshy-dcc", {})
+    missing_meshy_dcc = REQUIRED_MESHY_DCC_FIELDS - set(meshy_dcc.keys())
+    if missing_meshy_dcc:
+        errors.append("{}: missing metadata.meshy-dcc fields: {}".format(name, sorted(missing_meshy_dcc)))
         return
 
-    tools_file = skill_dir / str(dcc_mcp.get("tools", ""))
+    tools_file = skill_dir / str(meshy_dcc.get("tools", ""))
     if not tools_file.exists():
-        errors.append("{}: tools file not found: {}".format(name, dcc_mcp.get("tools")))
+        errors.append("{}: tools file not found: {}".format(name, meshy_dcc.get("tools")))
         return
 
     try:
@@ -279,8 +279,8 @@ def _lint_builtin_contract(skill_dir: pathlib.Path, front: dict, errors: List[st
 
 def _load_tools(skill_dir: pathlib.Path, front: dict) -> List[dict]:
     """Best-effort load of the tools.yaml list; returns [] on any problem."""
-    dcc_mcp = front.get("metadata", {}).get("dcc-mcp", {})
-    tools_file = skill_dir / str(dcc_mcp.get("tools", ""))
+    meshy_dcc = front.get("metadata", {}).get("meshy-dcc", {})
+    tools_file = skill_dir / str(meshy_dcc.get("tools", ""))
     if not tools_file.exists():
         return []
     try:
@@ -318,7 +318,7 @@ def _lint_tool_contract(skill_dir: pathlib.Path, tool: dict, errors: List[str]) 
 
 
 def _lint_houdini_conventions(skill_dir: pathlib.Path, front: dict, errors: List[str]) -> None:
-    """Houdini-specific rules dcc-mcp-core does not enforce (lazy ``hou`` import)."""
+    """Houdini-specific rules meshy-dcc-core does not enforce (lazy ``hou`` import)."""
     for tool in _load_tools(skill_dir, front):
         tool_name = tool.get("name", "?")
         source_file = tool.get("source_file", "")
@@ -355,12 +355,12 @@ def _lint_houdini_conventions(skill_dir: pathlib.Path, front: dict, errors: List
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skills-dir", type=pathlib.Path, default=DEFAULT_SKILLS_DIR)
-    parser.add_argument("--no-cli", action="store_true", help="Use Python validation even when dcc-mcp-cli exists.")
+    parser.add_argument("--no-cli", action="store_true", help="Use Python validation even when meshy-dcc exists.")
     parser.add_argument("--warnings-as-errors", action="store_true")
     parser.add_argument(
         "--require-cli",
         action="store_true",
-        help="Fail if the standalone dcc-mcp-cli binary is not available instead of falling back to a weaker validator.",
+        help="Fail if the standalone meshy-dcc binary is not available instead of falling back to a weaker validator.",
     )
     args = parser.parse_args(argv)
 

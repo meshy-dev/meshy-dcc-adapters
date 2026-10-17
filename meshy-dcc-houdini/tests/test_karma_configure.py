@@ -13,7 +13,7 @@ from skill_loader import skill_script_import_context
 SCRIPT = (
     Path(__file__).parent.parent
     / "src"
-    / "dcc_mcp_houdini"
+    / "meshy_dcc_houdini"
     / "skills"
     / "houdini-karma"
     / "scripts"

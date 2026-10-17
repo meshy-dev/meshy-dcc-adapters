@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`dcc_mcp_houdini._project_tools`.
+"""Unit tests for :mod:`meshy_dcc_houdini._project_tools`.
 
 These cover the pure logic of :class:`ProjectToolsIntegration`,
 :class:`HoudiniSceneResolver`, env-var resolution, and the defensive paths —
@@ -13,13 +13,13 @@ import unittest
 from pathlib import Path
 from typing import Any, Optional
 
-import dcc_mcp_houdini
-from dcc_mcp_houdini import (
+import meshy_dcc_houdini
+from meshy_dcc_houdini import (
     HoudiniSceneResolver,
     ProjectToolsIntegration,
     attach_project_tools,
 )
-from dcc_mcp_houdini._project_tools import ENV_PROJECT_TOOLS, resolve_enabled
+from meshy_dcc_houdini._project_tools import ENV_PROJECT_TOOLS, resolve_enabled
 
 
 class TestEnvResolution(unittest.TestCase):
@@ -175,5 +175,5 @@ class TestProjectToolsBindWithFakeScene(unittest.TestCase):
 class TestPublicSurface(unittest.TestCase):
     def test_top_level_exports(self) -> None:
         for name in ("ENV_PROJECT_TOOLS", "HoudiniSceneResolver", "ProjectToolsIntegration", "attach_project_tools"):
-            self.assertTrue(hasattr(dcc_mcp_houdini, name), f"dcc_mcp_houdini.{name} should be importable")
-            self.assertIn(name, dcc_mcp_houdini.__all__, f"{name} missing from __all__")
+            self.assertTrue(hasattr(meshy_dcc_houdini, name), f"meshy_dcc_houdini.{name} should be importable")
+            self.assertIn(name, meshy_dcc_houdini.__all__, f"{name} missing from __all__")

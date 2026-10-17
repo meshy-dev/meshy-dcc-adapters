@@ -11,7 +11,7 @@ suite; the observed bytes are still reported so the release can be measured late
 
 This module is stdlib-only and must stay importable on Python 3.7 (the floor declared in
 pyproject.toml). In particular it must not use `importlib.metadata`, which is 3.8+; the Core
-version is read from `dcc_mcp_core.__version__` instead.
+version is read from `meshy_dcc_core.__version__` instead.
 """
 
 from __future__ import annotations
@@ -31,19 +31,13 @@ class CoreSchemaAnchor(NamedTuple):
 
 # Key every measured revision by the first Core release that shipped it and append new rows;
 # editing an existing row would silently re-pin a digest that was already published.
-#
-# Rows whose floor is above `CORE_SCHEMA_ANCHOR_MEASURED_THROUGH` are staged: the bytes are
-# recorded as soon as they are known, but the row only goes live once that Core release is
-# published and `CORE_SCHEMA_ANCHOR_MEASURED_THROUGH` is raised to it. The `0.20.34` row is the
-# `adapter-install-sop-v2` artifact Core `main` already carries.
+# meshy-dcc-core 0.2.0 serves the `adapter-install-sop-v2` artifact.
 CORE_SCHEMA_ANCHORS: Tuple[Tuple[Tuple[int, int, int], CoreSchemaAnchor], ...] = (
-    ((0, 20, 14), CoreSchemaAnchor(4261, "3ca25788439917b4d4c0617230a762f9797756b5b54f45c8c4149f975b90f904")),
-    ((0, 20, 30), CoreSchemaAnchor(4899, "2b3a8a101384a5163c7569c4a2b0de6586c672c5ee291735f94334a33b7d37a0")),
-    ((0, 20, 34), CoreSchemaAnchor(4899, "daa5840e07c956d7c9269e5709d6993a3988b905f986c06e7c4c02f5023e9422")),
+    ((0, 2, 0), CoreSchemaAnchor(4906, "71df77f27399d8017d43393f0376c154a8b9bd4700f38098ed66b91a33eb9275")),
 )
 
 # Highest Core release whose schema bytes were measured into CORE_SCHEMA_ANCHORS.
-CORE_SCHEMA_ANCHOR_MEASURED_THROUGH = "0.20.33"
+CORE_SCHEMA_ANCHOR_MEASURED_THROUGH = "0.2.0"
 
 
 def version_tuple(value: str) -> Optional[Tuple[int, int, int]]:
@@ -86,14 +80,14 @@ def core_schema_anchor(core_version: str) -> Optional[CoreSchemaAnchor]:
 def installed_core_version() -> Optional[str]:
     """Return the installed Core version, or None when Core does not expose one.
 
-    Reads `dcc_mcp_core.__version__` rather than `importlib.metadata.version`: this repository
+    Reads `meshy_dcc_core.__version__` rather than `importlib.metadata.version`: this repository
     supports Python 3.7, and `importlib.metadata` only exists from 3.8 onwards.
     """
     try:
-        import dcc_mcp_core
+        import meshy_dcc_core
     except ImportError:  # pragma: no cover - Core is a hard dependency of this suite
         return None
-    version = getattr(dcc_mcp_core, "__version__", None)
+    version = getattr(meshy_dcc_core, "__version__", None)
     return version if isinstance(version, str) else None
 
 
@@ -104,7 +98,7 @@ def core_schema_artifact(shared: Mapping[str, Any]) -> Optional[CoreSchemaAnchor
     parsed document equals `shared` is the one Core loaded. Matching on content rather than on a
     fixed filename keeps this working when Core moves from the v1 artifact to v2.
     """
-    from dcc_mcp_core.deployment import install_sop
+    from meshy_dcc_core.deployment import install_sop
 
     schemas = Path(install_sop.__file__).resolve().parent.parent / "schemas"
     for candidate in sorted(schemas.glob("adapter-install-sop-v*.schema.json")):

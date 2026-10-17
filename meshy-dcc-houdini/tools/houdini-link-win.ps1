@@ -1,5 +1,5 @@
 # Houdini link script for Windows
-# Creates a junction from Houdini's site-packages to src/dcc_mcp_houdini
+# Creates a junction from Houdini's site-packages to src/meshy_dcc_houdini
 
 [CmdletBinding()]
 param(
@@ -36,8 +36,8 @@ if (-not (Test-Path $SitePackages)) {
 
 # ── Create junction ───────────────────────────────────────────────────────
 $ProjectRoot = Resolve-Path "$PSScriptRoot\.."
-$SourceDir = "$ProjectRoot\src\dcc_mcp_houdini"
-$TargetLink = "$SitePackages\dcc_mcp_houdini"
+$SourceDir = "$ProjectRoot\src\meshy_dcc_houdini"
+$TargetLink = "$SitePackages\meshy_dcc_houdini"
 
 if (Test-Path $TargetLink) {
     Write-Host "Removing existing: $TargetLink" -ForegroundColor Yellow
@@ -53,11 +53,11 @@ else {
     exit 1
 }
 
-# ── Also link dcc_mcp_core if in editable mode ───────────────────────────
-$CoreRepo = Resolve-Path "$ProjectRoot\..\dcc-mcp-core" -ErrorAction SilentlyContinue
+# ── Also link meshy_dcc_core if in editable mode ───────────────────────────
+$CoreRepo = Resolve-Path "$ProjectRoot\..\meshy-dcc-core" -ErrorAction SilentlyContinue
 if ($CoreRepo) {
-    $CoreSource = "$CoreRepo\python\dcc_mcp_core"
-    $CoreTarget = "$SitePackages\dcc_mcp_core"
+    $CoreSource = "$CoreRepo\python\meshy_dcc_core"
+    $CoreTarget = "$SitePackages\meshy_dcc_core"
 
     if (Test-Path $CoreSource) {
         if (Test-Path $CoreTarget) {

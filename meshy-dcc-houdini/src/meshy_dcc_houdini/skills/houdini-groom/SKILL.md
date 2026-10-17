@@ -1,0 +1,60 @@
+---
+name: houdini-groom
+description: >-
+  Authoring skill - build Houdini 22 short-fur groom networks from rest skin,
+  optional guides, and animated skin. Use for insect fuzz, creature fur, and
+  deformation-ready hair generation. Not for interactive brush sculpting.
+license: MIT
+compatibility: "meshy-dcc-houdini 0.1+, Houdini 22.0+, meshy-dcc-core 0.2.0+"
+allowed-tools: Bash Read Write Edit
+metadata:
+  meshy-dcc:
+    dcc: houdini
+    layer: domain
+    stage: authoring
+    version: "1.1.0"
+    tags: [houdini, groom, fur, hair, guides, insect, creature, deformation]
+    search-hint: "insect fuzz bee fur hair generate guide deform animated skin groom"
+    tools: tools.yaml
+---
+
+## Naming: `skipped_parameters` is the only name for "not applied"
+
+Overrides a node does not expose fail the call, so this package has no
+`skipped_parameters` field. If a later tool needs one, use that exact name.
+
+## Single grooming steps
+
+`build_short_fur_groom` assembles a complete fur chain. `add_groom_step` adds one
+SOP at a time into an existing chain, which is the shape an agent needs while
+iterating on a groom. Wire the returned `node_path` into the next step's
+`source_path`.
+
+| `step_type` | SOP |
+|---|---|
+| `generate` | `hairgen` |
+| `clump` | `hairclump` |
+| `guide_deform` | `guidedeform` |
+| `frizz` | `frizz` |
+| `brush` | `brush` |
+| `guide_groom` | `guidegroom` |
+| `hair_card` | `haircard` |
+| `copy` | `haircopy` |
+
+# Houdini groom
+
+Build bounded native SOP networks for renderable short fur. All tools use main
+thread affinity because they create and wire Houdini nodes.
+
+## Workflow
+
+1. Prepare a polygon rest skin and optional root-to-tip guides.
+2. Call `build_short_fur_groom` with an optional animated skin. For anatomical
+   variation, pass `region_profiles` such as `head`, `thorax`, and `abdomen`;
+   each region may override its skin group, guides, density, length, segments,
+   and clump strength.
+3. Inspect the returned per-region Hair Generate/Clump nodes, shared Merge,
+   and Guide Deform before rendering.
+
+For insect fuzz, start with short lengths and Surface Deform. Use explicit
+guides for directional thorax and abdomen hair.

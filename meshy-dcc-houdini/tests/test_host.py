@@ -71,9 +71,9 @@ def _wait_until(predicate, timeout: float = 1.0) -> None:
 
 
 def test_interactive_stack_uses_one_budgeted_core_ui_pump() -> None:
-    from dcc_mcp_core import HostUiDispatcherBase
+    from meshy_dcc_core import HostUiDispatcherBase
 
-    from dcc_mcp_houdini.dispatcher import create_execution_stack
+    from meshy_dcc_houdini.dispatcher import create_execution_stack
 
     hou, ui = _fake_hou()
     with patch.dict(sys.modules, {"hou": hou}):
@@ -93,9 +93,9 @@ def test_interactive_stack_uses_one_budgeted_core_ui_pump() -> None:
 
 
 def test_legacy_houdini_host_retains_headless_bootstrap_contract() -> None:
-    from dcc_mcp_core.host import BlockingDispatcher
+    from meshy_dcc_core.host import BlockingDispatcher
 
-    from dcc_mcp_houdini.host import HoudiniHost
+    from meshy_dcc_houdini.host import HoudiniHost
 
     stop = threading.Event()
     stop.set()
@@ -104,7 +104,7 @@ def test_legacy_houdini_host_retains_headless_bootstrap_contract() -> None:
 
 def test_headless_stop_waits_for_calling_thread_tick_before_dispatcher_shutdown() -> None:
     """External shutdown must not race a caller-owned blocking drain."""
-    from dcc_mcp_houdini.host import HoudiniHost
+    from meshy_dcc_houdini.host import HoudiniHost
 
     dispatcher = _BlockingProbeDispatcher()
     host = HoudiniHost(dispatcher)
@@ -128,7 +128,7 @@ def test_headless_stop_waits_for_calling_thread_tick_before_dispatcher_shutdown(
 
 
 def test_event_loop_adapter_throttles_due_ticks_and_isolates_exceptions() -> None:
-    from dcc_mcp_houdini.host import HoudiniEventLoopTimerAdapter
+    from meshy_dcc_houdini.host import HoudiniEventLoopTimerAdapter
 
     clock = _FakeClock()
     hou, ui = _fake_hou()
@@ -173,7 +173,7 @@ def test_event_loop_adapter_throttles_due_ticks_and_isolates_exceptions() -> Non
 
 
 def test_host_controller_applies_budget_and_exposes_overrun_stats(monkeypatch) -> None:
-    from dcc_mcp_houdini.host import HoudiniEventLoopTimerAdapter, HoudiniUiDispatcher, HoudiniUiPump
+    from meshy_dcc_houdini.host import HoudiniEventLoopTimerAdapter, HoudiniUiDispatcher, HoudiniUiPump
 
     clock = _FakeClock()
     hou, ui = _fake_hou()
@@ -206,7 +206,7 @@ def test_host_controller_applies_budget_and_exposes_overrun_stats(monkeypatch) -
 
 
 def test_ui_dispatcher_cancels_queued_work_and_survives_task_errors() -> None:
-    from dcc_mcp_houdini.host import HoudiniUiDispatcher, HoudiniUiPump
+    from meshy_dcc_houdini.host import HoudiniUiDispatcher, HoudiniUiPump
 
     hou, ui = _fake_hou()
     dispatcher = HoudiniUiDispatcher()
@@ -259,7 +259,7 @@ def test_pre_drain_check_failure_does_not_wedge_pump() -> None:
     reset _next_due under the lock so the next event-loop invocation
     can retry instead of being permanently blocked.
     """
-    from dcc_mcp_houdini.host import HoudiniEventLoopTimerAdapter
+    from meshy_dcc_houdini.host import HoudiniEventLoopTimerAdapter
 
     clock = _FakeClock()
     ticks = []
@@ -303,7 +303,7 @@ def test_pre_drain_check_failure_does_not_wedge_pump() -> None:
 
 def test_pre_drain_check_exception_does_not_wedge_pump() -> None:
     """pre_drain_check raising an exception must NOT leave _next_due=inf."""
-    from dcc_mcp_houdini.host import HoudiniEventLoopTimerAdapter
+    from meshy_dcc_houdini.host import HoudiniEventLoopTimerAdapter
 
     clock = _FakeClock()
     ticks = []

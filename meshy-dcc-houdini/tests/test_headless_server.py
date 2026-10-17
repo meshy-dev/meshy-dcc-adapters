@@ -29,8 +29,8 @@ def _post_mcp(url: str, payload: dict) -> dict:
 
 
 def test_headless_stack_is_an_unstarted_foreground_pump() -> None:
-    from dcc_mcp_houdini.dispatcher import create_execution_stack
-    from dcc_mcp_houdini.host import HoudiniCallableDispatcher, HoudiniHost
+    from meshy_dcc_houdini.dispatcher import create_execution_stack
+    from meshy_dcc_houdini.host import HoudiniCallableDispatcher, HoudiniHost
 
     hou = SimpleNamespace(isUIAvailable=lambda: False)
     with patch.dict(sys.modules, {"hou": hou}):
@@ -42,7 +42,7 @@ def test_headless_stack_is_an_unstarted_foreground_pump() -> None:
 
 
 def test_start_server_rejects_headless_mode_before_server_construction(monkeypatch, tmp_path) -> None:
-    import dcc_mcp_houdini.server as server_module
+    import meshy_dcc_houdini.server as server_module
 
     hou = SimpleNamespace(isUIAvailable=lambda: False)
     constructed = []
@@ -52,7 +52,7 @@ def test_start_server_rejects_headless_mode_before_server_construction(monkeypat
             constructed.append((args, kwargs))
 
     monkeypatch.setattr(server_module, "HoudiniMcpServer", UnexpectedServer)
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     with patch.dict(sys.modules, {"hou": hou}):
         with pytest.raises(RuntimeError, match="serve_headless"):
             server_module.start_server(wait_ready=False)
@@ -61,13 +61,13 @@ def test_start_server_rejects_headless_mode_before_server_construction(monkeypat
 
 
 def test_serve_headless_runs_real_main_affinity_on_owning_thread(monkeypatch, tmp_path) -> None:
-    from dcc_mcp_houdini.server import serve_headless
+    from meshy_dcc_houdini.server import serve_headless
 
     monkeypatch.setenv("MCP_LOG_LEVEL", "WARN")
-    monkeypatch.setenv("DCC_MCP_LOG_LEVEL", "WARN")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    monkeypatch.setenv("DCC_MCP_MINIMAL", "1")
+    monkeypatch.setenv("MESHY_DCC_LOG_LEVEL", "WARN")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_MINIMAL", "1")
 
     owner_thread = threading.get_ident()
     stop_event = threading.Event()
@@ -78,7 +78,7 @@ def test_serve_headless_runs_real_main_affinity_on_owning_thread(monkeypatch, tm
 
     def on_started(server) -> None:
         observations["url"] = server.mcp_url
-        observations["instance_type"] = server._config.instance_metadata["dcc_mcp_instance_type"]
+        observations["instance_type"] = server._config.instance_metadata["meshy_dcc_instance_type"]
 
         def client() -> None:
             try:
@@ -141,15 +141,15 @@ def test_serve_headless_runs_real_main_affinity_on_owning_thread(monkeypatch, tm
     assert called["result"]["isError"] is False
     assert called["result"]["structuredContent"]["context"]["result"] == str(owner_thread)
 
-    from dcc_mcp_houdini.server import get_server
+    from meshy_dcc_houdini.server import get_server
 
     assert get_server() is None
 
 
 def test_headless_dispatch_wait_times_out_and_shutdown_cancels_pending_work() -> None:
-    from dcc_mcp_core.host import DispatchError
+    from meshy_dcc_core.host import DispatchError
 
-    from dcc_mcp_houdini.host import HoudiniCallableDispatcher, HoudiniHost
+    from meshy_dcc_houdini.host import HoudiniCallableDispatcher, HoudiniHost
 
     dispatcher = HoudiniCallableDispatcher()
     host = HoudiniHost(dispatcher.host_dispatcher)

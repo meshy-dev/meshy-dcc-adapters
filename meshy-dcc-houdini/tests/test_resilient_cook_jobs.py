@@ -10,17 +10,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from dcc_mcp_core import ChunkedRunner, HostExecutionBridge
+from meshy_dcc_core import ChunkedRunner, HostExecutionBridge
 from skill_loader import skill_script_import_context
 
-from dcc_mcp_houdini import _cook_jobs, _cook_worker
-from dcc_mcp_houdini._status_io import read_status, write_status
-from dcc_mcp_houdini.host import HoudiniUiDispatcher
+from meshy_dcc_houdini import _cook_jobs, _cook_worker
+from meshy_dcc_houdini._status_io import read_status, write_status
+from meshy_dcc_houdini.host import HoudiniUiDispatcher
 
 _SCRIPT = (
     Path(__file__).parent.parent
     / "src"
-    / "dcc_mcp_houdini"
+    / "meshy_dcc_houdini"
     / "skills"
     / "houdini-nodes"
     / "scripts"

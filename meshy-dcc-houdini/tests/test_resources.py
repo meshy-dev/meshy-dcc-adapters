@@ -15,8 +15,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import dcc_mcp_houdini._resources as resources
-from dcc_mcp_houdini._resources import (
+import meshy_dcc_houdini._resources as resources
+from meshy_dcc_houdini._resources import (
     DEFAULT_SCENE_THROTTLE_SECS,
     ENV_RESOURCES,
     HOUDINI_AGENT_QUICKSTART,

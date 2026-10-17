@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`dcc_mcp_houdini._capability_manifest`.
+"""Unit tests for :mod:`meshy_dcc_houdini._capability_manifest`.
 
 These tests verify the SOLID projection from live catalog state into a compact
 gateway-friendly manifest. No live Houdini is required — the builder only
@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from unittest.mock import MagicMock
 
-from dcc_mcp_houdini._capability_manifest import (
+from meshy_dcc_houdini._capability_manifest import (
     CapabilityRecord,
     HoudiniCapabilityManifestBuilder,
     _as_dict,

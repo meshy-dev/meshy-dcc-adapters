@@ -16,7 +16,7 @@ def _load_script():
     path = (
         Path(__file__).parents[1]
         / "src"
-        / "dcc_mcp_houdini"
+        / "meshy_dcc_houdini"
         / "skills"
         / "houdini-groom"
         / "scripts"
@@ -238,7 +238,7 @@ def _load_step():
     path = (
         Path(__file__).parents[1]
         / "src"
-        / "dcc_mcp_houdini"
+        / "meshy_dcc_houdini"
         / "skills"
         / "houdini-groom"
         / "scripts"

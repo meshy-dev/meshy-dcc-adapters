@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
-# Symlink dcc_mcp_houdini into Houdini site-packages (Unix/macOS).
+# Symlink meshy_dcc_houdini into Houdini site-packages (Unix/macOS).
 set -eu
 VERSION="${1:-20.5}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SOURCE="$ROOT/src/dcc_mcp_houdini"
+SOURCE="$ROOT/src/meshy_dcc_houdini"
 
 if [ -z "${HOUDINI_PYTHON:-}" ]; then
   echo "Set HOUDINI_PYTHON to Houdini's python executable, e.g.:"
@@ -12,7 +12,7 @@ if [ -z "${HOUDINI_PYTHON:-}" ]; then
 fi
 
 SITE="$("$HOUDINI_PYTHON" -c 'import site; print(site.getsitepackages()[0])')"
-TARGET="$SITE/dcc_mcp_houdini"
+TARGET="$SITE/meshy_dcc_houdini"
 rm -rf "$TARGET"
 ln -s "$SOURCE" "$TARGET"
 echo "Linked $TARGET -> $SOURCE"

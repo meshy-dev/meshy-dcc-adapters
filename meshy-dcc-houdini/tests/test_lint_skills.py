@@ -1,6 +1,6 @@
 """Unit tests for the bundled-skill linter wrapper (``tools/lint_skills.py``).
 
-These focus on the dcc-mcp-cli integration the runtime loader relies on:
+These focus on the meshy-dcc integration the runtime loader relies on:
 parsing the CLI's structured JSON report and the ``--require-cli`` guard that
 keeps CI from silently dropping to a weaker validator.
 """
@@ -21,16 +21,16 @@ _SPEC.loader.exec_module(lint_skills)  # type: ignore[union-attr]
 
 
 def _fake_completed(stdout: str, returncode: int = 0) -> subprocess.CompletedProcess:
-    return subprocess.CompletedProcess(args=["dcc-mcp-cli"], returncode=returncode, stdout=stdout, stderr="")
+    return subprocess.CompletedProcess(args=["meshy-dcc"], returncode=returncode, stdout=stdout, stderr="")
 
 
 def test_require_cli_fails_when_binary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(lint_skills, "_find_dcc_mcp_cli", lambda: None)
+    monkeypatch.setattr(lint_skills, "_find_meshy_dcc_cli", lambda: None)
 
     errors = lint_skills.lint_skills(require_cli=True)
 
     assert len(errors) == 1
-    assert "dcc-mcp-cli is required" in errors[0]
+    assert "meshy-dcc is required" in errors[0]
 
 
 def test_cli_result_parses_counts(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -38,8 +38,8 @@ def test_cli_result_parses_counts(monkeypatch: pytest.MonkeyPatch) -> None:
         '{"checked": 3, "errors": 0, "warnings": 0, "failed": false, '
         '"reports": [{"skill_dir": "houdini-scene", "issues": [], "errors": 0, "warnings": 0}]}'
     )
-    monkeypatch.setattr(lint_skills, "_find_dcc_mcp_cli", lambda: "dcc-mcp-cli")
-    monkeypatch.setattr(lint_skills, "_dcc_mcp_cli_version", lambda _cli: "dcc-mcp-cli 9.9.9")
+    monkeypatch.setattr(lint_skills, "_find_meshy_dcc_cli", lambda: "meshy-dcc")
+    monkeypatch.setattr(lint_skills, "_meshy_dcc_cli_version", lambda _cli: "meshy-dcc 9.9.9")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _fake_completed(payload))
 
     result = lint_skills.lint_skills_with_cli(pathlib.Path("skills"))
@@ -48,7 +48,7 @@ def test_cli_result_parses_counts(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.errors == []
     assert result.checked == 3
     assert result.failed is False
-    assert result.version == "dcc-mcp-cli 9.9.9"
+    assert result.version == "meshy-dcc 9.9.9"
 
 
 def test_cli_result_surfaces_errors_and_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -57,8 +57,8 @@ def test_cli_result_surfaces_errors_and_failure(monkeypatch: pytest.MonkeyPatch)
         '"reports": [{"skill_dir": "houdini-broken", "errors": 1, "warnings": 0, '
         '"issues": [{"severity": "error", "category": "schema", "message": "missing tools"}]}]}'
     )
-    monkeypatch.setattr(lint_skills, "_find_dcc_mcp_cli", lambda: "dcc-mcp-cli")
-    monkeypatch.setattr(lint_skills, "_dcc_mcp_cli_version", lambda _cli: "")
+    monkeypatch.setattr(lint_skills, "_find_meshy_dcc_cli", lambda: "meshy-dcc")
+    monkeypatch.setattr(lint_skills, "_meshy_dcc_cli_version", lambda _cli: "")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _fake_completed(payload, returncode=1))
 
     result = lint_skills.lint_skills_with_cli(pathlib.Path("skills"))
@@ -75,8 +75,8 @@ def test_cli_warnings_promoted_when_warnings_as_errors(monkeypatch: pytest.Monke
         '"reports": [{"skill_dir": "houdini-warn", "errors": 0, "warnings": 1, '
         '"issues": [{"severity": "warning", "category": "style", "message": "prefer lazy import"}]}]}'
     )
-    monkeypatch.setattr(lint_skills, "_find_dcc_mcp_cli", lambda: "dcc-mcp-cli")
-    monkeypatch.setattr(lint_skills, "_dcc_mcp_cli_version", lambda _cli: "")
+    monkeypatch.setattr(lint_skills, "_find_meshy_dcc_cli", lambda: "meshy-dcc")
+    monkeypatch.setattr(lint_skills, "_meshy_dcc_cli_version", lambda _cli: "")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _fake_completed(payload, returncode=1))
 
     result = lint_skills.lint_skills_with_cli(pathlib.Path("skills"), warnings_as_errors=True)
@@ -87,8 +87,8 @@ def test_cli_warnings_promoted_when_warnings_as_errors(monkeypatch: pytest.Monke
 
 
 def test_non_json_cli_output_is_treated_as_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(lint_skills, "_find_dcc_mcp_cli", lambda: "dcc-mcp-cli")
-    monkeypatch.setattr(lint_skills, "_dcc_mcp_cli_version", lambda _cli: "")
+    monkeypatch.setattr(lint_skills, "_find_meshy_dcc_cli", lambda: "meshy-dcc")
+    monkeypatch.setattr(lint_skills, "_meshy_dcc_cli_version", lambda _cli: "")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _fake_completed("panic: boom", returncode=101))
 
     result = lint_skills.lint_skills_with_cli(pathlib.Path("skills"))
@@ -127,7 +127,7 @@ from _common import helper
 """,
         encoding="utf-8",
     )
-    front = {"metadata": {"dcc-mcp": {"tools": "tools.yaml"}}}
+    front = {"metadata": {"meshy-dcc": {"tools": "tools.yaml"}}}
     errors = []
 
     lint_skills._lint_houdini_conventions(skill_dir, front, errors)

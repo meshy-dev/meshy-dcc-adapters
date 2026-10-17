@@ -16,7 +16,7 @@ import pytest
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
-_SKILL = Path(__file__).resolve().parents[1] / "src/dcc_mcp_houdini/skills/houdini-render"
+_SKILL = Path(__file__).resolve().parents[1] / "src/meshy_dcc_houdini/skills/houdini-render"
 
 
 def _header(width=64, height=32, version=2, payload=b"no real pixel codec in this fixture"):
@@ -88,7 +88,7 @@ def test_official_arguments_source_preservation_and_receipt(operation, monkeypat
     assert context["dimensions"] == [64, 32]
     assert context["pixel_decode_verified"] is False
     assert context["output_identity"]["sha256"] == hashlib.sha256(target.read_bytes()).hexdigest()
-    assert not list(target.parent.glob(".dcc-mcp-denoise-*"))
+    assert not list(target.parent.glob(".meshy-dcc-denoise-*"))
 
 
 @pytest.mark.parametrize("same_source", [False, True])
@@ -140,7 +140,7 @@ def test_failed_operations_do_not_publish(operation, monkeypatch, failure):
     result = module.denoise_image(str(source), str(target))
     assert not result["success"], result
     assert not target.exists()
-    assert not list(target.parent.glob(".dcc-mcp-denoise-*"))
+    assert not list(target.parent.glob(".meshy-dcc-denoise-*"))
     if failure != "changed_source":
         assert source.read_bytes() == original
 
@@ -210,19 +210,19 @@ def test_symlinked_source_is_rejected(operation, monkeypatch):
 
 
 def test_catalog_load_and_dispatch_execute_the_declared_tool(operation, monkeypatch):
-    import dcc_mcp_core
-    from dcc_mcp_core._server.inprocess_executor import build_inprocess_executor
+    import meshy_dcc_core
+    from meshy_dcc_core._server.inprocess_executor import build_inprocess_executor
 
     _, source, target, _ = operation
     monkeypatch.setattr(subprocess, "run", _run_success)
-    registry = dcc_mcp_core.ToolRegistry()
-    catalog = dcc_mcp_core.SkillCatalog(registry)
+    registry = meshy_dcc_core.ToolRegistry()
+    catalog = meshy_dcc_core.SkillCatalog(registry)
     catalog.set_in_process_executor(build_inprocess_executor(None))
     catalog.discover(extra_paths=[str(_SKILL.parent)], dcc_name="houdini")
     assert "houdini_render__denoise_image" in catalog.load_skill("houdini-render")
     tool = next(tool for tool in catalog.get_skill("houdini-render").tools if tool.name == "denoise_image")
     executor = build_inprocess_executor(None)
-    dispatcher = dcc_mcp_core.ToolDispatcher(registry)
+    dispatcher = meshy_dcc_core.ToolDispatcher(registry)
     dispatcher.register_handler(
         "houdini_render__denoise_image",
         lambda params: executor(str(_SKILL / tool.source_file), params, thread_affinity="any"),

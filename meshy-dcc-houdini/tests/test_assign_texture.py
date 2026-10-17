@@ -17,7 +17,7 @@ from skill_loader import skill_script_import_context
 _SCRIPT = (
     Path(__file__).parent.parent
     / "src"
-    / "dcc_mcp_houdini"
+    / "meshy_dcc_houdini"
     / "skills"
     / "houdini-material-library"
     / "scripts"
@@ -1073,7 +1073,7 @@ def test_foreign_owned_upstream_node_is_preserved(monkeypatch, tmp_path: Path) -
     string_type = object()
     material = _FakeSuccessfulWiredMaterial(string_type)
     existing = material.parent().createNode("mtlximage")
-    existing.setUserData("dcc_mcp.assign_texture.owner", "v1|/mat/other_material|0")
+    existing.setUserData("meshy_dcc.assign_texture.owner", "v1|/mat/other_material|0")
     material._input = existing
     hou = ModuleType("hou")
     hou.parmTemplateType = type("ParmTemplateType", (), {"String": string_type})
@@ -1179,7 +1179,7 @@ def test_successful_assignment_uses_one_named_undo_group(monkeypatch, tmp_path: 
     assert result["success"] is True
     assert hou.undos.entered == [result["context"]["undo_label"]]
     assert hou.undos.exited == hou.undos.entered
-    assert result["context"]["undo_label"].startswith("DCC MCP: assign texture ")
+    assert result["context"]["undo_label"].startswith("Meshy DCC: assign texture ")
 
 
 def test_post_mutation_node_summary_failure_rolls_back_wired_graph(monkeypatch, tmp_path: Path) -> None:

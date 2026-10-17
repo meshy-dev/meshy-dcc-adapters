@@ -1,5 +1,5 @@
 # Houdini status script for Windows
-# Shows link status of dcc_mcp_houdini and dcc_mcp_core
+# Shows link status of meshy_dcc_houdini and meshy_dcc_core
 
 [CmdletBinding()]
 param(
@@ -33,48 +33,48 @@ Write-Host "Houdini $HoudiniVersion" -ForegroundColor Cyan
 Write-Host "Site-packages: $SitePackages" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Check dcc_mcp_houdini ───────────────────────────────────────────────
-$TargetLink = "$SitePackages\dcc_mcp_houdini"
+# ── Check meshy_dcc_houdini ───────────────────────────────────────────────
+$TargetLink = "$SitePackages\meshy_dcc_houdini"
 if (Test-Path $TargetLink) {
     $link = Get-Item $TargetLink
     if ($link.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
         $target = (Get-Item $TargetLink).Target.FullName
-        Write-Host "dcc_mcp_houdini: " -NoNewline
+        Write-Host "meshy_dcc_houdini: " -NoNewline
         Write-Host "LINKED" -ForegroundColor Green -NoNewline
         Write-Host " -> $target"
     }
     else {
-        Write-Host "dcc_mcp_houdini: " -NoNewline
+        Write-Host "meshy_dcc_houdini: " -NoNewline
         Write-Host "INSTALLED (not linked)" -ForegroundColor Yellow
     }
 }
 else {
-    Write-Host "dcc_mcp_houdini: " -NoNewline
+    Write-Host "meshy_dcc_houdini: " -NoNewline
     Write-Host "NOT INSTALLED" -ForegroundColor Red
 }
 
-# ── Check dcc_mcp_core ───────────────────────────────────────────────────
-$CoreTarget = "$SitePackages\dcc_mcp_core"
+# ── Check meshy_dcc_core ───────────────────────────────────────────────────
+$CoreTarget = "$SitePackages\meshy_dcc_core"
 if (Test-Path $CoreTarget) {
     $link = Get-Item $CoreTarget
     if ($link.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
         $target = (Get-Item $CoreTarget).Target.FullName
-        Write-Host "dcc_mcp_core:     " -NoNewline
+        Write-Host "meshy_dcc_core:     " -NoNewline
         Write-Host "LINKED" -ForegroundColor Green -NoNewline
         Write-Host " -> $target"
     }
     else {
-        Write-Host "dcc_mcp_core:     " -NoNewline
+        Write-Host "meshy_dcc_core:     " -NoNewline
         Write-Host "INSTALLED (not linked)" -ForegroundColor Yellow
     }
 }
 else {
-    Write-Host "dcc_mcp_core:     " -NoNewline
+    Write-Host "meshy_dcc_core:     " -NoNewline
     Write-Host "NOT INSTALLED" -ForegroundColor Red
 }
 
 # ── Verify imports ───────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "Import test:" -ForegroundColor Cyan
-& $Hython -c "import dcc_mcp_houdini; print('dcc_mcp_houdini OK')" 2>&1
-& $Hython -c "import dcc_mcp_core; print('dcc_mcp_core OK')" 2>&1
+& $Hython -c "import meshy_dcc_houdini; print('meshy_dcc_houdini OK')" 2>&1
+& $Hython -c "import meshy_dcc_core; print('meshy_dcc_core OK')" 2>&1

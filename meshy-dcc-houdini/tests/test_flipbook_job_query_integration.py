@@ -10,11 +10,11 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
-from dcc_mcp_core import McpHttpConfig, create_skill_server
-from dcc_mcp_core.host import QueueDispatcher, StandaloneHost
+from meshy_dcc_core import McpHttpConfig, create_skill_server
+from meshy_dcc_core.host import QueueDispatcher, StandaloneHost
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 
 
 def _load_script(path: Path) -> ModuleType:
@@ -41,8 +41,8 @@ def _post_mcp(url: str, payload: dict[str, Any]) -> dict[str, Any]:
 def test_get_flipbook_job_query_returns_existing_job_without_pending_wrapper(monkeypatch, tmp_path: Path) -> None:
     """Polling an adapter job must not create a second core pending job."""
     monkeypatch.setenv("MCP_LOG_LEVEL", "WARN")
-    monkeypatch.setenv("DCC_MCP_LOG_LEVEL", "WARN")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_LOG_LEVEL", "WARN")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
 
     scripts = _SKILLS_ROOT / "houdini-render" / "scripts"
     flipbook = _load_script(scripts / "flipbook.py")

@@ -12,7 +12,7 @@ from domain_graph_fakes import Parm, scene
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
-_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-simulation"
+_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-simulation"
 
 
 def _load(name):
@@ -228,7 +228,7 @@ def test_apply_parameters_reports_missing_names_and_rolls_back():
 
 def test_next_free_input_is_shared_with_domain_graph() -> None:
     """The simulation package no longer keeps a private copy of the helper."""
-    from dcc_mcp_houdini import _domain_graph
+    from meshy_dcc_houdini import _domain_graph
 
     common = _load("_simulation_common.py")
     assert not hasattr(common, "next_free_input")

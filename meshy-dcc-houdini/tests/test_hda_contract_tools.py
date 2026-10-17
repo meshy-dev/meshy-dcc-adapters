@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
-_SCRIPTS = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-hda" / "scripts"
+_SCRIPTS = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-hda" / "scripts"
 
 
 def _load_script(name: str) -> ModuleType:
@@ -236,7 +236,7 @@ def test_publish_hda_library_namespaces_versions_and_embeds_manifest(tmp_path: P
             icon="MISC_digital_asset",
             help_text="# Procedural Planet",
             dependencies=["$JOB/textures/stars.exr"],
-            custom_sections={"dcc_mcp/provenance.json": "{}"},
+            custom_sections={"meshy_dcc/provenance.json": "{}"},
             embedded_resources=[{"file_path": str(resource), "section_name": "textures/earth_albedo.exr"}],
             install=False,
         )
@@ -250,9 +250,9 @@ def test_publish_hda_library_namespaces_versions_and_embeds_manifest(tmp_path: P
     published.setIcon.assert_called_once_with("MISC_digital_asset")
     sections = {call.args[0]: call.args[1] for call in published.addSection.call_args_list}
     assert sections["Help"] == "# Procedural Planet"
-    assert sections["dcc_mcp/provenance.json"] == "{}"
-    assert sections["dcc_mcp/resources/textures/earth_albedo.exr"] == b"texture"
-    manifest = json.loads(sections["dcc_mcp/manifest.json"])
+    assert sections["meshy_dcc/provenance.json"] == "{}"
+    assert sections["meshy_dcc/resources/textures/earth_albedo.exr"] == b"texture"
+    manifest = json.loads(sections["meshy_dcc/manifest.json"])
     assert manifest["node_type_name"] == "studio::planet::1.2.0"
     assert manifest["dependencies"] == ["$JOB/textures/stars.exr"]
     assert manifest["resources"][0]["sha256"]
@@ -302,7 +302,7 @@ def test_validate_hda_contract_checks_definition_interface_dependencies_and_inst
         "dependencies": [str(dependency)],
         "resources": [
             {
-                "section": "dcc_mcp/resources/earth.exr",
+                "section": "meshy_dcc/resources/earth.exr",
                 "sha256": hashlib.sha256(b"abc").hexdigest(),
                 "size": 3,
             }
@@ -318,8 +318,8 @@ def test_validate_hda_contract_checks_definition_interface_dependencies_and_inst
     definition.libraryFilePath.return_value = str(library)
     definition.sections.return_value = {
         "Help": MagicMock(),
-        "dcc_mcp/manifest.json": manifest_section,
-        "dcc_mcp/resources/earth.exr": resource_section,
+        "meshy_dcc/manifest.json": manifest_section,
+        "meshy_dcc/resources/earth.exr": resource_section,
     }
     definition.parmTemplateGroup.return_value = _Group([_Template("relief", "Relief", "Float")])
     instance_type = MagicMock()
@@ -349,7 +349,7 @@ def test_validate_hda_contract_checks_definition_interface_dependencies_and_inst
     assert result["context"]["instantiable"] is True
     parent.createNode.assert_called_once_with(
         "studio::planet::1.2.0",
-        node_name="__dcc_mcp_hda_contract__",
+        node_name="__meshy_dcc_hda_contract__",
         run_init_scripts=False,
         exact_type_name=True,
     )
@@ -368,7 +368,7 @@ def test_validate_hda_contract_reports_callbacks_and_missing_dependency(tmp_path
     definition = MagicMock()
     definition.nodeTypeName.return_value = "studio::planet::1.2.0"
     definition.version.return_value = "1.2.0"
-    definition.sections.return_value = {"dcc_mcp/manifest.json": manifest_section}
+    definition.sections.return_value = {"meshy_dcc/manifest.json": manifest_section}
     definition.parmTemplateGroup.return_value = _Group(
         [_Template("unsafe", "Unsafe", "String", script_callback="danger()")]
     )

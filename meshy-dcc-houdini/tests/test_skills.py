@@ -14,7 +14,7 @@ import yaml
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 _SKILL_DIRS = tuple(sorted(d.name for d in _SKILLS_ROOT.iterdir() if (d / "SKILL.md").is_file()))
 
 
@@ -46,7 +46,7 @@ def _mock_inspection_node(category_name: str, path: str, type_name: str, *method
 
 @pytest.mark.parametrize("skill_dir", _SKILL_DIRS)
 def test_validate_skill_clean(skill_dir: str) -> None:
-    from dcc_mcp_core import validate_skill
+    from meshy_dcc_core import validate_skill
 
     report = validate_skill(str(_SKILLS_ROOT / skill_dir))
     assert report.is_clean, report.issues
@@ -78,7 +78,7 @@ def test_flipbook_job_tools_have_dedicated_entrypoints() -> None:
 
 
 def test_flipbook_poll_transition_survives_loader_and_discovery() -> None:
-    import dcc_mcp_core
+    import meshy_dcc_core
 
     skill_dir = _SKILLS_ROOT / "houdini-render"
     manifest_tools = yaml.safe_load((skill_dir / "tools.yaml").read_text(encoding="utf-8"))["tools"]
@@ -86,13 +86,13 @@ def test_flipbook_poll_transition_survives_loader_and_discovery() -> None:
     expected = ["houdini_render__get_flipbook_job"]
     assert manifest_flipbook["next-tools"]["on-success"] == expected
 
-    parsed = dcc_mcp_core.parse_skill_md(str(skill_dir))
+    parsed = meshy_dcc_core.parse_skill_md(str(skill_dir))
     assert parsed is not None
     parsed_flipbook = next(tool for tool in parsed.tools if tool.name == "flipbook")
     assert parsed_flipbook.next_tools == {"on_success": expected, "on_failure": []}
 
-    registry = dcc_mcp_core.ToolRegistry()
-    catalog = dcc_mcp_core.SkillCatalog(registry)
+    registry = meshy_dcc_core.ToolRegistry()
+    catalog = meshy_dcc_core.SkillCatalog(registry)
     catalog.set_in_process_executor(lambda _script_path, _params, **_metadata: {"success": True})
     assert catalog.discover(extra_paths=[str(_SKILLS_ROOT)], dcc_name="houdini") >= 1
     assert any(skill.name == "houdini-render" for skill in catalog.search_skills(query="flipbook"))
@@ -129,7 +129,7 @@ def test_self_managed_rop_tools_return_adapter_job_identity_directly(
 def test_cache_simulation_job_is_pollable_via_public_render_status(tmp_path: Path) -> None:
     import uuid
 
-    from dcc_mcp_houdini import _isolated_jobs, _rop_jobs
+    from meshy_dcc_houdini import _isolated_jobs, _rop_jobs
 
     cache = _load_script("houdini-animation", "cache_simulation.py")
     render_status = _load_script("houdini-render", "get_render_job.py")
@@ -191,7 +191,7 @@ def test_skills_index_exists() -> None:
 
 
 def test_stage_loader_maps_bootstrap_and_scene() -> None:
-    from dcc_mcp_houdini._skill_loader import build_minimal_mode_for_stages, skills_for_stage
+    from meshy_dcc_houdini._skill_loader import build_minimal_mode_for_stages, skills_for_stage
 
     assert "houdini-scripting" in skills_for_stage("bootstrap")
     assert "houdini-scene" in skills_for_stage("scene")
@@ -850,7 +850,7 @@ class TestGetSessionInfoSkill:
 
     def test_with_mock_hou(self) -> None:
         mod = _load_script("houdini-scripting", "get_session_info.py")
-        mock_adapter = MagicMock(__version__="0.28.0", __file__="/tmp/dcc_mcp_houdini/__init__.py")
+        mock_adapter = MagicMock(__version__="0.28.0", __file__="/tmp/meshy_dcc_houdini/__init__.py")
         mock_hou = MagicMock()
         mock_hou.applicationVersion.return_value = (20, 5, 0)
         mock_hou.applicationVersionString.return_value = "20.5.0"
@@ -858,12 +858,12 @@ class TestGetSessionInfoSkill:
         mock_hou.hipFile.isNewFile.return_value = False
         mock_hou.hipFile.name.return_value = "/tmp/test.hip"
 
-        with patch.dict(sys.modules, {"dcc_mcp_houdini": mock_adapter, "hou": mock_hou}):
+        with patch.dict(sys.modules, {"meshy_dcc_houdini": mock_adapter, "hou": mock_hou}):
             result = mod.get_session_info()
 
         assert result["success"] is True
         assert result["context"]["adapter_version"] == "0.28.0"
-        assert result["context"]["adapter_module_path"] == "/tmp/dcc_mcp_houdini/__init__.py"
+        assert result["context"]["adapter_module_path"] == "/tmp/meshy_dcc_houdini/__init__.py"
         assert result["context"]["houdini_version_string"] == "20.5.0"
         assert result["context"]["hip_file"] == "/tmp/test.hip"
 
@@ -1754,13 +1754,12 @@ class TestAutomationSkills:
 
 
 def test_docs_stage_catalogs_match_stage_loader() -> None:
-    """llms.txt and SKILLS_INDEX.md must not drift from _skill_loader."""
+    """SKILLS_INDEX.md must not drift from _skill_loader."""
     import re
 
-    from dcc_mcp_houdini._skill_loader import STAGE_SKILLS
+    from meshy_dcc_houdini._skill_loader import STAGE_SKILLS
 
     index = (_SKILLS_ROOT / "SKILLS_INDEX.md").read_text(encoding="utf-8")
-    llms = (Path(__file__).parents[1] / "llms.txt").read_text(encoding="utf-8")
     # bootstrap/scene rows in the docs are prose, not catalogs of every stage member.
     for stage, expected in STAGE_SKILLS.items():
         if stage in ("bootstrap", "scene"):
@@ -1769,6 +1768,3 @@ def test_docs_stage_catalogs_match_stage_loader() -> None:
         index_row = re.search(r"^\| `{}` \| (.*?) \| no \|$".format(stage), index, re.M)
         assert index_row is not None, "SKILLS_INDEX.md is missing the {} row".format(stage)
         assert index_row.group(1) == expected_row
-        llms_row = re.search(r"^- `{}`: (.*)$".format(stage), llms, re.M)
-        assert llms_row is not None, "llms.txt is missing the {} row".format(stage)
-        assert llms_row.group(1) == expected_row

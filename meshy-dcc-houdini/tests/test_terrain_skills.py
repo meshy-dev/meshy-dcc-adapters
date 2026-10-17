@@ -12,7 +12,7 @@ from domain_graph_fakes import scene
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
-_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-terrain"
+_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-terrain"
 
 
 def _load(name):

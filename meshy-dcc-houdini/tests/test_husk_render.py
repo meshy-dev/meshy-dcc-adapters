@@ -14,9 +14,9 @@ import pytest
 import yaml
 from skill_loader import skill_script_import_context
 
-from dcc_mcp_houdini._status_io import read_status, write_status
+from meshy_dcc_houdini._status_io import read_status, write_status
 
-SCRIPTS = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills" / "houdini-husk" / "scripts"
+SCRIPTS = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills" / "houdini-husk" / "scripts"
 
 
 def _load_script(filename: str):

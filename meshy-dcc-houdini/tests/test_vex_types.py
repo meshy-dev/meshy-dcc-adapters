@@ -6,7 +6,7 @@ import dataclasses
 
 import pytest
 
-from dcc_mcp_houdini._vex_types import (
+from meshy_dcc_houdini._vex_types import (
     CookDiagnostic,
     VexContext,
     VexSeverity,
@@ -244,21 +244,21 @@ class TestWrangleInfo:
 
 class TestVexContextToAttribClass:
     def test_points_maps_to_0(self) -> None:
-        from dcc_mcp_houdini._vex_types import vex_context_to_attrib_class
+        from meshy_dcc_houdini._vex_types import vex_context_to_attrib_class
 
         assert vex_context_to_attrib_class(VexContext.POINTS) == "point"
 
     def test_primitives_maps_to_1(self) -> None:
-        from dcc_mcp_houdini._vex_types import vex_context_to_attrib_class
+        from meshy_dcc_houdini._vex_types import vex_context_to_attrib_class
 
         assert vex_context_to_attrib_class(VexContext.PRIMITIVES) == "prim"
 
     def test_vertices_maps_to_2(self) -> None:
-        from dcc_mcp_houdini._vex_types import vex_context_to_attrib_class
+        from meshy_dcc_houdini._vex_types import vex_context_to_attrib_class
 
         assert vex_context_to_attrib_class(VexContext.VERTICES) == "vertex"
 
     def test_detail_maps_to_3(self) -> None:
-        from dcc_mcp_houdini._vex_types import vex_context_to_attrib_class
+        from meshy_dcc_houdini._vex_types import vex_context_to_attrib_class
 
         assert vex_context_to_attrib_class(VexContext.DETAIL) == "detail"

@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 from skill_loader import skill_script_import_context
 
-_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills"
+_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills"
 
 
 def load(name):
@@ -159,9 +159,9 @@ def test_intrinsics_read_only_selected_fields():
 
 
 def test_geometry_queries_discover_and_load():
-    import dcc_mcp_core
+    import meshy_dcc_core
 
-    catalog = dcc_mcp_core.SkillCatalog(dcc_mcp_core.ToolRegistry())
+    catalog = meshy_dcc_core.SkillCatalog(meshy_dcc_core.ToolRegistry())
     catalog.set_in_process_executor(lambda *_args, **_kwargs: {"success": True})
     assert catalog.discover(extra_paths=[str(_ROOT)], dcc_name="houdini")
     names = catalog.load_skill("houdini-geometry")

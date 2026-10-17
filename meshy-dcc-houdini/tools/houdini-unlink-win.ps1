@@ -30,18 +30,18 @@ $PythonVersion = & $Hython -c "import sys; print(f'{sys.version_info.major}{sys.
 $SitePackages = "$HoudiniBase\python$PythonVersion\lib\site-packages"
 
 # ── Remove junctions ─────────────────────────────────────────────────────
-$TargetLink = "$SitePackages\dcc_mcp_houdini"
+$TargetLink = "$SitePackages\meshy_dcc_houdini"
 if (Test-Path $TargetLink) {
     Write-Host "Removing: $TargetLink" -ForegroundColor Yellow
     Remove-Item $TargetLink -Recurse -Force
-    Write-Host "Removed dcc_mcp_houdini" -ForegroundColor Green
+    Write-Host "Removed meshy_dcc_houdini" -ForegroundColor Green
 }
 
-$CoreTarget = "$SitePackages\dcc_mcp_core"
+$CoreTarget = "$SitePackages\meshy_dcc_core"
 if (Test-Path $CoreTarget) {
     Write-Host "Removing: $CoreTarget" -ForegroundColor Yellow
     Remove-Item $CoreTarget -Recurse -Force
-    Write-Host "Removed dcc_mcp_core" -ForegroundColor Green
+    Write-Host "Removed meshy_dcc_core" -ForegroundColor Green
 }
 
 Write-Host "Done!" -ForegroundColor Green

@@ -10,8 +10,8 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from dcc_mcp_houdini import _installer
-from dcc_mcp_houdini.cli import main
+from meshy_dcc_houdini import _installer
+from meshy_dcc_houdini.cli import main
 
 
 def _legacy_synthetic_host(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -27,8 +27,8 @@ def _legacy_synthetic_host(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> P
     )
     existing = os.environ.get("PYTHONPATH", "")
     monkeypatch.setenv("PYTHONPATH", str(modules) + (os.pathsep + existing if existing else ""))
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(tmp_path / "profile" / "packages"))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(tmp_path / "profile" / "packages"))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     return executable
 
 
@@ -43,8 +43,8 @@ def _install_current(
     hython.write_bytes(b"hython")
     module_root = host.parents[1]
     hou_file = module_root / "houdini" / "python3.12libs" / "hou.py"
-    adapter_file = tmp_path / "site-packages" / "dcc_mcp_houdini" / "__init__.py"
-    core_file = tmp_path / "site-packages" / "dcc_mcp_core" / "__init__.py"
+    adapter_file = tmp_path / "site-packages" / "meshy_dcc_houdini" / "__init__.py"
+    core_file = tmp_path / "site-packages" / "meshy_dcc_core" / "__init__.py"
     for path in (hou_file, adapter_file, core_file):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# synthetic module\n", encoding="utf-8")
@@ -138,8 +138,8 @@ def _real_probe_fixture(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
     hython = root / "bin" / ("hython.exe" if sys.platform == "win32" else "hython")
     hou_file = root / "houdini" / "python3.12libs" / "hou.py"
     adapter_root = tmp_path / "site-packages"
-    adapter_file = adapter_root / "dcc_mcp_houdini" / "__init__.py"
-    core_file = adapter_root / "dcc_mcp_core" / "__init__.py"
+    adapter_file = adapter_root / "meshy_dcc_houdini" / "__init__.py"
+    core_file = adapter_root / "meshy_dcc_core" / "__init__.py"
     for path in (host, hython, hou_file, adapter_file, core_file):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# probe fixture\n", encoding="utf-8")
@@ -156,8 +156,8 @@ def _real_probe_fixture(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
         "core_file": str(core_file.resolve()),
         "adapter_dist_root": str(adapter_root.resolve()),
         "core_dist_root": str(adapter_root.resolve()),
-        "adapter_record": "dcc_mcp_houdini/__init__.py",
-        "core_record": "dcc_mcp_core/__init__.py",
+        "adapter_record": "meshy_dcc_houdini/__init__.py",
+        "core_record": "meshy_dcc_core/__init__.py",
         "adapter_direct_url": None,
         "core_direct_url": None,
     }
@@ -176,7 +176,7 @@ def test_hython_probe_binds_executable_hom_and_distribution_origins(
     )
     assert _installer._query_python(hython, host)["host_version"] == "20.5.487"
 
-    payload["adapter_file"] = str((tmp_path / "shadow" / "dcc_mcp_houdini.py").resolve())
+    payload["adapter_file"] = str((tmp_path / "shadow" / "meshy_dcc_houdini.py").resolve())
     Path(payload["adapter_file"]).parent.mkdir()
     Path(payload["adapter_file"]).write_text("# shadow\n", encoding="utf-8")
     with pytest.raises(_installer.LifecycleFailure, match="shadowed"):
@@ -198,7 +198,7 @@ def test_hython_probe_rejects_same_site_root_modules_not_owned_by_record(
     with pytest.raises(_installer.LifecycleFailure, match="RECORD|ownership"):
         _installer._query_python(hython, host)
 
-    payload["adapter_record"] = "dcc_mcp_houdini/__init__.py"
+    payload["adapter_record"] = "meshy_dcc_houdini/__init__.py"
     payload["core_record"] = "unrelated/core.py"
     with pytest.raises(_installer.LifecycleFailure, match="RECORD|ownership"):
         _installer._query_python(hython, host)
@@ -210,7 +210,7 @@ def test_hython_probe_accepts_only_exact_editable_direct_url_root(
 ) -> None:
     host, hython, payload = _real_probe_fixture(tmp_path)
     editable = tmp_path / "adapter-checkout"
-    adapter_file = editable / "src" / "dcc_mcp_houdini" / "__init__.py"
+    adapter_file = editable / "src" / "meshy_dcc_houdini" / "__init__.py"
     adapter_file.parent.mkdir(parents=True)
     adapter_file.write_text("# editable adapter\n", encoding="utf-8")
     payload.update(
@@ -393,7 +393,7 @@ def test_upgrade_staging_failure_never_moves_prior_install(
 ) -> None:
     _host, common, report = _install_current(tmp_path, monkeypatch, capsys)
     root = Path(report["plan"]["install_root"])
-    package_file = Path(report["plan"]["packages_dir"]) / "dcc_mcp_houdini.json"
+    package_file = Path(report["plan"]["packages_dir"]) / "meshy_dcc_houdini.json"
     receipt_path = Path(report["receipt_path"])
     root_before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
     package_before = package_file.read_bytes()
@@ -419,7 +419,7 @@ def test_partial_uninstall_failure_restores_all_owned_bytes(
     _host, common, report = _install_current(tmp_path, monkeypatch, capsys)
     root = Path(report["plan"]["install_root"])
     receipt_path = Path(report["receipt_path"])
-    package_file = Path(report["plan"]["packages_dir"]) / "dcc_mcp_houdini.json"
+    package_file = Path(report["plan"]["packages_dir"]) / "meshy_dcc_houdini.json"
     before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
     original = _installer.safe_remove_tree
 
@@ -445,7 +445,7 @@ def test_uninstall_permission_error_restores_after_partial_atomic_move(
 ) -> None:
     _host, common, report = _install_current(tmp_path, monkeypatch, capsys)
     root = Path(report["plan"]["install_root"])
-    package_file = Path(report["plan"]["packages_dir"]) / "dcc_mcp_houdini.json"
+    package_file = Path(report["plan"]["packages_dir"]) / "meshy_dcc_houdini.json"
     receipt_path = Path(report["receipt_path"])
     before = {path.relative_to(root): path.read_bytes() for path in root.rglob("*") if path.is_file()}
     package_before = package_file.read_bytes()
@@ -540,18 +540,16 @@ def test_verify_rejects_pid_reuse_start_identity_mismatch(
 def test_core_schema_anchor_is_keyed_by_the_core_release() -> None:
     from install_sop_anchors import CORE_SCHEMA_ANCHOR_MEASURED_THROUGH, core_schema_anchor
 
-    initial = core_schema_anchor("0.20.14")
-    refreshed = core_schema_anchor("0.20.30")
+    measured = core_schema_anchor("0.2.0")
 
-    assert initial is not None and refreshed is not None
-    assert initial.sha256 != refreshed.sha256
-    assert core_schema_anchor("0.20.29") == initial
-    assert core_schema_anchor("0.20.33") == refreshed
-    assert core_schema_anchor(CORE_SCHEMA_ANCHOR_MEASURED_THROUGH) is not None
+    assert measured is not None
+    assert measured.sha256.startswith("71df77f2")
+    assert core_schema_anchor(CORE_SCHEMA_ANCHOR_MEASURED_THROUGH) == measured
+    assert core_schema_anchor("0.1.9") is None
     # A release this suite has not measured yet has no pinned digest, so Core can move
     # forward without breaking the suite.
-    assert core_schema_anchor("0.20.34") is None
-    assert core_schema_anchor("0.20.14rc1") is None
+    assert core_schema_anchor("0.2.1") is None
+    assert core_schema_anchor("0.2.0rc1") is None
 
 
 def test_core_schema_anchor_requires_a_measurable_core_version() -> None:
@@ -562,8 +560,8 @@ def test_core_schema_anchor_requires_a_measurable_core_version() -> None:
 
 
 def test_core_schema_artifact_measures_the_document_core_serves() -> None:
-    from dcc_mcp_core.deployment import load_install_sop_schema
     from install_sop_anchors import CORE_SCHEMA_ANCHORS, core_schema_artifact, installed_core_version
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     measured = core_schema_artifact(load_install_sop_schema())
     assert measured is not None
@@ -574,8 +572,8 @@ def test_core_schema_artifact_measures_the_document_core_serves() -> None:
 
 
 def test_unmeasured_core_release_is_accepted_and_observed(monkeypatch: pytest.MonkeyPatch) -> None:
-    from dcc_mcp_core.deployment import load_install_sop_schema
     from install_sop_anchors import core_schema_artifact, core_schema_report
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     schema = load_install_sop_schema()
     report = core_schema_report(schema)
@@ -608,9 +606,9 @@ def test_public_core_floor_is_a_real_released_version() -> None:
     pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
     runbook = (root / "install.md").read_text(encoding="utf-8")
 
-    assert _installer.MIN_CORE_VERSION == "0.20.14"
-    assert "dcc-mcp-core>=0.20.14,<0.21.0" in pyproject.replace(" ", "")
-    assert "dcc-mcp-core >= 0.20.14,<0.21.0" in runbook
+    assert _installer.MIN_CORE_VERSION == "0.2.0"
+    assert "meshy-dcc-core>=0.2.0,<0.3.0" in pyproject.replace(" ", "")
+    assert "meshy-dcc-core >= 0.2.0,<0.3.0" in runbook
 
 
 def test_all_public_lifecycle_results_validate_published_core_draft_schema(
@@ -618,8 +616,8 @@ def test_all_public_lifecycle_results_validate_published_core_draft_schema(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from dcc_mcp_core.deployment import load_install_sop_schema
     from install_sop_anchors import core_schema_anchor, core_schema_artifact, installed_core_version
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     root = Path(__file__).resolve().parents[1]
     schema = load_install_sop_schema()
@@ -630,7 +628,7 @@ def test_all_public_lifecycle_results_validate_published_core_draft_schema(
     anchor = core_schema_anchor(installed_core_version() or "")
     if anchor is not None:
         assert observed == anchor
-    assert not (root / "src" / "dcc_mcp_houdini" / "_install_contract.py").exists()
+    assert not (root / "src" / "meshy_dcc_houdini" / "_install_contract.py").exists()
     assert not (root / "tests" / "fixtures" / "adapter-install-sop-v1.schema.json").exists()
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema)

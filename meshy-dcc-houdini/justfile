@@ -1,4 +1,4 @@
-# dcc-mcp-houdini justfile
+# meshy-dcc-houdini justfile
 # Requires: https://github.com/casey/just
 #
 # Quick reference:
@@ -10,6 +10,7 @@
 #   just prek-install                       — install git hooks (vx prek)
 #   just prek                               — run all hooks on every file
 #   just houdini-version=20.5 houdini-dev-build-link-core-win  — build core + symlink (Windows)
+#   just build-houdini-package macos-arm64 <core wheel>  — Meshy DCC package zip
 #
 # Cross-platform: uses sh on Unix/macOS, pwsh on Windows for dev-* commands.
 
@@ -33,11 +34,11 @@ python := "hython"
 dev:
     pip install -e ".[dev]"
 
-# Unix/macOS: symlink src/dcc_mcp_houdini into Houdini's Python site-packages
+# Unix/macOS: symlink src/meshy_dcc_houdini into Houdini's Python site-packages
 houdini-link:
     ./tools/houdini-link.sh {{houdini-version}}
 
-# Windows: symlink src/dcc_mcp_houdini into Houdini's Python site-packages
+# Windows: symlink src/meshy_dcc_houdini into Houdini's Python site-packages
 houdini-link-win:
     powershell -NoProfile -ExecutionPolicy Bypass -File tools/houdini-link-win.ps1 -HoudiniVersion {{houdini-version}}
 
@@ -61,20 +62,20 @@ houdini-status-win:
 houdini-dev: houdini-link
     @echo ""
     @echo "📋 Dev environment linked. Now start Houdini."
-    @echo "   Then in Houdini: verify dcc_mcp_houdini can be imported"
+    @echo "   Then in Houdini: verify meshy_dcc_houdini can be imported"
     @echo ""
 
 # ============================================================================
-# Houdini + Core Development (with dcc-mcp-core build)
+# Houdini + Core Development (with meshy-dcc-core build)
 # ============================================================================
 
-# Windows: build dcc-mcp-core with Houdini's Python (hython), then symlink both
-# `dcc_mcp_core` (from core's `python/dcc_mcp_core`) and `dcc_mcp_houdini`
-# (from `src/dcc_mcp_houdini`) into Houdini's Python site-packages.
+# Windows: build meshy-dcc-core with Houdini's Python (hython), then symlink both
+# `meshy_dcc_core` (from core's `python/meshy_dcc_core`) and `meshy_dcc_houdini`
+# (from `src/meshy_dcc_houdini`) into Houdini's Python site-packages.
 # Then start Houdini for debugging.
 #
 # After run, use MCP URL printed below; see Houdini MCP setup docs for VS Code + debugpy.
-# Default core repo: sibling directory `../dcc-mcp-core` or env `DCC_MCP_CORE_REPO`.
+# Default core repo: sibling directory `../meshy-dcc-core` or env `MESHY_DCC_CORE_REPO`.
 #
 #   just houdini-version=20.5 houdini-dev-build-link-core-win
 #   just houdini-version=20.5 houdini-dev-debug-win
@@ -102,7 +103,7 @@ houdini-start-win:
 
 # Start the MCP server (inside Houdini's Python)
 serve:
-    {{python}} -m dcc_mcp_houdini
+    {{python}} -m meshy_dcc_houdini
 
 # ── Test & Lint ───────────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ test:
     pytest tests/ -v --tb=short
 
 test-cov:
-    pytest tests/ -v --tb=short --cov=src/dcc_mcp_houdini --cov-report=term-missing
+    pytest tests/ -v --tb=short --cov=src/meshy_dcc_houdini --cov-report=term-missing
 
 lint:
     ruff check src/ tests/ tools/ packaging/
@@ -121,11 +122,7 @@ lint-format:
 lint-skills:
     python tools/lint_skills.py --warnings-as-errors
 
-# Download the standalone dcc-mcp-cli runtime validator into .tools-bin/
-install-cli:
-    python tools/install_dcc_mcp_cli.py
-
-# Validate skills with the authoritative dcc-mcp-cli binary (matches CI exactly)
+# Validate skills with the meshy-dcc binary on PATH
 lint-skills-cli:
     python tools/lint_skills.py --require-cli --warnings-as-errors
 
@@ -153,12 +150,12 @@ prek:
 build:
     python -m build
 
-build-houdini-package platform="win64":
-    python -m build
-    python packaging/assemble_houdini_package.py --platform {{platform}} --dist-dir dist --output-dir dist_houdini
+# Meshy DCC package for one platform: just build-houdini-package macos-arm64 <meshy_dcc_core wheel>
+build-houdini-package platform core-wheel:
+    uv run --python 3.11 --no-project python packaging/build_package.py --platform {{platform}} --core-wheel {{core-wheel}} --output-dir dist
 
 clean:
-    python -c "import shutil, pathlib; [shutil.rmtree(p, ignore_errors=True) for p in ['dist', 'build', 'src/dcc_mcp_houdini.egg-info']]"
+    python -c "import shutil, pathlib; [shutil.rmtree(p, ignore_errors=True) for p in ['dist', 'build', 'src/meshy_dcc_houdini.egg-info']]"
     @echo "Cleaned dist/, build/, and egg-info"
 
 # ── CI helper ─────────────────────────────────────────────────────────────────

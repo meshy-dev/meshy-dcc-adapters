@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from dcc_mcp_houdini.server import serve_headless
+from meshy_dcc_houdini.server import serve_headless
 
 
 def main(port: Optional[int] = None) -> None:

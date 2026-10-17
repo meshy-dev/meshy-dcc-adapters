@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from skill_loader import skill_script_import_context
 
-_SCRIPT_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills" / "houdini-mesh-ops" / "scripts"
+_SCRIPT_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills" / "houdini-mesh-ops" / "scripts"
 _PRIVATE_TOKENS = (
     "PRIVATE_POST_TRANSFER_PARAMETER_FAILURE",
     "C:\\Users\\private\\shot.hip",

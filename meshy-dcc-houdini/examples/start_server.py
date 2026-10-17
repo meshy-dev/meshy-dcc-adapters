@@ -1,4 +1,4 @@
-"""Example: start dcc-mcp-houdini inside Houdini.
+"""Example: start meshy-dcc-houdini inside Houdini.
 
 Run in Houdini's Python Source Editor. For headless Hython use:
 
@@ -7,9 +7,9 @@ Run in Houdini's Python Source Editor. For headless Hython use:
 
 from __future__ import annotations
 
-import dcc_mcp_houdini
+import meshy_dcc_houdini
 
-print("Starting dcc-mcp-houdini server...")
-server = dcc_mcp_houdini.start_server()
+print("Starting meshy-dcc-houdini server...")
+server = meshy_dcc_houdini.start_server()
 print(f"MCP endpoint: {server.mcp_url}")
 print(f"Loaded skills: {server.loaded_skill_count()}")

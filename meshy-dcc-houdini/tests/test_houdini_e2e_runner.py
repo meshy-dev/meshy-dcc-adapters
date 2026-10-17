@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-SCRIPT = Path(__file__).parents[1] / ".github" / "scripts" / "run_houdini_e2e.py"
+SCRIPT = Path(__file__).parents[1] / "tools" / "run_houdini_e2e.py"
 
 
 def _load_script():

@@ -18,10 +18,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from skill_loader import skill_script_import_context
 
-from dcc_mcp_houdini import _isolated_jobs, _render_artifacts, _rop_jobs, _status_io
+from meshy_dcc_houdini import _isolated_jobs, _render_artifacts, _rop_jobs, _status_io
 
 _SKILL_SCRIPTS = (
-    Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-render" / "scripts"
+    Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-render" / "scripts"
 )
 _VALIDATOR = {
     "id": "openexr-structure-gate",
@@ -127,7 +127,7 @@ def _completed_job(tmp_path: Path, count: int = 1, job_id: str = "2" * 32, stem:
     artifacts = []
     for frame in range(1, count + 1):
         final_path = tmp_path / "{}.{:04d}.exr".format(stem, frame)
-        staged_path = tmp_path / "{}.{:04d}.dcc-mcp-{}.partial.exr".format(stem, frame, job_id)
+        staged_path = tmp_path / "{}.{:04d}.meshy-dcc-{}.partial.exr".format(stem, frame, job_id)
         staged_path.write_bytes("validated frame {}".format(frame).encode("ascii"))
         artifacts.append(
             {
@@ -147,7 +147,7 @@ def _completed_job(tmp_path: Path, count: int = 1, job_id: str = "2" * 32, stem:
         "artifacts": artifacts,
         "aggregate": _render_artifacts.aggregate_artifacts(artifacts),
     }
-    job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+    job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
     job_dir.mkdir(parents=True)
     status_path = job_dir / "status.json"
     status_path.write_text(
@@ -641,7 +641,7 @@ def test_background_launch_persists_transaction_without_changing_worker_argv(tmp
             str(tmp_path / "beauty.$F4.exr"),
             artifact_transaction=request,
         )
-    status_path = tmp_path / "dcc-mcp-houdini-render-jobs" / job["job_id"] / "status.json"
+    status_path = tmp_path / "meshy-dcc-houdini-render-jobs" / job["job_id"] / "status.json"
     status = json.loads(status_path.read_text(encoding="utf-8"))
     assert status["artifact_transaction"]["state"] == "queued"
     assert status["artifact_transaction"]["requested_frames"] == [1, 2]

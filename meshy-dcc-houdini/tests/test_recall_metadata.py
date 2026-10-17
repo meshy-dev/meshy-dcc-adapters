@@ -5,7 +5,7 @@ These assert two things:
 1. Core can still load every bundled skill with the new metadata present
    (no breakage) and surfaces the skill/tool ``search_aliases`` it supports
    today.
-2. The richer recall metadata authored under ``metadata.dcc-mcp.*`` and in
+2. The richer recall metadata authored under ``metadata.meshy-dcc.*`` and in
    ``tools.yaml`` is well-formed in the raw frontmatter, so it activates as
    soon as core wires the override arms — regardless of whether the pinned
    core version already reads it.
@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 _TRACKED_SKILLS = (
     "houdini-scripting",
     "houdini-scene",
@@ -37,7 +37,7 @@ def _frontmatter(skill_dir: str) -> dict:
 
 
 def _recall(skill_dir: str) -> dict:
-    return _frontmatter(skill_dir)["metadata"]["dcc-mcp"]
+    return _frontmatter(skill_dir)["metadata"]["meshy-dcc"]
 
 
 @pytest.mark.parametrize("skill_dir", _TRACKED_SKILLS)
@@ -95,7 +95,7 @@ def test_every_tool_has_search_aliases() -> None:
 
 def test_core_loads_skills_with_aliases() -> None:
     """Core must load every bundled skill and expose skill-level aliases today."""
-    from dcc_mcp_core import scan_and_load
+    from meshy_dcc_core import scan_and_load
 
     skills, skipped = scan_and_load(dcc_name="houdini", extra_paths=[str(_SKILLS_ROOT)])
     assert not skipped, skipped

@@ -12,7 +12,7 @@ import pytest
 import yaml
 from skill_loader import skill_script_import_context
 
-_SKILL_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-mesh-ops"
+_SKILL_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-mesh-ops"
 
 
 def _load_skill_script(skill: str, name: str) -> ModuleType:
@@ -743,7 +743,7 @@ def test_array_instances_builds_verified_radial_copy_to_points() -> None:
                         (0.0, -0.70710678, 0.0, 0.70710678),
                     ),
                 },
-                point_int_attributes={"dcc_mcp_orientation_valid": (1, 1, 1, 1)},
+                point_int_attributes={"meshy_dcc_orientation_valid": (1, 1, 1, 1)},
             )
             node._parms["class"] = _Parm(
                 menu_items=("0", "1", "2"),
@@ -756,7 +756,7 @@ def test_array_instances_builds_verified_radial_copy_to_points() -> None:
                 assert "vector source_forward = set(1.0, 0.0, 0.0);" in snippet
                 assert "normalize(cross(ring_axis, radial))" in snippet
                 assert "p@orient = quaternion(dihedral" in snippet
-                assert "i@dcc_mcp_orientation_valid = 1" in snippet
+                assert "i@meshy_dcc_orientation_valid = 1" in snippet
                 return orientation_geometry
 
             node.geometry = verified_geometry
@@ -852,7 +852,7 @@ def test_array_instances_emits_axis_and_source_forward_orientation_contract(
     assert "vector source_forward = {};".format(forward_literal) in snippet
     assert target_literal in snippet
     assert "length2(radial) > 1e-12" in snippet
-    assert "i@dcc_mcp_orientation_valid = 0" in snippet
+    assert "i@meshy_dcc_orientation_valid = 0" in snippet
 
 
 def test_array_instances_rejects_missing_orientation_readback_and_rolls_back() -> None:
@@ -1004,7 +1004,7 @@ def test_array_instances_rolls_back_ring_orientation_and_copy_on_connection_fail
                         (0.0, -0.70710678, 0.0, 0.70710678),
                     ),
                 },
-                point_int_attributes={"dcc_mcp_orientation_valid": (1, 1, 1, 1)},
+                point_int_attributes={"meshy_dcc_orientation_valid": (1, 1, 1, 1)},
             )
             node._parms["class"] = _Parm(
                 menu_items=("0", "1", "2"),

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import runpy
 import sys
 from contextlib import nullcontext
 from pathlib import Path
@@ -11,8 +10,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from dcc_mcp_houdini import _installer
-from dcc_mcp_houdini.cli import main
+from meshy_dcc_houdini import _installer
+from meshy_dcc_houdini.cli import main
 
 
 def _hython_for(host: Path) -> Path:
@@ -29,11 +28,11 @@ def _synthetic_host(tmp_path: Path, monkeypatch) -> Path:
     modules = tmp_path / "hython-modules"
     modules.mkdir(exist_ok=True)
     hou_file = modules / "hou.py"
-    adapter_file = modules / "dcc_mcp_houdini.py"
-    core_file = modules / "dcc_mcp_core.py"
+    adapter_file = modules / "meshy_dcc_houdini.py"
+    core_file = modules / "meshy_dcc_core.py"
     for path in (hou_file, adapter_file, core_file):
         path.write_text("# synthetic module\n", encoding="utf-8")
-    from dcc_mcp_houdini import _installer
+    from meshy_dcc_houdini import _installer
 
     monkeypatch.setattr(
         _installer,
@@ -86,7 +85,7 @@ def test_install_dry_run_emits_contract_without_mutation(
 ) -> None:
     host_executable = _synthetic_host(tmp_path, monkeypatch)
     packages_dir = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages_dir))
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages_dir))
 
     exit_code = main(
         [
@@ -108,7 +107,7 @@ def test_install_dry_run_emits_contract_without_mutation(
     assert payload["plan"]["host_version"] == "20.5.487"
     assert Path(payload["plan"]["interpreter"]).resolve() == _hython_for(host_executable).resolve()
     assert [step["id"] for step in payload["steps"]] == ["preflight", "install", "verify"]
-    assert payload["next_steps"][0]["command"][:3] == ["dcc-mcp-houdini", "install", "--json"]
+    assert payload["next_steps"][0]["command"][:3] == ["meshy-dcc-houdini", "install", "--json"]
     assert payload["verify"] == {
         "directly_usable": False,
         "failure_stage": None,
@@ -125,8 +124,8 @@ def test_cold_install_without_live_registry_commits_and_returns_continuation(
 ) -> None:
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "empty-registry"))
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "empty-registry"))
     monkeypatch.setattr(_installer, "query_runtime_state", lambda *_args, **_kwargs: {"entries": []})
     monkeypatch.setattr(
         _installer,
@@ -148,7 +147,7 @@ def test_cold_install_without_live_registry_commits_and_returns_continuation(
     ]
     assert Path(installed["receipt_path"]).is_file()
     assert Path(installed["plan"]["install_root"]).is_dir()
-    assert (packages / "dcc_mcp_houdini.json").is_file()
+    assert (packages / "meshy_dcc_houdini.json").is_file()
 
     assert main(["verify", *common]) == 40
     verify = json.loads(capsys.readouterr().out)
@@ -164,9 +163,9 @@ def test_receipt_round_trip_is_idempotent_and_uninstall_is_receipt_driven(
 ) -> None:
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    monkeypatch.setenv("DCC_MCP_INSTALL_VERIFY_TIMEOUT", "0.01")
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_INSTALL_VERIFY_TIMEOUT", "0.01")
     common = ["--json", "--dcc-path", str(host), "--python", str(_hython_for(host))]
 
     assert main(["install", *common, "--yes"]) == 0
@@ -183,7 +182,7 @@ def test_receipt_round_trip_is_idempotent_and_uninstall_is_receipt_driven(
     assert package_file.is_file()
     assert (install_root / "scripts" / "123.py").is_file()
     assert (install_root / "python3.12libs" / "uiready.py").is_file()
-    bootstrap = (install_root / "scripts" / "dcc_mcp_houdini_bootstrap.py").read_text(encoding="utf-8")
+    bootstrap = (install_root / "scripts" / "meshy_dcc_houdini_bootstrap.py").read_text(encoding="utf-8")
     assert "capture_bootstrap_errors" in bootstrap
     before = {path: path.read_bytes() for path in install_root.rglob("*") if path.is_file()}
 
@@ -210,22 +209,22 @@ def test_partial_unreceipted_package_fails_closed(monkeypatch, tmp_path: Path, c
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
     packages.mkdir(parents=True)
-    (packages / "dcc_mcp_houdini.json").write_text("{}\n", encoding="utf-8")
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
+    (packages / "meshy_dcc_houdini.json").write_text("{}\n", encoding="utf-8")
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
 
     exit_code = main(["install", "--json", "--yes", "--dcc-path", str(host), "--python", str(_hython_for(host))])
 
     result = json.loads(capsys.readouterr().out)
     assert exit_code == 10
     assert result["verify"]["failure_stage"] == "partial"
-    assert (packages / "dcc_mcp_houdini.json").read_text(encoding="utf-8") == "{}\n"
+    assert (packages / "meshy_dcc_houdini.json").read_text(encoding="utf-8") == "{}\n"
 
 
 def test_preflight_rejects_an_interpreter_without_houdini_hom(monkeypatch, tmp_path: Path, capsys) -> None:
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
-    from dcc_mcp_houdini import _installer
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
+    from meshy_dcc_houdini import _installer
 
     monkeypatch.setattr(
         _installer,
@@ -247,7 +246,7 @@ def test_preflight_rejects_an_interpreter_without_houdini_hom(monkeypatch, tmp_p
 def test_upgrade_requires_an_existing_receipt(monkeypatch, tmp_path: Path, capsys) -> None:
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
 
     code = main(["upgrade", "--json", "--dry-run", "--dcc-path", str(host), "--python", str(_hython_for(host))])
     result = json.loads(capsys.readouterr().out)
@@ -261,8 +260,8 @@ def test_upgrade_requires_an_existing_receipt(monkeypatch, tmp_path: Path, capsy
 def test_modified_receipted_file_is_preserved_on_uninstall(monkeypatch, tmp_path: Path, capsys) -> None:
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = ["--json", "--dcc-path", str(host), "--python", str(_hython_for(host))]
     assert main(["install", *common, "--yes"]) == 0
     installed = json.loads(capsys.readouterr().out)
@@ -285,8 +284,8 @@ def test_failed_upgrade_restores_previous_root_package_and_receipt(
 ) -> None:
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
     common = ["--json", "--dcc-path", str(host), "--python", str(_hython_for(host))]
     assert main(["install", *common, "--yes"]) == 0
     installed = json.loads(capsys.readouterr().out)
@@ -298,7 +297,7 @@ def test_failed_upgrade_restores_previous_root_package_and_receipt(
     old_package = package_file.read_bytes()
     old_receipt = receipt_path.read_bytes()
 
-    from dcc_mcp_houdini import _installer
+    from meshy_dcc_houdini import _installer
 
     monkeypatch.setattr(
         _installer,
@@ -319,8 +318,8 @@ def test_failed_upgrade_restores_previous_root_package_and_receipt(
 def test_restart_exit_requires_core_lock_evidence(monkeypatch, tmp_path: Path, capsys) -> None:
     host = _synthetic_host(tmp_path, monkeypatch)
     packages = tmp_path / "profile" / "packages"
-    monkeypatch.setenv("DCC_MCP_HOUDINI_PACKAGES_DIR", str(packages))
-    from dcc_mcp_houdini import _installer
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_PACKAGES_DIR", str(packages))
+    from meshy_dcc_houdini import _installer
 
     monkeypatch.setattr(
         _installer,
@@ -342,7 +341,7 @@ def test_restart_exit_requires_core_lock_evidence(monkeypatch, tmp_path: Path, c
 
 
 def test_generated_hooks_capture_bootstrap_errors_without_importing_hou_off_host() -> None:
-    from dcc_mcp_houdini import _installer
+    from meshy_dcc_houdini import _installer
 
     bootstrap = _installer._bootstrap_source(Path("logs"))
     hook = _installer._hook_source(Path("logs"))
@@ -362,7 +361,7 @@ def _write_bootstrap_probe(tmp_path: Path) -> Path:
     scripts = tmp_path / "scripts"
     scripts.mkdir(exist_ok=True)
     marker = tmp_path / "bootstrap_calls"
-    (scripts / "dcc_mcp_houdini_bootstrap.py").write_text(
+    (scripts / "meshy_dcc_houdini_bootstrap.py").write_text(
         """from pathlib import Path
 
 class Server:
@@ -394,7 +393,7 @@ def test_hook_source_reaches_shared_bootstrap_from_every_hook_location(
     print, so without this test the autostart fails silently at Houdini startup.
     """
     marker = _write_bootstrap_probe(tmp_path)
-    monkeypatch.delenv("DCC_MCP_HOUDINI_ROOT", raising=False)
+    monkeypatch.delenv("MESHY_DCC_HOUDINI_ROOT", raising=False)
 
     namespace = {"__file__": str(tmp_path / location)}
     exec(compile(_installer._hook_source(tmp_path / "logs"), "<houdini-hook>", "exec"), namespace)
@@ -404,40 +403,28 @@ def test_hook_source_reaches_shared_bootstrap_from_every_hook_location(
     assert marker.read_text(encoding="utf-8") == "1"
 
 
-def test_quickinstall_bootstrap_uses_staged_vendor_and_error_capture() -> None:
-    module = runpy.run_path(str(Path(__file__).resolve().parents[1] / "packaging" / "assemble_houdini_package.py"))
-    bootstrap = module["_bootstrap_py"]()
-    startup = module["_startup_py"]()
-
-    assert "safe_replace_tree" in bootstrap
-    assert "shutil.rmtree(str(vendor_dir))" not in bootstrap
-    assert "capture_bootstrap_errors" in bootstrap
-    assert "capture_bootstrap_errors" in startup
-
-
 def test_generated_bootstrap_skips_headless_hython(monkeypatch):
-    import dcc_mcp_core
+    import meshy_dcc_core
 
-    import dcc_mcp_houdini
+    import meshy_dcc_houdini
 
-    monkeypatch.setattr(dcc_mcp_core, "capture_bootstrap_errors", lambda *args, **kwargs: nullcontext())
+    monkeypatch.setattr(meshy_dcc_core, "capture_bootstrap_errors", lambda *args, **kwargs: nullcontext())
     monkeypatch.setitem(sys.modules, "hou", SimpleNamespace(isUIAvailable=lambda: False))
-    monkeypatch.delenv("DCC_MCP_BACKGROUND_RENDER", raising=False)
-    monkeypatch.setenv("DCC_MCP_HOUDINI_AUTOSTART", "1")
+    monkeypatch.delenv("MESHY_DCC_BACKGROUND_RENDER", raising=False)
+    monkeypatch.setenv("MESHY_DCC_HOUDINI_AUTOSTART", "1")
 
     def unexpected_start(**kwargs):
         pytest.fail("a GUI startup hook must never start a server in headless Hython")
 
-    monkeypatch.setattr(dcc_mcp_houdini, "start_server", unexpected_start)
+    monkeypatch.setattr(meshy_dcc_houdini, "start_server", unexpected_start)
     namespace = {}
     exec(compile(_installer._bootstrap_source(Path("logs")), "<houdini-bootstrap>", "exec"), namespace)
     assert namespace["bootstrap_and_start"]() is None
 
 
-def test_runbook_and_ci_cover_standard_lifecycle() -> None:
+def test_runbook_covers_standard_lifecycle() -> None:
     root = Path(__file__).resolve().parents[1]
     runbook = (root / "install.md").read_text(encoding="utf-8")
-    workflow = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
     for heading in (
         "## Requirements",
@@ -453,13 +440,10 @@ def test_runbook_and_ci_cover_standard_lifecycle() -> None:
     for platform_name in ("Windows", "macOS", "Linux"):
         assert platform_name in runbook
     for verb in ("install", "status", "verify", "upgrade", "uninstall"):
-        assert "dcc-mcp-houdini {}".format(verb) in runbook
-    assert "Python 3.7+ on Windows/Linux and Python" in runbook
-    assert "3.8+ on macOS" in runbook
+        assert "meshy-dcc-houdini {}".format(verb) in runbook
+    assert "Python 3.8 or newer" in runbook
     assert "~/Library/Preferences/houdini/<version>/packages" in runbook
     assert "marks the verify step `pending`" in runbook
-    assert "Install lifecycle smoke" in workflow
-    assert "python -m pytest tests/test_install_lifecycle.py" in workflow
 
 
 def test_report_schema_version_follows_cores_published_document(monkeypatch):
@@ -467,7 +451,7 @@ def test_report_schema_version_follows_cores_published_document(monkeypatch):
     if _installer.install_sop_report_schema_version is not None:
         # Core 0.20.41+ answers this itself, so that is the path under test. It reads the
         # same document, so patch the loader inside Core rather than the adapter's import.
-        from dcc_mcp_core.deployment import install_sop
+        from meshy_dcc_core.deployment import install_sop
 
         monkeypatch.setattr(
             install_sop,
@@ -570,32 +554,8 @@ def test_core_dependency_stays_pinned_below_the_next_minor():
     pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
     floor = _installer._version_tuple(_installer.MIN_CORE_VERSION)
     assert floor is not None
-    core = re.search(r'"dcc-mcp-core>=(?P<lower>[0-9.]+),<(?P<upper>[0-9.]+)"', pyproject)
+    core = re.search(r'"meshy-dcc-core>=(?P<lower>[0-9.]+),<(?P<upper>[0-9.]+)"', pyproject)
 
     assert core is not None
     assert core.group("lower") == _installer.MIN_CORE_VERSION
     assert core.group("upper") == "{}.{}.0".format(floor[0], floor[1] + 1)
-
-
-def _ci_workflow():
-    """Parsed ``.github/workflows/ci.yml`` for the repository under test."""
-    import yaml
-
-    root = Path(__file__).resolve().parents[1]
-    return yaml.safe_load((root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
-
-
-def test_ci_core_latest_job_resolves_a_real_core_version():
-    """The early-warning job must fail loudly rather than test an empty pin.
-
-    The rest of this workflow pins Core to ``DCC_MCP_CORE_FLOOR``, which keeps it reproducible
-    but also holds it at 0.20.14 -- the defect stayed invisible here purely because of that
-    pin, so this job is the only thing that can see it.
-    """
-    job = _ci_workflow()["jobs"]["core-latest"]
-    resolve = [step for step in job["steps"] if step.get("id") == "core"]
-    assert resolve, "core-latest job has no version resolution step"
-
-    script = resolve[0]["run"]
-    assert "exit 1" in script, "empty version resolution must fail the job"
-    assert "::error::" in script

@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 
 
 def _load_script(script_name: str) -> ModuleType:
@@ -160,7 +160,7 @@ class TestLookdevEdit:
 
 class TestPresets:
     def test_save_list_load_delete_roundtrip(self, tmp_path: Path, monkeypatch) -> None:
-        monkeypatch.setenv("DCC_MCP_HOUDINI_MATERIAL_PRESET_DIR", str(tmp_path))
+        monkeypatch.setenv("MESHY_DCC_HOUDINI_MATERIAL_PRESET_DIR", str(tmp_path))
 
         save_mod = _load_script("save_preset.py")
         parm = _parm("rough", 0.6)
@@ -197,7 +197,7 @@ class TestPresets:
         assert list_mod.list_presets()["context"]["count"] == 0
 
     def test_load_missing_preset_errors(self, tmp_path: Path, monkeypatch) -> None:
-        monkeypatch.setenv("DCC_MCP_HOUDINI_MATERIAL_PRESET_DIR", str(tmp_path))
+        monkeypatch.setenv("MESHY_DCC_HOUDINI_MATERIAL_PRESET_DIR", str(tmp_path))
         load_mod = _load_script("load_preset.py")
         with patch.dict(sys.modules, {"hou": MagicMock()}):
             result = load_mod.load_preset("nope", "/mat/clay")

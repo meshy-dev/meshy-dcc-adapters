@@ -13,8 +13,8 @@ from domain_graph_fakes import scene
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
-_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-texture-bake"
-_UV_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_houdini" / "skills" / "houdini-uv"
+_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-texture-bake"
+_UV_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_houdini" / "skills" / "houdini-uv"
 
 
 def _load(name, root=_ROOT):
@@ -470,7 +470,7 @@ def test_uv_attribute_names_prefers_vertex_over_point():
         def pointFloatAttribValues(self, name):
             return [0.2, 0.3] if name == "uv" else []
 
-    from dcc_mcp_houdini._domain_graph import uv_values
+    from meshy_dcc_houdini._domain_graph import uv_values
 
     geometry = Geometry()
     names = uv_attribute_names_fn(geometry)
@@ -493,7 +493,7 @@ def test_uv_attribute_names_anchors_the_name_match():
 
 
 def uv_attribute_names_fn(geometry):
-    from dcc_mcp_houdini._domain_graph import uv_attribute_names
+    from meshy_dcc_houdini._domain_graph import uv_attribute_names
 
     return uv_attribute_names(geometry)
 

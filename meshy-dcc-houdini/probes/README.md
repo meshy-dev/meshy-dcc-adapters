@@ -29,10 +29,10 @@ hython probes/probe_opencl_devices.py
 
 ## Agent / Gateway Execution
 
-Agents connecting through the dcc-mcp gateway can execute probes without
+Agents connecting through the meshy-dcc gateway can execute probes without
 local `hython`:
 
-1. Discover target Houdini instance via `GET http://127.0.0.1:9765/instances`
+1. Discover target Houdini instance via `GET http://127.0.0.1:19765/instances`
 2. Call `execute_python` with `exec(open(".../probe_cop.py").read())`
    against the instance's MCP endpoint
 3. Collect stdout and the JSON output file

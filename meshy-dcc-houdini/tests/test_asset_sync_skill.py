@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 _ROOT = Path(__file__).parents[1]
-_SKILL = _ROOT / "src" / "dcc_mcp_houdini" / "skills" / "houdini-asset-sync"
+_SKILL = _ROOT / "src" / "meshy_dcc_houdini" / "skills" / "houdini-asset-sync"
 
 
 def _module():

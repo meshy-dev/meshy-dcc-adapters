@@ -24,7 +24,7 @@ if (-not (Test-Path $HoudiniExe)) {
 }
 
 if ($EnableDebugpy) {
-    $env:DCC_MCP_HOUDINI_DEBUGPY = "1"
+    $env:MESHY_DCC_HOUDINI_DEBUGPY = "1"
 }
 
 Write-Host "Starting Houdini $HoudiniVersion..." -ForegroundColor Green

@@ -1,7 +1,7 @@
 """Morphology-aware semantic skill recall tests for Houdini.
 
-These exercise :mod:`dcc_mcp_houdini._semantic_index` directly (no live server
-/ Houdini needed).  The vector backend ships in ``dcc-mcp-core>=0.17.38``;
+These exercise :mod:`meshy_dcc_houdini._semantic_index` directly (no live server
+/ Houdini needed).  The vector backend ships in ``meshy-dcc-core>=0.17.38``;
 tests skip cleanly on older cores.
 """
 
@@ -12,11 +12,11 @@ from typing import List, Tuple
 
 import pytest
 
-from dcc_mcp_houdini import _semantic_index
+from meshy_dcc_houdini import _semantic_index
 
 pytestmark = pytest.mark.skipif(
     _semantic_index.HoudiniSemanticIndex.build(embedder_kind="hashed") is None,
-    reason="dcc-mcp-core lacks VectorSkillIndex (needs >=0.17.38)",
+    reason="meshy-dcc-core lacks VectorSkillIndex (needs >=0.17.38)",
 )
 
 

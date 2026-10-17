@@ -1,4 +1,4 @@
-# Pre-commit / prek configuration for dcc-mcp-houdini.
+# Pre-commit / prek configuration for meshy-dcc-houdini.
 #
 # Compatible with both `pre-commit` and the faster Rust reimplementation `prek`.
 # Install hooks with `just prek-install` (or `vx prek install`); run on demand
@@ -35,7 +35,7 @@ repos:
         entry: python tools/lint_skills.py --warnings-as-errors
         language: system
         pass_filenames: false
-        files: ^src/dcc_mcp_houdini/skills/
+        files: ^src/meshy_dcc_houdini/skills/
       - id: check-py37-syntax
         name: Python 3.7 syntax check
         entry: python tools/check_py37_syntax.py src tests tools packaging

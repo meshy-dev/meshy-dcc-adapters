@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dcc_mcp_houdini import _windows_process
+from meshy_dcc_houdini import _windows_process
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows process boundary")
 

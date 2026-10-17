@@ -15,7 +15,7 @@ from skill_loader import skill_script_import_context
 _SCRIPT = (
     Path(__file__).parent.parent
     / "src"
-    / "dcc_mcp_houdini"
+    / "meshy_dcc_houdini"
     / "skills"
     / "houdini-automation"
     / "scripts"
@@ -345,7 +345,7 @@ def test_dry_run_validates_without_mutating_or_opening_undo_group() -> None:
     assert result["context"]["validated"]["connection_count"] == 1
     assert result["context"]["readback"] == {"performed": False}
     assert result["context"]["transaction_id"]
-    assert result["context"]["undo_label"].startswith("DCC MCP: build_node_chain ")
+    assert result["context"]["undo_label"].startswith("Meshy DCC: build_node_chain ")
     assert parent.create_count == 0
     assert hou.undos.entered == []
 

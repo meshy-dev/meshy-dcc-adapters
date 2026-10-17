@@ -1,85 +1,32 @@
-"""Version floor consistency checks — keep pyproject.toml, packaging script,
-and SKILL.md compatibility strings from drifting apart."""
+"""Keep the meshy-dcc-core range and the adapter version in step everywhere they are declared."""
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
-from packaging.version import Version
+from meshy_dcc_houdini import __version__, _installer
 
 ROOT = Path(__file__).resolve().parents[1]
-PYPROJECT = ROOT / "pyproject.toml"
-PACKAGING_SCRIPT = ROOT / "packaging" / "assemble_houdini_package.py"
-README = ROOT / "README.md"
-RUNBOOK = ROOT / "install.md"
-INSTALLER = ROOT / "src" / "dcc_mcp_houdini" / "_installer.py"
-CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
-SKILLS_DIR = ROOT / "src" / "dcc_mcp_houdini" / "skills"
+CORE_RANGE = "meshy-dcc-core>=0.2.0,<0.3.0"
 
 
-def _extract_pyproject_core_floor() -> str:
-    text = PYPROJECT.read_text(encoding="utf-8")
-    m = re.search(r'"dcc-mcp-core>=([^,"]+)', text)
-    if not m:
-        raise RuntimeError("Could not find dcc-mcp-core dependency in pyproject.toml")
-    return m.group(1).strip()
+def test_core_range_is_declared_once_everywhere() -> None:
+    assert CORE_RANGE in (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert _installer.MIN_CORE_VERSION == "0.2.0"
+    packaging = (ROOT / "packaging" / "build_package.py").read_text(encoding="utf-8")
+    assert 'MIN_CORE_VERSION = "0.2.0"' in packaging
+    assert 'MAX_CORE_VERSION_EXCLUSIVE = "0.3.0"' in packaging
+    assert CORE_RANGE in (ROOT / "README.md").read_text(encoding="utf-8").replace(" ", "")
 
 
-def _extract_packaging_min_core_version() -> str:
-    text = PACKAGING_SCRIPT.read_text(encoding="utf-8")
-    m = re.search(r'MIN_CORE_VERSION\s*=\s*"([^"]+)"', text)
-    if not m:
-        raise RuntimeError("Could not find MIN_CORE_VERSION in assemble_houdini_package.py")
-    return m.group(1).strip()
+def test_adapter_version_matches_pyproject() -> None:
+    match = re.search(r'^version = "([^"]+)"$', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.MULTILINE)
+    assert match is not None and match.group(1) == __version__
 
 
-def _extract_readme_core_floor() -> str:
-    text = README.read_text(encoding="utf-8")
-    m = re.search(r"dcc-mcp-core\s*>=\s*([0-9]+\.[0-9]+\.[0-9]+)", text)
-    if not m:
-        raise RuntimeError("Could not find dcc-mcp-core requirement in README.md")
-    return m.group(1).strip()
-
-
-def test_pyproject_and_packaging_core_floor_match() -> None:
-    """pyproject.toml dep floor and packaging MIN_CORE_VERSION must be identical."""
-    pyproject_floor = _extract_pyproject_core_floor()
-    packaging_floor = _extract_packaging_min_core_version()
-    assert pyproject_floor == packaging_floor, (
-        f"Mismatch: pyproject.toml requires >= {pyproject_floor}, "
-        f"but packaging script pins MIN_CORE_VERSION = {packaging_floor}"
-    )
-
-
-def test_published_install_sop_floor_is_projected_everywhere() -> None:
-    expected = "0.20.14"
-    assert _extract_pyproject_core_floor() == expected
-    assert _extract_packaging_min_core_version() == expected
-    assert 'MIN_CORE_VERSION = "{}"'.format(expected) in INSTALLER.read_text(encoding="utf-8")
-    assert "dcc-mcp-core >= {},<0.21.0".format(expected) in RUNBOOK.read_text(encoding="utf-8")
-    ci = CI_WORKFLOW.read_text(encoding="utf-8")
-    assert 'DCC_MCP_CORE_FLOOR: "{}"'.format(expected) in ci
-    assert "dcc-mcp-core==${DCC_MCP_CORE_FLOOR}" in ci
-
-
-def test_readme_core_floor_matches_pyproject() -> None:
-    """README dependency floor must stay aligned with pyproject.toml."""
-    pyproject_floor = _extract_pyproject_core_floor()
-    readme_floor = _extract_readme_core_floor()
-    assert readme_floor == pyproject_floor, (
-        f"Mismatch: README.md says >= {readme_floor}, but pyproject.toml requires >= {pyproject_floor}"
-    )
-
-
-def test_skill_compatibility_runtime_floor() -> None:
-    """Every SKILL.md compatibility string must declare dcc-mcp-core >= current floor."""
-    expected_floor = Version(_extract_pyproject_core_floor())
-    for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
+def test_skill_compatibility_names_this_core_line() -> None:
+    for skill_md in sorted((ROOT / "src" / "meshy_dcc_houdini" / "skills").glob("*/SKILL.md")):
         text = skill_md.read_text(encoding="utf-8")
-        m = re.search(r"dcc-mcp-core\s+([0-9]+\.[0-9]+\.[0-9]+)", text)
-        assert m, f"{skill_md.relative_to(ROOT)}: missing dcc-mcp-core compatibility"
-        declared = Version(m.group(1))
-        assert declared >= expected_floor, (
-            f"{skill_md.relative_to(ROOT)}: declares dcc-mcp-core {declared}, but project floor is >= {expected_floor}"
-        )
+        declared = re.search(r"meshy-dcc-core\s+([0-9]+\.[0-9]+\.[0-9]+)", text)
+        assert declared and declared.group(1) == "0.2.0", skill_md.parent.name

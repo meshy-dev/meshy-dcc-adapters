@@ -6,5 +6,5 @@ if [ -z "${HOUDINI_PYTHON:-}" ]; then
   exit 1
 fi
 SITE="$("$HOUDINI_PYTHON" -c 'import site; print(site.getsitepackages()[0])')"
-rm -rf "$SITE/dcc_mcp_houdini"
-echo "Removed $SITE/dcc_mcp_houdini"
+rm -rf "$SITE/meshy_dcc_houdini"
+echo "Removed $SITE/meshy_dcc_houdini"

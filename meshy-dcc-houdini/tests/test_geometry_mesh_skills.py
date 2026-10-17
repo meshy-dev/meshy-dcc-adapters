@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 
 
 def _load_script(skill_name: str, script_name: str) -> ModuleType:

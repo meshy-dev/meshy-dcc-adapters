@@ -3,10 +3,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dcc-mcp-houdini"
-version = "0.44.2"
-description = "SideFX Houdini adapter for the DCC Model Context Protocol (MCP) ecosystem — exposes Houdini tools via MCP"
-authors = [{ name = "Long Hao", email = "hal.long@outlook.com" }]
+name = "meshy-dcc-houdini"
+version = "0.1.0"
+description = "Meshy DCC adapter for SideFX Houdini: scene, node graph, geometry, import, materials and render tools"
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.7"
@@ -28,8 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    # 0.20.14 is the first release with the canonical Install SOP schema API.
-    "dcc-mcp-core>=0.20.14,<0.21.0",
+    "meshy-dcc-core>=0.2.0,<0.3.0",
 ]
 
 [project.optional-dependencies]
@@ -52,47 +51,34 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dcc-mcp/dcc-mcp-houdini"
-Repository = "https://github.com/dcc-mcp/dcc-mcp-houdini"
-Issues = "https://github.com/dcc-mcp/dcc-mcp-houdini/issues"
-Changelog = "https://github.com/dcc-mcp/dcc-mcp-houdini/releases"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-houdini"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
+Changelog = "https://github.com/meshy-dev/meshy-dcc-adapters/blob/main/meshy-dcc-houdini/CHANGELOG.md"
 
 [project.scripts]
-dcc-mcp-houdini = "dcc_mcp_houdini.cli:main"
+meshy-dcc-houdini = "meshy_dcc_houdini.cli:main"
 
-[project.entry-points."dcc_mcp.adapters"]
-houdini = "dcc_mcp_houdini:HoudiniMcpServer"
-
-# VFX Reference Platform alignment. Houdini is an embedded-host adapter: it is
-# imported by the interpreter Houdini ships, which includes Python 3.7 builds,
-# so it declares the py37 tier alongside the CY2026 baseline. The baseline file
-# and checker are the ones published by dcc-mcp-core; they are pinned by commit
-# in .github/workflows/ci.yml so an adapter build cannot drift from the source
-# of truth without a deliberate pin bump.
-[tool.dcc-mcp.vfx-platform]
-year = ["CY2026", "py37"]
-host = "houdini"
+[project.entry-points."meshy_dcc.adapters"]
+houdini = "meshy_dcc_houdini:HoudiniMcpServer"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dcc_mcp_houdini"]
+packages = ["src/meshy_dcc_houdini"]
 artifacts = [
-    "src/dcc_mcp_houdini/skills/**",
+    "src/meshy_dcc_houdini/skills/**",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "src/dcc_mcp_houdini",
+    "src/meshy_dcc_houdini",
     "tests",
     "tools",
     "packaging",
     "examples",
-    "docs",
     "README.md",
-    "AGENTS.md",
-    "llms.txt",
+    "CLAUDE.md",
+    "NOTICE",
     "justfile",
-    "release-please-config.json",
-    ".release-please-manifest.json",
 ]
 
 [tool.pytest.ini_options]
@@ -109,7 +95,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["dcc_mcp_houdini"]
+source = ["meshy_dcc_houdini"]
 branch = true
 omit = ["tests/*"]
 
@@ -129,7 +115,7 @@ target-version = "py37"
 # (pyupgrade) are intentionally excluded: with target-version = py37 they force
 # runtime-unsafe PEP 585/604 annotation rewrites (list[...]/X | None) and a
 # repo-wide .format -> f-string churn. Skill packages get their own, stronger,
-# runtime-accurate validation via dcc-mcp-cli (see tools/lint_skills.py).
+# runtime-accurate validation via meshy-dcc (see tools/lint_skills.py).
 select = [
     "E",    # pycodestyle errors
     "F",    # pyflakes
@@ -145,7 +131,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["dcc_mcp_houdini"]
+known-first-party = ["meshy_dcc_houdini"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # assert is fine in tests

@@ -10,7 +10,7 @@ import pytest
 
 
 def test_minimal_mode_config() -> None:
-    from dcc_mcp_houdini._skill_loader import MINIMAL_SKILLS, build_minimal_mode_config
+    from meshy_dcc_houdini._skill_loader import MINIMAL_SKILLS, build_minimal_mode_config
 
     cfg = build_minimal_mode_config()
     assert tuple(cfg.skills) == MINIMAL_SKILLS
@@ -18,37 +18,37 @@ def test_minimal_mode_config() -> None:
 
 
 def test_configure_core_logging_defaults_to_warn(monkeypatch: pytest.MonkeyPatch) -> None:
-    from dcc_mcp_houdini._env import configure_core_logging
+    from meshy_dcc_houdini._env import configure_core_logging
 
     monkeypatch.delenv("MCP_LOG_LEVEL", raising=False)
     configure_core_logging()
 
     assert "WARN" == os.environ["MCP_LOG_LEVEL"]
-    assert "WARN" == os.environ["DCC_MCP_LOG_LEVEL"]
+    assert "WARN" == os.environ["MESHY_DCC_LOG_LEVEL"]
 
 
 def test_configure_core_logging_preserves_user_setting(monkeypatch: pytest.MonkeyPatch) -> None:
-    from dcc_mcp_houdini._env import configure_core_logging
+    from meshy_dcc_houdini._env import configure_core_logging
 
     monkeypatch.delenv("MCP_LOG_LEVEL", raising=False)
-    monkeypatch.setenv("DCC_MCP_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("MESHY_DCC_LOG_LEVEL", "DEBUG")
     configure_core_logging()
 
-    assert "DEBUG" == os.environ["DCC_MCP_LOG_LEVEL"]
+    assert "DEBUG" == os.environ["MESHY_DCC_LOG_LEVEL"]
     assert "DEBUG" == os.environ["MCP_LOG_LEVEL"]
 
 
 def test_resolve_minimal_mode_default() -> None:
-    from dcc_mcp_houdini._env import resolve_minimal_mode_enabled
+    from meshy_dcc_houdini._env import resolve_minimal_mode_enabled
 
     with patch.dict("os.environ", {}, clear=True):
         assert resolve_minimal_mode_enabled() is True
 
 
 def test_sync_monolithic_tools_delegate_affinity_to_houdini_bridge() -> None:
-    from dcc_mcp_core import scan_and_load
+    from meshy_dcc_core import scan_and_load
 
-    skills_root = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+    skills_root = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
     skills, _skipped = scan_and_load(dcc_name="houdini", extra_paths=[str(skills_root)])
     declarations = {
         (skill.name, tool.name): tool
@@ -76,8 +76,8 @@ def test_sync_monolithic_tools_delegate_affinity_to_houdini_bridge() -> None:
 
 
 def test_houdini_server_options_port() -> None:
-    from dcc_mcp_houdini.host import HoudiniCallableDispatcher, HoudiniInlineCallableDispatcher
-    from dcc_mcp_houdini.server import HoudiniServerOptions
+    from meshy_dcc_houdini.host import HoudiniCallableDispatcher, HoudiniInlineCallableDispatcher
+    from meshy_dcc_houdini.server import HoudiniServerOptions
 
     dispatcher = HoudiniCallableDispatcher()
     opts = HoudiniServerOptions(port=9001, dispatcher=dispatcher)
@@ -89,7 +89,7 @@ def test_houdini_server_options_port() -> None:
 
 
 def test_houdini_server_options_preserve_gui_instance_type() -> None:
-    from dcc_mcp_houdini.server import HoudiniServerOptions
+    from meshy_dcc_houdini.server import HoudiniServerOptions
 
     core = HoudiniServerOptions(instance_type="gui").to_core_options()
 
@@ -97,8 +97,8 @@ def test_houdini_server_options_preserve_gui_instance_type() -> None:
 
 
 def test_houdini_ui_dispatcher_bridge_attaches_http_queue() -> None:
-    from dcc_mcp_houdini.host import HoudiniUiDispatcher
-    from dcc_mcp_houdini.server import HoudiniServerOptions
+    from meshy_dcc_houdini.host import HoudiniUiDispatcher
+    from meshy_dcc_houdini.server import HoudiniServerOptions
 
     dispatcher = HoudiniUiDispatcher()
     bridge = HoudiniServerOptions(dispatcher=dispatcher).to_core_options().execution.mode.bridge
@@ -113,8 +113,8 @@ def test_houdini_ui_dispatcher_bridge_attaches_http_queue() -> None:
 
 
 def test_create_execution_stack_without_hou() -> None:
-    from dcc_mcp_houdini.dispatcher import create_execution_stack
-    from dcc_mcp_houdini.host import HoudiniCallableDispatcher, HoudiniHost
+    from meshy_dcc_houdini.dispatcher import create_execution_stack
+    from meshy_dcc_houdini.host import HoudiniCallableDispatcher, HoudiniHost
 
     dispatcher, host = create_execution_stack()
     assert isinstance(dispatcher, HoudiniCallableDispatcher)
@@ -123,7 +123,7 @@ def test_create_execution_stack_without_hou() -> None:
 
 
 def test_wait_until_ready_uses_urllib(monkeypatch: pytest.MonkeyPatch) -> None:
-    from dcc_mcp_houdini._readiness import wait_until_ready
+    from meshy_dcc_houdini._readiness import wait_until_ready
 
     class FakeResp:
         status = 200
@@ -149,7 +149,7 @@ def test_wait_until_ready_uses_urllib(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_api_helpers() -> None:
-    from dcc_mcp_houdini.api import houdini_error, houdini_success
+    from meshy_dcc_houdini.api import houdini_error, houdini_success
 
     ok = houdini_success("done", count=1)
     assert ok["status"] == "success"

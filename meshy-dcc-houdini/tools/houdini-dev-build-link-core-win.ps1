@@ -1,11 +1,11 @@
-# Houdini + dcc-mcp-core local dev helper (Windows)
+# Houdini + meshy-dcc-core local dev helper (Windows)
 # Usage:
 #   powershell -File tools/houdini-dev-build-link-core-win.ps1 -HoudiniVersion 20.5
 #   just houdini-version=20.5 houdini-dev-build-link-core-win
 #
-# 1) Build dcc-mcp-core with Houdini's Python (hython)
-# 2) Symlink dcc_mcp_core into Houdini's site-packages
-# 3) Symlink dcc_mcp_houdini into Houdini's site-packages
+# 1) Build meshy-dcc-core with Houdini's Python (hython)
+# 2) Symlink meshy_dcc_core into Houdini's site-packages
+# 3) Symlink meshy_dcc_houdini into Houdini's site-packages
 # 4) Optionally launch Houdini
 
 [CmdletBinding()]
@@ -27,12 +27,12 @@ $ErrorActionPreference = "Stop"
 
 # ── Resolve paths ──────────────────────────────────────────────────────────────
 if ([string]::IsNullOrEmpty($CoreRepo)) {
-    $CoreRepo = Resolve-Path "$PSScriptRoot\..\..\dcc-mcp-core" -ErrorAction SilentlyContinue
+    $CoreRepo = Resolve-Path "$PSScriptRoot\..\..\meshy-dcc-core" -ErrorAction SilentlyContinue
     if (-not $CoreRepo) {
-        $CoreRepo = Resolve-Path "$PSScriptRoot\..\..\..\dcc-mcp-core" -ErrorAction SilentlyContinue
+        $CoreRepo = Resolve-Path "$PSScriptRoot\..\..\..\meshy-dcc-core" -ErrorAction SilentlyContinue
     }
     if (-not $CoreRepo) {
-        Write-Error "Cannot find dcc-mcp-core repo. Please set DCC_MCP_CORE_REPO or place it as a sibling directory."
+        Write-Error "Cannot find meshy-dcc-core repo. Please set MESHY_DCC_CORE_REPO or place it as a sibling directory."
         exit 1
     }
 }
@@ -85,9 +85,9 @@ if (-not (Test-Path $SitePackages)) {
 
 Write-Host "[3/5] Site-packages: $SitePackages" -ForegroundColor Cyan
 
-# ── Build dcc-mcp-core (unless SkipBuild) ────────────────────────────────────
+# ── Build meshy-dcc-core (unless SkipBuild) ────────────────────────────────────
 if (-not $SkipBuild) {
-    Write-Host "[4/5] Building dcc-mcp-core with Houdini Python..." -ForegroundColor Cyan
+    Write-Host "[4/5] Building meshy-dcc-core with Houdini Python..." -ForegroundColor Cyan
 
     Push-Location $CoreRepo
     try {
@@ -95,16 +95,16 @@ if (-not $SkipBuild) {
         & $Hython -m pip install maturin --quiet
 
         # Build core with maturin
-        & $Hython -m maturin develop --release -m crates/dcc-mcp-core/Cargo.toml
+        & $Hython -m maturin develop --release -m crates/meshy-dcc-core/Cargo.toml
         if ($LASTEXITCODE -ne 0) {
             Write-Error "maturin develop failed"
             exit 1
         }
 
         # Install Python package in editable mode
-        & $Hython -m pip install -e "$CoreRepo\python\dcc_mcp_core" --quiet
+        & $Hython -m pip install -e "$CoreRepo\python\meshy_dcc_core" --quiet
         if ($LASTEXITCODE -ne 0) {
-            Write-Error "pip install dcc_mcp_core failed"
+            Write-Error "pip install meshy_dcc_core failed"
             exit 1
         }
     }
@@ -116,12 +116,12 @@ else {
     Write-Host "[4/5] Skipping build (SkipBuild specified)" -ForegroundColor Yellow
 }
 
-# ── Symlink dcc_mcp_houdini ──────────────────────────────────────────────────
-Write-Host "[5/5] Linking dcc_mcp_houdini..." -ForegroundColor Cyan
+# ── Symlink meshy_dcc_houdini ──────────────────────────────────────────────────
+Write-Host "[5/5] Linking meshy_dcc_houdini..." -ForegroundColor Cyan
 
 $ProjectRoot = Resolve-Path "$PSScriptRoot\.."
-$SourceDir = "$ProjectRoot\src\dcc_mcp_houdini"
-$TargetLink = "$SitePackages\dcc_mcp_houdini"
+$SourceDir = "$ProjectRoot\src\meshy_dcc_houdini"
+$TargetLink = "$SitePackages\meshy_dcc_houdini"
 
 if (Test-Path $TargetLink) {
     Write-Host "  Removing existing: $TargetLink" -ForegroundColor Yellow
@@ -134,22 +134,22 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "  Linked: $TargetLink -> $SourceDir" -ForegroundColor Green
 }
 else {
-    Write-Error "Failed to create junction for dcc_mcp_houdini"
+    Write-Error "Failed to create junction for meshy_dcc_houdini"
     exit 1
 }
 
 # ── Verify ────────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "Verifying import..." -ForegroundColor Cyan
-& $Hython -c "import dcc_mcp_houdini; print(f'dcc_mcp_houdini {dcc_mcp_houdini.__version__}')"
+& $Hython -c "import meshy_dcc_houdini; print(f'meshy_dcc_houdini {meshy_dcc_houdini.__version__}')"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Import verification failed"
     exit 1
 }
 
-& $Hython -c "import dcc_mcp_core; print('dcc_mcp_core OK')"
+& $Hython -c "import meshy_dcc_core; print('meshy_dcc_core OK')"
 if ($LASTEXITCODE -ne 0) {
-    Write-Warning "dcc_mcp_core import failed - you may need to run without -SkipBuild first"
+    Write-Warning "meshy_dcc_core import failed - you may need to run without -SkipBuild first"
 }
 
 # ── Launch Houdini (optional) ────────────────────────────────────────────────
@@ -162,4 +162,4 @@ if ($LaunchHoudini) {
 
 Write-Host ""
 Write-Host "Done! MCP URL will be printed when you start Houdini and run:" -ForegroundColor Green
-Write-Host "  import dcc_mcp_houdini; dcc_mcp_houdini.start_server()" -ForegroundColor Yellow
+Write-Host "  import meshy_dcc_houdini; meshy_dcc_houdini.start_server()" -ForegroundColor Yellow

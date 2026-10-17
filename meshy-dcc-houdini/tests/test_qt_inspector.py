@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`dcc_mcp_houdini._qt_inspector`.
+"""Unit tests for :mod:`meshy_dcc_houdini._qt_inspector`.
 
 No live Houdini / Qt is required: we verify env gating, the graceful path when
 the inner server is missing, and that the main-thread proxy wraps handlers and
@@ -12,7 +12,7 @@ from typing import Any, Callable, List
 
 import pytest
 
-from dcc_mcp_houdini._qt_inspector import (
+from meshy_dcc_houdini._qt_inspector import (
     ENV_QT_UI_INSPECTOR,
     _MainThreadHandlerProxy,
     _make_marshaller,
@@ -133,9 +133,9 @@ class TestRegistrationWithFakeCore:
         import sys
         import types
 
-        mod = types.ModuleType("dcc_mcp_core.skills.qt_ui_inspector")
+        mod = types.ModuleType("meshy_dcc_core.skills.qt_ui_inspector")
         mod.register_qt_ui_inspector = _fake_register
-        monkeypatch.setitem(sys.modules, "dcc_mcp_core.skills.qt_ui_inspector", mod)
+        monkeypatch.setitem(sys.modules, "meshy_dcc_core.skills.qt_ui_inspector", mod)
 
         class _Inner:
             registry = object()

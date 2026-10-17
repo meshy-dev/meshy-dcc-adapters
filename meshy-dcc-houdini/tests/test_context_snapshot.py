@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`dcc_mcp_houdini._context_snapshot`.
+"""Unit tests for :mod:`meshy_dcc_houdini._context_snapshot`.
 
 A fake ``hou`` is injected via the ``hou_provider`` parameter so we can assert
 every branch — including the headless / unavailable fallback — without a live
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from dcc_mcp_houdini._context_snapshot import (
+from meshy_dcc_houdini._context_snapshot import (
     HoudiniContextSnapshotProvider,
     collect_gateway_metadata,
     make_snapshot_provider,

@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +175,7 @@ class FakeHou:
 
 
 def _load_core_module() -> ModuleType:
-    path = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "_node_graph_inspection.py"
+    path = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "_node_graph_inspection.py"
     spec = importlib.util.spec_from_file_location("node_graph_inspection", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)

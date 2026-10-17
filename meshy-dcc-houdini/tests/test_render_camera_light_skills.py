@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 _DEFAULT_PATTERN = object()
 
 
@@ -1675,9 +1675,9 @@ class TestRenderExecution:
                 ignore_inputs=True,
                 job_kind="rop_chain",
             )
-            assert "DCC_MCP_BACKGROUND_RENDER" not in mod.os.environ
+            assert "MESHY_DCC_BACKGROUND_RENDER" not in mod.os.environ
 
-        status = json.loads((tmp_path / "dcc-mcp-houdini-render-jobs" / job["job_id"] / "status.json").read_text())
+        status = json.loads((tmp_path / "meshy-dcc-houdini-render-jobs" / job["job_id"] / "status.json").read_text())
         assert job["pid"] == 4321
         assert status["state"] == "queued"
         assert "pid" not in status
@@ -1688,7 +1688,7 @@ class TestRenderExecution:
         assert popen.call_args.args[0][0] == str(hython)
         assert json.loads(popen.call_args.args[0][-1]) is True
         assert popen.call_args.kwargs["env"]["PARENT_ONLY"] == "keep"
-        assert popen.call_args.kwargs["env"]["DCC_MCP_BACKGROUND_RENDER"] == "1"
+        assert popen.call_args.kwargs["env"]["MESHY_DCC_BACKGROUND_RENDER"] == "1"
         assert popen.call_args.kwargs["start_new_session"] is (mod.os.name != "nt")
         assert mod._PROCESS_HANDLES[job["job_id"]] is process
         assert status["ignore_inputs"] is True
@@ -1762,9 +1762,9 @@ class TestRenderExecution:
         mock_hou.hipFile.saveAsBackup.assert_called_once_with()
         mock_hou.hipFile.setName.assert_not_called()
         assert hip.read_bytes() == b"source"
-        status = json.loads((tmp_path / "dcc-mcp-houdini-render-jobs" / job["job_id"] / "status.json").read_text())
+        status = json.loads((tmp_path / "meshy-dcc-houdini-render-jobs" / job["job_id"] / "status.json").read_text())
         snapshot = Path(status["hip_path"])
-        assert snapshot.parent == tmp_path / "dcc-mcp-houdini-render-jobs" / job["job_id"]
+        assert snapshot.parent == tmp_path / "meshy-dcc-houdini-render-jobs" / job["job_id"]
         assert snapshot.read_bytes() == b"snapshot"
         assert status["source_hip_path"] == str(hip)
         assert status["hip_snapshot_owned"] is True
@@ -1806,7 +1806,7 @@ class TestRenderExecution:
     def test_cancel_background_render_is_idempotent(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "a" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         status_path = job_dir / "status.json"
         status_path.write_text(json.dumps({"job_id": job_id, "state": "running"}), encoding="utf-8")
@@ -1830,7 +1830,7 @@ class TestRenderExecution:
     def test_cancel_background_render_removes_only_job_owned_hip_snapshot(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "8" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         snapshot = job_dir / "scene_bak1.hip"
         snapshot.write_bytes(b"snapshot")
@@ -1864,7 +1864,7 @@ class TestRenderExecution:
     def test_terminal_status_never_removes_snapshot_path_outside_owned_job_directory(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "7" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         outside = tmp_path / "scene.hip"
         outside.write_bytes(b"source")
@@ -1890,7 +1890,7 @@ class TestRenderExecution:
 
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "9" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         (job_dir / "status.json").write_text(
             json.dumps({"job_id": job_id, "state": "running"}),
@@ -1917,7 +1917,7 @@ class TestRenderExecution:
     def test_cancel_never_uses_unowned_status_pid(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "b" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         (job_dir / "status.json").write_text(
             json.dumps({"job_id": job_id, "state": "running", "pid": 999999}), encoding="utf-8"
@@ -1946,7 +1946,7 @@ class TestRenderExecution:
     def test_get_render_job_reconciles_exited_owned_worker(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "c" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         (job_dir / "status.json").write_text(
             json.dumps({"job_id": job_id, "state": "running", "started_at": 10.0}), encoding="utf-8"
@@ -1968,7 +1968,7 @@ class TestRenderExecution:
     def test_get_render_job_derives_progress_and_hides_internal_details(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "f" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         outputs = [job_dir / "beauty.{:04d}.exr".format(frame) for frame in range(1, 31)]
         for output in outputs[:25]:
@@ -2010,7 +2010,7 @@ class TestRenderExecution:
     def test_get_render_job_does_not_complete_latest_output_while_worker_runs(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "1" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         outputs = [job_dir / "beauty.{:04d}.exr".format(frame) for frame in range(1, 4)]
         for output, mtime_ns in zip(outputs, (3_000_000_000, 2_000_000_000, 1_000_000_000)):
@@ -2045,7 +2045,7 @@ class TestRenderExecution:
     def test_get_render_job_completes_legacy_terminal_job_without_written_files(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "3" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         outputs = [job_dir / "beauty.{:04d}.exr".format(frame) for frame in range(1, 4)]
         for output in outputs:
@@ -2074,7 +2074,7 @@ class TestRenderExecution:
     def test_get_render_job_does_not_claim_unverified_failed_outputs(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "2" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         outputs = [job_dir / "beauty.{:04d}.exr".format(frame) for frame in range(1, 5)]
         for output in outputs[:2]:
@@ -2106,7 +2106,7 @@ class TestRenderExecution:
     def test_get_render_job_keeps_latest_legacy_terminal_output_pending(self, tmp_path: Path, state: str) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = {"failed": "f", "cancelled": "c", "interrupted": "e"}[state] * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         outputs = [job_dir / "beauty.{:04d}.exr".format(frame) for frame in range(1, 4)]
         for output in outputs:
@@ -2134,7 +2134,7 @@ class TestRenderExecution:
     def test_cancel_complete_race_preserves_completed_state(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "d" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         status_path = job_dir / "status.json"
         status_path.write_text(json.dumps({"job_id": job_id, "state": "running"}), encoding="utf-8")
@@ -2161,7 +2161,7 @@ class TestRenderExecution:
     def test_get_render_job_returns_bounded_terminal_summary(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "8" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         output = job_dir / "beauty.0001.exr"
         output.write_bytes(b"new")
@@ -2199,7 +2199,7 @@ class TestRenderExecution:
     def test_get_render_job_bounds_warnings_in_default_summary(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "6" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         shared_prefix = "x" * 600
         warnings = [
@@ -2224,7 +2224,7 @@ class TestRenderExecution:
     def test_get_render_job_surfaces_bounded_stderr_warnings(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "5" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         stderr = job_dir / "stderr.log"
         stderr_warnings = [
@@ -2277,7 +2277,7 @@ class TestRenderExecution:
     def test_cancel_render_job_survives_external_command_failure(self, tmp_path: Path) -> None:
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "6" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         (job_dir / "status.json").write_text(
             json.dumps({"job_id": job_id, "state": "running"}),
@@ -2443,7 +2443,7 @@ class TestRenderExecution:
 
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "4" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         status["job_id"] = job_id
         (job_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
@@ -2567,7 +2567,7 @@ class TestRenderExecution:
 
         mod = _load_script("houdini-render", "_background_render.py")
         job_id = "3" * 32
-        job_dir = tmp_path / "dcc-mcp-houdini-render-jobs" / job_id
+        job_dir = tmp_path / "meshy-dcc-houdini-render-jobs" / job_id
         job_dir.mkdir(parents=True)
         status["job_id"] = job_id
         (job_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")

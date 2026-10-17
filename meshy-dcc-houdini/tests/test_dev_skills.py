@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 from skill_loader import skill_script_import_context
 
-_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_houdini" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
 
 
 def _load_script(script_name: str) -> ModuleType:
@@ -43,7 +43,7 @@ class TestDevProject:
         allowed.mkdir()
         other = tmp_path / "other"
         other.mkdir()
-        monkeypatch.setenv("DCC_MCP_HOUDINI_DEV_ROOTS", str(allowed))
+        monkeypatch.setenv("MESHY_DCC_HOUDINI_DEV_ROOTS", str(allowed))
         result = mod.attach_project(str(other))
         assert result["success"] is False
 

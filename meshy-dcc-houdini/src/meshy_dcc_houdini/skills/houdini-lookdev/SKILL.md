@@ -1,0 +1,70 @@
+---
+name: houdini-lookdev
+description: >-
+  Authoring skill — lookdev and shader-network operations: inspect materials,
+  libraries, shader nodes and assignments; get/set shader parameters with
+  type-aware validation; inspect and rewire shader connections; reset
+  assignments; and manage adapter-owned material presets. Pair with
+  houdini-materials for material creation/assignment.
+license: MIT
+compatibility: "meshy-dcc-houdini 0.1+, Houdini 20.5+, meshy-dcc-core 0.2.0+"
+allowed-tools: Bash Read Write Edit
+metadata:
+  meshy-dcc:
+    dcc: houdini
+    layer: domain
+    stage: authoring
+    version: "1.0.0"
+    tags: [houdini, lookdev, material, shader, vop, matnet, karma, materialx, preset, authoring]
+    search-hint: "material shader lookdev parameter connect disconnect assignment preset save load karma materialx vop"
+    tools: tools.yaml
+---
+
+# houdini-lookdev
+
+Typed lookdev tools that complement `houdini-materials` (which creates and
+assigns materials). Most tools are `affinity: main`; the filesystem-only preset
+tools `list_presets` / `delete_preset` are `affinity: any`.
+
+## Tool groups
+
+- **`lookdev-query`** (read-only): `list_materials`, `list_assignments`,
+  `get_material_parms`, `get_shader_connections`.
+- **`lookdev-edit`:** `set_material_parms`, `connect_shader`,
+  `disconnect_shader` (destructive), `reset_material` (destructive).
+- **`presets`:** `save_preset`, `list_presets`, `load_preset`, `delete_preset`
+  — JSON files under `~/.meshy-dcc/houdini/material_presets/` (override with
+  `MESHY_DCC_HOUDINI_MATERIAL_PRESET_DIR`).
+
+## Context limitations
+
+- **Karma / MaterialX:** MaterialX subnets live under a `matnet`/`mat` library;
+  pass the exact `material_path` (the surface output node). Parameter names
+  differ from `principledshader`, so prefer `get_material_parms` to discover
+  names before `set_material_parms`.
+- **VOP networks:** `connect_shader` / `disconnect_shader` operate on node
+  input slots; use `get_shader_connections` to read `inputNames()` first.
+- Presets store **evaluated parameter values** only (not node graphs); loading
+  onto a different `material_type` is allowed but reported as a warning.
+
+## Parameter application: `errors` is a real list
+
+`set_material_parms` and `load_preset` apply overrides with this package's
+`set_parameters`, which probes each name against the node and returns
+`(applied, errors)`. Names the node does not expose are reported in `errors`
+with a reason.
+
+**Do not "clean up" `errors`.** It is populated, not a constant empty list. A
+parameter field is only dead when the tool routes overrides through a helper
+that returns an empty second list unconditionally while the underlying
+`parameter_edit` fails the call. `houdini-gsplat-relighting` reports the same
+genuine second list as `unsupported_parameters`. Neither package may be swept
+into a dead-field removal.
+
+## Tracer-bullet flow
+
+1. `houdini_materials__create_material(material_name="clay")`
+2. `get_material_parms("/mat/clay")` → discover parm names
+3. `set_material_parms("/mat/clay", {"basecolor": [0.8,0.4,0.2], "rough": 0.6})`
+4. `houdini_materials__assign_material("/obj/geo1", "/mat/clay")`
+5. `save_preset("/mat/clay", "warm_clay")` → `load_preset` onto another material

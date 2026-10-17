@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dcc_mcp_houdini import _isolated_jobs, _rop_jobs
+from meshy_dcc_houdini import _isolated_jobs, _rop_jobs
 
 
 def test_hex_and_dashed_uuid_resolve_the_same_job_and_process(tmp_path) -> None:

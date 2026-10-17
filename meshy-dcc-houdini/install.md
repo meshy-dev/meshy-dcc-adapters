@@ -1,215 +1,125 @@
-# Install dcc-mcp-houdini
+# Install Meshy DCC for Houdini
 
-This is the adapter-owned runbook for installing, verifying, upgrading, and
-removing DCC-MCP from a versioned SideFX Houdini profile. The machine-readable
-entry point is `dcc-mcp-houdini`.
+Not verified on a real Houdini yet; the package is experimental. Everything
+below comes from the source and from SideFX's documentation, not from a
+Houdini session.
 
 ## Requirements
 
-- SideFX Houdini 18.5 or newer with its Python 3 `hython` interpreter.
-- Python 3.7 or newer in that Houdini build for the wheel-first lifecycle.
-- A build that implements the UI-ready hook (`pythonX.Ylibs/uiready.py`) for GUI
-  autostart. Real GUI sessions were verified on Houdini 22.0.368 only; 20.5.550
-  and 21.0.440 ship the hook in their binaries (`execUiReadyFiles`, `uiready.py`,
-  and `UI Ready Files` symbols in `libOPUI.dll`) but were not verified with a real
-  GUI session. Older builds never execute that file and keep using the legacy
-  `123.py` and `456.py` hooks, so older hosts are unaffected by its absence.
-- `dcc-mcp-core >= 0.20.14,<0.21.0` and the same `dcc-mcp-houdini` version
-  installed in the selected `hython` environment.
-- Write access to the matching user profile. The installer never edits the
-  Houdini application directory.
-
-Install the wheel into the exact embedded interpreter, not an unrelated Python:
-
-```text
-<hython> -m ensurepip --upgrade
-<hython> -m pip install --upgrade dcc-mcp-houdini
-```
-
-`--dcc-path` must name the interactive `houdini`, `houdinifx`, or `hindie`
-executable that a readiness remediation can actually launch. Use the matching
-`hython` executable only with `--python`; Hython is headless and can never
-satisfy the interactive readiness contract.
+- SideFX Houdini 20.5 or newer (FX, Core, Indie or Apprentice) on macOS Apple
+  Silicon or Windows x64. Startup uses `pythonX.Ylibs/uiready.py`, which
+  Houdini runs in interactive sessions; 20.5 and 21 ship Python 3.11.
+- The `meshy-dcc` CLI. `meshy-dcc-core >= 0.2.0,<0.3.0` ships inside the
+  package; nothing is installed into Houdini's Python.
+- Write access to the Houdini user preferences directory. The installer never
+  touches the Houdini application directory.
 
 ## Supported versions
 
-The lifecycle supports Windows, macOS, and Linux. Houdini 18.5+ is the host
-floor; the selected build must provide Python 3.7+. The released quickinstall
-bundles Core 0.20.14 native wheels for Python 3.7+ on Windows/Linux and Python
-3.8+ on macOS; Core 0.20.14 publishes no native macOS CPython 3.7 wheel, so that
-quickinstall combination fails closed before vendor extraction. SideFX changes the bundled
-Python minor between Houdini releases, so preflight executes the chosen
-interpreter and, when `hou` is available, checks its reported Houdini version
-against `--dcc-path`. It does not guess a Python compatibility row from a
-different Houdini installation. Preflight also binds the reported Hython
-executable and the imported HOM, adapter, and Core module origins to the
-selected Houdini installation and installed distributions.
+| Platform | Package | Houdini executable it looks for |
+|---|---|---|
+| macOS (Apple Silicon) | `meshy-dcc-houdini-macos-arm64.zip` | `/Applications/Houdini/Houdini*/Frameworks/Houdini.framework/Versions/Current/Resources/bin/houdini` |
+| Windows x64 | `meshy-dcc-houdini-windows-x64.zip` | `C:/Program Files/Side Effects Software/Houdini */bin/houdini.exe` |
 
-Typical interpreter locations are:
-
-- Windows: `C:\Program Files\Side Effects Software\Houdini X.Y.ZZZ\bin\hython.exe`
-- macOS: `/Applications/Houdini/HoudiniX.Y.ZZZ.app/Contents/Resources/bin/hython`
-- Linux: `/opt/hfsX.Y.ZZZ/bin/hython`
+Linux is not packaged. The adapter's Python code needs Python 3.8 or newer
+(the bundled `meshy_dcc_core` is a `cp38-abi3` build).
 
 ## Agent quick path
 
-Planning is the default and performs no writes:
-
 ```text
-dcc-mcp-houdini install --json --dry-run --dcc-path <houdini> --python <hython>
+meshy-dcc install --dcc-type houdini --execute
 ```
 
-Review the JSON plan, then execute it:
+With several Houdini versions installed, name one:
+`--dcc-path <houdini executable or .app>`. The install:
 
-```text
-dcc-mcp-houdini install --json --yes --dcc-path <houdini> --python <hython>
-```
+1. downloads the platform zip, checks its SHA-256 and extracts it into the
+   Meshy DCC adapters directory;
+2. runs `bin/meshy-dcc-houdini install --dcc-path <houdini> --json`, which
+   writes one Houdini package file, `meshy_dcc_houdini.json`, into that
+   version's user preferences:
+   - Windows: `$HOME/houdini<version>/packages`, where `$HOME` is the `HOME`
+     variable when set and the Documents folder otherwise (Houdini's own rule);
+   - macOS: `~/Library/Preferences/houdini/<version>/packages`;
+   - `HOUDINI_USER_PREF_DIR` (with `__HVER__`) overrides both;
+3. records the launch plan, so `meshy-dcc start-instance --dcc-type houdini`
+   starts that Houdini.
 
-A cold install does not require Houdini to be running. Once package artifacts
-and the receipt pass static verification, the command exits successfully and
-keeps them installed. If no matching live registry entry exists, the result
-reports `verify.directly_usable: false`, marks the verify step `pending`, and
-returns exact `start_selected_houdini` and `verify_selected_houdini`
-continuations. The separate `verify` command remains fail closed until its
-host-bound typed probe succeeds.
-
-All lifecycle verbs accept `--json`, `--yes`, `--dry-run`, `--dcc-path`, and
-`--python`. Stable exits are `0` success/plan, `10` preflight, `20` acquire,
-`30` install or rollback, `40` verify, and `50` a Core-proven loaded-file lock
-requiring a Houdini restart. JSON follows Install SOP schema v1 and every
-recovery action is an argv-array `next_steps[].command`.
-
-The Draft 2020-12 contract is loaded from the canonical schema resource
-published by `dcc-mcp-core` 0.20.14 or newer. Source and installed-wheel tests
-validate the exact public loader and resource; the adapter carries no fallback
-copy of the schema.
-
-The installer writes a receipted package JSON and owned startup hooks to the
-matching versioned Houdini profile. `pythonX.Ylibs/uiready.py` uses the probed
-Hython Python version and runs after the UI is available, including Houdini Core
-and startup with a HIP. Houdini executes all matching UI-ready hooks; existing
-studio scripts cannot shadow this hook. Legacy `123.py` and `456.py` hooks reuse
-the same bootstrap. All preserve the existing one-pump,
-main-thread execution contract and capture bootstrap errors before a server is
-available.
-Headless autostart skips the GUI server; use `hython -m dcc_mcp_houdini` instead.
-
-Houdini only executes the UI-ready hook on builds that implement it. SideFX
-documents the hook without a minimum version
-([startup script locations](https://www.sidefx.com/docs/houdini/hom/locations.html)),
-so this adapter records the evidence it has for each build instead of one
-minimum version. Real GUI sessions were verified on Houdini 22.0.368; 20.5.550
-and 21.0.440 ship the hook in their binaries but have no GUI-session
-verification, so treat 20.5.550 and 21.0.440 as unverified. On builds without
-the hook the deployed `uiready.py` is inert and GUI autostart relies on the
-legacy hooks alone.
+The version comes from the executable's path (`Houdini21.0.440`,
+`Houdini 21.0.440`, `Versions/21.0`). For an install whose path names no
+version, set `MESHY_DCC_HOUDINI_VERSION=21.0` for the install.
 
 ## Manual path
 
-The release quickinstall ZIP remains available for offline-style installation.
-Its wheels are immutable release assets, and the bootstrap stages vendor
-updates before Core performs lock-aware replacement.
+Extract the zip somewhere it can stay, then register it:
 
-Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1 -HoudiniVersion 20.5
+```text
+<extracted>/bin/meshy-dcc-houdini install --dcc-path <houdini executable> --json
 ```
 
-macOS or Linux:
-
-```bash
-chmod +x install.sh
-./install.sh 20.5
-```
-
-Set `DCC_MCP_HOUDINI_PACKAGES_DIR` (or Windows `-PackagesDir`) to select an
-isolated package directory. Keep the extracted quickinstall directory in place
-while its package JSON references it. Quickinstall is a release path; for the
-receipt-driven lifecycle, use the wheel-first commands above.
-
-Default package registration directories are:
-
-- Windows: `~/Documents/houdini<version>/packages`
-- Linux: `~/houdini<version>/packages`
-- macOS: `~/Library/Preferences/houdini/<version>/packages`
-
-The Core 0.20.14 quickinstall compatibility matrix is Python 3.7+ on Windows
-and Linux, and Python 3.8+ on macOS. Use a later Core release only when its
-native wheel tags satisfy the same declared platform floor.
+On Windows the command is `bin\meshy-dcc-houdini.cmd`. Keep the extracted
+directory in place while the package file points at it.
 
 ## Verify
 
-Inspect files without starting Houdini:
-
-```text
-dcc-mcp-houdini status --json --dcc-path <houdini> --python <hython>
-```
-
-Then start the selected Houdini build and run:
-
-```text
-dcc-mcp-houdini verify --json --dcc-path <houdini> --python <hython>
-```
-
-Verification checks receipt/file digests, the exact target interpreter import,
-captured bootstrap errors, one selected instance/PID/start identity, the live
-host executable and module origins, and the typed read-only
-`houdini_scripting__get_session_info` main-thread probe. A copied
-package or healthy transport alone is not `directly_usable: true`. Headless
-`hython` uses `hython -m dcc_mcp_houdini`; it does not prove GUI readiness.
+Start Houdini (or `meshy-dcc start-instance --dcc-type houdini`). Once the UI
+is ready, the console shows `Meshy DCC for Houdini is listening on ...` and
+`meshy-dcc list` shows one live `houdini` instance. Read back with a
+read-only tool, for example `houdini_scripting__get_session_info`.
 
 ## Upgrade
 
-Upgrade the exact interpreter first, close Houdini when native files are
-loaded, review the plan, and execute:
-
-```text
-<hython> -m pip install --upgrade dcc-mcp-houdini
-dcc-mcp-houdini upgrade --json --dry-run --dcc-path <houdini> --python <hython>
-dcc-mcp-houdini upgrade --json --yes --dcc-path <houdini> --python <hython>
-```
-
-The adapter stages a complete replacement and preserves the prior package and
-receipt until artifact, receipt, import, and bootstrap verification succeed.
-It restores the exact prior bytes when those static commit checks fail. Live
-readiness is a separate continuation and never discards an otherwise valid
-upgrade merely because Houdini is not running.
+Close Houdini and rerun the install. The new build replaces the extracted
+directory, and the package file is rewritten.
 
 ## Uninstall
 
-Close Houdini, preview receipt-owned removal, then execute it:
+Close Houdini, then:
 
 ```text
-dcc-mcp-houdini uninstall --json --dry-run --dcc-path <houdini> --python <hython>
-dcc-mcp-houdini uninstall --json --yes --dcc-path <houdini> --python <hython>
-<hython> -m pip uninstall dcc-mcp-houdini
+<extracted>/bin/meshy-dcc-houdini uninstall --dcc-path <houdini executable> --json
 ```
 
-Uninstall consumes an exact typed ownership manifest for files, directories,
-links, and package registration. It refuses to delete modified, linked,
-unexpected, or ambiguous unreceipted paths, and restores the complete prior
-state if an atomic move or removal fails. A second uninstall is safe. For a legacy quickinstall,
-remove `dcc_mcp_houdini.json` from the matching profile before deleting the
-extracted directory; the legacy installer predates receipts.
+It deletes `meshy_dcc_houdini.json` only when it points at that extracted
+directory (`removed`); a file from another copy is reported as `kept`.
+Delete the extracted directory afterwards. Reinstalling first runs this same
+uninstall.
 
 ## Troubleshooting
 
-- `host` or `host_version`: pass the exact `houdini` executable or application
-  with `--dcc-path`; do not point at another installed version.
-- `python`: pass that build's exact `hython` with `--python`, and install the
-  wheel into that interpreter.
-- `partial`: preserve the reported unreceipted files. Reconcile or remove the
-  legacy package registration explicitly before retrying.
-- `bootstrap`: inspect the reported `.host-errors.log` under the versioned
-  profile `.dcc-mcp/logs` directory; the original exception also remains in
-  the Houdini console.
-- `readiness`: start Houdini, confirm `DCC_MCP_HOUDINI_AUTOSTART` is not `0`,
-  and use `dcc-mcp-cli list` to confirm exactly one live Houdini instance.
-- Exit `50`: close every Houdini process using the reported locked artifact and
-  repeat the exact command. The installer never terminates Houdini itself.
-- Background renders set `DCC_MCP_BACKGROUND_RENDER=1`; their startup hooks
-  intentionally do not launch another adapter.
+- Nothing starts: check that `<prefs>/packages/meshy_dcc_houdini.json` exists
+  for the Houdini version you launch, and that `MESHY_DCC_HOUDINI_AUTOSTART`
+  is not `0`.
+- Windows with `HOME` set only in a terminal (Git Bash sets it): the install
+  writes to `%HOME%/houdini<version>`, while Houdini launched from the Start
+  menu reads the Documents folder. Install from the environment that launches
+  Houdini, or set `HOUDINI_USER_PREF_DIR` for both.
+- Background renders and cooks set `MESHY_DCC_BACKGROUND_RENDER=1` /
+  `MESHY_DCC_BACKGROUND_COOK=1`; their hython processes never start another
+  adapter.
+- Headless `hython` does not run `uiready.py`; serve it in the foreground with
+  `hython -m meshy_dcc_houdini`.
 
-The catalog target for this runbook is:
-`https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-houdini/main/install.md`.
+## Developer lifecycle (hython)
+
+From a source checkout, the adapter can also be installed into Houdini's own
+`hython` environment. This path predates the package above and is kept for
+development; `meshy-dcc-houdini` here is the console script of that install.
+
+```text
+<hython> -m pip install -e <checkout> <meshy_dcc_core wheel>
+meshy-dcc-houdini install --json --dry-run --dcc-path <houdini> --python <hython>
+meshy-dcc-houdini install --json --yes --dcc-path <houdini> --python <hython>
+meshy-dcc-houdini status --json --dcc-path <houdini> --python <hython>
+meshy-dcc-houdini verify --json --dcc-path <houdini> --python <hython>
+meshy-dcc-houdini upgrade --json --yes --dcc-path <houdini> --python <hython>
+meshy-dcc-houdini uninstall --json --yes --dcc-path <houdini> --python <hython>
+```
+
+It writes a receipted `meshy_dcc_houdini.json` and startup hooks under the
+versioned profile (the same file name as the package above, so only one of
+the two is active). Its preflight runs `hython`, which needs a Houdini license
+that allows it. When Houdini is not running, install succeeds, reports
+`verify.directly_usable: false` and marks the verify step `pending`. Exits:
+`0` success, `10` preflight, `20` acquire, `30` install or rollback, `40`
+verify, `50` a loaded file that needs a Houdini restart.

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dcc_mcp_houdini._vex_types import VexSeverity, WrangleType
-from dcc_mcp_houdini._vex_validator import (
+from meshy_dcc_houdini._vex_types import VexSeverity, WrangleType
+from meshy_dcc_houdini._vex_validator import (
     validate_attribute_bindings,
     validate_vex_snippet_client,
     validate_wrangle_parameters,
