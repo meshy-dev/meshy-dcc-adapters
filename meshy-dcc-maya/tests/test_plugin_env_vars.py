@@ -1,0 +1,822 @@
+"""Tests for plugin env-var export (issue #63).
+
+Verifies that ``_export_worker_env()`` in the Maya plugin correctly exports
+``DCC_MCP_PYTHON_EXECUTABLE`` and ``DCC_MCP_PYTHON_INIT_SNIPPET`` so that
+skill worker subprocesses use the correct Maya Python interpreter.
+
+See: https://github.com/dcc-mcp/dcc-mcp-maya/issues/63
+"""
+
+# Import future modules
+from __future__ import annotations
+
+# Import built-in modules
+import importlib
+import importlib.util
+import json
+import logging
+import os
+import sys
+import threading
+import types
+import urllib.request
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+from urllib.error import URLError
+
+# Import third-party modules
+import pytest
+
+# Path to the plugin file
+_PLUGIN_PATH = Path(__file__).parent.parent / "maya" / "plugin" / "dcc_mcp_maya_plugin.py"
+
+
+@pytest.fixture(autouse=True)
+def mock_maya_modules():
+    """Inject minimal maya stubs so the plugin can be imported without Maya."""
+    maya_mock = MagicMock()
+    maya_mock.cmds = MagicMock()
+    maya_mock.cmds.about.return_value = "2025"
+    maya_mock.mel = MagicMock()
+    maya_mock.utils = MagicMock()
+    maya_mock.api = MagicMock()
+    maya_mock.api.OpenMaya = MagicMock()
+
+    mods = {
+        "maya": maya_mock,
+        "maya.cmds": maya_mock.cmds,
+        "maya.mel": maya_mock.mel,
+        "maya.utils": maya_mock.utils,
+        "maya.api": maya_mock.api,
+        "maya.api.OpenMaya": maya_mock.api.OpenMaya,
+    }
+    with patch.dict(sys.modules, mods):
+        yield maya_mock
+
+
+@pytest.fixture
+def plugin_module(mock_maya_modules):
+    """Import the plugin script as a plain Python module."""
+    spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_plugin", _PLUGIN_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class TestPluginStartupMode:
+    def test_interactive_initialize_starts_on_main_thread(self, plugin_module, mock_maya_modules):
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: False if kwargs.get("batch") else "2025"
+        plugin_module._add_menu = MagicMock()
+        plugin_module._start_async = MagicMock()
+        plugin_module._start = MagicMock()
+
+        plugin_module.initializePlugin(MagicMock())
+
+        plugin_module._add_menu.assert_called_once_with()
+        plugin_module._start_async.assert_called_once_with()
+        plugin_module._start.assert_not_called()
+
+    def test_batch_initialize_starts_synchronously(self, plugin_module, mock_maya_modules):
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: True if kwargs.get("batch") else "2025"
+        plugin_module._start_async = MagicMock()
+        plugin_module._start = MagicMock()
+
+        plugin_module.initializePlugin(MagicMock())
+
+        plugin_module._start.assert_called_once_with()
+        plugin_module._start_async.assert_not_called()
+
+
+class TestCrashReporterSuppression:
+    def test_crash_reporter_suppression_is_opt_in(self, plugin_module, monkeypatch, mock_maya_modules):
+        monkeypatch.delenv("DCC_MCP_MAYA_SUPPRESS_CRASH_REPORTER", raising=False)
+        for key in ("MAYA_DISABLE_CIP", "MAYA_DISABLE_CER", "MAYA_DISABLE_CLIC_IPM"):
+            monkeypatch.delenv(key, raising=False)
+
+        plugin_module._enable_crash_reporter_suppression_for_plugin()
+
+        mock_maya_modules.cmds.optionVar.assert_not_called()
+        assert "MAYA_DISABLE_CIP" not in os.environ
+        assert "MAYA_DISABLE_CER" not in os.environ
+        assert "MAYA_DISABLE_CLIC_IPM" not in os.environ
+
+    def test_crash_reporter_suppression_sets_option_var_and_env(self, plugin_module, monkeypatch, mock_maya_modules):
+        monkeypatch.setenv("DCC_MCP_MAYA_SUPPRESS_CRASH_REPORTER", "1")
+        for key in ("MAYA_DISABLE_CIP", "MAYA_DISABLE_CER", "MAYA_DISABLE_CLIC_IPM"):
+            monkeypatch.delenv(key, raising=False)
+
+        calls = []
+
+        def _option_var(**kwargs):
+            calls.append(kwargs)
+            if "exists" in kwargs:
+                return True
+            if "query" in kwargs:
+                return 1
+            return None
+
+        mock_maya_modules.cmds.optionVar.side_effect = _option_var
+
+        plugin_module._enable_crash_reporter_suppression_for_plugin()
+
+        assert os.environ["MAYA_DISABLE_CIP"] == "1"
+        assert os.environ["MAYA_DISABLE_CER"] == "1"
+        assert os.environ["MAYA_DISABLE_CLIC_IPM"] == "1"
+        assert {"intValue": ("CrashReporterEnabled", 0)} in calls
+
+        plugin_module._disable_crash_reporter_suppression_for_plugin()
+
+        assert {"intValue": ("CrashReporterEnabled", 1)} in calls
+        assert "MAYA_DISABLE_CIP" not in os.environ
+        assert "MAYA_DISABLE_CER" not in os.environ
+        assert "MAYA_DISABLE_CLIC_IPM" not in os.environ
+
+    def test_crash_reporter_restore_removes_missing_option_var(self, plugin_module, monkeypatch, mock_maya_modules):
+        monkeypatch.setenv("DCC_MCP_MAYA_SUPPRESS_CRASH_REPORTER", "1")
+        calls = []
+
+        def _option_var(**kwargs):
+            calls.append(kwargs)
+            if "exists" in kwargs:
+                return False
+            return None
+
+        mock_maya_modules.cmds.optionVar.side_effect = _option_var
+
+        plugin_module._enable_crash_reporter_suppression_for_plugin()
+        plugin_module._disable_crash_reporter_suppression_for_plugin()
+
+        assert {"intValue": ("CrashReporterEnabled", 0)} in calls
+        assert {"remove": "CrashReporterEnabled"} in calls
+
+
+class TestStartAsyncSchedulesFinalisation:
+    """Regression: ``_start_async`` must defer the synchronous ``_start``
+    path to Maya's main-thread post-boot idle moment via
+    ``cmds.evalDeferred(_start, lowestPriority=True)`` — and MUST NOT use
+    any of the previously-attempted cross-thread coordination patterns.
+
+    History — every blocked variant is regression-locked below
+    -----------------------------------------------------------
+    1. ``cmds.evalDeferred(_finish, lowestPriority=True)`` from a worker
+       thread crashed with::
+
+           必须为标志"lowestPriority"传递一个布尔参数
+
+       because ``cmds.*`` is not thread-safe — kwargs are marshalled
+       through the MEL command engine on the wrong thread.
+
+    2. ``maya.utils.executeDeferred(_finish)`` from a worker thread was
+       thread-safe in theory but **deadlocked** Maya in 2022/2023 builds:
+       it routes through ``executeInMainThreadWithResult`` whose channel
+       is gated on a flag flipped only after plugin-init completes, so
+       the worker (holding the GIL) and the main thread (inside
+       ``initializePlugin``, waiting on the worker via the GIL) form a
+       cycle that pins Maya forever.
+
+    3. ``cmds.scriptJob(idleEvent=poll, protected=True)`` + a
+       ``threading.Event`` polled from the worker still raced against
+       Maya's plugin-init re-entrancy guards in some builds.
+
+    The current design (per user request 2026-05-13): wait for Maya's
+    main-thread boot to finish via ``cmds.evalDeferred(_start,
+    lowestPriority=True)`` (called from the main thread inside
+    ``initializePlugin`` — safe), then run the synchronous ``_start``
+    path in-place. No worker thread, no scriptJob, no event coordination.
+    """
+
+    def _install_core_stubs(self) -> dict:
+        """Inject minimal ``dcc_mcp_core.host`` + ``dcc_mcp_maya`` stubs into
+        ``sys.modules`` so the plugin's lazy imports inside ``_start``
+        resolve without pulling the real dependency graph."""
+
+        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod.QueueDispatcher = MagicMock(name="QueueDispatcher")
+        host_mod.BlockingDispatcher = MagicMock(name="BlockingDispatcher")
+
+        core_mod = types.ModuleType("dcc_mcp_core")
+        core_mod.host = host_mod
+
+        dcc_mod = types.ModuleType("dcc_mcp_maya")
+        dcc_mod.start_server = MagicMock(name="start_server", return_value=MagicMock())
+        dcc_mod.MayaHost = MagicMock(name="MayaHost")
+
+        return {
+            "dcc_mcp_core": core_mod,
+            "dcc_mcp_core.host": host_mod,
+            "dcc_mcp_maya": dcc_mod,
+        }
+
+    def test_start_async_only_calls_evalDeferred_with_lowest_priority(self, plugin_module, mock_maya_modules):
+        """``_start_async`` must hand Maya exactly one deferred callback,
+        scheduled with ``lowestPriority=True`` so it fires after every other
+        boot-time deferred task in the queue.
+
+        ``lowestPriority=True`` is critical: without it the callback fires
+        at the *front* of the deferred queue, before ``userSetup.py`` follow-
+        ups, autoload scene, and other plugins' init code complete — i.e.
+        while Maya is still half-initialised, exactly the state in which
+        every previous cross-thread variant deadlocked.
+        """
+
+        plugin_module._start = MagicMock()
+        plugin_module._start_async()
+
+        evalDeferred = mock_maya_modules.cmds.evalDeferred
+        evalDeferred.assert_called_once()
+        args, kwargs = evalDeferred.call_args
+        # First positional arg is the callable to defer.
+        assert args, "evalDeferred must receive a callable (positional arg)"
+        assert callable(args[0]), f"first arg must be callable, got {type(args[0])!r}"
+        assert args[0] is plugin_module._start, (
+            "the deferred callable must be _start (the synchronous main-thread "
+            "startup path), not a closure that re-introduces async coordination"
+        )
+        assert kwargs.get("lowestPriority") is True, (
+            "lowestPriority=True is required so the callback fires at the BACK "
+            "of Maya's deferred queue (after userSetup.py / autoload scene / "
+            "other plugins' init complete)"
+        )
+
+    def test_start_async_does_not_spawn_worker_thread(self, plugin_module, mock_maya_modules):
+        """Regression: no worker thread may be spawned. Every previous
+        worker-based variant deadlocked Maya during plugin init."""
+
+        plugin_module._start = MagicMock()
+        threads_before = {t.ident for t in threading.enumerate()}
+        plugin_module._start_async()
+        threads_after = {t.ident for t in threading.enumerate()}
+
+        new_threads = threads_after - threads_before
+        assert not new_threads, (
+            f"_start_async must not spawn any thread, but {len(new_threads)} appeared: {new_threads!r}"
+        )
+
+    def test_start_async_does_not_use_executeDeferred_or_scriptJob(self, plugin_module, mock_maya_modules):
+        """Regression: ``maya.utils.executeDeferred`` and
+        ``cmds.scriptJob(idleEvent=...)`` are forbidden in the startup path
+        — both have been observed to deadlock or race during plugin init.
+        Only ``cmds.evalDeferred(callable, lowestPriority=True)`` from the
+        main thread is allowed (validated in the sibling test)."""
+
+        plugin_module._start = MagicMock()
+        plugin_module._start_async()
+
+        mock_maya_modules.utils.executeDeferred.assert_not_called()
+
+        scriptjob = mock_maya_modules.cmds.scriptJob
+        idle_event_calls = [call for call in scriptjob.call_args_list if "idleEvent" in call.kwargs]
+        assert not idle_event_calls, (
+            f"_start_async must NOT register an idleEvent scriptJob, but found "
+            f"{len(idle_event_calls)}: {idle_event_calls!r}"
+        )
+
+    def test_deferred_callable_invokes_start_synchronously(self, plugin_module, mock_maya_modules):
+        """When Maya finally fires the deferred callback (at the back of the
+        queue, post-boot), it must run ``_start`` synchronously on the
+        calling (main) thread — no further deferral, no worker thread."""
+
+        plugin_module._start = MagicMock()
+        plugin_module._start_async()
+
+        args, _kwargs = mock_maya_modules.cmds.evalDeferred.call_args
+        deferred_callable = args[0]
+
+        # Simulate Maya firing the deferred callback on the main thread.
+        deferred_callable()
+
+        plugin_module._start.assert_called_once_with()
+
+
+class TestSidecarUsesCoreRegistryDefaults:
+    """The plugin delegates FileRegistry path resolution to core/server.
+
+    dcc-mcp-server >= 0.17.16 aligns the sidecar default registry directory
+    with GatewayRunner and honours ``DCC_MCP_REGISTRY_DIR`` directly. Keeping
+    another copy of that path logic in the Maya plugin risks future drift.
+    """
+
+    def _arm_plugin(self, plugin_module, monkeypatch):
+        """Stub ``dcc_mcp_maya.sidecar`` so ``_maybe_spawn_sidecar`` resolves
+        and calls our mock ``start_sidecar``."""
+
+        plugin_module._sidecar_handle = None
+        import dcc_mcp_maya.sidecar as sidecar_pkg
+
+        monkeypatch.setattr(sidecar_pkg, "is_sidecar_mode_enabled", lambda: True)
+        monkeypatch.setattr(sidecar_pkg, "start_sidecar", MagicMock(name="start_sidecar", return_value=MagicMock()))
+        monkeypatch.setattr(sidecar_pkg, "stop_sidecar", MagicMock(name="stop_sidecar"))
+
+        # Stub the banner so we don't print to stdout during tests.
+        plugin_module._print_sidecar_info = MagicMock()
+        plugin_module._probe_gateway_health_deferred = MagicMock()
+        return sidecar_pkg
+
+    def test_sidecar_does_not_reimplement_registry_env_resolution(self, plugin_module, monkeypatch, tmp_path):
+        """When ``DCC_MCP_REGISTRY_DIR`` is set, the sidecar binary reads it."""
+        custom_dir = tmp_path / "custom-registry"
+        monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(custom_dir))
+
+        sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
+        plugin_module._maybe_spawn_sidecar()
+
+        sidecar_pkg.start_sidecar.assert_called_once()
+        _, kwargs = sidecar_pkg.start_sidecar.call_args
+        assert "registry_dir" not in kwargs
+
+    def test_sidecar_default_disables_in_process_gateway_port(self, plugin_module, monkeypatch):
+        """Gateway election must run in the sidecar binary by default."""
+        monkeypatch.delenv("DCC_MCP_MAYA_SIDECAR", raising=False)
+        monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+        cfg = plugin_module._resolve_config()
+        assert cfg.get("gateway_port") == 0
+
+    def test_sidecar_opt_out_preserves_in_process_gateway_port(self, plugin_module, monkeypatch):
+        """Operators can return to the legacy in-process gateway with an explicit opt-out."""
+        monkeypatch.setenv("DCC_MCP_MAYA_SIDECAR", "0")
+        monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+        cfg = plugin_module._resolve_config()
+        assert cfg.get("gateway_port") == 9765
+
+    def test_sidecar_uses_core_default_registry_path(self, plugin_module, monkeypatch):
+        """When unset, dcc-mcp-server >= 0.17.16 owns the default path."""
+        monkeypatch.delenv("DCC_MCP_REGISTRY_DIR", raising=False)
+
+        sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
+        plugin_module._maybe_spawn_sidecar()
+
+        _, kwargs = sidecar_pkg.start_sidecar.call_args
+        assert "registry_dir" not in kwargs
+
+    def test_sidecar_spawn_failure_log_names_clean_machine_remedies(self, plugin_module, monkeypatch, caplog, tmp_path):
+        """A missing dcc-mcp-server binary should point operators at the external runtime."""
+        bootstrap_log = tmp_path / "bootstrap.jsonl"
+        monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(bootstrap_log))
+        sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
+        sidecar_pkg.start_sidecar.side_effect = sidecar_pkg.SidecarSpawnError("missing dcc-mcp-server")
+
+        with caplog.at_level(logging.ERROR, logger=plugin_module.logger.name):
+            plugin_module._maybe_spawn_sidecar()
+
+        assert plugin_module._sidecar_handle is None
+        assert "Default sidecar gateway startup requires the dcc-mcp-server binary" in caplog.text
+        assert "mayapy -m pip install dcc-mcp-server" in caplog.text
+        assert "DCC_MCP_SERVER_BIN" in caplog.text
+        assert "DCC_MCP_MAYA_SIDECAR=0" in caplog.text
+        events = [json.loads(line) for line in bootstrap_log.read_text(encoding="utf-8").splitlines()]
+        assert [(event["stage"], event["status"]) for event in events] == [
+            ("sidecar_spawn", "started"),
+            ("sidecar_spawn", "failed"),
+        ]
+        assert events[-1]["error_type"] == "SidecarSpawnError"
+
+    def test_sidecar_passes_debug_identity_to_binary(self, plugin_module, monkeypatch):
+        """Maya should label both the per-DCC sidecar and standalone gateway."""
+        monkeypatch.setattr(plugin_module, "_resolve_instance_id", lambda: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee")
+        monkeypatch.setattr(plugin_module, "_resolve_sidecar_display_name", lambda: "Maya 2025 pid 1234")
+        monkeypatch.setattr(plugin_module, "_resolve_gateway_name", lambda: "dcc-mcp-gateway@workstation-01")
+        plugin_module._handle = MagicMock()
+        plugin_module._handle.mcp_url.return_value = "http://127.0.0.1:8765/mcp"
+
+        sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
+        plugin_module._maybe_spawn_sidecar()
+
+        sidecar_pkg.start_sidecar.assert_called_once()
+        _, kwargs = sidecar_pkg.start_sidecar.call_args
+        assert kwargs["adapter_version"] == plugin_module.VERSION
+        assert kwargs["display_name"] == "Maya 2025 pid 1234"
+        assert kwargs["discovery_mcp_url"] == "http://127.0.0.1:8765/mcp"
+        assert kwargs["gateway_name"] == "dcc-mcp-gateway@workstation-01"
+        assert kwargs["instance_id"] == "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+        plugin_module._probe_gateway_health_deferred.assert_called_once_with(plugin_module._sidecar_handle)
+
+    def test_sidecar_omits_unresolved_instance_id(self, plugin_module, monkeypatch):
+        """A cosmetic sentinel value must not become a strict sidecar CLI UUID."""
+        monkeypatch.setattr(plugin_module, "_resolve_instance_id", lambda: None)
+
+        sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
+        plugin_module._maybe_spawn_sidecar()
+
+        sidecar_pkg.start_sidecar.assert_called_once()
+        _, kwargs = sidecar_pkg.start_sidecar.call_args
+        assert kwargs["instance_id"] is None
+
+    def test_resolve_instance_id_ignores_invalid_server_value(self, plugin_module, monkeypatch):
+        """Core-sidecar UUID validation should not turn a cosmetic fallback into a launch failure."""
+        import dcc_mcp_maya.server as server_module
+
+        server = MagicMock()
+        server.instance_id = "unknown"
+        monkeypatch.setattr(server_module, "_server_instance", server)
+
+        assert plugin_module._resolve_instance_id() is None
+
+    def test_sidecar_banner_omits_internal_rfc_marker(self, plugin_module, monkeypatch, capsys):
+        monkeypatch.setattr(plugin_module, "_is_interactive", lambda: False)
+        monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+        monkeypatch.setenv("DCC_MCP_GATEWAY_REMOTE_PORT", "59765")
+        monkeypatch.setattr(plugin_module, "_gateway_remote_display_host", lambda _host: "192.168.1.20")
+        handle = MagicMock(
+            binary_path="C:/tools/dcc-mcp-server.exe",
+            qt_port=53123,
+            qt_binding="PySide6",
+            host_rpc_uri="qtserver://127.0.0.1:53123",
+            maya_pid=1234,
+        )
+        handle.proc.pid = 5678
+
+        plugin_module._print_sidecar_info(handle)
+
+        output = capsys.readouterr().out
+        assert "SIDECAR ACTIVE" not in output
+        assert "RFC #998" not in output
+        assert f"dcc-mcp-maya v{plugin_module.VERSION}" in output
+        assert "PID          : 5678" in output
+        assert "Gateway      : http://127.0.0.1:9765/mcp  (sidecar-managed)" in output
+        assert "Gateway LAN  : http://192.168.1.20:59765/mcp  (sidecar-managed)" in output
+
+    def test_sidecar_remote_gateway_options_default_and_disable(self, monkeypatch):
+        from dcc_mcp_maya.sidecar import resolve_gateway_remote_options
+
+        monkeypatch.delenv("DCC_MCP_GATEWAY_REMOTE_HOST", raising=False)
+        monkeypatch.delenv("DCC_MCP_GATEWAY_REMOTE_PORT", raising=False)
+        assert resolve_gateway_remote_options() == ("0.0.0.0", 59765)
+
+        monkeypatch.setenv("DCC_MCP_GATEWAY_REMOTE_HOST", "192.168.2.10")
+        monkeypatch.setenv("DCC_MCP_GATEWAY_REMOTE_PORT", "0")
+        assert resolve_gateway_remote_options() == ("192.168.2.10", 0)
+
+
+class TestGatewayHealthProbe:
+    """Gateway probe should be useful without blocking Maya startup."""
+
+    class _ImmediateThread:
+        def __init__(self, target, **_kwargs):
+            self._target = target
+
+        def start(self):
+            self._target()
+
+    class _Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def _run_probe_inline(self, plugin_module, monkeypatch):
+        monkeypatch.setattr(plugin_module.threading, "Thread", self._ImmediateThread)
+        monkeypatch.setattr("time.sleep", lambda _secs: None)
+        monkeypatch.setattr(plugin_module, "_resolve_gateway_port_for_display", lambda: 9765)
+
+    def test_probe_retries_before_reporting_success(self, plugin_module, monkeypatch, capsys):
+        self._run_probe_inline(plugin_module, monkeypatch)
+        calls = []
+
+        def fake_urlopen(url, timeout):  # noqa: ARG001
+            calls.append((url, timeout))
+            if len(calls) == 1:
+                raise URLError("connection refused")
+            return self._Response()
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        handle = MagicMock()
+        handle.proc.poll.return_value = None
+
+        plugin_module._probe_gateway_health_deferred(
+            handle,
+            delay=0,
+            timeout=0.1,
+            attempts=2,
+            interval=0,
+        )
+
+        output = capsys.readouterr().out
+        assert "Gateway health OK" in output
+        assert "Gateway NOT reachable" not in output
+        assert len(calls) == 2
+
+    def test_probe_reports_early_sidecar_exit(self, plugin_module, monkeypatch, capsys):
+        self._run_probe_inline(plugin_module, monkeypatch)
+
+        def fake_urlopen(url, timeout):  # noqa: ARG001
+            raise URLError("timed out")
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        handle = MagicMock()
+        handle.proc.pid = 12345
+        handle.proc.poll.return_value = 7
+
+        plugin_module._probe_gateway_health_deferred(
+            handle,
+            delay=0,
+            timeout=0.1,
+            attempts=3,
+            interval=0,
+        )
+
+        output = capsys.readouterr().out
+        assert "sidecar PID 12345 exited early (exit=7)" in output
+        assert "Last probe error:" in output
+
+
+class TestRestartStopsSidecar:
+    """Restart MCP Server must tear down the prior sidecar before respawning."""
+
+    def test_stop_sidecar_if_running_clears_handle(self, plugin_module, monkeypatch):
+        sidecar_pkg = TestSidecarUsesCoreRegistryDefaults()._arm_plugin(plugin_module, monkeypatch)
+        mock_handle = MagicMock()
+        plugin_module._sidecar_handle = mock_handle
+
+        plugin_module._stop_sidecar_if_running()
+
+        sidecar_pkg.stop_sidecar.assert_called_once_with(mock_handle)
+        assert plugin_module._sidecar_handle is None
+
+    def test_stop_sidecar_if_running_is_noop_when_absent(self, plugin_module, monkeypatch):
+        sidecar_pkg = TestSidecarUsesCoreRegistryDefaults()._arm_plugin(plugin_module, monkeypatch)
+        sidecar_pkg.stop_sidecar = MagicMock(name="stop_sidecar")
+        plugin_module._sidecar_handle = None
+
+        plugin_module._stop_sidecar_if_running()
+
+        sidecar_pkg.stop_sidecar.assert_not_called()
+
+    def test_restart_deferred_stops_sidecar_before_respawn(self, plugin_module, monkeypatch, mock_maya_modules):
+        sidecar_pkg = TestSidecarUsesCoreRegistryDefaults()._arm_plugin(plugin_module, monkeypatch)
+        mock_handle = MagicMock()
+        plugin_module._sidecar_handle = mock_handle
+        plugin_module._stop_host_on_main_thread = MagicMock()
+        plugin_module._start = MagicMock()
+
+        if plugin_module._restart_lock.locked():
+            plugin_module._restart_lock.release()
+
+        import dcc_mcp_maya
+
+        dcc_mcp_maya.stop_server = MagicMock()
+
+        def _run_thread_immediately(target, daemon=True, name=None):  # noqa: ARG001
+            target()
+            return MagicMock()
+
+        def _run_deferred(fn):
+            fn()
+
+        monkeypatch.setattr("threading.Thread", _run_thread_immediately)
+        mock_maya_modules.utils.executeDeferred = _run_deferred
+
+        plugin_module._restart_deferred()
+
+        sidecar_pkg.stop_sidecar.assert_called_once_with(mock_handle)
+        assert plugin_module._sidecar_handle is None
+        plugin_module._start.assert_called_once_with()
+
+
+class TestPluginDispatcherFallback:
+    """Regression: plugin startup must not crash when core dispatchers are None."""
+
+    def test_start_records_import_registration_and_completion_stages(
+        self, plugin_module, mock_maya_modules, monkeypatch, tmp_path
+    ):
+        log_path = tmp_path / "bootstrap.jsonl"
+        monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: True if kwargs.get("batch") else "2025"
+
+        startup = MagicMock()
+        startup.dispatcher = MagicMock()
+        startup.host = None
+        import dcc_mcp_maya
+
+        monkeypatch.setattr(dcc_mcp_maya, "start_server", MagicMock(return_value=MagicMock()))
+        monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
+        monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
+        monkeypatch.setattr(plugin_module, "_post_start", MagicMock())
+
+        with patch("dcc_mcp_maya._plugin_dispatcher.resolve_plugin_host_startup", return_value=startup), patch(
+            "dcc_mcp_maya._plugin_dispatcher.install_plugin_host_startup"
+        ):
+            plugin_module._start()
+
+        events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+        assert [(event["stage"], event["status"]) for event in events] == [
+            ("adapter_import", "started"),
+            ("adapter_import", "succeeded"),
+            ("registry_registration", "started"),
+            ("registry_registration", "succeeded"),
+            ("bootstrap_complete", "succeeded"),
+        ]
+
+    def test_start_records_registry_failure_before_propagating(
+        self, plugin_module, mock_maya_modules, monkeypatch, tmp_path
+    ):
+        log_path = tmp_path / "bootstrap.jsonl"
+        monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: True if kwargs.get("batch") else "2025"
+
+        startup = MagicMock()
+        startup.dispatcher = MagicMock()
+        startup.host = None
+        import dcc_mcp_maya
+
+        monkeypatch.setattr(dcc_mcp_maya, "start_server", MagicMock(side_effect=RuntimeError("bind failed")))
+        monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
+        monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
+
+        with patch("dcc_mcp_maya._plugin_dispatcher.resolve_plugin_host_startup", return_value=startup), patch(
+            "dcc_mcp_maya._plugin_dispatcher.install_plugin_host_startup"
+        ):
+            with pytest.raises(RuntimeError, match="bind failed"):
+                plugin_module._start()
+
+        events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+        assert events[-1]["stage"] == "registry_registration"
+        assert events[-1]["status"] == "failed"
+        assert events[-1]["error_type"] == "RuntimeError"
+
+    def test_start_falls_back_when_core_dispatchers_are_none(self, plugin_module, mock_maya_modules, monkeypatch):
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: False if kwargs.get("batch") else "2025"
+
+        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod.BlockingDispatcher = MagicMock(name="BlockingDispatcher")
+        host_mod.QueueDispatcher = None
+
+        ui_dispatcher = MagicMock(name="MayaUiDispatcher")
+        ui_pump = MagicMock(name="MayaUiPump")
+        type(ui_dispatcher).__name__ = "MayaUiDispatcher"
+
+        import dcc_mcp_maya
+
+        monkeypatch.setattr(dcc_mcp_maya, "start_server", MagicMock(return_value=MagicMock()))
+        monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
+        monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
+        monkeypatch.setattr(plugin_module, "_post_start", MagicMock())
+
+        with patch.dict(sys.modules, {"dcc_mcp_core.host": host_mod}), patch(
+            "dcc_mcp_maya.dispatcher.create_dispatcher",
+            return_value=(ui_dispatcher, ui_pump),
+        ):
+            plugin_module._start()
+
+        assert plugin_module._host_dispatcher is ui_dispatcher
+        assert plugin_module._host is None
+        assert plugin_module._host_startup is not None
+        assert plugin_module._host_startup.backend == "python-fallback"
+        ui_pump.install.assert_called_once_with()
+        dcc_mcp_maya.start_server.assert_called_once()
+        _, kwargs = dcc_mcp_maya.start_server.call_args
+        assert kwargs["host_dispatcher"] is ui_dispatcher
+
+    def test_start_raises_structured_error_when_all_dispatchers_fail(
+        self, plugin_module, mock_maya_modules, monkeypatch
+    ):
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: True if kwargs.get("batch") else "2025"
+
+        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod.BlockingDispatcher = None
+        host_mod.QueueDispatcher = None
+
+        monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
+        monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
+
+        with patch.dict(sys.modules, {"dcc_mcp_core.host": host_mod}), patch(
+            "dcc_mcp_maya.dispatcher.create_dispatcher",
+            side_effect=RuntimeError("no maya"),
+        ), patch(
+            "dcc_mcp_maya._plugin_dispatcher._resolve_core_version",
+            return_value="0.19.3",
+        ):
+            with pytest.raises(RuntimeError, match="Cannot start MCP server"):
+                plugin_module._start()
+
+
+class TestExportWorkerEnv:
+    """Tests for ``_export_worker_env()``."""
+
+    def test_sets_python_executable(self, plugin_module):
+        """Should set DCC_MCP_PYTHON_EXECUTABLE to sys.executable."""
+        env = os.environ.copy()
+        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
+        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+
+        with patch.dict(os.environ, env, clear=True):
+            plugin_module._export_worker_env()
+            assert os.environ["DCC_MCP_PYTHON_EXECUTABLE"] == sys.executable
+
+    def test_sets_init_snippet(self, plugin_module):
+        """Should set DCC_MCP_PYTHON_INIT_SNIPPET for maya.standalone init."""
+        env = os.environ.copy()
+        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
+        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+
+        with patch.dict(os.environ, env, clear=True):
+            plugin_module._export_worker_env()
+            snippet = os.environ["DCC_MCP_PYTHON_INIT_SNIPPET"]
+            assert "maya.standalone" in snippet
+            assert "initialize" in snippet
+
+    def test_respects_existing_executable_override(self, plugin_module):
+        """Should NOT overwrite if user already set the env var."""
+        custom_path = "/custom/mayapy"
+        env = os.environ.copy()
+        env["DCC_MCP_PYTHON_EXECUTABLE"] = custom_path
+        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+
+        with patch.dict(os.environ, env, clear=True):
+            plugin_module._export_worker_env()
+            assert os.environ["DCC_MCP_PYTHON_EXECUTABLE"] == custom_path
+
+    def test_respects_existing_snippet_override(self, plugin_module):
+        """Should NOT overwrite if user already set the init snippet."""
+        custom_snippet = "print('custom init')"
+        env = os.environ.copy()
+        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
+        env["DCC_MCP_PYTHON_INIT_SNIPPET"] = custom_snippet
+
+        with patch.dict(os.environ, env, clear=True):
+            plugin_module._export_worker_env()
+            assert os.environ["DCC_MCP_PYTHON_INIT_SNIPPET"] == custom_snippet
+
+    def test_both_vars_set_simultaneously(self, plugin_module):
+        """Both env vars should be set after a single call."""
+        env = os.environ.copy()
+        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
+        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+
+        with patch.dict(os.environ, env, clear=True):
+            plugin_module._export_worker_env()
+            assert "DCC_MCP_PYTHON_EXECUTABLE" in os.environ
+            assert "DCC_MCP_PYTHON_INIT_SNIPPET" in os.environ
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# User-visible failure reporting (issue #3929)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestStartupFailureIsVisible:
+    """A failed startup must reach the artist, not just ``logger``."""
+
+    def test_display_routes_errors_to_mglobal(self, plugin_module, mock_maya_modules):
+        plugin_module._display("boom", error=True)
+
+        mock_maya_modules.api.OpenMaya.MGlobal.displayError.assert_called_once_with("boom")
+
+    def test_display_routes_warnings_to_mglobal(self, plugin_module, mock_maya_modules):
+        plugin_module._display("careful")
+
+        mock_maya_modules.api.OpenMaya.MGlobal.displayWarning.assert_called_once_with("careful")
+
+    def test_display_never_raises_when_channels_are_broken(self, plugin_module, mock_maya_modules):
+        mglobal = mock_maya_modules.api.OpenMaya.MGlobal
+        mglobal.displayError.side_effect = RuntimeError("no UI")
+        mock_maya_modules.cmds.warning.side_effect = RuntimeError("no UI")
+
+        plugin_module._display("boom", error=True)  # must not raise
+
+    def test_initialize_plugin_reports_before_raising(self, plugin_module, mock_maya_modules):
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: False if kwargs.get("batch") else "2025"
+        plugin_module._add_menu = MagicMock()
+        plugin_module._start_async = MagicMock(side_effect=RuntimeError("schedule failed"))
+
+        with pytest.raises(RuntimeError):
+            plugin_module.initializePlugin(MagicMock())
+
+        mglobal = mock_maya_modules.api.OpenMaya.MGlobal
+        assert mglobal.displayError.call_count == 1
+        assert "dcc-mcp-maya" in mglobal.displayError.call_args[0][0]
+
+    def test_menu_failure_does_not_cost_the_server(self, plugin_module, mock_maya_modules):
+        """Issue #3929: menu creation must never block MCP server startup."""
+        mock_maya_modules.cmds.about.side_effect = lambda **kwargs: False if kwargs.get("batch") else "2025"
+        plugin_module._add_menu = MagicMock(side_effect=RuntimeError("no MayaWindow"))
+        plugin_module._start_async = MagicMock()
+
+        plugin_module.initializePlugin(MagicMock())
+
+        plugin_module._start_async.assert_called_once_with()
+
+    def test_deferred_start_reports_and_reraises(self, plugin_module, mock_maya_modules):
+        """``_start`` is a deferred callback: without this, Maya swallows it."""
+        plugin_module._start_impl = MagicMock(side_effect=RuntimeError("server dead"))
+
+        with pytest.raises(RuntimeError):
+            plugin_module._start()
+
+        mglobal = mock_maya_modules.api.OpenMaya.MGlobal
+        assert mglobal.displayError.call_count == 1
+        message = mglobal.displayError.call_args[0][0]
+        assert "server dead" in message
+        assert "dcc-mcp-maya" in message
+
+    def test_schedule_failure_is_reported(self, plugin_module, mock_maya_modules):
+        mock_maya_modules.cmds.evalDeferred.side_effect = RuntimeError("queue gone")
+
+        with pytest.raises(RuntimeError):
+            plugin_module._start_async()
+
+        mglobal = mock_maya_modules.api.OpenMaya.MGlobal
+        assert mglobal.displayError.call_count == 1
+        assert "schedule" in mglobal.displayError.call_args[0][0].lower()

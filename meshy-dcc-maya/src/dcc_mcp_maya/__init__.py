@@ -1,0 +1,357 @@
+"""dcc-mcp-maya — Maya plugin for the DCC Model Context Protocol ecosystem.
+
+Embeds a standards-compliant MCP Streamable HTTP server (2025-03-26 spec)
+directly inside Maya using dcc-mcp-core.  No external gateway or dcc-mcp-ipc
+required.
+
+Quickstart (inside Maya's Python interpreter)::
+
+    import dcc_mcp_maya
+    handle = dcc_mcp_maya.start_server()
+    # MCP host connects through http://127.0.0.1:9765/mcp
+    handle.shutdown()
+
+Skill authoring helpers (for Maya skills developers)::
+
+    from dcc_mcp_maya.api import (
+        maya_success, maya_error, maya_from_exception, with_maya,
+        require_param, validate_node_exists, validate_node_type,
+    )
+
+    @with_maya
+    def create_sphere(radius: float = 1.0) -> dict:
+        import maya.cmds as cmds
+        result = cmds.polySphere(radius=radius)
+        return maya_success("Created sphere", object_name=result[0])
+
+
+
+"""
+
+# Import future modules
+from __future__ import annotations
+
+# Import local modules
+from dcc_mcp_maya.__version__ import __version__
+from dcc_mcp_maya._bootstrap_watch import (
+    BOOTSTRAP_STAGE,
+    DEFAULT_BOOTSTRAP_TIMEOUT_SECS,
+    ENV_BOOTSTRAP_ERROR_DIR,
+    ENV_BOOTSTRAP_TIMEOUT,
+    bootstrap_error_dir,
+    bootstrap_log_path,
+    bootstrap_pending_dir,
+    clear_bootstrap_marker,
+    detect_bootstrap_hang,
+    read_bootstrap_records,
+    read_pending_markers,
+    record_bootstrap_finished,
+    record_bootstrap_started,
+    report_bootstrap_hang,
+    resolve_bootstrap_timeout_secs,
+)
+from dcc_mcp_maya._env import (
+    ENV_DISABLE_ARBITRARY_SCRIPT,
+    ENV_DISABLE_EXECUTE_MEL,
+    ENV_DISABLE_EXECUTE_PYTHON,
+    ENV_ENABLE_GATEWAY_FAILOVER,
+    ENV_VERSION_CHECK,
+    resolve_enable_gateway_failover,
+    resolve_execute_mel_disabled,
+    resolve_execute_python_disabled,
+    resolve_version_check_enabled,
+)
+from dcc_mcp_maya._project_tools import (
+    ENV_PROJECT_TOOLS,
+    MayaSceneResolver,
+    ProjectToolsIntegration,
+)
+from dcc_mcp_maya._project_tools import (
+    attach_to_server as attach_project_tools,
+)
+from dcc_mcp_maya._readiness import (
+    ENV_READINESS_TIMEOUT_SECS,
+    ReadinessBinder,
+    install_readiness,
+    resolve_readiness_timeout_secs,
+)
+from dcc_mcp_maya._recovery_dialog import (
+    ENV_AUTO_DISMISS_CRASH_DIALOG,
+    clear_recovery_status,
+    current_recovery_status,
+    scan_recovery_dialog,
+)
+from dcc_mcp_maya._resources import (
+    DEFAULT_SCENE_EVENTS,
+    DEFAULT_SCENE_THROTTLE_SECS,
+    ENV_RESOURCES,
+    SCHEME_MAYA_API,
+    SCHEME_MAYA_CMDS,
+    SCHEME_MAYA_PROJECT,
+    MayaResourceBinder,
+    install_resources,
+)
+from dcc_mcp_maya._shutdown_safety import (
+    ENV_ATEXIT_HOOK,
+    ENV_DEFENSIVE_DEL,
+    ENV_KMAYA_EXITING_HOOK,
+    ENV_PROCESS_SENTINEL,
+    DefensiveShutdownGuard,
+    ProcessSentinel,
+    ShutdownCoordinator,
+    orphan_sentinels,
+    register_atexit_hook,
+    register_kmaya_exiting_hook,
+    sentinel_path,
+    unregister_atexit_hook,
+    unregister_kmaya_exiting_hook,
+    write_process_sentinel,
+)
+from dcc_mcp_maya._skill_loader import (
+    MINIMAL_SKILLS,
+    STAGES,
+    build_minimal_mode_config,
+    build_minimal_mode_for_stages,
+    skills_for_stage,
+)
+from dcc_mcp_maya._version_check import (
+    VersionReport,
+    run_version_self_check,
+    version_report,
+)
+from dcc_mcp_maya.api import (
+    MissingParamError,
+    batch_validate_nodes,
+    bounding_box_from_node,
+    build_context_dict,
+    canonical_maya_exception_message,
+    classify_maya_exception,
+    created_node_name,
+    created_object_context,
+    ensure_valid_name,
+    get_cmds,
+    get_param_list,
+    is_maya_available,
+    maya_capabilities,
+    maya_error,
+    maya_from_exception,
+    maya_success,
+    maya_typed_success,
+    maya_warning,
+    missing_param_error,
+    node_long_name,
+    node_ref_from_name,
+    node_shape_names,
+    node_uuid,
+    object_transform_from_node,
+    require_any_param,
+    require_cmds,
+    require_main_thread,
+    require_param,
+    scene_object_from_node,
+    summarize_node,
+    validate_node_exists,
+    validate_node_type,
+    with_maya,
+)
+from dcc_mcp_maya.capability_manifest import (
+    CapabilityRecord,
+    MayaCapabilityManifestBuilder,
+    build_manifest_payload,
+    register_capability_mcp_tool,
+)
+from dcc_mcp_maya.context_snapshot import (
+    MayaContextSnapshotProvider,
+    collect_gateway_metadata,
+    make_snapshot_provider,
+)
+from dcc_mcp_maya.dispatcher import (
+    MayaStandaloneDispatcher,
+    MayaUiDispatcher,
+    MayaUiPump,
+    PyPumpedDispatcher,
+    _CorePump,
+    check_maya_cancelled,
+    create_dispatcher,
+    create_pumped_dispatcher,
+)
+from dcc_mcp_maya.headless import serve_headless
+from dcc_mcp_maya.host import MayaCallableDispatcher, MayaHost
+from dcc_mcp_maya.server import DEFAULT_PORT, MayaMcpServer, MayaServerOptions, start_server, stop_server
+from dcc_mcp_maya.sidecar import (
+    ENV_SIDECAR_BINARY,
+    ENV_SIDECAR_MODE,
+    SidecarBinaryError,
+    SidecarHandle,
+    SidecarSpawnError,
+    is_sidecar_mode_enabled,
+    resolve_sidecar_binary,
+    start_sidecar,
+    stop_sidecar,
+)
+
+__all__ = [
+    "__version__",
+    # Server
+    "DEFAULT_PORT",
+    "MayaMcpServer",
+    "MayaServerOptions",
+    "start_server",
+    "stop_server",
+    "serve_headless",
+    # Host adapter (main-thread dispatcher)
+    "MayaHost",
+    "MayaCallableDispatcher",
+    # Dispatchers — Python-side (callable dispatch, main-thread affinity)
+    "MayaUiDispatcher",
+    "MayaUiPump",
+    "MayaStandaloneDispatcher",
+    "create_dispatcher",
+    "check_maya_cancelled",
+    # Dispatchers — Rust-backed (string-payload dispatch)
+    "PyPumpedDispatcher",
+    "_CorePump",
+    "create_pumped_dispatcher",
+    # Skill authoring helpers
+    "maya_success",
+    "maya_error",
+    "maya_warning",
+    "maya_from_exception",
+    "canonical_maya_exception_message",
+    "classify_maya_exception",
+    "maya_typed_success",
+    "require_cmds",
+    "require_main_thread",
+    "get_cmds",
+    "is_maya_available",
+    "with_maya",
+    # Parameter helpers
+    "require_param",
+    "require_any_param",
+    "get_param_list",
+    "missing_param_error",
+    "MissingParamError",
+    # Node validation helpers
+    "validate_node_exists",
+    "validate_node_type",
+    "batch_validate_nodes",
+    # Name and context helpers
+    "ensure_valid_name",
+    "build_context_dict",
+    # Cross-DCC data model helpers
+    "scene_object_from_node",
+    "object_transform_from_node",
+    "bounding_box_from_node",
+    "created_node_name",
+    "node_long_name",
+    "node_shape_names",
+    "node_uuid",
+    "node_ref_from_name",
+    "summarize_node",
+    "created_object_context",
+    # DCC capabilities
+    "maya_capabilities",
+    # Capability manifest (issue #163)
+    "CapabilityRecord",
+    "MayaCapabilityManifestBuilder",
+    "build_manifest_payload",
+    "register_capability_mcp_tool",
+    # Context snapshot (issue #165)
+    "MayaContextSnapshotProvider",
+    "collect_gateway_metadata",
+    "make_snapshot_provider",
+    # Project-state persistence (issue #576 / core 0.14.21)
+    "ENV_PROJECT_TOOLS",
+    "MayaSceneResolver",
+    "ProjectToolsIntegration",
+    "attach_project_tools",
+    # Resource publishing (issue #187 / core 0.15.0)
+    "ENV_RESOURCES",
+    "DEFAULT_SCENE_EVENTS",
+    "DEFAULT_SCENE_THROTTLE_SECS",
+    "SCHEME_MAYA_CMDS",
+    "SCHEME_MAYA_API",
+    "SCHEME_MAYA_PROJECT",
+    "MayaResourceBinder",
+    "install_resources",
+    # Skills-first policy — optional refusal of arbitrary script tools
+    "ENV_DISABLE_EXECUTE_PYTHON",
+    "ENV_DISABLE_EXECUTE_MEL",
+    "ENV_DISABLE_ARBITRARY_SCRIPT",
+    "ENV_ENABLE_GATEWAY_FAILOVER",
+    "resolve_enable_gateway_failover",
+    "resolve_execute_python_disabled",
+    "resolve_execute_mel_disabled",
+    # Runtime version provenance + drift self-check
+    # (``dcc_mcp_maya.__version__`` vs installed distribution metadata)
+    "ENV_VERSION_CHECK",
+    "resolve_version_check_enabled",
+    "VersionReport",
+    "version_report",
+    "run_version_self_check",
+    # 5-stage skill taxonomy + minimal-mode helpers
+    # - stage source-of-truth: each SKILL.md frontmatter
+    #   (parsed into dcc_mcp_core.SkillMetadata.stage)
+    # - default-inactive groups source-of-truth: each skill's groups.yaml
+    #   (groups whose `default_active: false`)
+    # No hand-maintained shadow tables live in this package any more.
+    "MINIMAL_SKILLS",
+    "STAGES",
+    "skills_for_stage",
+    "build_minimal_mode_config",
+    "build_minimal_mode_for_stages",
+    # Runtime readiness (issue #184) — Maya-side binder wrapping
+    # ``dcc_mcp_core.ReadinessProbe``.  The three-state probe itself comes
+    # from core; import directly when you need it:
+    #   from dcc_mcp_core import ReadinessProbe
+    "ENV_READINESS_TIMEOUT_SECS",
+    "ReadinessBinder",
+    "install_readiness",
+    "resolve_readiness_timeout_secs",
+    # Qt-level recovery dialog detector (issue #241)
+    "ENV_AUTO_DISMISS_CRASH_DIALOG",
+    "scan_recovery_dialog",
+    "current_recovery_status",
+    "clear_recovery_status",
+    # Shutdown safety nets (issue #186)
+    "ENV_KMAYA_EXITING_HOOK",
+    "ENV_ATEXIT_HOOK",
+    "ENV_PROCESS_SENTINEL",
+    "ENV_DEFENSIVE_DEL",
+    "ShutdownCoordinator",
+    "ProcessSentinel",
+    "DefensiveShutdownGuard",
+    "register_kmaya_exiting_hook",
+    "unregister_kmaya_exiting_hook",
+    "register_atexit_hook",
+    "unregister_atexit_hook",
+    "write_process_sentinel",
+    "sentinel_path",
+    "orphan_sentinels",
+    # Out-of-process sidecar (RFC #998) — default-on; opt out with DCC_MCP_MAYA_SIDECAR=0
+    "ENV_SIDECAR_BINARY",
+    "ENV_SIDECAR_MODE",
+    "SidecarBinaryError",
+    "SidecarHandle",
+    "SidecarSpawnError",
+    "is_sidecar_mode_enabled",
+    "resolve_sidecar_binary",
+    "start_sidecar",
+    "stop_sidecar",
+    # Bootstrap hang watchdog (userSetup started/finished markers)
+    "ENV_BOOTSTRAP_ERROR_DIR",
+    "ENV_BOOTSTRAP_TIMEOUT",
+    "DEFAULT_BOOTSTRAP_TIMEOUT_SECS",
+    "BOOTSTRAP_STAGE",
+    "resolve_bootstrap_timeout_secs",
+    "bootstrap_error_dir",
+    "bootstrap_log_path",
+    "bootstrap_pending_dir",
+    "record_bootstrap_started",
+    "record_bootstrap_finished",
+    "clear_bootstrap_marker",
+    "read_pending_markers",
+    "read_bootstrap_records",
+    "detect_bootstrap_hang",
+    "report_bootstrap_hang",
+]

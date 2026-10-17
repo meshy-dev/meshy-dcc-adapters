@@ -1,0 +1,568 @@
+"""Subprocess supervision for the ``dcc-mcp-server sidecar`` binary.
+
+The Maya plug-in entry point calls :func:`start_sidecar` once Maya's
+main thread is idle, and :func:`stop_sidecar` from
+``uninitializePlugin``. The supervisor:
+
+1. Eagerly starts the universal in-DCC **Qt event-loop dispatcher**
+   from :mod:`dcc_mcp_core.qt_dispatcher` inside Maya itself,
+   so an external sidecar binary does not need ``commandPort`` to
+   bootstrap the wire. The dispatcher binds an ephemeral TCP port via
+   ``QTcpServer`` and runs cooperatively on Maya's own Qt event loop —
+   structurally immune to the single-flight / modal-dialog / PyO3-tokio
+   contention failure modes the legacy ``commandPort`` path suffered
+   from (RFC #998 Addendum B).
+
+2. Passes a ``dispatch`` handler into the Qt dispatcher that forwards
+   JSON wire frames to the Maya-side action
+   dispatcher (:mod:`dcc_mcp_maya.sidecar._dispatcher`). The Qt server
+   becomes the transport, but the action-lookup contract stays
+   identical to the in-process path.
+
+3. Asks :mod:`dcc_mcp_core.install_lifecycle` for the canonical
+   ``dcc-mcp-server sidecar`` launch contract and spawns it with
+   ``--host-rpc qtserver://...`` so the binary connects back to the
+   Maya-hosted Qt server. The binary runs alongside Maya, supervised
+   by its PPID-watch, and survives non-cooperative Maya shutdowns so
+   the gateway can emit structured ``host-died`` envelopes instead of
+   transport-error cascades.
+
+Design choices worth pinning:
+
+* **No commandPort.** The legacy ``commandPort`` path is gone — see
+  RFC #998 Addendum B (item 2). Qt dispatcher solves the same need
+  with multi-client concurrency and ``try/except``-per-request safety.
+* **PPID-watch lives in the sidecar binary, not here.** The binary's
+  ``sidecar`` subcommand polls ``--watch-pid`` every 250 ms and exits
+  cleanly when the parent dies (verified end-to-end by the integration
+  test in ``dcc-mcp-core`` PR #1003). The Python side just provides
+  the PID and lets the binary self-supervise.
+* **Sidecar is NOT detached.** It is a real child process of Maya,
+  inheriting Maya's process tree. When Maya exits the OS reaps the
+  sidecar naturally as a backstop in case PPID-watch was somehow
+  bypassed.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import subprocess
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+from dcc_mcp_maya._identity import normalize_instance_id
+from dcc_mcp_maya.sidecar._resolver import (
+    SidecarBinaryError,
+    resolve_sidecar_binary,
+)
+
+__all__ = [
+    "DEFAULT_GATEWAY_REMOTE_HOST",
+    "DEFAULT_GATEWAY_REMOTE_PORT",
+    "ENV_GATEWAY_NAME",
+    "ENV_GATEWAY_REMOTE_HOST",
+    "ENV_GATEWAY_REMOTE_PORT",
+    "ENV_SIDECAR_MODE",
+    "SidecarHandle",
+    "SidecarSpawnError",
+    "build_qtserver_uri",
+    "is_sidecar_mode_enabled",
+    "resolve_gateway_remote_options",
+    "start_sidecar",
+    "stop_sidecar",
+]
+
+logger = logging.getLogger(__name__)
+
+ENV_SIDECAR_MODE = "DCC_MCP_MAYA_SIDECAR"
+ENV_GATEWAY_NAME = "DCC_MCP_GATEWAY_NAME"
+ENV_GATEWAY_REMOTE_HOST = "DCC_MCP_GATEWAY_REMOTE_HOST"
+ENV_GATEWAY_REMOTE_PORT = "DCC_MCP_GATEWAY_REMOTE_PORT"
+DEFAULT_GATEWAY_REMOTE_HOST = "0.0.0.0"
+DEFAULT_GATEWAY_REMOTE_PORT = 59765
+_TRUTHY_VALUES = frozenset({"1", "true", "yes", "on"})
+_FALSEY_VALUES = frozenset({"0", "false", "no", "off"})
+
+# Grace period before SIGKILL on shutdown. 5 s matches the sidecar
+# binary's own ``--shutdown-timeout-secs`` default; cap at the same
+# value so the Maya plug-in unload never blocks longer than the binary
+# would take to exit on its own.
+_DEFAULT_TERMINATE_GRACE_SECS = 5.0
+
+
+class SidecarSpawnError(RuntimeError):
+    """Raised when :func:`start_sidecar` cannot launch the binary.
+
+    Wraps the underlying cause (missing binary, Qt server start
+    failure, ``OSError`` from ``subprocess.Popen``) so callers in the
+    plug-in entry point can log a single structured error and fall
+    back to in-process mode silently.
+    """
+
+
+@dataclass(frozen=True)
+class SidecarHandle:
+    """Lifetime handle returned by :func:`start_sidecar`.
+
+    Pass back to :func:`stop_sidecar` from ``uninitializePlugin``.
+    Fields are public so debug tooling / smoke tests can inspect them
+    without going through the plug-in entry point.
+    """
+
+    proc: subprocess.Popen
+    qt_port: int
+    qt_binding: str
+    host_rpc_uri: str
+    binary_path: Path
+    maya_pid: int
+    command: list = field(default_factory=list)
+    launch_contract: dict = field(default_factory=dict)
+    extra_env: dict = field(default_factory=dict)
+    stdout_path: Optional[Path] = None
+    stderr_path: Optional[Path] = None
+
+    @property
+    def is_alive(self) -> bool:
+        """Whether the sidecar subprocess is still running."""
+        return self.proc.poll() is None
+
+
+def build_qtserver_uri(port: int, host: str = "127.0.0.1") -> str:
+    """Format the ``qtserver://`` URI the sidecar binary will dial.
+
+    The scheme is the discriminator the Rust router in
+    ``dcc-mcp-host-rpc`` matches on to pick the ``QtServerClient``
+    impl. Keep it lowercase and stable.
+
+    Args:
+        port: TCP port the in-Maya ``QTcpServer`` bound to.
+        host: bind address. Defaults to loopback.
+
+    Raises:
+        ValueError: when ``port`` is outside ``1..65535``.
+
+    Returns:
+        URI of the form ``"qtserver://127.0.0.1:18765"``.
+    """
+    if port <= 0 or port > 65535:
+        raise ValueError("port must be in 1..65535, got {0}".format(port))
+    return "qtserver://{0}:{1}".format(host, port)
+
+
+def is_sidecar_mode_enabled(env: Optional[dict] = None) -> bool:
+    """Return ``True`` unless sidecar mode is explicitly disabled.
+
+    Args:
+        env: optional environment-variable mapping to consult. Defaults
+            to :data:`os.environ`. Exposed for tests so the gate can be
+            exercised without mutating the live process environment.
+    """
+    raw = (env if env is not None else os.environ).get(ENV_SIDECAR_MODE)
+    if raw is None or not raw.strip():
+        return True
+    normalized = raw.strip().lower()
+    if normalized in _FALSEY_VALUES:
+        return False
+    # Unknown values preserve the default-on behaviour; only explicit
+    # falsey tokens opt out.
+    return True
+
+
+def resolve_gateway_remote_options(env: Optional[dict] = None) -> tuple[str, int]:
+    """Resolve LAN gateway listener options for the sidecar process.
+
+    The standalone gateway listens on the local loopback port
+    (``DCC_MCP_GATEWAY_PORT``, default 9765). Newer ``dcc-mcp-server``
+    sidecars ensure that process is running and can additionally ask it
+    to bind a LAN-facing listener for company network clients.
+    """
+
+    source = os.environ if env is None else env
+    host = str(source.get(ENV_GATEWAY_REMOTE_HOST, DEFAULT_GATEWAY_REMOTE_HOST)).strip()
+    if not host:
+        host = DEFAULT_GATEWAY_REMOTE_HOST
+
+    raw_port = str(source.get(ENV_GATEWAY_REMOTE_PORT, str(DEFAULT_GATEWAY_REMOTE_PORT))).strip()
+    try:
+        port = int(raw_port)
+    except ValueError:
+        port = DEFAULT_GATEWAY_REMOTE_PORT
+    if port < 0:
+        port = DEFAULT_GATEWAY_REMOTE_PORT
+    return host, port
+
+
+def _resolve_gateway_port(env: dict) -> int:
+    """Resolve the local gateway port option passed to core's launch helper."""
+
+    raw = str(env.get("DCC_MCP_GATEWAY_PORT", "9765")).strip()
+    try:
+        port = int(raw)
+    except ValueError:
+        return 9765
+    if port < 0 or port > 65535:
+        return 9765
+    return port
+
+
+def start_sidecar(
+    *,
+    maya_pid: Optional[int] = None,
+    dcc_name: str = "maya",
+    binary_override: Optional[Path] = None,
+    qt_port_override: Optional[int] = None,
+    registry_dir: Optional[Path] = None,
+    instance_id: Optional[str] = None,
+    display_name: Optional[str] = None,
+    adapter_version: Optional[str] = None,
+    discovery_mcp_url: Optional[str] = None,
+    gateway_name: Optional[str] = None,
+    extra_args: Optional[list] = None,
+    extra_env: Optional[dict] = None,
+    start_qt_server_fn=None,
+    stop_qt_server_fn=None,
+) -> SidecarHandle:
+    """Start the in-Maya Qt dispatcher and spawn the sidecar subprocess.
+
+    Args:
+        maya_pid: PID for the sidecar's ``--watch-pid`` flag. Defaults to
+            the current process (i.e. Maya's PID when called from
+            ``initializePlugin``).
+        dcc_name: ``--dcc`` flag value. Stays ``"maya"`` for this plug-in
+            but exposed for tests that simulate other DCCs.
+        binary_override: explicit binary path. Bypasses
+            :func:`resolve_sidecar_binary` when set; useful for tests.
+        qt_port_override: pin the Qt server to a specific TCP port. When
+            ``None`` (the production path) ``QTcpServer`` picks an
+            ephemeral port and announces it via the function's return.
+            Tests use a known port to drive deterministic assertions.
+        registry_dir: passed through to ``--registry-dir``. Defaults to
+            the binary's own platform-specific location.
+        instance_id: stable UUID forwarded to ``--instance-id`` so the
+            sidecar row can be correlated with the in-process Maya
+            server and shutdown sentinel.
+        display_name: human-readable label written to the FileRegistry
+            row (``--display-name``). Useful when multiple Maya sessions
+            share a host and an agent needs to disambiguate.
+        adapter_version: ``dcc_mcp_maya`` package version stamped onto
+            the row (``--adapter-version``). The plug-in passes its own
+            ``VERSION`` here so gateway and admin diagnostics can report
+            adapter generations.
+        discovery_mcp_url: read-only in-process MCP/REST endpoint used by
+            the gateway for ``tools/list``, schema describe, resources,
+            prompts, and admin skill inventory. Tool calls still route
+            through the sidecar dispatcher endpoint.
+        gateway_name: machine-level gateway label forwarded to
+            ``--gateway-name``. Keep this stable per workstation; do
+            not derive it from a scene because the standalone gateway
+            may outlive the Maya instance that launched it.
+        extra_args: additional CLI args appended after the standard set.
+            For one-off flags that do not deserve a first-class kwarg.
+        extra_env: environment overrides for the subprocess. Merged on
+            top of :data:`os.environ` so the sidecar inherits Maya's
+            existing ``DCC_MCP_*`` settings.
+        start_qt_server_fn: dependency-injection seam for tests. When
+            ``None`` (production) imports
+            :func:`dcc_mcp_core.qt_dispatcher.start_qt_server` and passes
+            Maya's dispatch handler. Tests pass a stub that returns a
+            canned ``{"host", "port", "qt_binding"}`` dict so the
+            supervisor can be exercised without a Qt runtime.
+        stop_qt_server_fn: companion teardown hook used if startup fails
+            after the Qt server has already been started.
+
+    Returns:
+        A :class:`SidecarHandle` referencing the spawned subprocess.
+
+    Raises:
+        SidecarSpawnError: when binary resolution, Qt server start, or
+            ``subprocess.Popen`` itself fails.
+    """
+    if maya_pid is None:
+        maya_pid = os.getpid()
+
+    try:
+        binary = binary_override or resolve_sidecar_binary()
+    except SidecarBinaryError as exc:
+        raise SidecarSpawnError(str(exc)) from exc
+
+    requested_port = qt_port_override if qt_port_override is not None else 0
+    qt_info = _start_qt_server(requested_port, start_qt_server_fn)
+    qt_port = int(qt_info["port"])
+    qt_host = str(qt_info.get("host", "127.0.0.1"))
+    qt_binding = str(qt_info.get("qt_binding", "unknown"))
+
+    host_rpc_uri = build_qtserver_uri(qt_port, host=qt_host)
+
+    spawn_env = os.environ.copy()
+    if extra_env:
+        spawn_env.update(extra_env)
+
+    try:
+        from dcc_mcp_core.install_lifecycle import build_sidecar_command  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001
+        _stop_qt_server(stop_qt_server_fn)
+        raise SidecarSpawnError(
+            "dcc_mcp_core.install_lifecycle.build_sidecar_command is unavailable: {0}".format(exc)
+        ) from exc
+
+    gateway_remote_host, gateway_remote_port = resolve_gateway_remote_options(spawn_env)
+    normalized_instance_id = normalize_instance_id(instance_id)
+    if instance_id not in (None, "") and normalized_instance_id is None:
+        logger.debug("Ignoring invalid sidecar instance_id %r; expected UUID", instance_id)
+
+    launch_kwargs = {
+        "dcc_type": dcc_name,
+        "host_rpc": host_rpc_uri,
+        "watch_pid": maya_pid,
+        "registry_dir": registry_dir,
+        "server_bin": str(binary),
+        "instance_id": normalized_instance_id,
+        "display_name": display_name,
+        "adapter_version": adapter_version,
+        "gateway_port": _resolve_gateway_port(spawn_env),
+        "gateway_name": gateway_name,
+        "gateway_remote_host": gateway_remote_host,
+        "gateway_remote_port": gateway_remote_port,
+        "extra_args": extra_args,
+        "env": spawn_env,
+    }
+    if discovery_mcp_url:
+        launch_kwargs["discovery_mcp_url"] = discovery_mcp_url
+    try:
+        launch_contract = build_sidecar_command(**launch_kwargs)
+    except TypeError as exc:
+        if "discovery_mcp_url" not in str(exc):
+            raise
+        launch_kwargs.pop("discovery_mcp_url", None)
+        logger.debug(
+            "dcc-mcp-maya: core sidecar helper does not accept discovery_mcp_url; "
+            "continuing without sidecar discovery endpoint metadata"
+        )
+        launch_contract = build_sidecar_command(**launch_kwargs)
+    if not launch_contract.get("success"):
+        _stop_qt_server(stop_qt_server_fn)
+        reason = launch_contract.get("reason") or "invalid_sidecar_launch"
+        message = launch_contract.get("message") or "unknown launch-contract failure"
+        raise SidecarSpawnError("failed to build sidecar launch command ({0}): {1}".format(reason, message))
+
+    cmd = list(launch_contract["command"])
+    spawn_env.update(dict(launch_contract.get("environment", {}).get("set", {})))
+    spawn_env[ENV_GATEWAY_REMOTE_HOST] = gateway_remote_host
+    spawn_env[ENV_GATEWAY_REMOTE_PORT] = str(gateway_remote_port)
+
+    logger.info(
+        "dcc-mcp-maya: spawning sidecar %s (qt_port=%d, watch_pid=%d, qt_binding=%s)",
+        binary,
+        qt_port,
+        maya_pid,
+        qt_binding,
+    )
+    stdio = _prepare_sidecar_stdio(launch_contract, spawn_env, maya_pid)
+    try:
+        proc = subprocess.Popen(  # noqa: S603 — argv is built from trusted vars
+            cmd,
+            env=spawn_env,
+            stdin=subprocess.DEVNULL,
+            stdout=stdio["stdout"],
+            stderr=stdio["stderr"],
+            close_fds=True,
+            creationflags=_detached_process_flags(),
+        )
+    except OSError as exc:
+        _stop_qt_server(stop_qt_server_fn)
+        raise SidecarSpawnError("failed to spawn dcc-mcp-server sidecar at {0}: {1}".format(binary, exc)) from exc
+    finally:
+        _close_sidecar_stdio(stdio)
+
+    return SidecarHandle(
+        proc=proc,
+        qt_port=qt_port,
+        qt_binding=qt_binding,
+        host_rpc_uri=host_rpc_uri,
+        binary_path=binary,
+        maya_pid=maya_pid,
+        command=cmd,
+        launch_contract=dict(launch_contract),
+        extra_env=dict(extra_env or {}),
+        stdout_path=stdio.get("stdout_path"),
+        stderr_path=stdio.get("stderr_path"),
+    )
+
+
+def stop_sidecar(
+    handle: SidecarHandle,
+    *,
+    grace_secs: float = _DEFAULT_TERMINATE_GRACE_SECS,
+    stop_qt_server_fn=None,
+) -> None:
+    """Terminate the sidecar subprocess and tear down the in-Maya Qt server.
+
+    Idempotent: safe to call multiple times. If the subprocess already
+    exited (e.g. PPID-watch fired because Maya was tearing down), only
+    the Qt server cleanup runs.
+
+    Args:
+        handle: the value returned by :func:`start_sidecar`.
+        grace_secs: how long to wait for graceful exit before
+            ``SIGKILL``-ing the process. ``5.0`` mirrors the sidecar
+            binary's own shutdown timeout default.
+        stop_qt_server_fn: dependency-injection seam for tests.
+            When ``None`` (production) calls
+            :func:`dcc_mcp_core.qt_dispatcher.stop_qt_server`.
+    """
+    if handle.proc.poll() is None:
+        try:
+            handle.proc.terminate()
+        except OSError as exc:
+            logger.debug("sidecar terminate() raised: %s", exc)
+        try:
+            handle.proc.wait(timeout=grace_secs)
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "dcc-mcp-maya: sidecar did not exit within %.1fs — killing",
+                grace_secs,
+            )
+            try:
+                handle.proc.kill()
+            except OSError as exc:
+                logger.debug("sidecar kill() raised: %s", exc)
+            try:
+                handle.proc.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                logger.error(
+                    "dcc-mcp-maya: sidecar PID %s still alive after kill",
+                    handle.proc.pid,
+                )
+
+    _stop_qt_server(stop_qt_server_fn)
+
+
+# ── internal helpers ──────────────────────────────────────────────
+
+
+def _start_qt_server(port, start_qt_server_fn):
+    """Resolve the Qt dispatcher and start it on the given port.
+
+    Lazy-imports the core dispatcher so this module stays
+    importable from CI / pytest without a Qt binding being available.
+    Tests can pass ``start_qt_server_fn`` to bypass the import.
+    """
+    if start_qt_server_fn is not None:
+        return start_qt_server_fn(port=port)
+    try:
+        from dcc_mcp_core.qt_dispatcher import start_qt_server
+
+        from dcc_mcp_maya.sidecar._dispatcher import dispatch_payload
+    except ImportError as exc:
+        raise SidecarSpawnError(
+            "failed to import core Qt dispatcher (dcc_mcp_core.qt_dispatcher): {0}".format(exc)
+        ) from exc
+    try:
+        return start_qt_server(port=port, dispatch_handler=dispatch_payload)
+    except Exception as exc:  # noqa: BLE001 — narrow to SidecarSpawnError
+        raise SidecarSpawnError("failed to start in-Maya Qt server on port {0}: {1}".format(port, exc)) from exc
+
+
+def _stop_qt_server(stop_qt_server_fn):
+    """Best-effort tear-down of the singleton Qt server.
+
+    Mirrors :func:`_start_qt_server`: lazy import, exception-swallowing
+    on failure because we run from teardown paths that must complete
+    even when Maya is mid-shutdown.
+    """
+    if stop_qt_server_fn is not None:
+        try:
+            stop_qt_server_fn()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("custom stop_qt_server_fn raised: %s", exc)
+        return
+    try:
+        from dcc_mcp_core.qt_dispatcher import stop_qt_server
+    except ImportError as exc:
+        logger.debug("qt dispatcher unavailable on teardown: %s", exc)
+        return
+    try:
+        stop_qt_server()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("stop_qt_server raised: %s", exc)
+
+
+def _detached_process_flags() -> int:
+    """OS-specific creation flags for ``subprocess.Popen``.
+
+    The sidecar is a regular child of Maya — we do NOT detach it on
+    Windows. Detaching would defeat the OS-level backstop that reaps
+    orphaned children when their parent dies. The PPID-watch in the
+    binary is the primary supervision mechanism; OS reaping is the
+    safety net.
+    """
+    if sys.platform == "win32":
+        # CREATE_NO_WINDOW so the binary doesn't open a console window
+        # behind Maya's UI; still inherits Maya's process tree.
+        CREATE_NO_WINDOW = 0x0800_0000  # noqa: N806
+        return CREATE_NO_WINDOW
+    return 0
+
+
+def _prepare_sidecar_stdio(launch_contract: dict, env: dict, maya_pid: int) -> dict:
+    """Open stdout/stderr log files for the sidecar child process.
+
+    The sidecar can exit before structured file logging starts, especially for
+    CLI argument-contract failures. Keeping raw stdio makes those failures
+    visible without blocking Maya startup.
+    """
+
+    try:
+        log_root = env.get("DCC_MCP_LOG_DIR")
+        if log_root:
+            log_dir = Path(log_root)
+        else:
+            log_dir = Path(str(launch_contract.get("registry_dir") or ".")) / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        prefix = "dcc-mcp-sidecar-{0}-{1}".format(maya_pid, stamp)
+        stdout_path = log_dir / "{0}.stdout.log".format(prefix)
+        stderr_path = log_dir / "{0}.stderr.log".format(prefix)
+        return {
+            "stdout": stdout_path.open("ab"),
+            "stderr": stderr_path.open("ab"),
+            "stdout_path": stdout_path,
+            "stderr_path": stderr_path,
+        }
+    except OSError as exc:
+        logger.warning("dcc-mcp-maya: failed to open sidecar stdio logs; falling back to DEVNULL: %s", exc)
+        return {
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+            "stdout_path": None,
+            "stderr_path": None,
+        }
+
+
+def _close_sidecar_stdio(stdio: dict) -> None:
+    for key in ("stdout", "stderr"):
+        handle = stdio.get(key)
+        if hasattr(handle, "close"):
+            try:
+                handle.close()
+            except OSError as exc:
+                logger.debug("sidecar stdio close raised: %s", exc)
+
+
+def _await_proc_alive(proc: subprocess.Popen, timeout: float = 0.5) -> bool:
+    """Brief sanity check that the subprocess did not exit immediately.
+
+    Returns ``True`` if the process is still alive after the timeout.
+    Used by tests to confirm the spawn succeeded before asserting
+    side effects like FileRegistry registration.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            return False
+        time.sleep(0.025)
+    return True

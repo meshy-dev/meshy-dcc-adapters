@@ -1,0 +1,120 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+*.py[cod]
+*.pyo
+__pycache__/
+*.egg-info/
+*.egg
+.eggs/
+dist/
+/build/
+*.whl
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+/venv/
+/.venv/
+/.nox/
+/.tox/
+env/
+.env/
+
+# ── Test & coverage ───────────────────────────────────────────────────────────
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+htmlcov/
+.pytest_cache/
+*.pytest_cache
+
+# ── Type checkers ─────────────────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# ── Editors ───────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*~
+*.orig
+*.bak
+*.tmp
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs & temp files ─────────────────────────────────────────────────────────
+*.log
+*.txt
+!packaging/README.txt
+!tools/doc_parity_allowlist.txt
+!llms.txt
+!llms-full.txt
+tmp/
+temp/
+
+# ── Docs build ────────────────────────────────────────────────────────────────
+docs/_*
+docs/src/*
+
+# ── Rust / cargo ──────────────────────────────────────────────────────────────
+target/
+
+# ── Misc project-specific ─────────────────────────────────────────────────────
+/.zip/
+/coverage.xml
+/run_pycharm.bat
+
+# Scratch files occasionally left by `pip download` / editors
+uv.lock
+/0.14.*
+/0.15.*
+
+# Local documentation and agent scratch files (development reference only)
+DOCKER_CHANGES.md
+DOCKER_QUICK_START.md
+.codebuddy/
+/MCP_Usage_Feedback_Report.md
+/REVIEW_REPORTS/
+/create_dynamics_animation.py
+/task_completion_report.md
+/test_maya_commands.py
+
+# Mock artefacts occasionally produced by tests that patch `cmds.file`
+/MagicMock/
+
+# Multica local runtime context. The daemon may write these into a bound
+# local_directory, but they must not be committed.
+.agent_context/
+.multica/
+
+# Local agent / IDE directories. These are runtime mount points, not source:
+# an agent runtime materialises skills into them at task start, so a copy kept
+# here is never the one that gets loaded and only drifts. Patterns are anchored
+# with a leading "/" so only the repository root matches; unanchored patterns
+# would silently ignore a nested directory of the same name.
+/.agents/
+/.agent_context/
+/.aider/
+/.augment/
+/.beads/
+/.claude/
+/.cline/
+/.clinerules/
+/.codebuddy/
+/.codegraph/
+/.codex/
+/.continue/
+/.cursor/
+/.gemini/
+/.kimi/
+/.kiro/
+/.monica/
+/.multica/
+/.opencode/
+/.roo/
+/.serena/
+/.trae/
+/.windsurf/

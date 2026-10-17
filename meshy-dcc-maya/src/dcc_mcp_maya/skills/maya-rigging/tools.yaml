@@ -1,0 +1,1175 @@
+tools:
+- name: assign_deformer
+  description: Apply a deformer (cluster, blendShape, lattice, wrap, bend, twist, flare, sine, squash, wave) to an object.
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - object_name
+    properties:
+      object_name:
+        type: string
+      deformer_type:
+        type: string
+        enum:
+        - cluster
+        - blendShape
+        - lattice
+        - wrap
+        - bend
+        - twist
+        - flare
+        - sine
+        - squash
+        - wave
+        default: cluster
+- name: blend_shape_add_target
+  description: Add a target mesh to an existing blend shape deformer.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - blend_shape
+    - target_mesh
+    properties:
+      blend_shape:
+        type: string
+      target_mesh:
+        type: string
+      weight:
+        type: number
+        minimum: 0.0
+        maximum: 1.0
+        default: 0.0
+      index:
+        type: integer
+- name: create_blend_shape
+  description: Create a blend shape deformer on a base mesh with optional target meshes.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - base_mesh
+    properties:
+      base_mesh:
+        type: string
+      target_meshes:
+        type: array
+        items:
+          type: string
+      name:
+        type: string
+      origin:
+        type: string
+        enum:
+        - local
+        - world
+        default: local
+- name: copy_skin_weights
+  description: Copy or mirror skin weights between skinned meshes.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - source_mesh
+    - target_mesh
+    properties:
+      source_mesh:
+        type: string
+      target_mesh:
+        type: string
+      source_skin_cluster:
+        type: string
+      target_skin_cluster:
+        type: string
+      create_missing_target_skin_cluster:
+        type: boolean
+        default: false
+      surface_association:
+        type: string
+        default: closestPoint
+      influence_association:
+        type: array
+        items:
+          type: string
+        default:
+        - closestJoint
+        - oneToOne
+        - name
+      mirror:
+        type: boolean
+        default: false
+      mirror_mode:
+        type: string
+        enum:
+        - XY
+        - YZ
+        - XZ
+        default: YZ
+      normalize:
+        type: boolean
+        default: true
+- name: create_constraint
+  description: Create a parent, point, orient, scale, aim, or pole-vector constraint.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - drivers
+    - driven
+    properties:
+      drivers:
+        oneOf:
+        - type: string
+        - type: array
+          items:
+            type: string
+          minItems: 1
+      driven:
+        type: string
+      constraint_type:
+        type: string
+        enum:
+        - parent
+        - point
+        - orient
+        - scale
+        - aim
+        - pole_vector
+        default: parent
+      maintain_offset:
+        type: boolean
+        default: true
+      weight:
+        type: number
+        default: 1.0
+      name:
+        type: string
+      aim_vector:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      up_vector:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+- name: create_curve
+  description: Create a NURBS curve from a list of control points.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    properties:
+      points:
+        type: array
+        items:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+      name:
+        type: string
+      degree:
+        type: integer
+        minimum: 1
+        default: 3
+      periodic:
+        type: boolean
+        default: false
+- name: create_guide_curve
+  description: >-
+    Create an editable open guide curve with bounded cluster metadata, one
+    solid RGB viewport color, root-to-tip ordering, arc-length validation, and
+    optional scalp-root projection distance.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+    - points
+    - cluster_id
+    - display_color_rgb
+    properties:
+      points:
+        type: array
+        minItems: 2
+        items:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+      cluster_id:
+        type: string
+        minLength: 1
+        maxLength: 64
+        pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]*$
+      display_color_rgb:
+        type: array
+        minItems: 3
+        maxItems: 3
+        items:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+      name:
+        type: string
+        minLength: 1
+        maxLength: 128
+      degree:
+        type: integer
+        minimum: 1
+        maximum: 7
+        default: 3
+      root_to_tip:
+        type: boolean
+        enum:
+        - true
+        default: true
+      scalp_mesh:
+        type: string
+        minLength: 1
+        maxLength: 256
+      source_view:
+        type: string
+        minLength: 1
+        maxLength: 64
+        pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]*$
+      dominant_clump:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]*$
+      length_tolerance_ratio:
+        type: number
+        exclusiveMinimum: 0.0
+        maximum: 0.1
+        default: 0.1
+- name: create_ik_handle
+  description: Create an IK handle between two joints with configurable solver.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - start_joint
+    - end_joint
+    properties:
+      start_joint:
+        type: string
+      end_joint:
+        type: string
+      solver:
+        type: string
+        enum:
+        - ikRPsolver
+        - ikSCsolver
+        default: ikRPsolver
+      name:
+        type: string
+- name: create_joint
+  description: Create a Maya joint node with optional parent and position.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    properties:
+      name:
+        type: string
+      position:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      parent:
+        type: string
+- name: create_rig_control
+  description: Create a rig control curve with optional offset groups and constraints.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - name
+    properties:
+      name:
+        type: string
+      shape:
+        type: string
+        enum:
+        - circle
+        - square
+        - diamond
+        - cross
+        - cube
+        default: circle
+      size:
+        type: number
+        minimum: 0.001
+        default: 1.0
+      target:
+        type: string
+      match_target:
+        type: boolean
+        default: true
+      parent:
+        type: string
+      offset_groups:
+        type: integer
+        minimum: 0
+        maximum: 8
+        default: 1
+      color_index:
+        type: integer
+        minimum: 0
+        maximum: 31
+      lock_attrs:
+        type: array
+        items:
+          type: string
+      constrain_target:
+        type: boolean
+        default: false
+      constraint_type:
+        type: string
+        enum:
+        - parent
+        - point
+        - orient
+        default: parent
+- name: detect_rig_frameworks
+  description: Detect optional Maya rigging frameworks such as mGear or AdvancedSkeleton.
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: rigging
+  input_schema:
+    type: object
+    properties:
+      frameworks:
+        type: array
+        items:
+          type: string
+      include_unavailable:
+        type: boolean
+        default: false
+- name: export_rig_state
+  description: Export a bounded deterministic hierarchy, constraint, control, and skin-health
+    snapshot.
+  execution: async
+  affinity: main
+  timeout_hint_secs: 60
+  annotations:
+    read_only_hint: true
+    destructive_hint: false
+    idempotent_hint: true
+    open_world_hint: false
+  group: rigging
+  input_schema:
+    type: object
+    additionalProperties: false
+    properties:
+      joints:
+        type: array
+        maxItems: 4096
+        uniqueItems: true
+        items:
+          type: string
+          minLength: 1
+          maxLength: 512
+      skin_clusters:
+        type: array
+        maxItems: 128
+        uniqueItems: true
+        items:
+          type: string
+          minLength: 1
+          maxLength: 512
+      controls:
+        type: array
+        maxItems: 256
+        uniqueItems: true
+        items:
+          type: string
+          minLength: 1
+          maxLength: 512
+      normalization_tolerance:
+        type: number
+        exclusiveMinimum: 0
+        maximum: 0.1
+        default: 0.0001
+  output_schema:
+    $schema: https://json-schema.org/draft/2020-12/schema
+    type: object
+    additionalProperties: false
+    required:
+    - success
+    - message
+    - error
+    - prompt
+    - context
+    properties:
+      success:
+        type: boolean
+      message:
+        type: string
+      error:
+        type:
+        - string
+        - 'null'
+      prompt:
+        type:
+        - string
+        - 'null'
+      context:
+        type: object
+    allOf:
+    - if:
+        properties:
+          success:
+            const: true
+        required:
+        - success
+      then:
+        properties:
+          error:
+            type: 'null'
+          context:
+            type: object
+            additionalProperties: false
+            required:
+            - schema
+            - joints
+            - constraints
+            - skins
+            - controls
+            - normalization_tolerance
+            properties:
+              schema:
+                type: string
+                const: dcc-mcp/rig-state@1
+              joints:
+                type: object
+                additionalProperties: false
+                required:
+                - count
+                - nodes
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                    maximum: 4096
+                  nodes:
+                    type: array
+                    maxItems: 4096
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                      - name
+                      - parent
+                      properties:
+                        name:
+                          type: string
+                        parent:
+                          type:
+                          - string
+                          - 'null'
+              constraints:
+                type: object
+                additionalProperties: false
+                required:
+                - count
+                - nodes
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                    maximum: 1024
+                  nodes:
+                    type: array
+                    maxItems: 1024
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                      - name
+                      - type
+                      - targets
+                      properties:
+                        name:
+                          type: string
+                        type:
+                          type: string
+                          enum:
+                          - parentConstraint
+                          - pointConstraint
+                          - orientConstraint
+                          - scaleConstraint
+                          - aimConstraint
+                          - poleVectorConstraint
+                        targets:
+                          type: array
+                          maxItems: 256
+                          items:
+                            type: string
+              skins:
+                type: array
+                maxItems: 128
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - skin_cluster
+                  - mesh
+                  - influences
+                  - influence_count
+                  - vertex_count
+                  - unnormalized_vertices
+                  properties:
+                    skin_cluster:
+                      type: string
+                    mesh:
+                      type: string
+                    influences:
+                      type: array
+                      minItems: 1
+                      maxItems: 256
+                      items:
+                        type: string
+                    influence_count:
+                      type: integer
+                      minimum: 1
+                      maximum: 256
+                    vertex_count:
+                      type: integer
+                      minimum: 1
+                      maximum: 4096
+                    unnormalized_vertices:
+                      type: integer
+                      minimum: 0
+                      maximum: 4096
+              controls:
+                type: object
+                additionalProperties: false
+                required:
+                - count
+                - nodes
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                    maximum: 256
+                  nodes:
+                    type: array
+                    maxItems: 256
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                      - name
+                      - shapes
+                      properties:
+                        name:
+                          type: string
+                        shapes:
+                          type: array
+                          minItems: 1
+                          maxItems: 256
+                          items:
+                            type: string
+              normalization_tolerance:
+                type: number
+                exclusiveMinimum: 0
+                maximum: 0.1
+    - if:
+        properties:
+          success:
+            const: false
+        required:
+        - success
+      then:
+        properties:
+          error:
+            type: string
+            minLength: 1
+- name: get_skin_weights
+  description: Read a bounded per-vertex skin-weight snapshot with normalization evidence.
+  execution: async
+  affinity: main
+  timeout_hint_secs: 60
+  annotations:
+    read_only_hint: true
+    destructive_hint: false
+    idempotent_hint: true
+    open_world_hint: false
+  group: rigging
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+    - mesh
+    properties:
+      mesh:
+        type: string
+        minLength: 1
+        maxLength: 256
+      skin_cluster:
+        type: string
+        minLength: 1
+        maxLength: 256
+      vertices:
+        type: array
+        minItems: 1
+        maxItems: 4096
+        uniqueItems: true
+        items:
+          type: integer
+          minimum: 0
+      normalization_tolerance:
+        type: number
+        exclusiveMinimum: 0
+        maximum: 0.1
+        default: 0.0001
+  output_schema:
+    $schema: https://json-schema.org/draft/2020-12/schema
+    type: object
+    additionalProperties: false
+    required:
+    - success
+    - message
+    - error
+    - prompt
+    - context
+    properties:
+      success:
+        type: boolean
+      message:
+        type: string
+      error:
+        type:
+        - string
+        - 'null'
+      prompt:
+        type:
+        - string
+        - 'null'
+      context:
+        type: object
+    allOf:
+    - if:
+        properties:
+          success:
+            const: true
+        required:
+        - success
+      then:
+        properties:
+          error:
+            type: 'null'
+          context:
+            type: object
+            additionalProperties: false
+            required:
+            - schema
+            - mesh
+            - skin_cluster
+            - influences
+            - influence_count
+            - vertices
+            - vertex_count
+            - mesh_vertex_count
+            - unnormalized_vertices
+            - normalization_tolerance
+            properties:
+              schema:
+                type: string
+                const: dcc-mcp/skin-weights@1
+              mesh:
+                type: string
+              skin_cluster:
+                type: string
+              influences:
+                type: array
+                minItems: 1
+                maxItems: 256
+                items:
+                  type: string
+              influence_count:
+                type: integer
+                minimum: 1
+                maximum: 256
+              vertices:
+                type: array
+                minItems: 1
+                maxItems: 4096
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - vertex
+                  - weights
+                  - total_weight
+                  properties:
+                    vertex:
+                      type: integer
+                      minimum: 0
+                    weights:
+                      type: array
+                      minItems: 1
+                      maxItems: 256
+                      items:
+                        type: object
+                        additionalProperties: false
+                        required:
+                        - influence
+                        - weight
+                        properties:
+                          influence:
+                            type: string
+                          weight:
+                            type: number
+                            minimum: 0
+                            maximum: 1
+                    total_weight:
+                      type: number
+                      minimum: 0
+              vertex_count:
+                type: integer
+                minimum: 1
+                maximum: 4096
+              mesh_vertex_count:
+                type: integer
+                minimum: 1
+              unnormalized_vertices:
+                type: integer
+                minimum: 0
+                maximum: 4096
+              normalization_tolerance:
+                type: number
+                exclusiveMinimum: 0
+                maximum: 0.1
+    - if:
+        properties:
+          success:
+            const: false
+        required:
+        - success
+      then:
+        properties:
+          error:
+            type: string
+            minLength: 1
+- name: mirror_joints
+  description: Mirror a joint chain across an axis plane with optional search/replace renaming.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - joint_name
+    properties:
+      joint_name:
+        type: string
+      mirror_behavior:
+        type: boolean
+        default: true
+      search_replace:
+        type: array
+        items:
+          type: string
+        minItems: 2
+        maxItems: 2
+      mirror_axis:
+        type: string
+        enum:
+        - YZ
+        - XY
+        - XZ
+        default: YZ
+- name: query_skin_cluster
+  description: Query skinCluster influences, geometry, and common settings.
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - node
+    properties:
+      node:
+        type: string
+- name: set_driven_key
+  description: Create a set-driven key relationship between a driver attribute and driven attributes.
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - driver_attr
+    - driven_attrs
+    - driver_values
+    - driven_values
+    properties:
+      driver_attr:
+        type: string
+      driven_attrs:
+        type: array
+        items:
+          type: string
+      driver_values:
+        type: array
+        items:
+          type: number
+      driven_values:
+        type: array
+        items:
+          type: array
+          items:
+            type: number
+      tangent_type:
+        type: string
+        enum:
+        - linear
+        - smooth
+        - flat
+        - step
+        default: linear
+- name: set_ik_fk_blend
+  description: Set the IK/FK blend weight on an IK handle (0 = full FK, 1 = full IK).
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - ik_handle
+    properties:
+      ik_handle:
+        type: string
+      blend:
+        type: number
+        minimum: 0.0
+        maximum: 1.0
+        default: 1.0
+      attribute:
+        type: string
+        default: ikBlend
+- name: set_joint_limit
+  description: Set rotation limits on a joint axis (x, y, or z) with min/max angles.
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - joint_name
+    - axis
+    properties:
+      joint_name:
+        type: string
+      axis:
+        type: string
+        enum:
+        - x
+        - y
+        - z
+      min_angle:
+        type: number
+      max_angle:
+        type: number
+      enable:
+        type: boolean
+        default: true
+- name: set_joint_orient
+  description: Set the joint orientation (local rotation axes) on a Maya joint.
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - joint_name
+    properties:
+      joint_name:
+        type: string
+      orient:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      zero_scale_orient:
+        type: boolean
+        default: false
+- name: set_skin_weights
+  description: Replace bounded complete skin-weight rows and verify every native readback.
+  execution: async
+  affinity: main
+  timeout_hint_secs: 60
+  annotations:
+    read_only_hint: false
+    destructive_hint: true
+    idempotent_hint: true
+    open_world_hint: false
+  group: rigging
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+    - mesh
+    - vertices
+    properties:
+      mesh:
+        type: string
+        minLength: 1
+        maxLength: 256
+      skin_cluster:
+        type: string
+        minLength: 1
+        maxLength: 256
+      vertices:
+        type: array
+        minItems: 1
+        maxItems: 4096
+        items:
+          type: object
+          additionalProperties: false
+          required:
+          - vertex
+          - weights
+          properties:
+            vertex:
+              type: integer
+              minimum: 0
+            weights:
+              type: array
+              minItems: 1
+              maxItems: 256
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - influence
+                - weight
+                properties:
+                  influence:
+                    type: string
+                    minLength: 1
+                    maxLength: 256
+                  weight:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+            total_weight:
+              description: Read-only normalization evidence accepted from get_skin_weights.
+              type: number
+      normalization_tolerance:
+        type: number
+        exclusiveMinimum: 0
+        maximum: 0.1
+        default: 0.0001
+  output_schema:
+    $schema: https://json-schema.org/draft/2020-12/schema
+    type: object
+    additionalProperties: false
+    required:
+    - success
+    - message
+    - error
+    - prompt
+    - context
+    properties:
+      success:
+        type: boolean
+      message:
+        type: string
+      error:
+        type:
+        - string
+        - 'null'
+      prompt:
+        type:
+        - string
+        - 'null'
+      context:
+        type: object
+    allOf:
+    - if:
+        properties:
+          success:
+            const: true
+        required:
+        - success
+      then:
+        properties:
+          error:
+            type: 'null'
+          context:
+            type: object
+            additionalProperties: false
+            required:
+            - schema
+            - mesh
+            - skin_cluster
+            - influences
+            - influence_count
+            - vertices
+            - vertex_count
+            - mesh_vertex_count
+            - verified_vertex_count
+            - unnormalized_vertices
+            - normalization_tolerance
+            properties:
+              schema:
+                type: string
+                const: dcc-mcp/skin-weights@1
+              mesh:
+                type: string
+              skin_cluster:
+                type: string
+              influences:
+                type: array
+                minItems: 1
+                maxItems: 256
+                items:
+                  type: string
+              influence_count:
+                type: integer
+                minimum: 1
+                maximum: 256
+              vertices:
+                type: array
+                minItems: 1
+                maxItems: 4096
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - vertex
+                  - weights
+                  - total_weight
+                  properties:
+                    vertex:
+                      type: integer
+                      minimum: 0
+                    weights:
+                      type: array
+                      minItems: 1
+                      maxItems: 256
+                      items:
+                        type: object
+                        additionalProperties: false
+                        required:
+                        - influence
+                        - weight
+                        properties:
+                          influence:
+                            type: string
+                          weight:
+                            type: number
+                            minimum: 0
+                            maximum: 1
+                    total_weight:
+                      type: number
+                      minimum: 0
+              vertex_count:
+                type: integer
+                minimum: 1
+                maximum: 4096
+              mesh_vertex_count:
+                type: integer
+                minimum: 1
+              verified_vertex_count:
+                type: integer
+                minimum: 1
+                maximum: 4096
+              unnormalized_vertices:
+                type: integer
+                const: 0
+              normalization_tolerance:
+                type: number
+                exclusiveMinimum: 0
+                maximum: 0.1
+    - if:
+        properties:
+          success:
+            const: false
+        required:
+        - success
+      then:
+        properties:
+          error:
+            type: string
+            minLength: 1
+- name: skin_cluster_bind
+  description: Bind a mesh to a set of joints using a skin cluster.
+  execution: sync
+  affinity: main
+  group: rigging
+  input_schema:
+    type: object
+    required:
+    - joints
+    - mesh
+    properties:
+      joints:
+        type: array
+        items:
+          type: string
+        minItems: 1
+      mesh:
+        type: string
+      max_influences:
+        type: integer
+        minimum: 1
+        default: 4
+      bind_method:
+        type: integer
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        default: 0
+      name:
+        type: string

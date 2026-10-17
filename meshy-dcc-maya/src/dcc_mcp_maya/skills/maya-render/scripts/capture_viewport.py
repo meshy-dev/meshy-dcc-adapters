@@ -1,0 +1,264 @@
+"""Capture the Maya viewport as a PNG image (base64-encoded)."""
+
+# Import future modules
+from __future__ import annotations
+
+# Import built-in modules
+import base64
+import os
+import tempfile
+from typing import Optional, Tuple
+
+# Import local modules
+from dcc_mcp_core.skill import skill_entry, skill_error, skill_exception, skill_success
+
+from dcc_mcp_maya._viewport_capture import viewport_capture_preflight
+
+_MAX_PLAYBLAST_DIM = 8192
+
+
+def _clamp_playblast_dims(width: int, height: int) -> Tuple[int, int]:
+    w = max(1, min(int(width), _MAX_PLAYBLAST_DIM))
+    h = max(1, min(int(height), _MAX_PLAYBLAST_DIM))
+    return w, h
+
+
+def _playblast_frame_range(frame: float) -> Tuple[int, int]:
+    """Maya playblast expects a time range; a one-element list is unreliable."""
+    fnum = int(round(float(frame)))
+    return (fnum, fnum)
+
+
+def _unlink_if_exists(path: Optional[str]) -> None:
+    if path and os.path.exists(path):
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def _apply_view_fit(cmds) -> bool:
+    """Fit the scene in the active model panel (correct ``allObjects`` flag)."""
+    try:
+        panel = _active_model_panel(cmds)
+        if panel:
+            camera = cmds.modelPanel(panel, query=True, camera=True)
+            cmds.viewFit(camera, allObjects=True, animate=False)
+            return True
+        cmds.viewFit(allObjects=True, animate=False)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _read_nonempty_png(path: str) -> bytes:
+    """Read a playblast PNG and fail when Maya produced an empty file."""
+    with open(path, "rb") as fh:
+        img_bytes = fh.read()
+    if not img_bytes:
+        raise ValueError("EMPTY_PLAYBLAST")
+    return img_bytes
+
+
+def _active_model_panel(cmds) -> Optional[str]:
+    try:
+        focused = cmds.getPanel(withFocus=True)
+        if focused and cmds.getPanel(typeOf=focused) == "modelPanel":
+            return str(focused)
+    except Exception:
+        pass
+    try:
+        panels = cmds.getPanel(type="modelPanel") or []
+        visible = set(cmds.getPanel(visiblePanels=True) or [])
+    except Exception:
+        return None
+    for panel in panels:
+        if panel in visible:
+            return str(panel)
+    return str(panels[0]) if panels else None
+
+
+def _viewport_renderer(cmds, panel: Optional[str]) -> Optional[str]:
+    if not panel:
+        return None
+    try:
+        return str(cmds.modelEditor(panel, query=True, rendererName=True))
+    except Exception:
+        return None
+
+
+def _visible_model_panels(cmds):
+    try:
+        panels = cmds.getPanel(type="modelPanel") or []
+        visible = set(cmds.getPanel(visiblePanels=True) or [])
+        return [panel for panel in panels if panel in visible]
+    except Exception:
+        return []
+
+
+def capture_viewport(
+    width: int = 1920,
+    height: int = 1080,
+    frame: Optional[float] = None,
+    off_screen: Optional[bool] = None,
+    view_fit: bool = False,
+) -> dict:
+    """Capture the Maya viewport as a PNG image (base64-encoded).
+
+    Uses ``cmds.playblast`` to render the active viewport into a temporary
+    PNG file and returns the image bytes as a Base64 string.  Unlike the
+    OS-level ``diagnostics__screenshot`` tool, playblast renders directly
+    from Maya's render context. Interactive capture requires a visible Maya
+    main window and model panel; batch capture may use the off-screen path.
+
+    Args:
+        width: Image width in pixels.  Default: 1920.
+        height: Image height in pixels.  Default: 1080.
+        frame: Frame to capture.  Defaults to the current frame.
+        off_screen: When ``True`` (or when running in batch mode) render
+            off-screen via Maya's framebuffer. This does not override the
+            interactive-window visibility preflight. Default: auto-detect.
+        view_fit: When ``True``, run ``viewFit`` with ``allObjects=True`` on the
+            active model panel before capture (never use the invalid ``all=True``
+            flag in ad-hoc scripts).
+
+    Returns:
+        ToolResult dict with ``context.image`` (base64 PNG string).
+    """
+
+    try:
+        import maya.cmds as cmds  # noqa: PLC0415
+    except ImportError:
+        return skill_error("Maya not available", "maya.cmds could not be imported")
+
+    try:
+        tmp_path: Optional[str] = None
+        img_path: Optional[str] = None
+        f0: Optional[int] = None
+        preflight_error = viewport_capture_preflight(cmds)
+        if preflight_error is not None:
+            return preflight_error
+        if frame is None:
+            frame = cmds.currentTime(query=True)
+
+        width, height = _clamp_playblast_dims(width, height)
+        f0, f1 = _playblast_frame_range(frame)
+        model_panel = _active_model_panel(cmds)
+        viewport_renderer = _viewport_renderer(cmds, model_panel)
+        visible_panels = _visible_model_panels(cmds)
+
+        view_fit_applied = False
+        if view_fit:
+            view_fit_applied = _apply_view_fit(cmds)
+
+        # Batch Maya has no interactive window, so retain its off-screen path.
+        # Interactive Maya already passed the visible-window/panel preflight.
+        if off_screen is None:
+            off_screen = bool(cmds.about(batch=True))
+        if view_fit and not view_fit_applied:
+            off_screen = True
+
+        # playblast writes  <prefix>.<frame_padded>.png
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp_path = tmp.name
+
+        # Remove the .png suffix for playblast prefix
+        prefix = tmp_path[:-4]
+        playblast_kwargs = dict(
+            frame=(f0, f1),
+            format="image",
+            compression="png",
+            filename=prefix,
+            width=width,
+            height=height,
+            percent=100,
+            viewer=False,
+            showOrnaments=False,
+            offScreen=bool(off_screen),
+        )
+        if model_panel:
+            playblast_kwargs["editorPanelName"] = model_panel
+        cmds.playblast(**playblast_kwargs)
+
+        # playblast appends .<frame>.png
+        padded = "{}.{}.png".format(prefix, str(f0).zfill(4))
+        img_path = padded if os.path.exists(padded) else prefix + ".png"
+
+        img_bytes = _read_nonempty_png(img_path)
+        _unlink_if_exists(img_path)
+        if tmp_path != img_path:
+            _unlink_if_exists(tmp_path)
+
+        encoded = base64.b64encode(img_bytes).decode("ascii")
+        return skill_success(
+            "Viewport captured ({}x{} @ frame {})".format(width, height, frame),
+            image=encoded,
+            width=width,
+            height=height,
+            frame=frame,
+            off_screen=bool(off_screen),
+            view_fit=bool(view_fit),
+            view_fit_applied=view_fit_applied,
+            off_screen_forced_by_view_fit_failure=bool(view_fit and not view_fit_applied),
+            model_panel=model_panel,
+            viewport_renderer=viewport_renderer,
+            visible_model_panels=visible_panels,
+            prompt="Use capture_viewport with view_fit=True instead of execute_python viewFit(all=True).",
+        )
+    except ValueError as exc:
+        if str(exc) != "EMPTY_PLAYBLAST":
+            raise
+        for candidate in (tmp_path, img_path):
+            try:
+                if candidate and os.path.exists(candidate):
+                    os.unlink(candidate)
+            except OSError:
+                pass
+        return skill_error(
+            "Viewport capture produced an empty image",
+            "Maya playblast wrote a 0-byte PNG",
+            possible_solutions=[
+                "Use maya_render__render_frame with preview-sized dimensions when the viewport is unavailable.",
+                "Ensure a model panel is visible before capturing.",
+                "Retry after using view_fit=True so the camera frames scene content.",
+            ],
+            error_code="EMPTY_PLAYBLAST",
+            width=width,
+            height=height,
+            frame=frame,
+            off_screen=bool(off_screen),
+            view_fit=bool(view_fit),
+            view_fit_applied=view_fit_applied,
+            off_screen_forced_by_view_fit_failure=bool(view_fit and not view_fit_applied),
+            model_panel=model_panel,
+            viewport_renderer=viewport_renderer,
+            visible_model_panels=visible_panels,
+        )
+    except Exception as exc:
+        _unlink_if_exists(tmp_path)
+        if tmp_path is not None:
+            prefix = tmp_path[:-4]
+            _unlink_if_exists(prefix + ".png")
+            if f0 is not None:
+                _unlink_if_exists("{}.{}.png".format(prefix, str(f0).zfill(4)))
+                _unlink_if_exists("{}.{}.png".format(prefix, f0))
+        return skill_exception(
+            exc,
+            message="Failed to capture viewport",
+            possible_solutions=[
+                "Use maya_render__render_frame when the interactive viewport is unavailable.",
+                "Verify a model panel exists (cmds.getPanel(visiblePanels=True)).",
+            ],
+        )
+
+
+@skill_entry
+def main(**kwargs) -> dict:
+    """Entry point; delegates to :func:`capture_viewport`."""
+    return capture_viewport(**kwargs)
+
+
+if __name__ == "__main__":
+    from dcc_mcp_core.skill import run_main
+
+    run_main(main)

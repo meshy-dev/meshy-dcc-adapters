@@ -1,0 +1,20 @@
+groups:
+- name: core
+  description: "Core scripting tools — execute_python, execute_mel, plug-in lifecycle, list_mel_procedures, get_script_node. Always active."
+  default_active: true
+  tools:
+  - execute_mel
+  - execute_python
+  - list_plugins
+  - load_plugin
+  - unload_plugin
+  - get_script_node
+  - list_mel_procedures
+- name: introspect
+  description: "Maya API introspection — list_module, signature, search, eval. Load on demand to inspect maya.cmds / OpenMaya signatures."
+  default_active: false
+  tools:
+  - introspect_list_module
+  - introspect_signature
+  - introspect_search
+  - introspect_eval
