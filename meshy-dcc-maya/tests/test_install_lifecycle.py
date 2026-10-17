@@ -635,32 +635,19 @@ def test_public_reports_use_shared_schema_and_stable_exit_codes():
     }
 
 
-def test_install_runbook_covers_the_complete_owning_repo_contract():
+def test_install_runbook_covers_the_meshy_dcc_path():
     guide = (ROOT / "install.md").read_text(encoding="utf-8")
 
-    for heading in (
-        "## Requirements",
-        "## Supported versions",
-        "## Agent quick path",
-        "## Manual path",
-        "## Verify",
-        "## Upgrade",
-        "## Uninstall",
-        "## Troubleshooting",
-    ):
-        assert heading in guide
-    for platform in ("Windows", "macOS", "Linux"):
-        assert platform in guide
-    for verb in ("install", "status", "verify", "uninstall", "upgrade"):
-        assert "meshy-dcc-maya %s" % verb in guide
-    for flag in ("--json", "--yes", "--dry-run", "--dcc-path", "--python"):
-        assert flag in guide
     for term in (
-        "receipt",
-        "rollback",
-        "capture_bootstrap_errors",
-        "host.ping",
-        "https://raw.githubusercontent.com/meshy-dev/meshy-dcc-maya/main/install.md",
+        "meshy-dcc install --dcc-type maya",
+        "bin/meshy-dcc-maya install --json",
+        "bin/meshy-dcc-maya uninstall --json",
+        "meshy_dcc_maya.mod",
+        "MAYA_APP_DIR",
+        "MESHY_DCC_MAYA_MODULES_DIR",
+        "MESHY_DCC_MAYA_SIDECAR=1",
+        "MESHY_DCC_MAYA_DISABLE_AUTOSAVE=1",
+        "MESHY_DCC_MAYA_COMMANDPORT_HYGIENE=1",
     ):
         assert term in guide
 

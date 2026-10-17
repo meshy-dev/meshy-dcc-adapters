@@ -24,6 +24,10 @@ metadata:
 Use this skill when a user wants an agent to prepare a machine so any MCP
 host can use `meshy-dcc-maya` with Autodesk Maya.
 
+The supported install is `meshy-dcc install --dcc-type maya` (see the root
+`install.md`). This skill sets up a source checkout for development only;
+`meshy-dcc-maya` is not published on PyPI, so `--source pypi` does not work.
+
 This is an operator skill, not a Maya runtime skill. Do not load it through
 the Maya MCP server. Run it from the repository checkout or copy its steps into
 another agent's instructions.

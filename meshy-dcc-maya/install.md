@@ -1,164 +1,74 @@
-# meshy-dcc-maya Install SOP v1
+# Install Meshy DCC for Maya
 
-This is the owning-repository install contract for Autodesk Maya. The stable
-catalog route is
-`https://raw.githubusercontent.com/meshy-dev/meshy-dcc-maya/main/install.md`.
+Not verified on a real Maya yet; experimental.
 
 ## Requirements
 
-- Autodesk Maya and its exact `mayapy` interpreter.
-- `meshy-dcc-maya` installed in that interpreter, with
-  `meshy-dcc-core>=0.20.0,<0.21.0`.
-- Write access to the selected Maya user profile.
-- Close Maya before replacing or removing a loaded module on Windows.
+- Autodesk Maya 2025 or 2026 (Python 3.11). The core wheel is abi3 for
+  Python 3.8+, so Maya 2023 and 2024 may load it too, but they are untested;
+  on macOS only arm64 builds of Maya can load the arm64 package.
+- `meshy-dcc-core>=0.2.0,<0.3.0`, which the package carries.
 
-Install the Python package with the target interpreter first:
+## With meshy-dcc
 
-```bash
-mayapy -m pip install --upgrade meshy-dcc-maya
+```sh
+meshy-dcc install --dcc-type maya --execute
 ```
 
-The legacy repository setup helper remains available for source checkouts, but
-the standard lifecycle below is the agent-facing contract.
+Pass `--dcc-path` with the Maya executable when several are installed
+(`/Applications/Autodesk/maya2026/Maya.app`, or
+`C:\Program Files\Autodesk\Maya2026\bin\maya.exe`). The install:
 
-## Supported versions
+1. downloads the package for this platform and checks its SHA-256;
+2. extracts it into the Meshy DCC data folder,
+   `adapters/meshy-dcc-maya/meshy-dcc-maya-<platform>/` (on macOS under
+   `~/Library/Application Support/meshy-dcc/`, on Windows under
+   `%APPDATA%\meshy-dcc\`, or `MESHY_DCC_DATA_DIR`);
+3. runs `bin/meshy-dcc-maya uninstall --json`, then
+   `bin/meshy-dcc-maya install --json`;
+4. records how `meshy-dcc start-instance` launches Maya.
 
-Maya 2020 through 2027 locations are discovered and classified through a real
-`mayapy` probe. The selected build must provide Python 3.7 or newer; a legacy
-Python 2 Maya 2020/2021 build fails preflight instead of receiving incompatible
-files. Maya 2022's Python 3.7 remains supported. The installer checks the host,
-interpreter, adapter import, and minimum Core version before writing any file.
+The installer writes one file, `meshy_dcc_maya.mod`, into the first of:
 
-The host and profile boundaries are explicit on all three platforms:
+- `MESHY_DCC_MAYA_MODULES_DIR`;
+- `$MAYA_APP_DIR/modules`;
+- macOS `~/Library/Preferences/Autodesk/maya/modules`, Windows
+  `<Documents>\maya\modules` (the Documents known folder, which may be
+  redirected, for example to OneDrive).
 
-- Windows: `C:\Program Files\Autodesk\Maya2025` and
-  `%USERPROFILE%\Documents\maya`.
-- macOS: `/Applications/Autodesk/maya2025/Maya.app` and
-  `~/Library/Preferences/Autodesk/maya`.
-- Linux: `/usr/autodesk/maya2025` and `~/maya`.
+The file reads:
 
-## Agent quick path
-
-Always resolve and inspect a non-mutating plan first:
-
-```bash
-meshy-dcc-maya install --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+```
++ meshy_dcc_maya 0.1.0 <extracted package>/module
+PYTHONPATH+:=python
 ```
 
-Both paths are overrides. If omitted, discovery checks the Maya environment,
-`mayapy` on `PATH`, and the standard Maya 2020-2027 installation locations;
-the resolved paths and selection source remain explicit in the JSON plan.
+It applies to every Maya version that reads that folder. The user's own
+`userSetup.py`, `Maya.env` and preferences are not touched. Close Maya
+before reinstalling on Windows: Maya keeps the module's files open.
 
-Review `host`, `python`, `install_state`, `steps`, and the executable
-`next_steps`. Execute the same validated target only with explicit consent:
+## What happens in Maya
 
-```bash
-meshy-dcc-maya install --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+Maya adds the module's `plug-ins` and `scripts` folders to its paths and
+`python` to `PYTHONPATH`, and runs the module's `scripts/userSetup.py` at
+startup. It loads `meshy_dcc_maya_plugin`, which starts the adapter's server
+on a free loopback port and registers the session with the `meshy-dcc`
+registry. A Maya started by `meshy-dcc start-instance` also offers a safe
+stop.
+
+Off unless set before Maya starts:
+
+| Variable | Effect |
+|---|---|
+| `MESHY_DCC_MAYA_SIDECAR=1` | Run a `meshy-dcc-server` sidecar next to Maya (it can also open a LAN listener). |
+| `MESHY_DCC_MAYA_DISABLE_AUTOSAVE=1` | Turn Maya's AutoSave off while the plug-in is loaded. Maya keeps that switch in the user's preferences. |
+| `MESHY_DCC_MAYA_COMMANDPORT_HYGIENE=1` | Close Maya's default commandPort and turn off the security warning on open ones. |
+
+## Remove
+
+```sh
+<extracted package>/bin/meshy-dcc-maya uninstall --json
 ```
 
-Exit codes are stable: `0` success, `10` preflight, `20` acquisition, `30`
-install/rollback failure, `40` verification failure, and `50`
-requires-restart. Planning never writes. Re-running install converges; a
-partial install is classified as a repair.
-
-## Manual path
-
-The lifecycle command stages a complete Maya module tree before commit. It
-installs the adapter package, `meshy_dcc_maya_plugin.py`, the packaged
-`userSetup.py`, and an absolute `meshy_dcc_maya.mod` descriptor. It also writes a
-bounded managed block to the profile `scripts/userSetup.py`.
-
-To consume an immutable released module ZIP instead of assembling the module
-from the installed wheel, add `--module-zip /absolute/path/to/archive.zip` to
-both the plan and execution commands. ZIP paths, symlinks, encryption, expanded
-bytes, and file count are bounded and validated before the profile is created;
-the receipt records the archive path and SHA-256.
-
-The receipt records the module tree, descriptor, managed userSetup state,
-selected interpreter, Maya version, adapter/Core versions, hashes, and the
-prior userSetup content. Replacement is stage -> previous-state backup ->
-commit; any failed commit triggers rollback to the complete previous state.
-There is no delete-then-copy window.
-
-For a repository checkout, the old helper is compatibility-only:
-
-```bash
-python skills/meshy-dcc-maya-setup/scripts/setup_meshy_dcc_maya.py --mayapy "/absolute/path/to/mayapy"
-```
-
-## Status
-
-```bash
-meshy-dcc-maya status --json --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
-```
-
-`fresh`, `current`, `upgrade`, and `partial` are reported from the receipt and
-artifact hashes. Unknown unreceipted files are never removed automatically.
-
-## Verify
-
-```bash
-meshy-dcc-maya verify --json --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy" --timeout 30
-```
-
-Verification fails closed through these boundaries:
-
-1. Receipt ownership and artifact hashes.
-2. Adapter, Core, and Maya imports in the exact target interpreter.
-3. Captured startup errors from `capture_bootstrap_errors`.
-4. Core `wait_for_sidecar_ready` followed by the typed `host.ping` probe.
-
-Only all four gates produce `directly_usable: true`. A healthy process or an
-HTTP listener alone is not Maya readiness. If Maya is not running, exit `40`
-is expected and `next_steps` provides the exact launch and verify commands.
-
-The fixed GUI diagnostic from the dependent bootstrap work remains available:
-
-```bash
-mayapy -m meshy_dcc_maya.gui_bootstrap launch --maya-executable "/absolute/path/to/maya" --timeout 120
-```
-
-It captures ordered plug-in/registry/sidecar stages without changing Plug-in
-Manager Auto Load or using UI automation.
-
-## Upgrade
-
-Upgrade requires an existing valid receipt:
-
-```bash
-meshy-dcc-maya upgrade --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
-meshy-dcc-maya upgrade --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
-```
-
-The upgrade uses the same staged transaction and rollback path as install. It
-preserves the original pre-install userSetup state across repeated upgrades.
-
-## Uninstall
-
-Plan, then consume only the matching receipt:
-
-```bash
-meshy-dcc-maya uninstall --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
-meshy-dcc-maya uninstall --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
-```
-
-Uninstall removes only receipted module content and restores the prior
-userSetup state. A missing receipt or modified owned artifact fails closed.
-Repeated uninstall is idempotent. A Windows file lock returns exit `50` and
-requires Maya to close/restart before retrying.
-
-## Troubleshooting
-
-- `mayapy_missing`: pass the exact bundled interpreter with `--python`.
-- `unsupported_maya_version`: select Maya 2020-2027; do not override the
-  detected result with a guessed version.
-- `core_version_unsupported` or `target_import_failed`: install the adapter and
-  Core into the selected `mayapy`, then repeat the dry run.
-- `bootstrap_error_captured`: inspect the reported host-errors log and the
-  staged GUI bootstrap log before retrying.
-- `sidecar_unavailable`: start Maya, wait for the deferred userSetup/plugin
-  load, then run verify again.
-- `windows_file_lock`: close every Maya process that loaded this module, then
-  retry the same receipted operation.
-- `receipt_target_mismatch` or modified artifacts: select the original host and
-  profile; do not delete unknown files to force success.
+removes `meshy_dcc_maya.mod`, only if Meshy DCC wrote it. Then delete the
+extracted package folder. A reinstall runs the same command first.
