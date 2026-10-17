@@ -34,6 +34,7 @@ import hashlib
 import shutil
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import urllib.parse
@@ -151,7 +152,7 @@ def build(core_wheel: Path, platform: str, output_dir: Path, cache: Path) -> Pat
                 "pip",
                 "install",
                 "--python",
-                PYTHON_VERSION,
+                sys.executable,
                 "--python-platform",
                 spec["uv_platform"],
                 "--target",
