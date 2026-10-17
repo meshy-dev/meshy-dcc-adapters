@@ -374,7 +374,7 @@ def verify_artifact(
             params=params,
             remediation=(
                 "OpenSCAD exited without producing an artifact; check the output suffix "
-                "against `dcc-mcp-openscad get_capabilities`"
+                "against `meshy-dcc-openscad get_capabilities`"
             ),
         )
     verified.append("artifact.exists")

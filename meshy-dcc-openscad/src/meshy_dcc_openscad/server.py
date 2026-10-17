@@ -9,8 +9,8 @@ import time
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence
 
-from dcc_mcp_core import DccServerOptions
-from dcc_mcp_core.server_base import DccServerBase
+from meshy_dcc_core import DccServerOptions
+from meshy_dcc_core.server_base import DccServerBase
 
 from .__version__ import __version__
 
@@ -51,7 +51,7 @@ class OpenscadMcpServer(DccServerBase):
             port=port,
             gateway_port=gateway_port,
             enable_gateway_failover=enable_gateway_failover,
-            server_name="dcc-mcp-openscad",
+            server_name="meshy-dcc-openscad",
             server_version=__version__,
             adapter_version=__version__,
             instance_type="standalone",

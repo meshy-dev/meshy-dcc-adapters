@@ -6,7 +6,7 @@ from typing import Optional
 
 import pytest
 
-from dcc_mcp_openscad.bridge import (
+from meshy_dcc_openscad.bridge import (
     OpenscadCli,
     OpenScadError,
     OpenScadHostUnsupportedError,
@@ -313,7 +313,7 @@ def _real_openscad() -> str:
 @pytest.mark.openscad
 @pytest.mark.skipif(not _real_openscad(), reason="OPENSCAD_TEST_EXECUTABLE is not set")
 def test_real_openscad_validate_export_and_render(tmp_path: Path):
-    from dcc_mcp_openscad.compat import SUPPORTED, classify_host
+    from meshy_dcc_openscad.compat import SUPPORTED, classify_host
 
     root = Path(__file__).parents[1]
     source = root / "examples" / "production_smoke.scad"

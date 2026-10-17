@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from dcc_mcp_openscad import source_authoring as a
+from meshy_dcc_openscad import source_authoring as a
 
 
 @pytest.fixture
@@ -91,7 +91,7 @@ def test_reject_paths(root):
 
 
 def test_core_result_envelope_preserves_verification_checks(monkeypatch):
-    from dcc_mcp_openscad import skill_tools
+    from meshy_dcc_openscad import skill_tools
 
     monkeypatch.setattr(
         skill_tools,
@@ -290,7 +290,7 @@ def test_replaced_staging_file_is_preserved(root, monkeypatch, replacement_point
         observed.append(stage)
 
     def replace_during_validation(raw):
-        stages = list(root.glob(".dcc-mcp-scad-*"))
+        stages = list(root.glob(".meshy-dcc-scad-*"))
         if stages:
             replace_stage(stages[0])
         return real_validate(raw)

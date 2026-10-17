@@ -80,7 +80,7 @@ def write_model_source(output_path: str, source: str) -> dict:
     ):
         raise ValueError("output_path must use ordinary filename components")
     path = _validated_destination(raw)
-    fd, temporary_name = tempfile.mkstemp(prefix=".dcc-mcp-scad-", dir=str(path.parent))
+    fd, temporary_name = tempfile.mkstemp(prefix=".meshy-dcc-scad-", dir=str(path.parent))
     temporary = Path(temporary_name)
     identity = None
     try:

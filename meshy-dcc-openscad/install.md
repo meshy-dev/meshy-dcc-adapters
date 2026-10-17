@@ -2,7 +2,7 @@
 
 This adapter invokes an OS-managed OpenSCAD command-line executable. Nothing
 is installed into the OpenSCAD application. The canonical raw guide is
-<https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-openscad/main/install.md>.
+<https://raw.githubusercontent.com/meshy-dev/meshy-dcc-openscad/main/install.md>.
 
 ## Requirements
 
@@ -10,8 +10,8 @@ is installed into the OpenSCAD application. The canonical raw guide is
   the matrix ships with the wheel as `compat_matrix.json` and is read at
   runtime). Get it from the official project or an operating-system package
   repository.
-- External Python 3.7 or newer with `dcc-mcp-core>=0.20.36,<1.0.0`.
-- Read/write access to each path in `DCC_MCP_OPENSCAD_ALLOWED_ROOTS`.
+- External Python 3.7 or newer with `meshy-dcc-core>=0.20.36,<1.0.0`.
+- Read/write access to each path in `MESHY_DCC_OPENSCAD_ALLOWED_ROOTS`.
 
 The adapter does not download, scrape, update, or execute a remote OpenSCAD
 payload. There is no adapter-managed binary cache. OpenSCAD remains owned by
@@ -30,10 +30,10 @@ stdin/stdout/stderr, and files on disk.
 host side (this adapter)              OpenSCAD side (child process)
 ----------------------------------    ----------------------------------
 external Python 3.7+                 `openscad` CLI executable
-dcc_mcp_openscad.bridge              --version / --help probes
-dcc_mcp_openscad._process            one supervised process tree per call,   
+meshy_dcc_openscad.bridge              --version / --help probes
+meshy_dcc_openscad._process            one supervised process tree per call,   
                                      bounded by a single absolute deadline
-dcc_mcp_openscad._probe_supervisor   owning the child's stdout/stderr files
+meshy_dcc_openscad._probe_supervisor   owning the child's stdout/stderr files
 ```
 
 Consequences worth knowing before debugging:
@@ -73,7 +73,7 @@ ranges are declared in `compat_matrix.json` and enforced before any tool runs.
 Anything else is refused rather than silently accepted: a host below the matrix
 is reported as `openscad_host_version_unsupported`, one above it as
 `openscad_host_version_unverified`, and one in between (for example a `2024.x`
-build) as `openscad_host_version_unlisted`. `dcc-mcp-openscad doctor --json`
+build) as `openscad_host_version_unlisted`. `meshy-dcc-openscad doctor --json`
 always reports the version it actually found under `runtime.host_matrix` with
 its `status`, the covered `supported_ranges`, and a suggested action.
 
@@ -83,10 +83,10 @@ Install the released Python wheel, then run the bounded version and capability
 probe before starting the service:
 
 ```shell
-python -m pip install dcc-mcp-openscad
-dcc-mcp-openscad doctor --json
-dcc-mcp-openscad install --dry-run --json
-dcc-mcp-openscad install --yes --json
+python -m pip install meshy-dcc-openscad
+meshy-dcc-openscad doctor --json
+meshy-dcc-openscad install --dry-run --json
+meshy-dcc-openscad install --yes --json
 ```
 
 Proceed only when the JSON response has exit `0` and
@@ -99,35 +99,35 @@ Set the allowed workspace before starting the foreground adapter service:
 
 ```shell
 # Windows PowerShell example
-$env:DCC_MCP_OPENSCAD_ALLOWED_ROOTS = "D:\models;D:\exports"
-dcc-mcp-openscad
+$env:MESHY_DCC_OPENSCAD_ALLOWED_ROOTS = "D:\models;D:\exports"
+meshy-dcc-openscad
 ```
 
-With no verb, `dcc-mcp-openscad` retains the existing service-start behavior.
+With no verb, `meshy-dcc-openscad` retains the existing service-start behavior.
 
 ## Manual path
 
 When discovery is ambiguous, provide the absolute OS-managed executable:
 
 ```shell
-dcc-mcp-openscad doctor --executable <absolute-openscad-cli> --json
+meshy-dcc-openscad doctor --executable <absolute-openscad-cli> --json
 ```
 
 The persistent environment equivalent is:
 
 ```text
-DCC_MCP_OPENSCAD_EXECUTABLE=<absolute-openscad-cli>
-DCC_MCP_OPENSCAD_RECEIPT=<absolute-adapter-receipt-path>
-DCC_MCP_OPENSCAD_ALLOWED_ROOTS=<path-list-using-the-platform-separator>
-DCC_MCP_OPENSCAD_MAX_SOURCE_BYTES=4194304
-DCC_MCP_OPENSCAD_MAX_TIMEOUT_SECS=1800
+MESHY_DCC_OPENSCAD_EXECUTABLE=<absolute-openscad-cli>
+MESHY_DCC_OPENSCAD_RECEIPT=<absolute-adapter-receipt-path>
+MESHY_DCC_OPENSCAD_ALLOWED_ROOTS=<path-list-using-the-platform-separator>
+MESHY_DCC_OPENSCAD_MAX_SOURCE_BYTES=4194304
+MESHY_DCC_OPENSCAD_MAX_TIMEOUT_SECS=1800
 ```
 
 Windows path lists use `;`; macOS and Linux use `:`. Invalid numeric settings
 or missing roots fail preflight. This standalone adapter has no plugin copy,
 host-side Python installation, application registration, or binary cache. Its
 receipt is adapter-owned metadata only and defaults to
-`~/.dcc-mcp/receipts/openscad.json`.
+`~/.meshy-dcc/receipts/openscad.json`.
 
 ## Lifecycle
 
@@ -152,7 +152,7 @@ Uninstall rolls a displaced receipt back if deletion cannot complete.
 Run an explicit deep check when selecting a particular installation:
 
 ```shell
-dcc-mcp-openscad verify --executable <absolute-openscad-cli> --timeout-secs 20 --json
+meshy-dcc-openscad verify --executable <absolute-openscad-cli> --timeout-secs 20 --json
 ```
 
 The result reports executable source and launcher, local CLI endpoint,
@@ -191,9 +191,9 @@ trusted installers, inspect the lifecycle plan, then atomically replace the
 owned receipt:
 
 ```shell
-python -m pip install --upgrade dcc-mcp-openscad
-dcc-mcp-openscad upgrade --dry-run --json
-dcc-mcp-openscad upgrade --yes --json
+python -m pip install --upgrade meshy-dcc-openscad
+meshy-dcc-openscad upgrade --dry-run --json
+meshy-dcc-openscad upgrade --yes --json
 ```
 
 No mutable "latest" binary URL is used. Python wheel caching is owned by pip;
@@ -207,8 +207,8 @@ Stop the foreground service, remove the adapter-owned receipt, then remove the
 Python wheel:
 
 ```shell
-dcc-mcp-openscad uninstall --yes --json
-python -m pip uninstall dcc-mcp-openscad
+meshy-dcc-openscad uninstall --yes --json
+python -m pip uninstall meshy-dcc-openscad
 ```
 
 Remove OpenSCAD separately through the same trusted installer/package manager
@@ -218,7 +218,7 @@ does not remove the application, an operator-owned file, or a binary cache.
 ## Troubleshooting
 
 - `executable_discovery`, exit `10`: put the CLI on `PATH`, set
-  `DCC_MCP_OPENSCAD_EXECUTABLE`, or pass absolute `--executable`.
+  `MESHY_DCC_OPENSCAD_EXECUTABLE`, or pass absolute `--executable`.
 - On Windows, configure `openscad.com`; `openscad.exe` can attach GUI behavior
   and is automatically replaced by a sibling `.com` when available.
 - `configuration`, exit `10`: fix numeric limits and ensure every allowed root

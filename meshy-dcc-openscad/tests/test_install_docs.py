@@ -23,14 +23,14 @@ def test_install_guide_documents_standalone_wheel_and_verify_contract() -> None:
     ]
     assert all(heading in guide for heading in headings)
     assert all(platform in guide for platform in ("Windows", "macOS", "Linux"))
-    assert "python -m pip install dcc-mcp-openscad" in guide
+    assert "python -m pip install meshy-dcc-openscad" in guide
     assert "pip install -e" not in guide
-    assert "dcc-mcp-openscad doctor --json" in guide
-    assert "dcc-mcp-openscad install --yes --json" in guide
-    assert "dcc-mcp-openscad verify" in guide
-    assert "dcc-mcp-openscad uninstall --yes --json" in guide
+    assert "meshy-dcc-openscad doctor --json" in guide
+    assert "meshy-dcc-openscad install --yes --json" in guide
+    assert "meshy-dcc-openscad verify" in guide
+    assert "meshy-dcc-openscad uninstall --yes --json" in guide
     assert all("`%s`" % code in guide for code in (0, 10, 20, 30, 40, 50))
-    assert "dcc-mcp-core>=0.20.36,<1.0.0" in guide
+    assert "meshy-dcc-core>=0.20.36,<1.0.0" in guide
     # The boundary is a supervised CLI child process, not an embedded interpreter.
     assert "Runtime boundary" in guide
     assert "host side" in guide and "OpenSCAD side" in guide
@@ -41,7 +41,7 @@ def test_install_guide_documents_standalone_wheel_and_verify_contract() -> None:
     assert "does not download" in guide
     assert "no adapter-managed binary cache" in guide
     assert "examples/production_smoke.scad" in guide
-    assert "https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-openscad/main/install.md" in guide
+    assert "https://raw.githubusercontent.com/meshy-dev/meshy-dcc-openscad/main/install.md" in guide
 
 
 def test_ci_runs_explicit_doctor_json_smoke() -> None:
@@ -101,7 +101,7 @@ def test_ci_also_proves_an_unsupported_host_is_refused_on_a_real_binary() -> Non
 def test_install_guide_documents_the_supported_matrix() -> None:
     guide = (ROOT / "install.md").read_text(encoding="utf-8")
 
-    from dcc_mcp_openscad.compat import supported_range_labels
+    from meshy_dcc_openscad.compat import supported_range_labels
 
     for label in supported_range_labels():
         assert label in guide

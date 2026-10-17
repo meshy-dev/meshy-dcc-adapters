@@ -5,10 +5,10 @@ description: >-
   standalone CLI. Use for deterministic SCAD build pipelines; do not use it
   for arbitrary command-line flags. Bounded self-contained source creation is supported.
 license: MIT
-compatibility: "Python 3.7+; OpenSCAD 2021.01.x or 2026.09.x; dcc-mcp-core 0.20.36+"
+compatibility: "Python 3.7+; OpenSCAD 2021.01.x or 2026.09.x; meshy-dcc-core 0.20.36+"
 allowed-tools: "python"
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: openscad
     layer: domain
     version: "0.5.0"  # x-release-please-version
@@ -26,7 +26,7 @@ Use these tools for deterministic, file-backed OpenSCAD workflows. Start with
 `validate_model` before an export intended for downstream production.
 
 All source and output paths must stay under
-`DCC_MCP_OPENSCAD_ALLOWED_ROOTS`. Parameter overrides are encoded from JSON
+`MESHY_DCC_OPENSCAD_ALLOWED_ROOTS`. Parameter overrides are encoded from JSON
 scalars and arrays; raw `-D` expressions and arbitrary CLI flags are not
 accepted. Exports are staged to a sibling temporary file and moved into place
 only after OpenSCAD succeeds.

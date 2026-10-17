@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_openscad import compat
+from meshy_dcc_openscad import compat
 
 MATRIX = compat.load_matrix()
 
@@ -150,7 +150,7 @@ def _real_openscad() -> str:
 @pytest.mark.skipif(not _real_openscad(), reason="OPENSCAD_TEST_EXECUTABLE is not set")
 def test_real_openscad_version_is_covered_by_the_compatibility_matrix(tmp_path: Path):
     """Runs on every real CI leg as matrix evidence."""
-    from dcc_mcp_openscad.bridge import OpenscadCli
+    from meshy_dcc_openscad.bridge import OpenscadCli
 
     status = OpenscadCli(_real_openscad(), allowed_roots=[tmp_path]).status()
 

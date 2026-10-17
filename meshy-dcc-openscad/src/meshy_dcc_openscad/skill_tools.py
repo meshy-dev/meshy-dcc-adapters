@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from dcc_mcp_core.skill import skill_entry, skill_success
+from meshy_dcc_core.skill import skill_entry, skill_success
 
 from .bridge import get_bridge
 

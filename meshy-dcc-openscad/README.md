@@ -1,35 +1,35 @@
-# dcc-mcp-openscad
+# meshy-dcc-openscad
 
 <p align="center">
-  <img src="docs/assets/dcc-mcp-openscad.svg" alt="DCC-MCP · OPENSCAD" width="600">
+  <img src="docs/assets/meshy-dcc-openscad.svg" alt="Meshy DCC · OPENSCAD" width="600">
 </p>
 
 Production OpenSCAD adapter for deterministic model inspection, validation,
-geometry export, and PNG rendering through DCC-MCP.
+geometry export, and PNG rendering through Meshy DCC.
 
-![Parameterized OpenSCAD bracket moving through topology validation to a game-ready mesh](docs/images/dcc-mcp-openscad-showcase.webp)
+![Parameterized OpenSCAD bracket moving through topology validation to a game-ready mesh](docs/images/meshy-dcc-openscad-showcase.webp)
 
-_Illustrative workflow based on the live OpenSCAD → FreeCAD → Blender/Godot acceptance run; generated source is retained in `docs/images/dcc-mcp-openscad-showcase-source.png`._
+_Illustrative workflow based on the live OpenSCAD → FreeCAD → Blender/Godot acceptance run; generated source is retained in `docs/images/meshy-dcc-openscad-showcase-source.png`._
 
-<!-- dcc-mcp-coverage-pointer:start -->
-<!-- Generated from dcc-mcp-catalog.yml by scripts/generate_adapter_pointer.py in dcc-mcp/dcc-mcp-core. Do not edit by hand. -->
-## Part of the DCC-MCP host matrix
+<!-- meshy-dcc-coverage-pointer:start -->
+<!-- Generated from meshy-dcc-catalog.yml by scripts/generate_adapter_pointer.py in meshy-dcc/meshy-dcc-core. Do not edit by hand. -->
+## Part of the Meshy DCC host matrix
 
-**dcc-mcp-openscad** — OpenSCAD adapter for deterministic model validation, export, and
+**meshy-dcc-openscad** — OpenSCAD adapter for deterministic model validation, export, and
 rendering.
 
-It is one of **47 host adapters** in the DCC-MCP catalog. Every adapter speaks the same
+It is one of **47 host adapters** in the Meshy DCC catalog. Every adapter speaks the same
 MCP protocol and builds on the same core runtime contract; each one exposes the tools
 its own host needs on top of that.
 
-- [All host adapters and install metadata](https://dcc-mcp.github.io/ecosystem)
-- [Host matrix on the core README](https://github.com/dcc-mcp/dcc-mcp-core#readme)
-- [Showcase](https://dcc-mcp.github.io/showcase)
+- [All host adapters and install metadata](https://www.meshy.ai/meshy-dcc/ecosystem)
+- [Host matrix on the core README](https://github.com/meshy-dev/meshy-dcc-core#readme)
+- [Showcase](https://www.meshy.ai/meshy-dcc/showcase)
 
 This block is generated from the catalog entry in
-[`dcc-mcp-catalog.yml`](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/dcc-mcp-catalog.yml).
+[`meshy-dcc-catalog.yml`](https://github.com/meshy-dev/meshy-dcc-core/blob/main/meshy-dcc-catalog.yml).
 Re-run the generator after changing the catalog.
-<!-- dcc-mcp-coverage-pointer:end -->
+<!-- meshy-dcc-coverage-pointer:end -->
 
 ## Capabilities
 
@@ -50,13 +50,13 @@ The adapter does not accept arbitrary OpenSCAD command-line arguments or raw
 ## Requirements
 
 - Python 3.7+
-- `dcc-mcp-core` 0.20.36+
+- `meshy-dcc-core` 0.20.36+
 - OpenSCAD inside the verified compatibility matrix
 
 Supported ranges are declared in `compat_matrix.json` and enforced before any
 tool runs: OpenSCAD `2021.01.x` and `2026.09.x`. A host outside the matrix is
 refused with an explicit error code rather than run unverified, and
-`dcc-mcp-openscad doctor --json` always reports the version it found together
+`meshy-dcc-openscad doctor --json` always reports the version it found together
 with that verdict.
 
 On Windows, point to `openscad.com` when possible; if `openscad.exe` is
@@ -73,10 +73,10 @@ CLI child process:
 host side (this adapter)               OpenSCAD side (child process)
 -----------------------------------    ---------------------------------
 external Python 3.7+                   `openscad` CLI executable
-dcc_mcp_openscad.bridge                --version / --help probes
-dcc_mcp_openscad._process              one supervised process tree per call,
+meshy_dcc_openscad.bridge                --version / --help probes
+meshy_dcc_openscad._process              one supervised process tree per call,
                                        bounded by a single absolute deadline
-dcc_mcp_openscad._probe_supervisor     owning the child's stdout/stderr files
+meshy_dcc_openscad._probe_supervisor     owning the child's stdout/stderr files
 ```
 
 What follows from that boundary:
@@ -99,16 +99,16 @@ official six-verb Install SOP lifecycle, ownership receipts, rollback, and
 troubleshooting.
 
 ```bash
-python -m pip install dcc-mcp-openscad
-dcc-mcp-openscad doctor --json
-dcc-mcp-openscad install --yes --json
-dcc-mcp-openscad
+python -m pip install meshy-dcc-openscad
+meshy-dcc-openscad doctor --json
+meshy-dcc-openscad install --yes --json
+meshy-dcc-openscad
 ```
 
 For an explicit standalone readiness check:
 
 ```powershell
-dcc-mcp-openscad verify --executable "C:\Program Files\OpenSCAD\openscad.com" --json
+meshy-dcc-openscad verify --executable "C:\Program Files\OpenSCAD\openscad.com" --json
 ```
 
 For development:
@@ -122,13 +122,13 @@ python -m pytest
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `DCC_MCP_OPENSCAD_EXECUTABLE` | Exact OpenSCAD executable or install directory | `PATH` and standard install locations |
-| `DCC_MCP_OPENSCAD_ALLOWED_ROOTS` | `os.pathsep`-separated source/output roots | server working directory |
-| `DCC_MCP_OPENSCAD_MAX_SOURCE_BYTES` | Maximum source size | 4 MiB |
-| `DCC_MCP_OPENSCAD_MAX_TIMEOUT_SECS` | Maximum per-call deadline | 1800 seconds |
-| `DCC_MCP_OPENSCAD_PORT` | Fixed adapter port when direct addressing is required | OS-assigned |
+| `MESHY_DCC_OPENSCAD_EXECUTABLE` | Exact OpenSCAD executable or install directory | `PATH` and standard install locations |
+| `MESHY_DCC_OPENSCAD_ALLOWED_ROOTS` | `os.pathsep`-separated source/output roots | server working directory |
+| `MESHY_DCC_OPENSCAD_MAX_SOURCE_BYTES` | Maximum source size | 4 MiB |
+| `MESHY_DCC_OPENSCAD_MAX_TIMEOUT_SECS` | Maximum per-call deadline | 1800 seconds |
+| `MESHY_DCC_OPENSCAD_PORT` | Fixed adapter port when direct addressing is required | OS-assigned |
 
-The service registers as a standalone DCC-MCP instance. It has no bound GUI
+The service registers as a standalone Meshy DCC instance. It has no bound GUI
 PID and needs no OpenSCAD window.
 
 ## Agent workflow
@@ -136,10 +136,10 @@ PID and needs no OpenSCAD window.
 Use the standard discovery path:
 
 ```bash
-dcc-mcp-cli list
-dcc-mcp-cli search --query "OpenSCAD validate export STL"
-dcc-mcp-cli load-skill openscad-pipeline --dcc-type openscad --instance-id <instance-short>
-dcc-mcp-cli describe openscad.<instance-short>.openscad_pipeline__validate_model
+meshy-dcc list
+meshy-dcc search --query "OpenSCAD validate export STL"
+meshy-dcc load-skill openscad-pipeline --dcc-type openscad --instance-id <instance-short>
+meshy-dcc describe openscad.<instance-short>.openscad_pipeline__validate_model
 ```
 
 Then call `inspect_source` → `validate_model` → `export_model` or

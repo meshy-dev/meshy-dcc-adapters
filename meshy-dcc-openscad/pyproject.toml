@@ -1,21 +1,20 @@
 [build-system]
-requires=["hatchling>=1.17"]
-build-backend="hatchling.build"
+requires = ["hatchling>=1.17"]
+build-backend = "hatchling.build"
 
 [project]
-name="dcc-mcp-openscad"
-version="0.5.0"
-description="Production OpenSCAD adapter for deterministic DCC-MCP model validation, export, and rendering"
-readme="README.md"
-requires-python=">=3.7"
-license={text="MIT"}
-authors=[{name="loonghao",email="hal.long@outlook.com"}]
-keywords=["openscad","cad","parametric-modeling","dcc","mcp","automation"]
-classifiers=[
-  "Development Status :: 4 - Beta",
+name = "meshy-dcc-openscad"
+version = "0.1.0"
+description = "OpenSCAD adapter for Meshy DCC: bounded model inspection, validation, export and rendering"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
+keywords = ["openscad", "cad", "parametric-modeling", "3d-printing", "dcc", "mcp"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -23,54 +22,35 @@ classifiers=[
   "Programming Language :: Python :: 3.12",
   "Operating System :: OS Independent",
 ]
-dependencies=["dcc-mcp-core>=0.20.36,<1.0.0","importlib-metadata>=4.13,<7; python_version<'3.8'"]
+dependencies = ["meshy-dcc-core>=0.2.0,<0.3.0"]
 
 [project.urls]
-Homepage="https://github.com/dcc-mcp/dcc-mcp-openscad"
-Repository="https://github.com/dcc-mcp/dcc-mcp-openscad"
-Issues="https://github.com/dcc-mcp/dcc-mcp-openscad/issues"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-openscad"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
 
 [project.optional-dependencies]
-test=[
-  "pytest>=7.4,<8; python_version<'3.8'",
-  "pytest>=8; python_version>='3.8'",
-  "ruff>=0.8",
-  "PyYAML>=6",
-  "jsonschema==4.17.3; python_version<'3.8'",
-  "jsonschema>=4.18; python_version>='3.8'",
-]
-dev=[
-  "pytest>=7.4,<8; python_version<'3.8'",
-  "pytest>=8; python_version>='3.8'",
-  "ruff>=0.8",
-  "PyYAML>=6",
-  "jsonschema==4.17.3; python_version<'3.8'",
-  "jsonschema>=4.18; python_version>='3.8'",
-  "build>=1.2",
-  "twine>=6",
-]
+test = ["pytest>=8", "ruff>=0.8", "PyYAML>=6", "jsonschema>=4.18"]
+dev = ["pytest>=8", "ruff>=0.8", "PyYAML>=6", "jsonschema>=4.18", "build>=1.2", "twine>=6"]
 
 [project.scripts]
-dcc-mcp-openscad="dcc_mcp_openscad.server:main"
+meshy-dcc-openscad = "meshy_dcc_openscad.__main__:main"
 
-[project.entry-points."dcc_mcp.adapters"]
-openscad="dcc_mcp_openscad:OpenscadMcpServer"
+[project.entry-points."meshy_dcc.adapters"]
+openscad = "meshy_dcc_openscad:OpenscadMcpServer"
 
 [tool.hatch.build.targets.wheel]
-packages=["src/dcc_mcp_openscad"]
-artifacts=["src/dcc_mcp_openscad/skills/**"]
-
-[tool.hatch.build.targets.sdist]
-exclude=["docs/**/*.png", "docs/**/*.svg", "docs/**/*.webp"]
+packages = ["src/meshy_dcc_openscad"]
+artifacts = ["src/meshy_dcc_openscad/skills/**"]
 
 [tool.pytest.ini_options]
-testpaths=["tests"]
-pythonpath=["src","."]
-markers=["openscad: requires a real OpenSCAD CLI"]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+markers = ["openscad: requires a real OpenSCAD CLI"]
 
 [tool.ruff.lint]
-select=["E","F","I","B"]
+select = ["E", "F", "I", "B"]
 
 [tool.ruff]
-line-length=100
-target-version="py37"
+line-length = 100
+target-version = "py38"

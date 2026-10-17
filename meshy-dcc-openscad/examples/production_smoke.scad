@@ -1,4 +1,4 @@
-// Deterministic production smoke for dcc-mcp-openscad.
+// Deterministic production smoke for meshy-dcc-openscad.
 width = 84;
 depth = 56;
 height = 26;

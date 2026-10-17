@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_openscad import write_contract
-from dcc_mcp_openscad.bridge import OpenscadCli, OpenScadWriteVerificationError
+from meshy_dcc_openscad import write_contract
+from meshy_dcc_openscad.bridge import OpenscadCli, OpenScadWriteVerificationError
 
 HOST_VERSION = "2026.09.29"
 HOST_MATRIX = {"status": "supported", "range": {"id": "2026.09.x"}}
@@ -80,14 +80,14 @@ def test_every_skill_tool_is_classified_as_mutating_or_read_only(tmp_path: Path)
     """An unclassified tool has no answer to "does this owe a read-back?"."""
     import yaml
 
-    from dcc_mcp_openscad.write_contract import (
+    from meshy_dcc_openscad.write_contract import (
         MUTATING_TOOLS,
         READ_ONLY_TOOLS,
         TOOL_CLASSIFICATION_ERROR,
     )
 
     root = Path(__file__).parents[1]
-    tools_yaml = root / "src" / "dcc_mcp_openscad" / "skills" / "openscad-pipeline" / "tools.yaml"
+    tools_yaml = root / "src" / "meshy_dcc_openscad" / "skills" / "openscad-pipeline" / "tools.yaml"
     declared = {
         tool["name"] for tool in yaml.safe_load(tools_yaml.read_text(encoding="utf-8"))["tools"]
     }
@@ -97,7 +97,7 @@ def test_every_skill_tool_is_classified_as_mutating_or_read_only(tmp_path: Path)
 
 
 def test_mutating_tools_are_the_ones_that_write_an_artifact():
-    from dcc_mcp_openscad.write_contract import MUTATING_TOOLS, READ_ONLY_TOOLS
+    from meshy_dcc_openscad.write_contract import MUTATING_TOOLS, READ_ONLY_TOOLS
 
     for tool in ("export_model", "render_preview"):
         assert tool in MUTATING_TOOLS, tool
@@ -503,7 +503,7 @@ def test_export_model_refuses_an_artifact_replaced_after_the_write(tmp_path: Pat
 
 def test_read_back_without_a_recorded_identity_is_refused(tmp_path: Path):
     """A bridge read-back with no exported identity fails closed."""
-    from dcc_mcp_openscad.bridge import OpenScadError
+    from meshy_dcc_openscad.bridge import OpenScadError
 
     cli = _DroppingOpenScad(tmp_path, b"\x00" * 96)
 
@@ -539,7 +539,7 @@ def test_render_preview_refuses_a_frame_that_is_not_a_png(tmp_path: Path):
 
 def test_a_read_back_failure_is_still_an_adapter_error(tmp_path: Path):
     """Callers that already handle OpenScadError keep working unchanged."""
-    from dcc_mcp_openscad.bridge import OpenScadError
+    from meshy_dcc_openscad.bridge import OpenScadError
 
     source = _source(tmp_path)
     cli = _DroppingOpenScad(tmp_path, b"\x00" * 84)

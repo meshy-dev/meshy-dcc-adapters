@@ -1,6 +1,6 @@
-from dcc_mcp_core.skill import run_main
+from meshy_dcc_core.skill import run_main
 
-from dcc_mcp_openscad.skill_tools import bridge_main
+from meshy_dcc_openscad.skill_tools import bridge_main
 
 main = bridge_main("inspect_file", "OpenSCAD source inspected.")
 

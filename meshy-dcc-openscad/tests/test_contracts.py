@@ -1,12 +1,12 @@
 from pathlib import Path
 
 import yaml
-from dcc_mcp_core import validate_skill
+from meshy_dcc_core import validate_skill
 
-from dcc_mcp_openscad.server import OpenscadMcpServer
+from meshy_dcc_openscad.server import OpenscadMcpServer
 
 ROOT = Path(__file__).parents[1]
-SKILL = ROOT / "src" / "dcc_mcp_openscad" / "skills" / "openscad-pipeline"
+SKILL = ROOT / "src" / "meshy_dcc_openscad" / "skills" / "openscad-pipeline"
 
 
 def test_skill_contract_is_valid():
@@ -52,13 +52,13 @@ def test_server_declares_standalone_lifetime():
 
 def test_skill_compatibility_matches_the_matrix_and_the_core_floor():
     """A stale compatibility line is the first thing an agent mis-reads."""
-    from dcc_mcp_openscad.compat import supported_range_labels
-    from dcc_mcp_openscad.doctor import MINIMUM_CORE_VERSION
+    from meshy_dcc_openscad.compat import supported_range_labels
+    from meshy_dcc_openscad.doctor import MINIMUM_CORE_VERSION
 
     frontmatter = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     line = next(item for item in frontmatter.splitlines() if item.startswith("compatibility:"))
 
-    assert "dcc-mcp-core %s+" % MINIMUM_CORE_VERSION in line
+    assert "meshy-dcc-core %s+" % MINIMUM_CORE_VERSION in line
     for label in supported_range_labels():
         assert label in line, label
     # OpenSCAD is a CLI child process, not an embedded Python host: the line

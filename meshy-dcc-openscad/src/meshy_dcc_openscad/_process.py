@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Mapping, NamedTuple, Optional, Sequence, Tuple
 
-from dcc_mcp_core.skills_helper import check_dcc_cancelled
+from meshy_dcc_core.skills_helper import check_dcc_cancelled
 
 _MAX_OUTPUT_BYTES = 65_536
 
@@ -685,7 +685,7 @@ def run_bounded_command(
     deadline = time.monotonic() + budget
     cleanup_reserve = min(budget / 2.0, max(0.01, min(0.25, budget * 0.2)))
     work_deadline = deadline - cleanup_reserve
-    root = Path(tempfile.mkdtemp(prefix="dcc-mcp-openscad-probe-"))
+    root = Path(tempfile.mkdtemp(prefix="meshy-dcc-openscad-probe-"))
     status_path = root / "status.json"
     stdout_path = root / "stdout.bin"
     stderr_path = root / "stderr.bin"

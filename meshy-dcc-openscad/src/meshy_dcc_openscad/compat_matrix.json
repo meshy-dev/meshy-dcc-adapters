@@ -2,7 +2,7 @@
   "schema_version": 1,
   "host": "openscad",
   "matrix_version": "2026-09-30",
-  "notes": "Single source of truth for OpenSCAD host support. Read by dcc_mcp_openscad.compat (service side) and by doctor.py (lifecycle side). OpenSCAD version strings are calendar based: YYYY.MM for releases and YYYY.MM.DD for the dated development snapshots the project publishes between releases. A version outside `supported_ranges` is rejected explicitly; it is never silently downgraded.",
+  "notes": "Single source of truth for OpenSCAD host support. Read by meshy_dcc_openscad.compat (service side) and by doctor.py (lifecycle side). OpenSCAD version strings are calendar based: YYYY.MM for releases and YYYY.MM.DD for the dated development snapshots the project publishes between releases. A version outside `supported_ranges` is rejected explicitly; it is never silently downgraded.",
   "executable_names": [
     "openscad.com",
     "openscad",

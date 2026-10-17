@@ -254,15 +254,15 @@ class OpenscadCli:
 
     @classmethod
     def from_env(cls) -> "OpenscadCli":
-        roots_value = os.environ.get("DCC_MCP_OPENSCAD_ALLOWED_ROOTS", "")
+        roots_value = os.environ.get("MESHY_DCC_OPENSCAD_ALLOWED_ROOTS", "")
         roots = _split_roots(roots_value) if roots_value else [Path.cwd().resolve()]
         return cls(
-            os.environ.get("DCC_MCP_OPENSCAD_EXECUTABLE") or None,
+            os.environ.get("MESHY_DCC_OPENSCAD_EXECUTABLE") or None,
             allowed_roots=roots,
             max_source_bytes=int(
-                os.environ.get("DCC_MCP_OPENSCAD_MAX_SOURCE_BYTES", str(4 * 1024 * 1024))
+                os.environ.get("MESHY_DCC_OPENSCAD_MAX_SOURCE_BYTES", str(4 * 1024 * 1024))
             ),
-            max_timeout_secs=float(os.environ.get("DCC_MCP_OPENSCAD_MAX_TIMEOUT_SECS", "1800")),
+            max_timeout_secs=float(os.environ.get("MESHY_DCC_OPENSCAD_MAX_TIMEOUT_SECS", "1800")),
         )
 
     @staticmethod
@@ -305,7 +305,7 @@ class OpenscadCli:
         if not path.is_file():
             raise OpenScadError("SCAD source file does not exist: %s" % path)
         if not _within(path, self.allowed_roots):
-            raise OpenScadError("Source file is outside DCC_MCP_OPENSCAD_ALLOWED_ROOTS")
+            raise OpenScadError("Source file is outside MESHY_DCC_OPENSCAD_ALLOWED_ROOTS")
         if path.stat().st_size > self.max_source_bytes:
             raise OpenScadError("SCAD source exceeds the configured size limit")
         return path
@@ -317,7 +317,7 @@ class OpenscadCli:
         if not path.parent.is_dir():
             raise OpenScadError("Output directory does not exist: %s" % path.parent)
         if not _within(path, self.allowed_roots):
-            raise OpenScadError("Output file is outside DCC_MCP_OPENSCAD_ALLOWED_ROOTS")
+            raise OpenScadError("Output file is outside MESHY_DCC_OPENSCAD_ALLOWED_ROOTS")
         return path
 
     def _timeout(self, value: float) -> float:
@@ -331,7 +331,7 @@ class OpenscadCli:
 
     def _run(self, args: Sequence[str], timeout_secs: float, cwd: Optional[Path] = None) -> dict:
         if not self.executable:
-            raise OpenScadError("OpenSCAD CLI was not found; set DCC_MCP_OPENSCAD_EXECUTABLE")
+            raise OpenScadError("OpenSCAD CLI was not found; set MESHY_DCC_OPENSCAD_EXECUTABLE")
         timeout = self._timeout(timeout_secs)
         command = [self.executable] + [str(item) for item in args]
         started = time.monotonic()
@@ -486,7 +486,7 @@ class OpenscadCli:
     ) -> dict[str, Any]:
         self._require_supported_host()
         source_path = self._source_path(path)
-        with tempfile.TemporaryDirectory(prefix="dcc-mcp-openscad-") as temp_dir:
+        with tempfile.TemporaryDirectory(prefix="meshy-dcc-openscad-") as temp_dir:
             output = Path(temp_dir) / "validation.csg"
             deps = Path(temp_dir) / "validation.deps"
             args = []

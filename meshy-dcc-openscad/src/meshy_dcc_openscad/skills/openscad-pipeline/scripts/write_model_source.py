@@ -1,6 +1,6 @@
-from dcc_mcp_core.skill import run_main, skill_entry, skill_success
+from meshy_dcc_core.skill import run_main, skill_entry, skill_success
 
-from dcc_mcp_openscad.source_authoring import write_model_source
+from meshy_dcc_openscad.source_authoring import write_model_source
 
 
 @skill_entry

@@ -22,8 +22,8 @@ try:
 except ImportError:  # pragma: no cover - exercised by native Python 3.7 CI
     import importlib_metadata
 
-import dcc_mcp_core
-from dcc_mcp_core.deployment import (
+import meshy_dcc_core
+from meshy_dcc_core.deployment import (
     INSTALL_EXIT_ACQUIRE,
     INSTALL_EXIT_INSTALL,
     INSTALL_EXIT_OK,
@@ -51,14 +51,14 @@ from .compat import (
 # The `schema_version` field a report document carries is the value the published
 # schema pins as `properties.schema_version.const`, and it stays at 1. It is
 # deliberately NOT the revision of the published schema *artifact* (the `-vN`
-# suffix of `adapter-install-sop-vN.schema.json`, 2 since dcc-mcp-core 0.20.36,
+# suffix of `adapter-install-sop-vN.schema.json`, 2 since meshy-dcc-core 0.20.36,
 # named `INSTALL_SOP_SCHEMA_REVISION` from 0.20.40): that is a separate counter
 # which moves independently, because an artifact revision only ever adds optional
 # members. Emitting the artifact revision as `schema_version` makes every report
 # fail validation the moment the resolved core advances. Nothing in this adapter
 # reads the artifact revision, so it is not mirrored here at all.
 SCHEMA_VERSION = 1
-MINIMUM_CORE_VERSION = "0.20.36"
+MINIMUM_CORE_VERSION = "0.2.0"
 MINIMUM_HOST_VERSION = minimum_host_version(load_matrix()) or "2021.01"
 MINIMUM_HOST_TUPLE = (2021, 1, 0)
 
@@ -102,7 +102,7 @@ _VERSION = re.compile(
 _SEMVER = re.compile(r"^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REPARSE_POINT = 0x400
-_DEFAULT_RECEIPT = Path.home() / ".dcc-mcp" / "receipts" / "openscad.json"
+_DEFAULT_RECEIPT = Path.home() / ".meshy-dcc" / "receipts" / "openscad.json"
 _CAPABILITY_FLAGS = (
     "--hardwarnings",
     "--check-parameters",
@@ -193,7 +193,7 @@ def _remaining(deadline: float) -> float:
 
 
 def _receipt_path(value: Optional[Path]) -> Path:
-    configured = value or Path(os.environ.get("DCC_MCP_OPENSCAD_RECEIPT", str(_DEFAULT_RECEIPT)))
+    configured = value or Path(os.environ.get("MESHY_DCC_OPENSCAD_RECEIPT", str(_DEFAULT_RECEIPT)))
     return configured.expanduser().absolute()
 
 
@@ -283,7 +283,7 @@ def _resolve_executable(explicit: Optional[Path]) -> Path:
     if explicit is not None:
         candidates.append(explicit)
     else:
-        configured = os.environ.get("DCC_MCP_OPENSCAD_EXECUTABLE")
+        configured = os.environ.get("MESHY_DCC_OPENSCAD_EXECUTABLE")
         if configured:
             candidates.append(Path(configured))
         for name in ("openscad.com", "openscad"):
@@ -406,10 +406,10 @@ def _distribution_root(distribution: importlib_metadata.Distribution) -> Path:
 
 def _capture_core_identity() -> Dict[str, Any]:
     try:
-        distribution = importlib_metadata.distribution("dcc-mcp-core")
+        distribution = importlib_metadata.distribution("meshy-dcc-core")
         version = distribution.version
         root = _distribution_root(distribution)
-        module = Path(str(dcc_mcp_core.__file__)).resolve(strict=True)
+        module = Path(str(meshy_dcc_core.__file__)).resolve(strict=True)
         module.relative_to(root)
     except (ImportError, importlib_metadata.PackageNotFoundError, OSError, ValueError) as exc:
         raise LifecycleFailure(EXIT_PREFLIGHT, "core", "core_distribution_invalid") from exc
@@ -714,7 +714,7 @@ def _base_result(request: DoctorRequest, core_version: str) -> Dict[str, Any]:
 
 def _failure_result(request: DoctorRequest, failure: LifecycleFailure) -> Dict[str, Any]:
     try:
-        core_version = importlib_metadata.version("dcc-mcp-core")
+        core_version = importlib_metadata.version("meshy-dcc-core")
     except importlib_metadata.PackageNotFoundError:
         core_version = "unavailable"
     result = _base_result(request, core_version)
@@ -734,7 +734,7 @@ def _failure_result(request: DoctorRequest, failure: LifecycleFailure) -> Dict[s
                 "Install or pin an OpenSCAD inside the verified compatibility matrix.",
                 failure.detail or failure.reason,
                 [
-                    "dcc-mcp-openscad",
+                    "meshy-dcc-openscad",
                     "doctor",
                     "--json",
                     "--executable",
@@ -811,7 +811,7 @@ def _run_lifecycle(request: DoctorRequest) -> Dict[str, Any]:
                     "confirm-uninstall",
                     "Confirm removal of the OpenSCAD adapter receipt.",
                     "OpenSCAD itself is never removed or cached by this adapter.",
-                    ["dcc-mcp-openscad", "uninstall", "--yes", "--json"],
+                    ["meshy-dcc-openscad", "uninstall", "--yes", "--json"],
                 )
             ]
             return result
@@ -910,7 +910,7 @@ def _run_lifecycle(request: DoctorRequest) -> Dict[str, Any]:
                 "confirm-%s" % request.operation,
                 "Confirm the receipt transaction.",
                 "The adapter never downloads, installs, or caches OpenSCAD itself.",
-                ["dcc-mcp-openscad", request.operation, "--yes", "--json"],
+                ["meshy-dcc-openscad", request.operation, "--yes", "--json"],
             )
         ]
         return result

@@ -22,7 +22,7 @@ So a mutating tool must never:
 
 ## Which tools owe a read-back
 
-The classification lives in `dcc_mcp_openscad/write_contract.py`:
+The classification lives in `meshy_dcc_openscad/write_contract.py`:
 
 | Tool | Class | Why |
 | --- | --- | --- |

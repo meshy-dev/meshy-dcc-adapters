@@ -13,14 +13,14 @@ import pytest
 
 
 def _schema_validate(payload: dict) -> None:
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
     from jsonschema import Draft202012Validator
 
     Draft202012Validator(load_install_sop_schema()).validate(payload)
 
 
 def _fake_openscad(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     executable = tmp_path / ("openscad.com" if os.name == "nt" else "openscad")
     executable.write_bytes(b"official-openscad-fixture-v1")
@@ -51,7 +51,7 @@ def _fake_openscad(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def _run_json(arguments: list[str], capsys) -> tuple[int, dict]:
-    from dcc_mcp_openscad import server
+    from meshy_dcc_openscad import server
 
     exit_code = server.main(arguments)
     captured = capsys.readouterr()
@@ -62,9 +62,9 @@ def _run_json(arguments: list[str], capsys) -> tuple[int, dict]:
 
 
 def test_uses_only_the_official_core_install_contract() -> None:
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     assert lifecycle.MINIMUM_CORE_VERSION == "0.20.36"
     assert lifecycle.load_install_sop_schema() == load_install_sop_schema()
@@ -74,14 +74,14 @@ def test_uses_only_the_official_core_install_contract() -> None:
     )
     pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
     project = pyproject.read_text(encoding="utf-8")
-    assert '"dcc-mcp-core>=0.20.36,<1.0.0"' in project
+    assert '"meshy-dcc-core>=0.20.36,<1.0.0"' in project
     assert "\"importlib-metadata>=4.13,<7; python_version<'3.8'\"" in project
 
 
 def test_core_identity_binds_the_resolved_managed_python_entrypoint(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     real_python = Path(sys.executable).resolve(strict=True)
     managed_entrypoint = tmp_path / ("python.exe" if os.name == "nt" else "python")
@@ -122,7 +122,7 @@ def test_every_lifecycle_verb_emits_the_official_schema(
 def test_install_uses_one_caller_entry_deadline_across_both_identity_captures(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     executable = tmp_path / ("openscad.com" if os.name == "nt" else "openscad")
     executable.write_bytes(b"deadline-fixture")
@@ -203,7 +203,7 @@ def test_install_verify_uninstall_are_receipted_owned_and_idempotent(
     assert local_receipt["python"]["sha256"]
     # Compared as a version tuple, not as a string, so a future 0.100.0 does
     # not satisfy the 0.20.36 floor by lexicographic accident.
-    from dcc_mcp_openscad.doctor import MINIMUM_CORE_VERSION, _version_tuple
+    from meshy_dcc_openscad.doctor import MINIMUM_CORE_VERSION, _version_tuple
 
     assert _version_tuple(local_receipt["core"]["version"]) >= _version_tuple(MINIMUM_CORE_VERSION)
 
@@ -262,7 +262,7 @@ def test_install_cannot_replace_a_changed_owned_receipt_without_upgrade(
 def test_runtime_identity_swap_and_symlink_fail_before_receipt_commit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     executable = _fake_openscad(tmp_path, monkeypatch)
     receipt = tmp_path / "receipt.json"
@@ -311,7 +311,7 @@ def test_runtime_identity_swap_and_symlink_fail_before_receipt_commit(
 def test_receipt_commit_failure_rolls_back_the_prior_owned_receipt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     executable = _fake_openscad(tmp_path, monkeypatch)
     receipt = tmp_path / "receipt.json"
@@ -348,7 +348,7 @@ def test_receipt_commit_failure_rolls_back_the_prior_owned_receipt(
 def test_post_commit_validation_failure_restores_the_prior_receipt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     executable = _fake_openscad(tmp_path, monkeypatch)
     receipt = tmp_path / "receipt.json"
@@ -385,7 +385,7 @@ def test_post_commit_validation_failure_restores_the_prior_receipt(
 def test_malformed_foreign_receipts_and_reparse_parents_fail_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     executable = _fake_openscad(tmp_path, monkeypatch)
     receipt = tmp_path / "receipt.json"
@@ -462,7 +462,7 @@ def test_receipt_identity_change_during_read_fails_closed(
 
 
 def test_receipt_mutations_use_one_nonblocking_owner_lock(tmp_path: Path) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     receipt = tmp_path / "receipt.json"
     with lifecycle._mutation_lock(receipt):
@@ -480,9 +480,9 @@ def test_receipt_mutations_use_one_nonblocking_owner_lock(tmp_path: Path) -> Non
 def test_malformed_core_schema_and_version_cli_are_stable(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
-    from dcc_mcp_openscad import server
-    from dcc_mcp_openscad.__version__ import __version__
+    import meshy_dcc_openscad.doctor as lifecycle
+    from meshy_dcc_openscad import server
+    from meshy_dcc_openscad.__version__ import __version__
 
     executable = _fake_openscad(tmp_path, monkeypatch)
     monkeypatch.setattr(lifecycle, "load_install_sop_schema", lambda: {"type": "object"})
@@ -502,7 +502,7 @@ def test_malformed_core_schema_and_version_cli_are_stable(
 def test_invalid_arguments_and_host_failures_are_stable_redacted_json(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     exit_code, malformed = _run_json(["verify", "--json", "--timeout-secs", "not-a-number"], capsys)
     assert exit_code == 10
@@ -529,7 +529,7 @@ def test_invalid_arguments_and_host_failures_are_stable_redacted_json(
 def test_nonfinite_timeout_is_rejected_before_runtime_io(
     monkeypatch: pytest.MonkeyPatch, capsys
 ) -> None:
-    import dcc_mcp_openscad.doctor as lifecycle
+    import meshy_dcc_openscad.doctor as lifecycle
 
     def unexpected_probe(*_args, **_kwargs):
         raise AssertionError("runtime I/O must not run")
@@ -546,7 +546,7 @@ def test_nonfinite_timeout_is_rejected_before_runtime_io(
 def test_bounded_probe_rejects_nonfinite_deadlines_before_temp_or_launch(
     timeout: float, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     monkeypatch.setattr(
         process_module.tempfile,
@@ -590,7 +590,7 @@ def _pid_alive(pid: int) -> bool:
 
 
 def test_probe_timeout_owns_the_full_process_tree_and_leaves_no_orphan(tmp_path: Path) -> None:
-    from dcc_mcp_openscad._process import run_bounded_command
+    from meshy_dcc_openscad._process import run_bounded_command
 
     identities = tmp_path / "owned-tree.txt"
     ready = tmp_path / "descendant-ready.txt"
@@ -634,7 +634,7 @@ def test_probe_timeout_owns_the_full_process_tree_and_leaves_no_orphan(tmp_path:
 def test_probe_root_first_exit_reaps_descendant_with_inherited_output_handles(
     tmp_path: Path,
 ) -> None:
-    from dcc_mcp_openscad._process import run_bounded_command
+    from meshy_dcc_openscad._process import run_bounded_command
 
     identities = tmp_path / "root-first-identities.txt"
     ready = tmp_path / "root-first-ready.txt"
@@ -677,7 +677,7 @@ def test_probe_root_first_exit_reaps_descendant_with_inherited_output_handles(
 def test_probe_status_write_failure_reaps_a_ready_descendant(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     identities = tmp_path / "status-failure-identities.txt"
     ready = tmp_path / "status-failure-ready.txt"
@@ -727,7 +727,7 @@ def test_probe_status_write_failure_reaps_a_ready_descendant(
 def test_probe_cancellation_cleans_tree_and_private_directory_before_reraising(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     identities = tmp_path / "cancelled-tree.txt"
     ready = tmp_path / "cancelled-ready.txt"
@@ -747,7 +747,7 @@ def test_probe_cancellation_cleans_tree_and_private_directory_before_reraising(
     cancellation = KeyboardInterrupt("private cancellation detail")
 
     def controlled_root(prefix: str) -> str:
-        assert prefix == "dcc-mcp-openscad-probe-"
+        assert prefix == "meshy-dcc-openscad-probe-"
         private_root.mkdir()
         return str(private_root)
 
@@ -774,7 +774,7 @@ def test_probe_cancellation_cleans_tree_and_private_directory_before_reraising(
 def test_probe_supervisor_ignores_hostile_python_startup(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     marker = tmp_path / "sitecustomize-ran.txt"
     (tmp_path / "sitecustomize.py").write_text(
@@ -803,7 +803,7 @@ def test_probe_supervisor_ignores_hostile_python_startup(
 def test_probe_supervisor_expired_deadline_has_zero_launch_or_output_side_effect(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._probe_supervisor as supervisor
+    import meshy_dcc_openscad._probe_supervisor as supervisor
 
     status = tmp_path / "status.json"
     stdout = tmp_path / "stdout.bin"
@@ -846,7 +846,7 @@ def test_probe_supervisor_expired_deadline_has_zero_launch_or_output_side_effect
 def test_probe_supervisor_refuses_an_adopted_controller_before_launch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._probe_supervisor as supervisor
+    import meshy_dcc_openscad._probe_supervisor as supervisor
 
     status = tmp_path / "status.json"
     stdout = tmp_path / "stdout.bin"
@@ -888,7 +888,7 @@ def test_probe_supervisor_refuses_an_adopted_controller_before_launch(
 def test_probe_supervisor_rechecks_controller_identity_at_the_launch_boundary(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._probe_supervisor as supervisor
+    import meshy_dcc_openscad._probe_supervisor as supervisor
 
     marker = tmp_path / "child-launched.txt"
     expected_controller_pid = 42_424
@@ -932,7 +932,7 @@ def test_probe_supervisor_rechecks_controller_identity_at_the_launch_boundary(
 def test_probe_delayed_launch_cannot_receive_a_second_timeout_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     original_start = process_module._start_owned_process
     wait_budgets: list[float] = []
@@ -972,7 +972,7 @@ def test_probe_delayed_output_read_cannot_return_success_after_deadline(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     output = tmp_path / "stdout.bin"
     output.write_bytes(b"owned-output")
@@ -996,7 +996,7 @@ def test_probe_delayed_output_read_cannot_return_success_after_deadline(
 def test_probe_oversized_output_is_never_read_without_a_bound(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     original_read = process_module.os.read
     original_open_bound_output = process_module._open_bound_output
@@ -1040,13 +1040,13 @@ def test_probe_oversized_output_is_never_read_without_a_bound(
 def test_missing_probe_output_fails_closed_instead_of_becoming_empty_success(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     private_root = tmp_path / "missing-output-root"
     original_cleanup = process_module._cleanup_owned_process
 
     def controlled_root(prefix: str) -> str:
-        assert prefix == "dcc-mcp-openscad-probe-"
+        assert prefix == "meshy-dcc-openscad-probe-"
         private_root.mkdir()
         return str(private_root)
 
@@ -1078,7 +1078,7 @@ def test_missing_probe_output_fails_closed_instead_of_becoming_empty_success(
 def test_read_bounded_output_rejects_missing_and_non_regular_paths(
     tmp_path: Path, kind: str
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     output = tmp_path / "stdout.bin"
     if kind == "directory":
@@ -1094,7 +1094,7 @@ def test_read_bounded_output_rejects_missing_and_non_regular_paths(
 def test_read_bounded_output_rejects_symlink_or_reparse_without_foreign_bytes(
     tmp_path: Path,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     foreign = tmp_path / "foreign-output.bin"
     foreign.write_bytes(b"foreign-private-output")
@@ -1112,7 +1112,7 @@ def test_read_bounded_output_rejects_symlink_or_reparse_without_foreign_bytes(
 def test_read_bounded_output_rejects_same_bytes_path_swap_before_open(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     output = tmp_path / "stdout.bin"
     replacement = tmp_path / "replacement.bin"
@@ -1155,7 +1155,7 @@ def test_read_bounded_output_rejects_same_bytes_path_swap_before_open(
 def test_read_bounded_output_rejects_file_mutation_during_read(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     output = tmp_path / "stdout.bin"
     replacement = tmp_path / "replacement.bin"
@@ -1219,7 +1219,7 @@ def test_read_bounded_output_rejects_file_mutation_during_read(
 def test_read_bounded_output_delayed_pre_stat_consumes_the_same_deadline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     output = tmp_path / "stdout.bin"
     output.write_bytes(b"owned-output")
@@ -1251,7 +1251,7 @@ def test_read_bounded_output_delayed_pre_stat_consumes_the_same_deadline(
 def test_read_bounded_output_delayed_post_stat_cannot_return_success(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     output = tmp_path / "stdout.bin"
     output.write_bytes(b"owned-output")
@@ -1279,7 +1279,7 @@ def test_read_bounded_output_delayed_post_stat_cannot_return_success(
 def test_read_bounded_output_enforces_limit_plus_one_identity_bound(
     tmp_path: Path,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     at_limit = tmp_path / "at-limit.bin"
     limit_sentinel = tmp_path / "limit-sentinel.bin"
@@ -1310,7 +1310,7 @@ def test_read_bounded_output_enforces_limit_plus_one_identity_bound(
 def test_windows_job_assignment_failure_terminates_and_reaps_suspended_process(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     class FakeProcess:
         pid = 42_424
@@ -1372,7 +1372,7 @@ def test_windows_job_assignment_failure_terminates_and_reaps_suspended_process(
 def test_windows_job_assignment_failure_leaves_no_real_suspended_process(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     class RejectingOwner:
         def assign(self, _process) -> None:
@@ -1416,7 +1416,7 @@ def test_windows_job_assignment_failure_leaves_no_real_suspended_process(
 def test_windows_launch_failure_reap_uses_only_remaining_caller_deadline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     wait_timeouts = []
 
@@ -1467,13 +1467,13 @@ def test_windows_launch_failure_reap_uses_only_remaining_caller_deadline(
 def test_probe_expired_temp_setup_does_not_start_a_process(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     private_root = tmp_path / "expired-before-launch"
     start_called = False
 
     def delayed_root(prefix: str) -> str:
-        assert prefix == "dcc-mcp-openscad-probe-"
+        assert prefix == "meshy-dcc-openscad-probe-"
         private_root.mkdir()
         time.sleep(0.1)
         return str(private_root)
@@ -1500,7 +1500,7 @@ def test_probe_expired_temp_setup_does_not_start_a_process(
 def test_probe_process_accounting_error_is_stable_and_redacted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     original_start = process_module._start_owned_process
 
@@ -1554,7 +1554,7 @@ def test_probe_controller_sigkill_after_descendant_ready_leaves_no_owned_process
     )
     controller_source = (
         "import pathlib,sys; "
-        "from dcc_mcp_openscad._process import run_bounded_command; "
+        "from meshy_dcc_openscad._process import run_bounded_command; "
         f"run_bounded_command([sys.executable,'-c',{root!r}], timeout=30.0); "
         f"pathlib.Path({completed.as_posix()!r}).write_text('returned', encoding='utf-8')"
     )
@@ -1619,7 +1619,7 @@ def test_probe_controller_sigkill_after_descendant_ready_leaves_no_owned_process
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX process-group accounting")
 def test_posix_wait_empty_fails_closed_while_owned_group_has_a_live_member() -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     process, owner = process_module._start_owned_process(
         [sys.executable, "-I", "-S", "-c", "import time; time.sleep(60)"],
@@ -1637,7 +1637,7 @@ def test_posix_wait_empty_fails_closed_while_owned_group_has_a_live_member() -> 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX process-group accounting")
 def test_posix_wait_empty_treats_an_unreaped_zombie_as_non_live() -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     process, owner = process_module._start_owned_process(
         [sys.executable, "-I", "-S", "-c", "pass"],
@@ -1657,7 +1657,7 @@ def test_posix_wait_empty_treats_an_unreaped_zombie_as_non_live() -> None:
 def test_posix_wait_empty_fails_closed_when_process_accounting_is_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     process, owner = process_module._start_owned_process(
         [sys.executable, "-I", "-S", "-c", "import time; time.sleep(60)"],
@@ -1682,7 +1682,7 @@ def test_posix_wait_empty_fails_closed_when_process_accounting_is_unavailable(
 def test_posix_terminate_never_signals_a_changed_session_identity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import dcc_mcp_openscad._process as process_module
+    import meshy_dcc_openscad._process as process_module
 
     process, owner = process_module._start_owned_process(
         [sys.executable, "-I", "-S", "-c", "import time; time.sleep(60)"],
@@ -1709,7 +1709,7 @@ def test_posix_terminate_never_signals_a_changed_session_identity(
 
 
 def test_status_and_capabilities_share_one_caller_deadline(tmp_path: Path) -> None:
-    from dcc_mcp_openscad.bridge import OpenscadCli
+    from meshy_dcc_openscad.bridge import OpenscadCli
 
     executable = tmp_path / "openscad"
     executable.write_bytes(b"fixture")

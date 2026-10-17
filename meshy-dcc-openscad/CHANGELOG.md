@@ -1,92 +1,92 @@
 # Changelog
 
-## [0.5.0](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.4.1...v0.5.0) (2026-10-17)
+## [0.5.0](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.4.1...v0.5.0) (2026-10-17)
 
 
 ### Features
 
-* gate modelling calls on the host version matrix ([#26](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/26)) ([2140d65](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/2140d6545f113c9613a7aeba9124782bf309ea23))
+* gate modelling calls on the host version matrix ([#26](https://github.com/meshy-dev/meshy-dcc-openscad/issues/26)) ([2140d65](https://github.com/meshy-dev/meshy-dcc-openscad/commit/2140d6545f113c9613a7aeba9124782bf309ea23))
 
 
 ### Documentation
 
-* refresh the generated DCC-MCP host matrix pointer ([#24](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/24)) ([cd53738](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/cd537389d01992fc9371d707d6f313f78526c684))
+* refresh the generated Meshy DCC host matrix pointer ([#24](https://github.com/meshy-dev/meshy-dcc-openscad/issues/24)) ([cd53738](https://github.com/meshy-dev/meshy-dcc-openscad/commit/cd537389d01992fc9371d707d6f313f78526c684))
 
-## [0.4.1](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.4.0...v0.4.1) (2026-10-13)
+## [0.4.1](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.4.0...v0.4.1) (2026-10-13)
 
 
 ### Bug Fixes
 
-* **ci:** cut release PRs with a collaborator token ([#21](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/21)) ([bdc7e1d](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/bdc7e1d0e8d598e813f7ae603fceddb9060c6308))
+* **ci:** cut release PRs with a collaborator token ([#21](https://github.com/meshy-dev/meshy-dcc-openscad/issues/21)) ([bdc7e1d](https://github.com/meshy-dev/meshy-dcc-openscad/commit/bdc7e1d0e8d598e813f7ae603fceddb9060c6308))
 
 
 ### Documentation
 
-* **readme:** add the generated DCC-MCP host matrix pointer ([500ec8a](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/500ec8ac9328df04ce5f47940bbc3a0d4eef9bd9))
-* refresh the generated DCC-MCP host matrix pointer ([d64b2a0](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/d64b2a0d11d6a8547cabe447e8821ec54ba8dd45))
+* **readme:** add the generated Meshy DCC host matrix pointer ([500ec8a](https://github.com/meshy-dev/meshy-dcc-openscad/commit/500ec8ac9328df04ce5f47940bbc3a0d4eef9bd9))
+* refresh the generated Meshy DCC host matrix pointer ([d64b2a0](https://github.com/meshy-dev/meshy-dcc-openscad/commit/d64b2a0d11d6a8547cabe447e8821ec54ba8dd45))
 
-## [0.4.0](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.3.0...v0.4.0) (2026-10-04)
-
-
-### Features
-
-* author bounded native model source ([#17](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/17)) ([2bf3bd3](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/2bf3bd35d99312220fe0040825e5270edce2e8e5))
-
-
-### Bug Fixes
-
-* drop the unused Install SOP artifact revision mirror ([#19](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/19)) ([f30f4e2](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/f30f4e21173a6860635f424e5c449ce3de8f5594))
-
-## [0.3.0](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.2.1...v0.3.0) (2026-09-30)
+## [0.4.0](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.3.0...v0.4.0) (2026-10-04)
 
 
 ### Features
 
-* align OpenSCAD adapter with the 1.0 standard ([3ed0c62](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/3ed0c620e6aa2f3ae484b4cb3613f3fe8290ceff))
-
-## [0.2.1](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.2.0...v0.2.1) (2026-08-25)
+* author bounded native model source ([#17](https://github.com/meshy-dev/meshy-dcc-openscad/issues/17)) ([2bf3bd3](https://github.com/meshy-dev/meshy-dcc-openscad/commit/2bf3bd35d99312220fe0040825e5270edce2e8e5))
 
 
 ### Bug Fixes
 
-* bind probe output file identity ([61e7034](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/61e703412ef9f8d78b344edb2b3d28993a549e82))
-* close probe process cleanup races ([37928c0](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/37928c09a1002a5091657baa8101654ea2813163))
-* enforce probe deadline boundaries ([824df04](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/824df0437b5ed884c15195af4268a9a789f62fc8))
-* harden probe ownership deadline ([e7955dc](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/e7955dc6a394068ce9446e691700233febfc7112))
+* drop the unused Install SOP artifact revision mirror ([#19](https://github.com/meshy-dev/meshy-dcc-openscad/issues/19)) ([f30f4e2](https://github.com/meshy-dev/meshy-dcc-openscad/commit/f30f4e21173a6860635f424e5c449ce3de8f5594))
 
-## [0.2.0](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.1.2...v0.2.0) (2026-08-25)
+## [0.3.0](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.2.1...v0.3.0) (2026-09-30)
 
 
 ### Features
 
-* add OpenSCAD runtime doctor ([c060b40](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/c060b407bc4e8873bfee34df3e4693032a53d178))
+* align OpenSCAD adapter with the 1.0 standard ([3ed0c62](https://github.com/meshy-dev/meshy-dcc-openscad/commit/3ed0c620e6aa2f3ae484b4cb3613f3fe8290ceff))
+
+## [0.2.1](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.2.0...v0.2.1) (2026-08-25)
 
 
 ### Bug Fixes
 
-* harden OpenSCAD install lifecycle ([7c16d8c](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/7c16d8ce3a210705d63ca8eea5efac93a019b6a7))
-* resolve managed Python entrypoint ([18dace5](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/18dace54518d4dd774778b264fd78ef2da1a0cd1))
-* support Python 3.7 metadata ([5cd747e](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/5cd747e58b2968f42c5437a788ffe373583c66a3))
+* bind probe output file identity ([61e7034](https://github.com/meshy-dev/meshy-dcc-openscad/commit/61e703412ef9f8d78b344edb2b3d28993a549e82))
+* close probe process cleanup races ([37928c0](https://github.com/meshy-dev/meshy-dcc-openscad/commit/37928c09a1002a5091657baa8101654ea2813163))
+* enforce probe deadline boundaries ([824df04](https://github.com/meshy-dev/meshy-dcc-openscad/commit/824df0437b5ed884c15195af4268a9a789f62fc8))
+* harden probe ownership deadline ([e7955dc](https://github.com/meshy-dev/meshy-dcc-openscad/commit/e7955dc6a394068ce9446e691700233febfc7112))
 
-## [0.1.2](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.1.1...v0.1.2) (2026-08-12)
+## [0.2.0](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.1.2...v0.2.0) (2026-08-25)
+
+
+### Features
+
+* add OpenSCAD runtime doctor ([c060b40](https://github.com/meshy-dev/meshy-dcc-openscad/commit/c060b407bc4e8873bfee34df3e4693032a53d178))
+
+
+### Bug Fixes
+
+* harden OpenSCAD install lifecycle ([7c16d8c](https://github.com/meshy-dev/meshy-dcc-openscad/commit/7c16d8ce3a210705d63ca8eea5efac93a019b6a7))
+* resolve managed Python entrypoint ([18dace5](https://github.com/meshy-dev/meshy-dcc-openscad/commit/18dace54518d4dd774778b264fd78ef2da1a0cd1))
+* support Python 3.7 metadata ([5cd747e](https://github.com/meshy-dev/meshy-dcc-openscad/commit/5cd747e58b2968f42c5437a788ffe373583c66a3))
+
+## [0.1.2](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.1.1...v0.1.2) (2026-08-12)
 
 
 ### Documentation
 
-* add parametric CAD showcase ([#5](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/5)) ([3550a9e](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/3550a9e00bc0574f232edc11189945e8df9645c1))
-* publish approved OpenSCAD showcase ([#7](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/7)) ([a0c2245](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/a0c2245c6a7d6649493c8dbdb329f5581f81e433))
+* add parametric CAD showcase ([#5](https://github.com/meshy-dev/meshy-dcc-openscad/issues/5)) ([3550a9e](https://github.com/meshy-dev/meshy-dcc-openscad/commit/3550a9e00bc0574f232edc11189945e8df9645c1))
+* publish approved OpenSCAD showcase ([#7](https://github.com/meshy-dev/meshy-dcc-openscad/issues/7)) ([a0c2245](https://github.com/meshy-dev/meshy-dcc-openscad/commit/a0c2245c6a7d6649493c8dbdb329f5581f81e433))
 
-## [0.1.1](https://github.com/dcc-mcp/dcc-mcp-openscad/compare/v0.1.0...v0.1.1) (2026-08-10)
+## [0.1.1](https://github.com/meshy-dev/meshy-dcc-openscad/compare/v0.1.0...v0.1.1) (2026-08-10)
 
 
 ### Bug Fixes
 
-* restore complete MIT license text ([#3](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/3)) ([736f8b2](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/736f8b25c32da246b8c640550510cfc2b76d646f))
+* restore complete MIT license text ([#3](https://github.com/meshy-dev/meshy-dcc-openscad/issues/3)) ([736f8b2](https://github.com/meshy-dev/meshy-dcc-openscad/commit/736f8b25c32da246b8c640550510cfc2b76d646f))
 
 ## 0.1.0 (2026-08-10)
 
 
 ### Features
 
-* add experimental OpenSCAD adapter ([86c0df9](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/86c0df91044b09f2ac0fb174fbff31c084ef408b))
-* make OpenSCAD adapter production ready ([#1](https://github.com/dcc-mcp/dcc-mcp-openscad/issues/1)) ([fe7b4dc](https://github.com/dcc-mcp/dcc-mcp-openscad/commit/fe7b4dce023d61acda6ba8c0c2a798842436dce2))
+* add experimental OpenSCAD adapter ([86c0df9](https://github.com/meshy-dev/meshy-dcc-openscad/commit/86c0df91044b09f2ac0fb174fbff31c084ef408b))
+* make OpenSCAD adapter production ready ([#1](https://github.com/meshy-dev/meshy-dcc-openscad/issues/1)) ([fe7b4dc](https://github.com/meshy-dev/meshy-dcc-openscad/commit/fe7b4dce023d61acda6ba8c0c2a798842436dce2))
