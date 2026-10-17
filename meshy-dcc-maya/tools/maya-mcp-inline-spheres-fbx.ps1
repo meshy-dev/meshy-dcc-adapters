@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 if (-not $BaseUrl) {
-    $reg = Join-Path $env:TEMP "dcc-mcp-registry"
+    $reg = Join-Path $env:TEMP "meshy-dcc-registry"
     $entry = Get-Content (Join-Path $reg "services.json") -Raw | ConvertFrom-Json |
         Where-Object { $_.dcc_type -eq "maya" } | Select-Object -First 1
     if (-not $entry) { throw "No Maya in registry" }

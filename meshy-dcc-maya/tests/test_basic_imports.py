@@ -4,21 +4,21 @@ import pytest
 
 
 def test_default_port_contract():
-    from dcc_mcp_maya import DEFAULT_PORT
+    from meshy_dcc_maya import DEFAULT_PORT
 
     assert DEFAULT_PORT == 0
 
 
 def test_gateway_election_importable_from_core():
-    """GatewayElection moved to dcc_mcp_core.gateway_election (DccGatewayElection)."""
-    from dcc_mcp_core.gateway_election import DccGatewayElection
+    """GatewayElection moved to meshy_dcc_core.gateway_election (DccGatewayElection)."""
+    from meshy_dcc_core.gateway_election import DccGatewayElection
 
     assert DccGatewayElection is not None
 
 
 def test_hotreload_importable_from_core():
-    """HotReloader moved to dcc_mcp_core.hotreload (DccSkillHotReloader)."""
-    from dcc_mcp_core.hotreload import DccSkillHotReloader
+    """HotReloader moved to meshy_dcc_core.hotreload (DccSkillHotReloader)."""
+    from meshy_dcc_core.hotreload import DccSkillHotReloader
 
     assert DccSkillHotReloader is not None
 
@@ -27,7 +27,7 @@ def test_server_has_gateway_failover():
     """Verify MayaMcpServer accepts enable_gateway_failover parameter."""
     import inspect
 
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     sig = inspect.signature(MayaMcpServer.__init__)
     assert "enable_gateway_failover" in sig.parameters
@@ -35,14 +35,14 @@ def test_server_has_gateway_failover():
 
 def test_server_has_update_gateway_metadata():
     """Verify MayaMcpServer has update_gateway_metadata method (inherited)."""
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     assert hasattr(MayaMcpServer, "update_gateway_metadata")
 
 
 def test_server_has_get_gateway_election_status():
     """Verify MayaMcpServer has get_gateway_election_status method (inherited)."""
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     assert hasattr(MayaMcpServer, "get_gateway_election_status")
 
@@ -64,7 +64,7 @@ def test_gateway_test_client_imports():
 
 def test_gateway_election_attributes_on_core_class():
     """DccGatewayElection (core) has same start/stop interface."""
-    from dcc_mcp_core.gateway_election import DccGatewayElection
+    from meshy_dcc_core.gateway_election import DccGatewayElection
 
     methods = [m for m in dir(DccGatewayElection) if not m.startswith("_")]
 
@@ -75,7 +75,7 @@ def test_gateway_election_attributes_on_core_class():
 
 def test_hotreload_attributes_on_core_class():
     """DccSkillHotReloader (core) has same enable/disable/reload_now interface."""
-    from dcc_mcp_core.hotreload import DccSkillHotReloader
+    from meshy_dcc_core.hotreload import DccSkillHotReloader
 
     methods = [m for m in dir(DccSkillHotReloader) if not m.startswith("_")]
 
@@ -85,8 +85,8 @@ def test_hotreload_attributes_on_core_class():
 
 
 def test_resolve_enable_gateway_failover_env(monkeypatch):
-    """``DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER`` applies when the arg is omitted."""
-    from dcc_mcp_maya import _env
+    """``MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER`` applies when the arg is omitted."""
+    from meshy_dcc_maya import _env
 
     monkeypatch.delenv(_env.ENV_ENABLE_GATEWAY_FAILOVER, raising=False)
     assert _env.resolve_enable_gateway_failover(None, default=True) is True
@@ -104,15 +104,15 @@ def test_resolve_enable_gateway_failover_env(monkeypatch):
 def test_start_server_has_enable_gateway_failover():
     """Verify start_server() forwards enable_gateway_failover through to MayaMcpServer.
 
-    ``start_server`` is generated via ``dcc_mcp_core.factory.make_start_stop``
+    ``start_server`` is generated via ``meshy_dcc_core.factory.make_start_stop``
     and accepts arbitrary ``**kwargs`` forwarded to ``MayaMcpServer.__init__``.
     The gateway-failover keyword must therefore be accepted, and the Maya
     server constructor must still expose it with default ``True``.
     """
     import inspect
 
-    from dcc_mcp_maya import start_server
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya import start_server
+    from meshy_dcc_maya.server import MayaMcpServer
 
     start_sig = inspect.signature(start_server)
     assert any(p.kind is inspect.Parameter.VAR_KEYWORD for p in start_sig.parameters.values()), (
@@ -126,7 +126,7 @@ def test_start_server_has_enable_gateway_failover():
 
 def test_config_has_gateway_fields():
     """Verify McpHttpConfig supports gateway configuration."""
-    from dcc_mcp_core import McpHttpConfig
+    from meshy_dcc_core import McpHttpConfig
 
     config = McpHttpConfig(port=8765)
 
@@ -139,16 +139,16 @@ def test_config_has_gateway_fields():
 
 def test_maya_mcp_server_inherits_dcc_server_base():
     """MayaMcpServer must be a subclass of DccServerBase."""
-    from dcc_mcp_core.server_base import DccServerBase
+    from meshy_dcc_core.server_base import DccServerBase
 
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     assert issubclass(MayaMcpServer, DccServerBase)
 
 
 def test_enable_hot_reload_on_server():
     """MayaMcpServer.enable_hot_reload is inherited from DccServerBase."""
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     assert hasattr(MayaMcpServer, "enable_hot_reload")
     assert hasattr(MayaMcpServer, "disable_hot_reload")
@@ -157,11 +157,11 @@ def test_enable_hot_reload_on_server():
 
 
 def test_start_server_source_does_not_reference_legacy_hot_reload_module():
-    """Regression for dcc-mcp-core#1391.
+    """Regression for meshy-dcc-core#1391.
 
     The previous ``register_builtins=True`` branch in ``start_server`` imported
-    ``HotReloader`` from ``dcc_mcp_core.hot_reload`` — a module that no longer
-    exists (it was renamed to ``dcc_mcp_core.hotreload`` and the class to
+    ``HotReloader`` from ``meshy_dcc_core.hot_reload`` — a module that no longer
+    exists (it was renamed to ``meshy_dcc_core.hotreload`` and the class to
     ``DccSkillHotReloader``).  The broken import was swallowed by a bare
     ``except Exception`` so ``enable_hot_reload=True`` failed silently in Maya.
 
@@ -169,12 +169,12 @@ def test_start_server_source_does_not_reference_legacy_hot_reload_module():
     """
     import inspect
 
-    from dcc_mcp_maya import server as server_module
+    from meshy_dcc_maya import server as server_module
 
     source = inspect.getsource(server_module)
-    assert "dcc_mcp_core.hot_reload" not in source, (
-        "Legacy 'dcc_mcp_core.hot_reload' import path must not appear in "
-        "server.py; use dcc_mcp_core.hotreload.DccSkillHotReloader or call "
+    assert "meshy_dcc_core.hot_reload" not in source, (
+        "Legacy 'meshy_dcc_core.hot_reload' import path must not appear in "
+        "server.py; use meshy_dcc_core.hotreload.DccSkillHotReloader or call "
         "server.enable_hot_reload() instead."
     )
     assert "HotReloader(" not in source, (

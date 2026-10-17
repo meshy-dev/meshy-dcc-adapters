@@ -66,8 +66,8 @@ def _probe_array_plug(cmds, node_type, plug, base):
 
 def _collect_errors(cmds):
     """Return drift descriptions; empty means Maya agrees with the tables."""
-    from dcc_mcp_maya.compositing import ARRAY_INPUT_PLUGS, BLEND_MODES, INPUT_PLUGS, UTILITY_NODES
-    from dcc_mcp_maya.plugins import ALWAYS_VALID_FLAGS, LOADED_ONLY_FLAGS
+    from meshy_dcc_maya.compositing import ARRAY_INPUT_PLUGS, BLEND_MODES, INPUT_PLUGS, UTILITY_NODES
+    from meshy_dcc_maya.plugins import ALWAYS_VALID_FLAGS, LOADED_ONLY_FLAGS
 
     errors = []
 

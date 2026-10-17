@@ -1,4 +1,4 @@
-"""Keep the supported dcc-mcp-core range consistent across release surfaces."""
+"""Keep the supported meshy-dcc-core range consistent across release surfaces."""
 
 import re
 import unicodedata
@@ -17,10 +17,10 @@ except ImportError:  # pragma: no cover - Python 3.7-3.10
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_DECLARATION = re.compile(
-    r"dcc-mcp-core(?P<spec>\s*(?:(?:>=|<=|==|~=|!=|>|<)\s*[0-9][0-9A-Za-z.!+_*-]*"
+    r"meshy-dcc-core(?P<spec>\s*(?:(?:>=|<=|==|~=|!=|>|<)\s*[0-9][0-9A-Za-z.!+_*-]*"
     r"(?:\s*,\s*(?:>=|<=|==|~=|!=|>|<)\s*[0-9][0-9A-Za-z.!+_*-]*)*))"
 )
-CORE_NAME = re.compile(r"\bdcc-mcp-core\b", re.IGNORECASE)
+CORE_NAME = re.compile(r"\bmeshy-dcc-core\b", re.IGNORECASE)
 CORE_PACKAGE_SPELLING = re.compile(r"\bdcc[-_.]+mcp[-_.]+core\b", re.IGNORECASE)
 VERSION_CLAIM = re.compile(r"(?<![0-9A-Za-z])\d+(?:[0-9A-Za-z.!+_-]*)(?![0-9A-Za-z])")
 DOTTED_VERSION_CLAIM = re.compile(r"\d+(?:\.\d+)+")
@@ -58,13 +58,13 @@ CONTRACT_SURFACES = (
     "llms-full.txt",
     "docs/guide/installation.md",
     "docs/zh/guide/installation.md",
-    "skills/dcc-mcp-maya-setup/SKILL.md",
+    "skills/meshy-dcc-maya-setup/SKILL.md",
 )
 
 
 def _core_dependency() -> str:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-    return next(dependency for dependency in project["dependencies"] if dependency.startswith("dcc-mcp-core"))
+    return next(dependency for dependency in project["dependencies"] if dependency.startswith("meshy-dcc-core"))
 
 
 def _normalize_surface(content: str) -> str:
@@ -101,7 +101,7 @@ def _normalize_surface(content: str) -> str:
     decoded = MARKDOWN_ESCAPE.sub(r"\1", decoded)
     decoded = unicodedata.normalize("NFKC", decoded).translate(UNICODE_HYPHENS)
     decoded = decoded.replace("≥", ">=").replace("≤", "<=")
-    return CORE_PACKAGE_SPELLING.sub("dcc-mcp-core", decoded)
+    return CORE_PACKAGE_SPELLING.sub("meshy-dcc-core", decoded)
 
 
 def _unparsed_core_claims(content: str) -> List[str]:
@@ -116,7 +116,7 @@ def _unparsed_core_claims(content: str) -> List[str]:
                 VERSION_CLAIM.search(segment, dependency_language.end()) if dependency_language is not None else None
             )
             has_version_claim = DOTTED_VERSION_CLAIM.search(segment) is not None or single_segment_claim is not None
-            is_symbol_reference = segment.startswith("dcc-mcp-core.") and dependency_language is None
+            is_symbol_reference = segment.startswith("meshy-dcc-core.") and dependency_language is None
             if has_version_claim and not is_symbol_reference and CORE_DECLARATION.match(line, name.start()) is None:
                 claims.append(segment.strip())
     return claims
@@ -127,7 +127,7 @@ def _assert_surface_contract(relative_path: str, content: str, canonical: str) -
     decoded = _normalize_surface(content)
     unparsed = _unparsed_core_claims(decoded)
     assert not unparsed, f"{relative_path} unparsed Core version claims: {unparsed!r}"
-    declarations = ["dcc-mcp-core" + match.group("spec") for match in CORE_DECLARATION.finditer(decoded)]
+    declarations = ["meshy-dcc-core" + match.group("spec") for match in CORE_DECLARATION.finditer(decoded)]
     assert declarations == [canonical], f"{relative_path} Core declarations: {declarations!r}; expected {[canonical]!r}"
 
 
@@ -142,22 +142,22 @@ def test_core_dependency_contract_matches_package_metadata(relative_path: str) -
 @pytest.mark.parametrize(
     "injected",
     (
-        "dcc-mcp-core>=0.19.45,<1.0.0",
-        "dcc-mcp-core >= 0.17.31",
-        "dcc-mcp-core >= 0.19.45, < 1.0.0",
-        "dcc-mcp-core ≥ 0.17.31",
-        "[`dcc-mcp-core`](https://github.com/dcc-mcp/dcc-mcp-core) ≥ 0.17.31",
-        "[`dcc-mcp-core`][core] >=0.17.31",
-        "[`dcc-mcp-core`](https://github.com/dcc-mcp/dcc-mcp-core)\u00a0>=\u00a00.17.31",
-        "dcc-mcp-core ＞＝ 0.17.31",
+        "meshy-dcc-core>=0.19.45,<1.0.0",
+        "meshy-dcc-core >= 0.17.31",
+        "meshy-dcc-core >= 0.19.45, < 1.0.0",
+        "meshy-dcc-core ≥ 0.17.31",
+        "[`meshy-dcc-core`](https://github.com/meshy-dev/meshy-dcc-core) ≥ 0.17.31",
+        "[`meshy-dcc-core`][core] >=0.17.31",
+        "[`meshy-dcc-core`](https://github.com/meshy-dev/meshy-dcc-core)\u00a0>=\u00a00.17.31",
+        "meshy-dcc-core ＞＝ 0.17.31",
         "dcc‐mcp‐core>=0.17.31",
-        "dcc_mcp_core>=0.17.31",
-        "dcc-mcp-core version 0.17.31",
+        "meshy_dcc_core>=0.17.31",
+        "meshy-dcc-core version 0.17.31",
         r"dcc\-mcp\-core>=0.17.31",
-        "dcc-mcp-core&gt;=0.17.31",
-        '[Core](https://github.com/dcc-mcp/dcc-mcp-core "dcc-mcp-core >=0.17.31")',
-        "dcc-mcp-core.ReadinessProbe requires Core version 0.17.31",
-        "dcc-mcp-core>=0.19.45,<1.0",
+        "meshy-dcc-core&gt;=0.17.31",
+        '[Core](https://github.com/meshy-dev/meshy-dcc-core "meshy-dcc-core >=0.17.31")',
+        "meshy-dcc-core.ReadinessProbe requires Core version 0.17.31",
+        "meshy-dcc-core>=0.19.45,<1.0",
     ),
 )
 def test_surface_contract_rejects_duplicate_or_alternate_dependency_declarations(injected: str) -> None:
@@ -171,12 +171,12 @@ def test_surface_contract_rejects_duplicate_or_alternate_dependency_declarations
 @pytest.mark.parametrize(
     "visible_claim",
     (
-        "![dcc-mcp-core>=0.17.31](badge.svg)",
-        '![Core](badge.svg "dcc-mcp-core>=0.17.31")',
-        "![dcc-mcp-core>=0.17.31][core-badge]",
-        '![Core][core-badge]\n[core-badge]: badge.svg "dcc-mcp-core>=0.17.31"',
-        "`dcc-mcp-core>=0.17.31`",
-        "```text\ndcc-mcp-core>=0.17.31\n```",
+        "![meshy-dcc-core>=0.17.31](badge.svg)",
+        '![Core](badge.svg "meshy-dcc-core>=0.17.31")',
+        "![meshy-dcc-core>=0.17.31][core-badge]",
+        '![Core][core-badge]\n[core-badge]: badge.svg "meshy-dcc-core>=0.17.31"',
+        "`meshy-dcc-core>=0.17.31`",
+        "```text\nmeshy-dcc-core>=0.17.31\n```",
     ),
 )
 def test_rendered_markdown_scanner_rejects_visible_core_claims(visible_claim: str) -> None:
@@ -190,10 +190,10 @@ def test_rendered_markdown_scanner_rejects_visible_core_claims(visible_claim: st
 @pytest.mark.parametrize(
     "hidden_claim",
     (
-        "<!-- dcc-mcp-core>=0.17.31 -->",
-        "<span hidden>dcc-mcp-core>=0.17.31</span>",
-        '<div style="display:none">dcc-mcp-core>=0.17.31</div>',
-        '[unused-core]: badge.svg "dcc-mcp-core>=0.17.31"',
+        "<!-- meshy-dcc-core>=0.17.31 -->",
+        "<span hidden>meshy-dcc-core>=0.17.31</span>",
+        '<div style="display:none">meshy-dcc-core>=0.17.31</div>',
+        '[unused-core]: badge.svg "meshy-dcc-core>=0.17.31"',
     ),
 )
 def test_rendered_markdown_scanner_ignores_non_rendered_core_claims(hidden_claim: str) -> None:
@@ -212,7 +212,7 @@ def test_rendered_markdown_tokens_cannot_consume_the_next_line() -> None:
 
 def test_escaped_html_comment_markup_remains_a_visible_core_claim() -> None:
     canonical = _core_dependency()
-    content = "Current requirement: %s\n&lt;!-- dcc-mcp-core&gt;=0.17.31 --&gt;\n" % canonical
+    content = "Current requirement: %s\n&lt;!-- meshy-dcc-core&gt;=0.17.31 --&gt;\n" % canonical
 
     with pytest.raises(AssertionError):
         _assert_surface_contract("escaped-comment.md", content, canonical)
@@ -223,7 +223,7 @@ def test_duplicate_reference_definitions_cannot_mask_the_first_visible_title() -
     content = (
         "Current requirement: %s\n"
         "![Core][core-badge]\n"
-        '[core-badge]: badge.svg "dcc-mcp-core>=0.17.31"\n'
+        '[core-badge]: badge.svg "meshy-dcc-core>=0.17.31"\n'
         '[core-badge]: badge.svg "harmless title"\n'
     ) % canonical
 
@@ -233,7 +233,7 @@ def test_duplicate_reference_definitions_cannot_mask_the_first_visible_title() -
 
 def test_single_segment_pep440_core_version_claim_is_rejected() -> None:
     canonical = _core_dependency()
-    content = "Current requirement: %s\ndcc-mcp-core version 1\n" % canonical
+    content = "Current requirement: %s\nmeshy-dcc-core version 1\n" % canonical
 
     with pytest.raises(AssertionError):
         _assert_surface_contract("single-segment-version.md", content, canonical)
@@ -250,7 +250,7 @@ def test_readme_core_badge_uses_the_canonical_complete_upper_bound() -> None:
 def test_installer_core_dependency_contract_matches_package_metadata() -> None:
     from packaging.requirements import Requirement
 
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     assert install.CORE_VERSION_REQUIREMENT == _core_dependency()
     assert install._core_version_specifier() == Requirement(_core_dependency()).specifier
@@ -269,7 +269,7 @@ def _declared_core_floor():
     return max(floors)
 
 
-@pytest.mark.parametrize("relative_path", ("src/dcc_mcp_maya/headless.py",))
+@pytest.mark.parametrize("relative_path", ("src/meshy_dcc_maya/headless.py",))
 def test_runtime_core_gates_stay_inside_the_declared_dependency_range(relative_path: str) -> None:
     """A runtime Core version gate must never exceed the declared dependency floor.
 
@@ -318,7 +318,7 @@ def test_declared_core_range_spans_at_most_one_core_minor_line() -> None:
 def test_declared_core_floor_provides_the_symbols_the_adapter_imports() -> None:
     """The declared floor must not sit below a Core version missing a used symbol.
 
-    ``install.bootstrap_user_setup`` imports ``dcc_mcp_core.capture_bootstrap_errors``
+    ``install.bootstrap_user_setup`` imports ``meshy_dcc_core.capture_bootstrap_errors``
     at call time. That symbol is absent on Core 0.19.45 -- the floor this adapter
     used to declare -- so a floor on that line advertised support for a Core that
     could not run the installer's own bootstrap path.
@@ -327,5 +327,5 @@ def test_declared_core_floor_provides_the_symbols_the_adapter_imports() -> None:
 
     declared = _declared_core_floor()
     assert declared >= Version("0.19.90"), (
-        "declared Core floor %s predates dcc_mcp_core.capture_bootstrap_errors (introduced in 0.19.90)" % declared
+        "declared Core floor %s predates meshy_dcc_core.capture_bootstrap_errors (introduced in 0.19.90)" % declared
     )

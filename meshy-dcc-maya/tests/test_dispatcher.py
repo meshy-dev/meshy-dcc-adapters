@@ -1,6 +1,6 @@
 """Tests for MayaUiDispatcher, MayaStandaloneDispatcher, and MayaUiPump.
 
-See: https://github.com/dcc-mcp/dcc-mcp-maya/issues/66
+See: https://github.com/meshy-dev/meshy-dcc-maya/issues/66
 """
 
 # Import future modules
@@ -41,9 +41,9 @@ def _import_fresh():
     import importlib
 
     for mod in list(sys.modules):
-        if "dcc_mcp_maya" in mod:
+        if "meshy_dcc_maya" in mod:
             del sys.modules[mod]
-    return importlib.import_module("dcc_mcp_maya.dispatcher")
+    return importlib.import_module("meshy_dcc_maya.dispatcher")
 
 
 # ── MayaUiDispatcher tests ───────────────────────────────────────────────────
@@ -53,7 +53,7 @@ class TestMayaUiDispatcher:
     """Tests for MayaUiDispatcher."""
 
     def test_submit_any_affinity_returns_payload(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result = d.submit("test_action", payload="hello", affinity="any")
@@ -65,7 +65,7 @@ class TestMayaUiDispatcher:
         assert result["error"] is None
 
     def test_submit_any_affinity_none_payload(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result = d.submit("test_action", affinity="any")
@@ -74,7 +74,7 @@ class TestMayaUiDispatcher:
         assert result["output"] is None
 
     def test_submit_invalid_affinity_returns_error(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result = d.submit("test_action", affinity="named:foo")
@@ -83,7 +83,7 @@ class TestMayaUiDispatcher:
         assert "Unsupported affinity" in result["error"]
 
     def test_submit_main_affinity_queues_and_drains(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
 
@@ -110,7 +110,7 @@ class TestMayaUiDispatcher:
         assert result_holder[0]["output"] == "from_main"
 
     def test_submit_callable_main_affinity(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result_holder = [None]
@@ -133,7 +133,7 @@ class TestMayaUiDispatcher:
         assert result_holder[0]["output"] == {"answer": 42}
 
     def test_submit_callable_any_affinity(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result = d.submit_callable("callable_any", lambda: "immediate", affinity="any")
@@ -142,7 +142,7 @@ class TestMayaUiDispatcher:
         assert result["output"] == "immediate"
 
     def test_submit_callable_error_handling(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result = d.submit_callable("callable_err", lambda: 1 / 0, affinity="any")
@@ -151,7 +151,7 @@ class TestMayaUiDispatcher:
         assert "division by zero" in result["error"]
 
     def test_cancel_pending_job(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result_holder = [None]
@@ -172,13 +172,13 @@ class TestMayaUiDispatcher:
         assert result_holder[0]["error"] == "Cancelled"
 
     def test_cancel_nonexistent_job(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         assert d.cancel("no_such_job") is False
 
     def test_timeout_returns_error(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         # Submit with very short timeout and never drain
@@ -188,13 +188,13 @@ class TestMayaUiDispatcher:
         assert "Timeout" in result["error"]
 
     def test_supported_returns_both_affinities(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         assert set(d.supported()) == {"any", "main"}
 
     def test_capabilities_flags(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         caps = d.capabilities()
@@ -205,13 +205,13 @@ class TestMayaUiDispatcher:
         assert caps["supports_named_threads"] is False
 
     def test_pending_count_starts_at_zero(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         assert d.pending_count() == 0
 
     def test_drain_empty_queue(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         executed, remaining = d.drain_queue(budget_ms=10)
@@ -220,7 +220,7 @@ class TestMayaUiDispatcher:
 
     def test_drain_respects_budget(self):
         """Verify that the pump yields after budget is exhausted."""
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
 
@@ -247,7 +247,7 @@ class TestMayaUiDispatcher:
 
     def test_concurrent_submit_safety(self):
         """Multiple threads submitting simultaneously should not crash."""
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         results = []
@@ -274,7 +274,7 @@ class TestMayaUiDispatcher:
 
     def test_dispatch_callable_routes_to_main_thread(self):
         """``dispatch_callable`` must enqueue on the main queue and block."""
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         result_holder = [None]
@@ -309,7 +309,7 @@ class TestMayaUiDispatcher:
 
     def test_dispatch_callable_propagates_exceptions(self):
         """Exceptions raised in *func* must surface from ``dispatch_callable``."""
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         captured = [None]
@@ -340,13 +340,13 @@ class TestMayaUiDispatcher:
         Regression for issue #136: without this, ``HostExecutionBridge``
         cannot route ``affinity: main`` tools through the UI thread.
         """
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher
 
         d = MayaUiDispatcher()
         assert hasattr(d, "dispatch_callable")
         assert callable(d.dispatch_callable)
 
-        from dcc_mcp_core._server.inprocess_executor import (
+        from meshy_dcc_core._server.inprocess_executor import (
             BaseDccCallableDispatcher,
         )
 
@@ -362,7 +362,7 @@ class TestMayaStandaloneDispatcher:
     """Tests for MayaStandaloneDispatcher."""
 
     def test_submit_returns_payload(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         d = MayaStandaloneDispatcher()
         result = d.submit("test", payload="hello")
@@ -371,7 +371,7 @@ class TestMayaStandaloneDispatcher:
         assert result["output"] == "hello"
 
     def test_submit_ignores_affinity(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         d = MayaStandaloneDispatcher()
         # Main affinity should work in standalone (no thread restriction)
@@ -381,7 +381,7 @@ class TestMayaStandaloneDispatcher:
         assert result["output"] == "main_ok"
 
     def test_submit_callable_success(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         d = MayaStandaloneDispatcher()
         result = d.submit_callable("task", lambda: {"x": 1})
@@ -390,7 +390,7 @@ class TestMayaStandaloneDispatcher:
         assert result["output"] == {"x": 1}
 
     def test_submit_callable_error(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         d = MayaStandaloneDispatcher()
         result = d.submit_callable("err_task", lambda: 1 / 0)
@@ -399,7 +399,7 @@ class TestMayaStandaloneDispatcher:
         assert "division by zero" in result["error"]
 
     def test_dispatch_callable_satisfies_core_protocol(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         d = MayaStandaloneDispatcher()
         result = d.dispatch_callable(
@@ -414,7 +414,7 @@ class TestMayaStandaloneDispatcher:
         assert hasattr(d, "dispatch_callable")
         assert callable(d.dispatch_callable)
 
-        from dcc_mcp_core._server.inprocess_executor import (
+        from meshy_dcc_core._server.inprocess_executor import (
             BaseDccCallableDispatcher,
         )
 
@@ -423,7 +423,7 @@ class TestMayaStandaloneDispatcher:
         assert isinstance(d, BaseDccCallableDispatcher)
 
     def test_dispatch_callable_serializes_across_instances(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         first = MayaStandaloneDispatcher()
         second = MayaStandaloneDispatcher()
@@ -460,13 +460,13 @@ class TestMayaStandaloneDispatcher:
         assert order == ["first-enter", "first-exit", "second-enter"]
 
     def test_supported(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         d = MayaStandaloneDispatcher()
         assert set(d.supported()) == {"any", "main"}
 
     def test_capabilities_no_time_slicing(self):
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
         d = MayaStandaloneDispatcher()
         caps = d.capabilities()
@@ -481,7 +481,7 @@ class TestMayaUiPump:
     """Tests for MayaUiPump."""
 
     def test_install_registers_scriptjob(self, mock_maya_modules):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=8)
@@ -492,7 +492,7 @@ class TestMayaUiPump:
         mock_maya_modules.cmds.scriptJob.assert_called_once()
 
     def test_install_is_idempotent(self, mock_maya_modules):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=8)
@@ -502,7 +502,7 @@ class TestMayaUiPump:
         assert mock_maya_modules.cmds.scriptJob.call_count == 1
 
     def test_uninstall_removes_scriptjob(self, mock_maya_modules):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=8)
@@ -514,7 +514,7 @@ class TestMayaUiPump:
         mock_maya_modules.cmds.scriptJob.assert_any_call(kill=42, force=True)
 
     def test_uninstall_when_not_installed(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d)
@@ -524,7 +524,7 @@ class TestMayaUiPump:
         assert pump.is_installed is False
 
     def test_budget_ms_property(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=16)
@@ -534,7 +534,7 @@ class TestMayaUiPump:
         assert pump.budget_ms == 4
 
     def test_budget_ms_floor(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d)
@@ -542,7 +542,7 @@ class TestMayaUiPump:
         assert pump.budget_ms == 1.0
 
     def test_stats_tracking(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=50)
@@ -555,7 +555,7 @@ class TestMayaUiPump:
         assert stats["total_executed"] == 0
 
     def test_pump_tick_drains_jobs(self):
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=100)
@@ -589,7 +589,7 @@ class TestCreateDispatcher:
     def test_interactive_returns_ui_dispatcher(self, mock_maya_modules):
         mock_maya_modules.cmds.about.return_value = False  # not batch
 
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump, create_dispatcher
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump, create_dispatcher
 
         dispatcher, pump = create_dispatcher()
         assert isinstance(dispatcher, MayaUiDispatcher)
@@ -598,7 +598,7 @@ class TestCreateDispatcher:
     def test_batch_returns_standalone_dispatcher(self, mock_maya_modules):
         mock_maya_modules.cmds.about.return_value = True  # batch mode
 
-        from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher, create_dispatcher
+        from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher, create_dispatcher
 
         dispatcher, pump = create_dispatcher()
         assert isinstance(dispatcher, MayaStandaloneDispatcher)
@@ -622,7 +622,7 @@ class TestDispatcherPumpIntegration:
 
     def test_full_round_trip(self):
         """Submit from background, pump on main, result received."""
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=50)
@@ -654,7 +654,7 @@ class TestDispatcherPumpIntegration:
 
     def test_cancel_during_pump(self):
         """Cancel a job before the pump gets to it."""
-        from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+        from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
 
         d = MayaUiDispatcher()
         pump = MayaUiPump(d, budget_ms=50)  # noqa: F841 — keep reference

@@ -20,22 +20,22 @@ Issue: `PIP-481`
 
 ## 前置条件
 
-1. 启动已加载 `dcc_mcp_maya` 插件的 Maya。
-2. 网关可访问（默认 `http://127.0.0.1:9765`）。
+1. 启动已加载 `meshy_dcc_maya` 插件的 Maya。
+2. 网关可访问（默认 `http://127.0.0.1:19765`）。
 3. Maya 端已启用严格策略：
 
 ```powershell
-$env:DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON = "1"
-$env:DCC_MCP_MAYA_DISABLE_EXECUTE_MEL = "1"
+$env:MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON = "1"
+$env:MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL = "1"
 # 或者使用单一开关：
-$env:DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT = "1"
+$env:MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT = "1"
 ```
 
 ## 运行
 
 ```powershell
 python tools/strict_skill_only_regression.py \
-  --base-url http://127.0.0.1:9765 \
+  --base-url http://127.0.0.1:19765 \
   --output-dir artifacts/perf \
   --soak-iterations 500
 ```

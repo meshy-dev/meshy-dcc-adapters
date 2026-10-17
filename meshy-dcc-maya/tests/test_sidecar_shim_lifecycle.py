@@ -4,16 +4,16 @@ These tests exercise the **process lifecycle** half of the sidecar
 contract — spawn, FileRegistry registration, PPID-watch teardown —
 **without** requiring a running Maya. The in-Maya Qt server is replaced
 by a fake TCP listener on an ephemeral port; the sidecar binary
-itself is the real ``dcc-mcp-server`` artefact built from
-``dcc-mcp-core``.
+itself is the real ``meshy-dcc-server`` artefact built from
+``meshy-dcc-core``.
 
 What is verified end-to-end:
 
-* :func:`dcc_mcp_maya.sidecar.start_sidecar` starts the (stubbed) in-Maya
+* :func:`meshy_dcc_maya.sidecar.start_sidecar` starts the (stubbed) in-Maya
   Qt server and spawns the binary with the right argv (including the
   ``qtserver://`` URI, RFC #998 Addendum B).
 * The binary registers a row in the shared FileRegistry with
-  ``metadata.dcc_mcp_role = "per-dcc-sidecar"``.
+  ``metadata.meshy_dcc_role = "per-dcc-sidecar"``.
 * When the Python "Maya parent" terminates, PPID-watch detects the
   parent's death and the sidecar deregisters itself within the
   contracted budget.
@@ -25,12 +25,12 @@ What is **not** verified here (out of scope for the lifecycle slice):
   Qt event loop inside Maya, covered by manual smoke tests with the
   plug-in loaded.
 * The Rust ``QtServerClient`` wire protocol — covered by the Rust
-  unit tests in ``dcc-mcp-host-rpc::qtserver``.
+  unit tests in ``meshy-dcc-host-rpc::qtserver``.
 
 Skip behaviour
 ==============
 
-These tests need the ``dcc-mcp-server`` binary present somewhere on
+These tests need the ``meshy-dcc-server`` binary present somewhere on
 the search path used by :func:`resolve_sidecar_binary`. When the
 binary is not available (CI without the wheel installed, fresh clone
 before ``cargo build``) the tests are **skipped** with a helpful
@@ -53,7 +53,7 @@ from typing import Iterator
 import pytest
 
 # Import local modules
-from dcc_mcp_maya.sidecar import (
+from meshy_dcc_maya.sidecar import (
     ENV_SIDECAR_BINARY,
     ENV_SIDECAR_MODE,
     SidecarBinaryError,
@@ -80,8 +80,8 @@ def _binary_available() -> bool:
 pytestmark = pytest.mark.skipif(
     not _binary_available(),
     reason=(
-        "dcc-mcp-server binary not on search path. Set "
-        f"{ENV_SIDECAR_BINARY}=<path> or install the dcc-mcp-server wheel."
+        "meshy-dcc-server binary not on search path. Set "
+        f"{ENV_SIDECAR_BINARY}=<path> or install the meshy-dcc-server wheel."
     ),
 )
 
@@ -138,11 +138,11 @@ class _ParentSurrogate:
 def disable_gateway_for_lifecycle_tests(monkeypatch) -> None:
     """Keep lifecycle tests focused on the per-DCC sidecar row.
 
-    dcc-mcp-server 0.17.16 sidecars auto-ensure the standalone gateway
+    meshy-dcc-server 0.17.16 sidecars auto-ensure the standalone gateway
     by default. These tests use a fake Qt backend and an isolated
     registry, so they opt out of gateway launch explicitly.
     """
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "0")
 
 
 @pytest.fixture
@@ -206,7 +206,7 @@ def _qt_stub_factory(port: int):
     """Return a ``start_qt_server_fn`` stub that advertises ``port``.
 
     Mirrors the production signature of
-    :func:`dcc_mcp_core.qt_dispatcher.start_qt_server` so the
+    :func:`meshy_dcc_core.qt_dispatcher.start_qt_server` so the
     supervisor cannot tell it's been replaced. The returned info dict
     has the same shape the real dispatcher emits.
     """
@@ -316,7 +316,7 @@ class TestSidecarLifecycle:
                 f"host_pid={host_pid!r}, expected={parent_surrogate.pid}"
             )
             metadata = entry.get("metadata") or {}
-            assert metadata.get("dcc_mcp_role") == "per-dcc-sidecar"
+            assert metadata.get("meshy_dcc_role") == "per-dcc-sidecar"
             assert metadata.get("host_rpc_uri") == handle.host_rpc_uri
             assert handle.host_rpc_uri.startswith("qtserver://")
             assert handle.is_alive
@@ -335,7 +335,7 @@ class TestSidecarLifecycle:
         isolated_registry_dir: Path,
     ) -> None:
         pytest.skip(
-            "PPID-watch teardown is owned by the packaged dcc-mcp-server; "
+            "PPID-watch teardown is owned by the packaged meshy-dcc-server; "
             "adapter CI only verifies launch, registry, and explicit stop."
         )
 
@@ -364,7 +364,7 @@ class TestSidecarLifecycle:
             survivors = [
                 entry
                 for entry in iter_registry_entries(payload)
-                if (entry.get("metadata") or {}).get("dcc_mcp_role") == "per-dcc-sidecar"
+                if (entry.get("metadata") or {}).get("meshy_dcc_role") == "per-dcc-sidecar"
             ]
             assert survivors == [], (
                 f"PPID-watch shutdown path must deregister the sidecar; found survivors: {survivors}"
@@ -445,7 +445,7 @@ class TestBinaryResolver:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         # Force resolver into the "no binary anywhere" code path.
-        monkeypatch.setenv(ENV_SIDECAR_BINARY, "/nonexistent/path/dcc-mcp-server")
+        monkeypatch.setenv(ENV_SIDECAR_BINARY, "/nonexistent/path/meshy-dcc-server")
         with pytest.raises(SidecarBinaryError) as exc:
             resolve_sidecar_binary()
         assert "/nonexistent/path" in str(exc.value)

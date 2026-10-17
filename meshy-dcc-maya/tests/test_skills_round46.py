@@ -24,7 +24,7 @@ import pytest
 
 def _make_server(with_dispatcher=False):
     """Construct a bare MayaMcpServer without starting it."""
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     server = object.__new__(MayaMcpServer)
     server._dcc_name = "maya"
@@ -97,9 +97,9 @@ class TestExecutorRegistration:
         server._server.register_handler.assert_not_called()
 
     def test_attach_dispatcher_installs_core_dispatcher_and_executor(self):
-        from dcc_mcp_core import HostExecutionBridge
+        from meshy_dcc_core import HostExecutionBridge
 
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = object.__new__(MayaMcpServer)
         server._dcc_name = "maya"
@@ -130,7 +130,7 @@ class TestRunSkillScript:
     """Tests for the module-level run_skill_script helper."""
 
     def _run(self, script_path, params):
-        from dcc_mcp_maya._executor import run_skill_script
+        from meshy_dcc_maya._executor import run_skill_script
 
         return run_skill_script(str(script_path), params)
 
@@ -165,7 +165,7 @@ class TestRunSkillScript:
     def test_skill_entry_decorator_works(self, tmp_skill):
         """@skill_entry decorated main() must also work correctly."""
         script = tmp_skill("""\
-            from dcc_mcp_core.skill import skill_entry, skill_success
+            from meshy_dcc_core.skill import skill_entry, skill_success
 
             @skill_entry
             def main(radius: float = 1.0, **kwargs):
@@ -240,7 +240,7 @@ class TestExecuteInProcess:
     def test_runs_directly_without_dispatcher(self, tmp_skill):
         """Without a dispatcher, scripts run on the calling thread directly."""
         script = tmp_skill("def main(**kwargs):\n    return {'success': True, 'message': 'direct'}\n")
-        from dcc_mcp_maya import _executor
+        from meshy_dcc_maya import _executor
 
         server = _make_server()
         result = _executor.execute_in_process(server, str(script), {}, "test__action")
@@ -256,7 +256,7 @@ class TestExecuteInProcess:
         always reaches this code path from a hyper / tokio worker thread.
         """
         script = tmp_skill("def main(**kwargs):\n    return {'success': True, 'message': 'dispatched'}\n")
-        from dcc_mcp_maya import _executor
+        from meshy_dcc_maya import _executor
 
         monkeypatch.setattr(_executor, "_on_main_thread", lambda: False)
 
@@ -268,7 +268,7 @@ class TestExecuteInProcess:
     def test_dispatcher_failure_returns_error(self, tmp_skill, monkeypatch):
         """If the dispatcher returns success=False, _execute_in_process wraps it."""
         script = tmp_skill("def main(**kwargs):\n    return {}\n")
-        from dcc_mcp_maya import _executor
+        from meshy_dcc_maya import _executor
 
         monkeypatch.setattr(_executor, "_on_main_thread", lambda: False)
 

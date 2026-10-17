@@ -10,7 +10,7 @@ from conftest import load_and_call
 
 
 def _value_schema() -> dict:
-    tools_path = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills" / "maya-attributes" / "tools.yaml"
+    tools_path = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-attributes" / "tools.yaml"
     tools = yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]
     tool = next(item for item in tools if item["name"] == "set_attribute")
     return tool["input_schema"]["properties"]["value"]

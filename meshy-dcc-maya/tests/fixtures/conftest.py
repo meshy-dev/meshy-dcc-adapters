@@ -15,4 +15,4 @@ def docker_registry():
 @pytest.fixture
 def gateway_port():
     """Fixture providing default gateway port."""
-    return 9765
+    return 19765

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from conftest import load_and_call
 
-from dcc_mcp_maya.particles import (
+from meshy_dcc_maya.particles import (
     CYCLE_MODES,
     EMITTER_TYPES,
     NPARTICLE_ATTRS,

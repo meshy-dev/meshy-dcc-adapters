@@ -19,10 +19,10 @@ _LOCALE_ERROR_FRAGMENTS = (
 
 
 def _plugin_path() -> Path:
-    mod_dir = os.environ.get("DCC_MCP_MAYA_MOD_DIR")
+    mod_dir = os.environ.get("MESHY_DCC_MAYA_MOD_DIR")
     if mod_dir:
-        return Path(mod_dir) / "plug-ins" / "dcc_mcp_maya_plugin.py"
-    return Path(__file__).parents[2] / "maya" / "plugin" / "dcc_mcp_maya_plugin.py"
+        return Path(mod_dir) / "plug-ins" / "meshy_dcc_maya_plugin.py"
+    return Path(__file__).parents[2] / "maya" / "plugin" / "meshy_dcc_maya_plugin.py"
 
 
 def _initialize_maya_standalone() -> None:
@@ -40,20 +40,20 @@ def test_plugin_load_via_cmds_loadplugin(monkeypatch):
     _initialize_maya_standalone()
     from maya import cmds
 
-    monkeypatch.setenv("DCC_MCP_MAYA_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_MAYA_SIDECAR", "0")
+    monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_MAYA_SIDECAR", "0")
     plugin_path = _plugin_path()
 
-    if cmds.pluginInfo("dcc_mcp_maya_plugin", query=True, loaded=True):
-        cmds.unloadPlugin("dcc_mcp_maya_plugin", force=True)
+    if cmds.pluginInfo("meshy_dcc_maya_plugin", query=True, loaded=True):
+        cmds.unloadPlugin("meshy_dcc_maya_plugin", force=True)
 
     try:
         cmds.loadPlugin(str(plugin_path), quiet=True)
-        assert cmds.pluginInfo("dcc_mcp_maya_plugin", query=True, loaded=True)
+        assert cmds.pluginInfo("meshy_dcc_maya_plugin", query=True, loaded=True)
     finally:
-        if cmds.pluginInfo("dcc_mcp_maya_plugin", query=True, loaded=True):
-            cmds.unloadPlugin("dcc_mcp_maya_plugin", force=True)
+        if cmds.pluginInfo("meshy_dcc_maya_plugin", query=True, loaded=True):
+            cmds.unloadPlugin("meshy_dcc_maya_plugin", force=True)
 
 
 def test_interactive_initialize_path_has_no_async_thread_error(monkeypatch, capsys):
@@ -61,13 +61,13 @@ def test_interactive_initialize_path_has_no_async_thread_error(monkeypatch, caps
     import importlib.util
 
     plugin_path = _plugin_path()
-    spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_plugin_interactive_smoke", plugin_path)
+    spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_plugin_interactive_smoke", plugin_path)
     plugin = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(plugin)
 
-    monkeypatch.setenv("DCC_MCP_MAYA_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_MAYA_SIDECAR", "0")
+    monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_MAYA_SIDECAR", "0")
     monkeypatch.setattr(plugin, "_is_interactive", lambda: True)
     monkeypatch.setattr(plugin, "_add_menu", lambda: None)
 

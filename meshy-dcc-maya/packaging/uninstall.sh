@@ -2,16 +2,16 @@
 set -e
 
 echo "========================================="
-echo " DCC-MCP-Maya Uninstaller"
+echo " Meshy DCC-Maya Uninstaller"
 echo "========================================="
 echo
 
 # Determine platform-specific paths
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    MOD_FILE="$HOME/Library/Preferences/Autodesk/maya/modules/dcc_mcp_maya.mod"
+    MOD_FILE="$HOME/Library/Preferences/Autodesk/maya/modules/meshy_dcc_maya.mod"
     SCRIPTS_DIR="$HOME/Library/Preferences/Autodesk/maya/scripts"
 else
-    MOD_FILE="$HOME/maya/modules/dcc_mcp_maya.mod"
+    MOD_FILE="$HOME/maya/modules/meshy_dcc_maya.mod"
     SCRIPTS_DIR="$HOME/maya/scripts"
 fi
 

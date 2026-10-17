@@ -339,8 +339,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--skills-root",
-        default="src/dcc_mcp_maya/skills",
-        help="Path to skills directory (default: src/dcc_mcp_maya/skills)",
+        default="src/meshy_dcc_maya/skills",
+        help="Path to skills directory (default: src/meshy_dcc_maya/skills)",
     )
     parser.add_argument(
         "--check",

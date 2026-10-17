@@ -1,4 +1,4 @@
-"""Shared test fixtures and helpers for dcc-mcp-maya tests.
+"""Shared test fixtures and helpers for meshy-dcc-maya tests.
 
 Provides:
 - ``load_skill_script(skill_dir, script_name)`` — load a skill script by path
@@ -25,7 +25,7 @@ from unittest.mock import MagicMock, patch
 # Import third-party modules
 import pytest
 
-SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_maya" / "skills"
 
 _MOD_COUNTER = [0]
 
@@ -246,7 +246,7 @@ class GatewayTestClient:
 @pytest.fixture
 def gateway_client() -> GatewayTestClient:
     """Fixture providing a gateway test client."""
-    return GatewayTestClient("http://127.0.0.1:9765")
+    return GatewayTestClient("http://127.0.0.1:19765")
 
 
 @pytest.fixture
@@ -262,7 +262,7 @@ def maya_instance_manager(temp_registry_dir):
     """Fixture providing a Maya instance manager (local or Docker).
 
     Automatically selects appropriate manager based on environment:
-    - If DCC_MCP_FORCE_DOCKER=1, uses Docker
+    - If MESHY_DCC_FORCE_DOCKER=1, uses Docker
     - If Docker available with images, prefers Docker
     - Otherwise falls back to local mayapy
     - Skips tests if neither is available
@@ -274,7 +274,7 @@ def maya_instance_manager(temp_registry_dir):
 
     try:
         # Try to get an appropriate instance manager
-        manager = get_instance_manager(gateway_port=9765, registry_dir=temp_registry_dir)
+        manager = get_instance_manager(gateway_port=19765, registry_dir=temp_registry_dir)
         yield manager
         manager.cleanup()
     except RuntimeError as exc:

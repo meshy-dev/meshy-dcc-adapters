@@ -11,7 +11,7 @@ import pytest
 import yaml
 
 _ROOT = Path(__file__).parents[1]
-_SKILL = _ROOT / "src" / "dcc_mcp_maya" / "skills" / "maya-asset-sync"
+_SKILL = _ROOT / "src" / "meshy_dcc_maya" / "skills" / "maya-asset-sync"
 
 
 def _module():
@@ -63,7 +63,7 @@ def _fake_rig_cmds():
         def attributeQuery(cls, attribute, node=None, exists=False):
             assert exists is True
             return (
-                attribute == "dccMcpControllerRole" and (node in cls.controllers or node in cls.constraints)
+                attribute == "meshyDccControllerRole" and (node in cls.controllers or node in cls.constraints)
             ) or attribute in {
                 "translateX",
                 "translateY",
@@ -83,7 +83,7 @@ def _fake_rig_cmds():
         @classmethod
         def getAttr(cls, plug, lock=False, keyable=False):
             node, attribute = plug.rsplit(".", 1)
-            if attribute == "dccMcpControllerRole" and not lock and not keyable:
+            if attribute == "meshyDccControllerRole" and not lock and not keyable:
                 if node in cls.controllers:
                     return cls.controllers[node]
                 driver = cls.constraints[node]["drivers"][0]
@@ -412,7 +412,7 @@ def test_native_sync_audits_standard_rig_preservation() -> None:
     assert 'evidence["skin_clusters"] == 0' in source
     assert "def _rig_editability_evidence" in source
     assert '"rig_editability"' in source
-    assert "dccMcpControllerRole" in source
+    assert "meshyDccControllerRole" in source
     assert "required_constrained_controller_roles" in source
     assert "_required_controller_failures" in source
     assert "rig_expectation:" in tools
@@ -451,7 +451,7 @@ def test_rig_editability_reports_sorted_native_controller_and_constraint_records
         ["wing.right.front", "wing.left.front"],
     )
 
-    assert evidence["role_attribute"] == "dccMcpControllerRole"
+    assert evidence["role_attribute"] == "meshyDccControllerRole"
     assert [record["role"] for record in evidence["controllers"]["records"]] == [
         "wing.left.front",
         "wing.right.front",

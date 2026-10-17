@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dcc_mcp_maya import gui_bootstrap
-from dcc_mcp_maya.gui_bootstrap import (
+from meshy_dcc_maya import gui_bootstrap
+from meshy_dcc_maya.gui_bootstrap import (
     bootstrap_in_maya,
     build_maya_launch_args,
     launch_maya_gui,
@@ -29,7 +29,7 @@ def test_maya_gui_launch_args_use_one_fixed_lowest_priority_bootstrap() -> None:
     assert len(args) == 3
     assert "cmds.evalDeferred" in args[2]
     assert "lowestPriority=True" in args[2]
-    assert "dcc_mcp_maya.gui_bootstrap" in args[2]
+    assert "meshy_dcc_maya.gui_bootstrap" in args[2]
     assert "bootstrap_in_maya" in args[2]
     assert "-script" not in args
 
@@ -38,15 +38,15 @@ def test_in_maya_bootstrap_resolves_and_loads_the_plugin_without_changing_autolo
     log_path = tmp_path / "bootstrap.jsonl"
     plugin_dir = tmp_path / "plug-ins"
     plugin_dir.mkdir()
-    plugin_path = plugin_dir / "dcc_mcp_maya_plugin.py"
+    plugin_path = plugin_dir / "meshy_dcc_maya_plugin.py"
     plugin_path.write_text("# packaged plugin", encoding="utf-8")
-    monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+    monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_LOG", str(log_path))
     monkeypatch.setenv("MAYA_PLUG_IN_PATH", str(plugin_dir))
 
     maya_module = ModuleType("maya")
     cmds_module = ModuleType("maya.cmds")
     cmds_module.pluginInfo = MagicMock(return_value=False)
-    cmds_module.loadPlugin = MagicMock(return_value=["dcc_mcp_maya_plugin"])
+    cmds_module.loadPlugin = MagicMock(return_value=["meshy_dcc_maya_plugin"])
     maya_module.cmds = cmds_module
 
     with patch.dict(sys.modules, {"maya": maya_module, "maya.cmds": cmds_module}):
@@ -67,10 +67,10 @@ def test_in_maya_bootstrap_resolves_and_loads_the_plugin_without_changing_autolo
 
 def test_in_maya_bootstrap_records_resolution_failure_before_raising(tmp_path, monkeypatch) -> None:
     log_path = tmp_path / "bootstrap.jsonl"
-    monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+    monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_LOG", str(log_path))
     monkeypatch.setenv("MAYA_PLUG_IN_PATH", str(tmp_path / "missing"))
 
-    with pytest.raises(RuntimeError, match="packaged dcc-mcp Maya plug-in"):
+    with pytest.raises(RuntimeError, match="packaged meshy-dcc Maya plug-in"):
         bootstrap_in_maya()
 
     events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
@@ -86,8 +86,8 @@ def test_in_maya_bootstrap_accepts_plugin_manager_autoload_without_reloading(tmp
     log_path = tmp_path / "bootstrap.jsonl"
     plugin_dir = tmp_path / "plug-ins"
     plugin_dir.mkdir()
-    (plugin_dir / "dcc_mcp_maya_plugin.py").write_text("# packaged plugin", encoding="utf-8")
-    monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+    (plugin_dir / "meshy_dcc_maya_plugin.py").write_text("# packaged plugin", encoding="utf-8")
+    monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_LOG", str(log_path))
     monkeypatch.setenv("MAYA_PLUG_IN_PATH", str(plugin_dir))
 
     maya_module = ModuleType("maya")
@@ -110,8 +110,8 @@ def test_plugin_manager_autoload_does_not_mask_an_existing_sidecar_failure(tmp_p
     log_path = tmp_path / "bootstrap.jsonl"
     plugin_dir = tmp_path / "plug-ins"
     plugin_dir.mkdir()
-    (plugin_dir / "dcc_mcp_maya_plugin.py").write_text("# packaged plugin", encoding="utf-8")
-    monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+    (plugin_dir / "meshy_dcc_maya_plugin.py").write_text("# packaged plugin", encoding="utf-8")
+    monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_LOG", str(log_path))
     monkeypatch.setenv("MAYA_PLUG_IN_PATH", str(plugin_dir))
     record_bootstrap_stage(log_path, "sidecar_spawn", "failed", error_type="SidecarSpawnError")
 
@@ -150,7 +150,7 @@ def test_launch_maya_gui_passes_only_fixed_command_and_waits_for_target_registry
         )
         return SimpleNamespace(pid=4125)
 
-    monkeypatch.setattr("dcc_mcp_maya.gui_bootstrap.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("meshy_dcc_maya.gui_bootstrap.subprocess.Popen", fake_popen)
 
     result = launch_maya_gui(
         maya_executable=maya_executable,
@@ -162,8 +162,8 @@ def test_launch_maya_gui_passes_only_fixed_command_and_waits_for_target_registry
     assert result["ready"] is True
     assert result["maya_pid"] == 4125
     assert captured["args"] == build_maya_launch_args(maya_executable)
-    assert captured["env"]["DCC_MCP_MAYA_BOOTSTRAP_LOG"] == str(log_path.resolve())
-    assert captured["env"]["DCC_MCP_REGISTRY_DIR"] == str(registry_base.resolve())
+    assert captured["env"]["MESHY_DCC_MAYA_BOOTSTRAP_LOG"] == str(log_path.resolve())
+    assert captured["env"]["MESHY_DCC_REGISTRY_DIR"] == str(registry_base.resolve())
 
 
 def test_cli_prints_one_json_diagnosis_and_uses_stable_not_ready_exit(monkeypatch, capsys) -> None:
@@ -190,9 +190,9 @@ def test_cli_prints_one_json_diagnosis_and_uses_stable_not_ready_exit(monkeypatc
 
 def test_cli_probe_without_explicit_registry_dir_uses_core_default(tmp_path, monkeypatch, capsys) -> None:
     log_path = tmp_path / "bootstrap.jsonl"
-    registry_dir = tmp_path / "dcc-mcp-registry"
+    registry_dir = tmp_path / "meshy-dcc-registry"
     registry_dir.mkdir()
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path))
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path))
     record_bootstrap_stage(log_path, "bootstrap_complete", "succeeded")
     (registry_dir / "services.json").write_text(
         json.dumps([{"instance_id": "maya-default", "dcc_type": "maya", "host_pid": 4125}]),
@@ -230,14 +230,14 @@ def test_probe_reports_plugin_not_invoked_when_maya_never_writes_a_stage(tmp_pat
     assert result["last_stage"] is None
     assert result["next_action"] == {
         "action": "retry_gui_launch",
-        "command": "python -m dcc_mcp_maya.gui_bootstrap launch",
+        "command": "python -m meshy_dcc_maya.gui_bootstrap launch",
     }
 
 
 def test_probe_reports_plugin_load_failed_with_the_last_deterministic_stage(tmp_path) -> None:
     log_path = tmp_path / "bootstrap.jsonl"
     record_bootstrap_stage(log_path, "plugin_invoked", "started")
-    record_bootstrap_stage(log_path, "plugin_resolution", "succeeded", plugin_name="dcc_mcp_maya_plugin")
+    record_bootstrap_stage(log_path, "plugin_resolution", "succeeded", plugin_name="meshy_dcc_maya_plugin")
     record_bootstrap_stage(log_path, "plugin_load", "failed", error_type="RuntimeError")
 
     result = probe_gui_readiness(

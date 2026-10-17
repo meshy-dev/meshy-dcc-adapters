@@ -15,7 +15,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from dcc_mcp_core.cancellation import (
+from meshy_dcc_core.cancellation import (
     CancelledError,
     CancelToken,
     reset_cancel_token,
@@ -25,7 +25,7 @@ from dcc_mcp_core.cancellation import (
 SKILL_SCRIPT = (
     Path(__file__).resolve().parent.parent
     / "src"
-    / "dcc_mcp_maya"
+    / "meshy_dcc_maya"
     / "skills"
     / "maya-render-farm"
     / "scripts"
@@ -66,7 +66,7 @@ def test_validate_scene_for_farm_imports_check_maya_cancelled(validate_module):
     """Regression guard — the skill must keep using the public probe."""
     module, _ = validate_module
     source = SKILL_SCRIPT.read_text(encoding="utf-8")
-    assert "from dcc_mcp_maya.dispatcher import check_maya_cancelled" in source
+    assert "from meshy_dcc_maya.dispatcher import check_maya_cancelled" in source
     # It must be called at least twice — once per loop (file nodes + refs).
     assert source.count("check_maya_cancelled()") >= 2
     # And the imported name is actually bound in the module namespace.

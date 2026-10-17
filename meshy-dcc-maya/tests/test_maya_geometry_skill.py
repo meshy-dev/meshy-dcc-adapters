@@ -410,7 +410,7 @@ def test_export_alembic_loads_plugin_and_verifies_output(tmp_path):
 
 
 def test_geometry_tools_yaml_declares_affinity():
-    tools_yaml = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills" / "maya-geometry" / "tools.yaml"
+    tools_yaml = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-geometry" / "tools.yaml"
     text = tools_yaml.read_text(encoding="utf-8")
 
     assert "name: file_exists" in text

@@ -20,8 +20,8 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 
 # Env that keeps a pytest run from taking the machine-wide job-storage lease.
 JOB_STORAGE_ENV = {
-    "DCC_MCP_DISABLE_JOB_PERSISTENCE": "1",
-    "DCC_MCP_MAYA_JOB_STORAGE": "",
+    "MESHY_DCC_DISABLE_JOB_PERSISTENCE": "1",
+    "MESHY_DCC_MAYA_JOB_STORAGE": "",
 }
 
 # Interpreters declared by the wheel classifiers; the release gate must stay
@@ -147,5 +147,5 @@ def test_release_build_job_checks_dist_matches_the_tag(release):
     # the same precedence as the checkout ``ref``.
     assert "EVENT_NAME" in env and "workflow_dispatch" in script
     # The version must be anchored at a filename boundary: a bare prefix lets
-    # "0.9.2" accept "dcc_mcp_maya-0.9.28-py3-none-any.whl".
-    assert 'dcc_mcp_maya-%s-" % version' in script and 'dcc_mcp_maya-%s." % version' in script
+    # "0.9.2" accept "meshy_dcc_maya-0.9.28-py3-none-any.whl".
+    assert 'meshy_dcc_maya-%s-" % version' in script and 'meshy_dcc_maya-%s." % version' in script

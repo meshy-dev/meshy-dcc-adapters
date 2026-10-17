@@ -4,8 +4,8 @@
 
 - **Maya**：2020+（模块包覆盖 Maya 2022 至 2026）
 - **Python**：3.7 – 3.12（Maya 内嵌）
-- **dcc-mcp-core**：`dcc-mcp-core>=0.20.0,<0.21.0`（作为依赖自动安装）
-- **dcc-mcp-server**：≥ 0.18.21（默认 sidecar gateway 运行时，作为依赖自动安装）
+- **meshy-dcc-core**：`meshy-dcc-core>=0.20.0,<0.21.0`（作为依赖自动安装）
+- **meshy-dcc-server**：≥ 0.18.21（默认 sidecar gateway 运行时，作为依赖自动安装）
 
 ## 方式一 — pip 安装到 mayapy
 
@@ -13,19 +13,19 @@
 
 ```bash
 # 通用
-mayapy -m pip install dcc-mcp-maya
+mayapy -m pip install meshy-dcc-maya
 
 # Windows — Maya 2024
-"C:\Program Files\Autodesk\Maya2024\bin\mayapy.exe" -m pip install dcc-mcp-maya
+"C:\Program Files\Autodesk\Maya2024\bin\mayapy.exe" -m pip install meshy-dcc-maya
 
 # macOS — Maya 2024
-/Applications/Autodesk/maya2024/Maya.app/Contents/bin/mayapy -m pip install dcc-mcp-maya
+/Applications/Autodesk/maya2024/Maya.app/Contents/bin/mayapy -m pip install meshy-dcc-maya
 ```
 
 验证安装：
 
 ```bash
-mayapy -c "import dcc_mcp_maya; print(dcc_mcp_maya.__version__)"
+mayapy -c "import meshy_dcc_maya; print(meshy_dcc_maya.__version__)"
 ```
 
 ## 方式二 — Maya 插件
@@ -33,21 +33,21 @@ mayapy -c "import dcc_mcp_maya; print(dcc_mcp_maya.__version__)"
 这是推荐的 Maya GUI 启动方式。将插件文件复制到 `MAYA_PLUG_IN_PATH`
 中的某个目录，然后通过插件管理器加载。
 
-1. 将 `maya/plugin/dcc_mcp_maya_plugin.py` 复制到 Maya 插件目录，例如：
+1. 将 `maya/plugin/meshy_dcc_maya_plugin.py` 复制到 Maya 插件目录，例如：
    - Windows：`%USERPROFILE%\Documents\maya\2024\plug-ins\`
    - macOS：`~/Library/Preferences/Autodesk/maya/2024/plug-ins/`
 
 2. 打开 **窗口 → 设置/首选项 → 插件管理器**
 
-3. 找到 `dcc_mcp_maya`，勾选 **已加载**（可选：勾选**自动加载**）
+3. 找到 `meshy_dcc_maya`，勾选 **已加载**（可选：勾选**自动加载**）
 
-插件加载后会自动启动服务器。默认情况下实例端口由操作系统分配，并接入 `9765` 端口上的网关。
+插件加载后会自动启动服务器。默认情况下实例端口由操作系统分配，并接入 `19765` 端口上的网关。
 
-默认 sidecar 模式下，本机 MCP 客户端使用 `http://127.0.0.1:9765/mcp`。新版 sidecar binary 还会由选举胜出的 gateway 在局域网暴露 `http://<这台机器的局域网IP>:59765/mcp`。如需关闭局域网入口，可在加载插件前设置 `DCC_MCP_GATEWAY_REMOTE_PORT=0`；如需改绑定地址或端口，设置 `DCC_MCP_GATEWAY_REMOTE_HOST` / `DCC_MCP_GATEWAY_REMOTE_PORT`。
+默认 sidecar 模式下，本机 MCP 客户端使用 `http://127.0.0.1:19765/mcp`。新版 sidecar binary 还会由选举胜出的 gateway 在局域网暴露 `http://<这台机器的局域网IP>:59765/mcp`。如需关闭局域网入口，可在加载插件前设置 `MESHY_DCC_GATEWAY_REMOTE_PORT=0`；如需改绑定地址或端口，设置 `MESHY_DCC_GATEWAY_REMOTE_HOST` / `MESHY_DCC_GATEWAY_REMOTE_PORT`。
 
-插件初始化期间，`dcc-mcp-maya` 还会关闭 Maya 旧式 MEL commandPort（`127.0.0.1:50007`）。MCP 服务器不会使用该端口，关闭它可以避免误发的 HTTP 探测触发 Maya 安全警告弹窗。如果工作室仍依赖旧式 commandPort，可在加载插件前设置 `DCC_MCP_MAYA_CLOSE_DEFAULT_COMMANDPORT=0` 选择保留。
+插件初始化期间，`meshy-dcc-maya` 还会关闭 Maya 旧式 MEL commandPort（`127.0.0.1:50007`）。MCP 服务器不会使用该端口，关闭它可以避免误发的 HTTP 探测触发 Maya 安全警告弹窗。如果工作室仍依赖旧式 commandPort，可在加载插件前设置 `MESHY_DCC_MAYA_CLOSE_DEFAULT_COMMANDPORT=0` 选择保留。
 
-插件默认会在 Maya 旁边启动 Rust sidecar，同时保留进程内 MCP server 作为 host bridge。如需回到旧的进程内 gateway 路径，请在加载插件前设置 `DCC_MCP_MAYA_SIDECAR=0`。Sidecar 模式使用 Maya 内部 Qt event-loop dispatcher，不需要打开旧式 commandPort。
+插件默认会在 Maya 旁边启动 Rust sidecar，同时保留进程内 MCP server 作为 host bridge。如需回到旧的进程内 gateway 路径，请在加载插件前设置 `MESHY_DCC_MAYA_SIDECAR=0`。Sidecar 模式使用 Maya 内部 Qt event-loop dispatcher，不需要打开旧式 commandPort。
 
 MCP 宿主配置：
 
@@ -55,7 +55,7 @@ MCP 宿主配置：
 {
   "mcpServers": {
     "maya": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -64,18 +64,18 @@ MCP 宿主配置：
 ## 非交互 GUI bootstrap 诊断
 
 无人值守启动 Maya 2025 GUI 时，请使用 adapter 提供的固定 launcher，不要拼接
-MEL、Python 或 `-script` payload。使用已安装 `dcc-mcp-maya` 的同一个
+MEL、Python 或 `-script` payload。使用已安装 `meshy-dcc-maya` 的同一个
 `mayapy` 执行：
 
 ```bash
 # Windows
-"C:\Program Files\Autodesk\Maya2025\bin\mayapy.exe" -m dcc_mcp_maya.gui_bootstrap launch --maya-executable "C:\Program Files\Autodesk\Maya2025\bin\maya.exe" --timeout 120
+"C:\Program Files\Autodesk\Maya2025\bin\mayapy.exe" -m meshy_dcc_maya.gui_bootstrap launch --maya-executable "C:\Program Files\Autodesk\Maya2025\bin\maya.exe" --timeout 120
 
 # macOS
-/Applications/Autodesk/maya2025/Maya.app/Contents/bin/mayapy -m dcc_mcp_maya.gui_bootstrap launch --maya-executable /Applications/Autodesk/maya2025/Maya.app/Contents/MacOS/Maya --timeout 120
+/Applications/Autodesk/maya2025/Maya.app/Contents/bin/mayapy -m meshy_dcc_maya.gui_bootstrap launch --maya-executable /Applications/Autodesk/maya2025/Maya.app/Contents/MacOS/Maya --timeout 120
 
 # Linux
-/usr/autodesk/maya2025/bin/mayapy -m dcc_mcp_maya.gui_bootstrap launch --maya-executable /usr/autodesk/maya2025/bin/maya --timeout 120
+/usr/autodesk/maya2025/bin/mayapy -m meshy_dcc_maya.gui_bootstrap launch --maya-executable /usr/autodesk/maya2025/bin/maya --timeout 120
 ```
 
 示例使用 Maya 2025；对于其他受支持的 Maya 版本，只需替换带版本号的可执行文件
@@ -93,10 +93,10 @@ adapter import、registry registration、sidecar spawn 和完成；只有这些�
 情况下重新检查同一次启动，请使用：
 
 ```bash
-mayapy -m dcc_mcp_maya.gui_bootstrap probe --maya-pid <PID> --log-path <BOOTSTRAP_LOG> --timeout 30
+mayapy -m meshy_dcc_maya.gui_bootstrap probe --maya-pid <PID> --log-path <BOOTSTRAP_LOG> --timeout 30
 ```
 
-仅当 Maya 使用相同的 `DCC_MCP_REGISTRY_DIR` base 时才传
+仅当 Maya 使用相同的 `MESHY_DCC_REGISTRY_DIR` base 时才传
 `--registry-dir`。该路径不会修改插件管理器中的**已加载**或**自动加载**状态，
 也不会执行调用方提供的 MEL/Python，更不会回退到 UI 自动化。真实 GUI 证明
 仍需要可用的 Maya 安装与许可证。
@@ -128,11 +128,11 @@ Maya 空闲后再加载插件。
 # userSetup.py
 import maya.cmds as cmds
 
-def _load_dcc_mcp_maya():
-    if not cmds.pluginInfo("dcc_mcp_maya_plugin", query=True, loaded=True):
-        cmds.loadPlugin("dcc_mcp_maya_plugin", quiet=True)
+def _load_meshy_dcc_maya():
+    if not cmds.pluginInfo("meshy_dcc_maya_plugin", query=True, loaded=True):
+        cmds.loadPlugin("meshy_dcc_maya_plugin", quiet=True)
 
-cmds.evalDeferred(_load_dcc_mcp_maya, lowestPriority=True)
+cmds.evalDeferred(_load_meshy_dcc_maya, lowestPriority=True)
 ```
 
 **文件位置：**
@@ -140,7 +140,7 @@ cmds.evalDeferred(_load_dcc_mcp_maya, lowestPriority=True)
 - macOS：`~/Library/Preferences/Autodesk/maya/scripts/userSetup.py`
 
 避免在 Maya GUI 启动代码里直接调用普通的
-`dcc_mcp_maya.start_server()`。GUI 会话需要 Maya UI dispatcher
+`meshy_dcc_maya.start_server()`。GUI 会话需要 Maya UI dispatcher
 才能执行 `affinity: main` 工具；插件会自动安装它。
 
 ### 自动加载排查
@@ -149,12 +149,12 @@ cmds.evalDeferred(_load_dcc_mcp_maya, lowestPriority=True)
 
 - **Script Editor / 状态栏告警** —— 自动加载失败现在会通过 `cmds.warning`
   上报，即使从未打开过 Script Editor 也能在 Maya 里看到。
-- **日志文件** —— `<DCC_MCP_MAYA_BOOTSTRAP_ERROR_DIR>`（默认
-  `~/.dcc-mcp/receipts/bootstrap-errors/`）下，每次失败尝试写一行 JSON 到
+- **日志文件** —— `<MESHY_DCC_MAYA_BOOTSTRAP_ERROR_DIR>`（默认
+  `~/.meshy-dcc/receipts/bootstrap-errors/`）下，每次失败尝试写一行 JSON 到
   `userSetup-<YYYYMMDD>.jsonl`，同目录还有 core 写的
-  `dcc-mcp-maya.<pid>.host-errors.log`。
+  `meshy-dcc-maya.<pid>.host-errors.log`。
 
-`DCC_MCP_LOG_DIR` 是另一个通道：放的是插件的 Python 致命信号堆栈
+`MESHY_DCC_LOG_DIR` 是另一个通道：放的是插件的 Python 致命信号堆栈
 （`maya-faulthandler-<pid>.log`），不是自动加载失败记录。
 
 最常见的原因是调度 API 用错了：
@@ -162,10 +162,10 @@ cmds.evalDeferred(_load_dcc_mcp_maya, lowestPriority=True)
 ```python
 # 错误 —— lowestPriority 会被当作参数传给回调函数（TypeError，被 Maya
 # 的 deferred 调度器静默吞掉）：没有插件、没有服务、没有报错。
-maya.utils.executeDeferred(_load_dcc_mcp_maya, lowestPriority=True)
+maya.utils.executeDeferred(_load_meshy_dcc_maya, lowestPriority=True)
 
 # 正确 —— lowestPriority 是 evalDeferred 命令的调度标志。
-cmds.evalDeferred(_load_dcc_mcp_maya, lowestPriority=True)
+cmds.evalDeferred(_load_meshy_dcc_maya, lowestPriority=True)
 ```
 
 ## 方式五 — 调试用 direct start_server
@@ -174,17 +174,17 @@ cmds.evalDeferred(_load_dcc_mcp_maya, lowestPriority=True)
 dispatcher：
 
 ```python
-from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
-import dcc_mcp_maya
+from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+import meshy_dcc_maya
 
 dispatcher = MayaUiDispatcher()
 MayaUiPump(dispatcher).install()
-handle = dcc_mcp_maya.start_server(host_dispatcher=dispatcher)
+handle = meshy_dcc_maya.start_server(host_dispatcher=dispatcher)
 print(handle.mcp_url())  # 实际由操作系统分配的直连 URL
 ```
 
 使用直连模式时，MCP 宿主填写 `handle.mcp_url()` 返回的 URL。插件模式请使用
-稳定的 gateway URL：`http://127.0.0.1:9765/mcp`；`dcc-mcp-cli list`
+稳定的 gateway URL：`http://127.0.0.1:19765/mcp`；`meshy-dcc list`
 会列出每个已注册实例及其实际绑定 URL。
 
 ## 多 Maya 版本
@@ -193,24 +193,24 @@ print(handle.mcp_url())  # 实际由操作系统分配的直连 URL
 
 ```bash
 # Maya 2022（Python 3.7）
-"C:\Program Files\Autodesk\Maya2022\bin\mayapy.exe" -m pip install dcc-mcp-maya
+"C:\Program Files\Autodesk\Maya2022\bin\mayapy.exe" -m pip install meshy-dcc-maya
 
 # Maya 2024
-"C:\Program Files\Autodesk\Maya2024\bin\mayapy.exe" -m pip install dcc-mcp-maya
+"C:\Program Files\Autodesk\Maya2024\bin\mayapy.exe" -m pip install meshy-dcc-maya
 
 # Maya 2025
-"C:\Program Files\Autodesk\Maya2025\bin\mayapy.exe" -m pip install dcc-mcp-maya
+"C:\Program Files\Autodesk\Maya2025\bin\mayapy.exe" -m pip install meshy-dcc-maya
 ```
 
 同时运行多个 Maya 实例时，插件 gateway 模式更简单：所有实例都会注册到
-`http://127.0.0.1:9765/mcp` 后面。
+`http://127.0.0.1:19765/mcp` 后面。
 
 直连 server 也会各自绑定操作系统分配的端口，不再需要手工维护端口范围或先探测
 再绑定：
 
 ```python
 # 在每个 Maya 进程内分别执行。
-handle = dcc_mcp_maya.start_server()
+handle = meshy_dcc_maya.start_server()
 print(handle.mcp_url())
 ```
 
@@ -220,11 +220,11 @@ print(handle.mcp_url())
 ## 升级
 
 ```bash
-mayapy -m pip install --upgrade dcc-mcp-maya
+mayapy -m pip install --upgrade meshy-dcc-maya
 ```
 
 ## 卸载
 
 ```bash
-mayapy -m pip uninstall dcc-mcp-maya
+mayapy -m pip uninstall meshy-dcc-maya
 ```

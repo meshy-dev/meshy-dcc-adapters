@@ -1,17 +1,17 @@
 # OpenAI API / GPT Integration Guide
 
 
-> Vendor integration notes for `dcc-mcp-maya`. Moved here from the repo root so that
-> [`AGENTS.md`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) stays the **only** agent contract file at the root.
+> Vendor integration notes for `meshy-dcc-maya`. Moved here from the repo root so that
+> [`AGENTS.md`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) stays the **only** agent contract file at the root.
 > Anything not specific to this vendor belongs in `AGENTS.md`, not here.
-> OpenAI-specific integration notes for `dcc-mcp-maya`.
-> For the full project map, see [AGENTS.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md).
+> OpenAI-specific integration notes for `meshy-dcc-maya`.
+> For the full project map, see [AGENTS.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md).
 
 ---
 
 ## What This Project Does
 
-`dcc-mcp-maya` embeds an MCP Streamable HTTP server directly inside Autodesk Maya. Any OpenAI-powered client that speaks MCP Streamable HTTP can call 72+ Maya tools.
+`meshy-dcc-maya` embeds an MCP Streamable HTTP server directly inside Autodesk Maya. Any OpenAI-powered client that speaks MCP Streamable HTTP can call 72+ Maya tools.
 
 ---
 
@@ -20,13 +20,13 @@
 If your OpenAI client (custom chat UI, agent framework, etc.) supports MCP:
 
 ```
-Endpoint: http://127.0.0.1:9765/mcp
+Endpoint: http://127.0.0.1:19765/mcp
 Protocol: MCP Streamable HTTP (2025-03-26 spec)
 ```
 
 For multi-instance gateway mode:
 ```
-Endpoint: http://127.0.0.1:9765/mcp
+Endpoint: http://127.0.0.1:19765/mcp
 ```
 
 ---
@@ -48,7 +48,7 @@ For async tools (`execution: async` in `tools.yaml`), the server returns a `job_
 
 ## OpenAI-Specific Tips
 
-- **System prompt:** Include a summary of [llms.txt](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/llms.txt) in your system prompt so the model knows the available tool surface.
+- **System prompt:** Include a summary of [llms.txt](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/llms.txt) in your system prompt so the model knows the available tool surface.
 - **Tool selection:** With 72+ tools, the initial `tools/list` in minimal mode is small (core tools only). The model should learn to call `load_skill` before attempting specialized operations.
 - **Async handling:** Long renders return a `job_id`. Use `jobs_get_status` with the same `job_id` to poll. Set a reasonable polling interval (2–5s).
 
@@ -56,7 +56,7 @@ For async tools (`execution: async` in `tools.yaml`), the server returns a `job_
 
 ## See Also
 
-- [AGENTS.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) — Shared agent navigation map; keep common guidance single-sourced there
-- [llms.txt](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/llms.txt) — One-page core reference
-- [llms-full.txt](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/llms-full.txt) — Exhaustive API reference
-- [README.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/README.md) — Human-facing installation and overview
+- [AGENTS.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) — Shared agent navigation map; keep common guidance single-sourced there
+- [llms.txt](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/llms.txt) — One-page core reference
+- [llms-full.txt](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/llms-full.txt) — Exhaustive API reference
+- [README.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/README.md) — Human-facing installation and overview

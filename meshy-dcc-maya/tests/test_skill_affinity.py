@@ -19,7 +19,7 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILLS_ROOT = REPO_ROOT / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_ROOT = REPO_ROOT / "src" / "meshy_dcc_maya" / "skills"
 LINT_SCRIPT = REPO_ROOT / "tools" / "lint_skill_affinity.py"
 ANNOTATE_SCRIPT = REPO_ROOT / "tools" / "annotate_skill_affinity.py"
 

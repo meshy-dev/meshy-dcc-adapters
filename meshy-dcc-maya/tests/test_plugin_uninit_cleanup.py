@@ -4,7 +4,7 @@ Verifies that ``_stop_blocking()`` is always invoked from the ``finally``
 block — even when an earlier cleanup step raises — so the FileRegistry
 entry is never leaked on partial shutdowns.
 
-See: https://github.com/dcc-mcp/dcc-mcp-maya/issues/126
+See: https://github.com/meshy-dev/meshy-dcc-maya/issues/126
 """
 
 # Import future modules
@@ -22,7 +22,7 @@ import pytest
 
 def _load_plugin_module():
     """Load the Maya plugin file as a module with ``maya.*`` mocked."""
-    plugin_path = Path(__file__).resolve().parents[1] / "maya" / "plugin" / "dcc_mcp_maya_plugin.py"
+    plugin_path = Path(__file__).resolve().parents[1] / "maya" / "plugin" / "meshy_dcc_maya_plugin.py"
     assert plugin_path.is_file(), plugin_path
 
     fake_maya = MagicMock(name="maya")
@@ -37,7 +37,7 @@ def _load_plugin_module():
         "maya.utils": MagicMock(),
     }
     with patch.dict(sys.modules, modules):
-        spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_plugin_under_test", plugin_path)
+        spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_plugin_under_test", plugin_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
     return module, fake_om
@@ -47,7 +47,7 @@ def _load_plugin_module():
 def plugin_module():
     module, fake_om = _load_plugin_module()
     yield module, fake_om
-    sys.modules.pop("_dcc_mcp_maya_plugin_under_test", None)
+    sys.modules.pop("_meshy_dcc_maya_plugin_under_test", None)
 
 
 class TestUninitializePluginCleanup:
@@ -98,8 +98,8 @@ class TestInitializePluginStaleScan:
     def test_stale_scan_and_log_prune_invoked_after_start(self, plugin_module):
         module, _ = plugin_module
         with patch.object(module, "_print_startup_info"), patch.object(module, "_install_shutdown_safety"):
-            with patch("dcc_mcp_maya._log_hygiene.prune_maya_logs") as prune, patch(
-                "dcc_mcp_maya._stale_cleanup.warn_if_too_many_stale"
+            with patch("meshy_dcc_maya._log_hygiene.prune_maya_logs") as prune, patch(
+                "meshy_dcc_maya._stale_cleanup.warn_if_too_many_stale"
             ) as warn:
                 module._post_start({})
         prune.assert_called_once()
@@ -108,8 +108,8 @@ class TestInitializePluginStaleScan:
     def test_stale_scan_failure_does_not_break_init(self, plugin_module):
         module, _ = plugin_module
         with patch.object(module, "_print_startup_info"), patch.object(module, "_install_shutdown_safety"):
-            with patch("dcc_mcp_maya._log_hygiene.prune_maya_logs"), patch(
-                "dcc_mcp_maya._stale_cleanup.warn_if_too_many_stale",
+            with patch("meshy_dcc_maya._log_hygiene.prune_maya_logs"), patch(
+                "meshy_dcc_maya._stale_cleanup.warn_if_too_many_stale",
                 side_effect=RuntimeError("scan boom"),
             ):
                 # Must not raise.

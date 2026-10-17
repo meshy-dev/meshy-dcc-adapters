@@ -59,14 +59,14 @@ from urllib.error import HTTPError, URLError
 import pytest
 
 # Disable file-logging side-effects before the core is imported.
-os.environ.setdefault("DCC_MCP_DISABLE_FILE_LOGGING", "1")
+os.environ.setdefault("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
 
 # Prefer the in-tree source over any installed wheel so coverage counts.
 _SRC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from dcc_mcp_maya.server import MayaMcpServer  # noqa: E402
+from meshy_dcc_maya.server import MayaMcpServer  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Small HTTP clients — single-responsibility, no hidden state.
@@ -173,7 +173,7 @@ class _McpClient:
 
 
 class _RestClient:
-    """Thin wrapper for the per-DCC RESTful surface (PR dcc-mcp/dcc-mcp-core#667).
+    """Thin wrapper for the per-DCC RESTful surface (PR upstream core issue 667).
 
     Every call returns a ``(status, body)`` tuple; we never raise on
     non-2xx because endpoint absence and endpoint failure are distinct
@@ -609,7 +609,7 @@ def test_minimal_mode_skill_stubs_dont_leak_schemas():
 def _iter_bundled_tools_yaml() -> Iterable[Tuple[str, Dict[str, Any]]]:
     import yaml  # local import — keeps module-level imports lean
 
-    skills_dir = os.path.join(_SRC, "dcc_mcp_maya", "skills")
+    skills_dir = os.path.join(_SRC, "meshy_dcc_maya", "skills")
     for skill_name in sorted(os.listdir(skills_dir)):
         tools_yaml = os.path.join(skills_dir, skill_name, "tools.yaml")
         if not os.path.isfile(tools_yaml):
@@ -689,7 +689,7 @@ def test_bundled_tools_declare_execution_and_affinity():
 
 
 # ---------------------------------------------------------------------------
-# 7. Forward-compat coverage for core 0.14.22 (dcc-mcp-core#242, #658)
+# 7. Forward-compat coverage for core 0.14.22 (meshy-dcc-core#242, #658)
 # ---------------------------------------------------------------------------
 
 
@@ -702,9 +702,9 @@ def test_output_schema_field_exists_on_registered_actions_when_core_22():
     rather than silently lose the contract.
     """
     try:
-        import dcc_mcp_core
+        import meshy_dcc_core
     except Exception:  # pragma: no cover
-        pytest.skip("dcc-mcp-core not importable")
+        pytest.skip("meshy-dcc-core not importable")
 
     server = MayaMcpServer(port=0, enable_gateway_failover=False, gateway_port=0)
     server.register_builtin_actions(minimal=True)
@@ -716,7 +716,7 @@ def test_output_schema_field_exists_on_registered_actions_when_core_22():
         # until core propagates tools.yaml ``outputSchema``; see the
         # upstream gap referenced below).
         assert "output_schema" in first, "core {} no longer exposes output_schema on registered actions".format(
-            dcc_mcp_core.__version__
+            meshy_dcc_core.__version__
         )
     finally:
         server.stop()
@@ -734,7 +734,7 @@ class _ToolSpecFromCallableFixture:
 
 def test_tool_spec_from_callable_is_importable():
     """Typed-output helpers depend on core's schema module being present."""
-    from dcc_mcp_core.schema import derive_schema, tool_spec_from_callable  # noqa: F401
+    from meshy_dcc_core.schema import derive_schema, tool_spec_from_callable  # noqa: F401
 
     def handler(n: int = 1) -> _ToolSpecFromCallableFixture:
         """Fixture handler — int in, dataclass out."""

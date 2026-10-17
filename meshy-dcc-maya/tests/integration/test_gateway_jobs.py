@@ -407,7 +407,7 @@ def test_mock_async_sleep_short_duration():
 @pytest.mark.integration
 def test_submit_async_callable_with_job_manager():
     """MayaStandaloneDispatcher.submit_async_callable integrates with _FakeJobManager."""
-    from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+    from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
     mgr = _FakeJobManager()
     dispatcher = MayaStandaloneDispatcher()

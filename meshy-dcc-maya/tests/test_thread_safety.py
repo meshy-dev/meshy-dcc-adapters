@@ -6,7 +6,7 @@ import ast
 from pathlib import Path
 from typing import Iterable, Optional
 
-SRC = Path(__file__).resolve().parent.parent / "src" / "dcc_mcp_maya"
+SRC = Path(__file__).resolve().parent.parent / "src" / "meshy_dcc_maya"
 _EXCLUDED_PARTS = {"skills"}
 _THREAD_TARGET_HINTS = ("_worker", "_async_worker", "_thread_body")
 _FORBIDDEN_ROOTS = (
@@ -16,7 +16,7 @@ _FORBIDDEN_ROOTS = (
     ("maya", "mel"),
     ("maya", "OpenMaya"),
 )
-_ALLOWED_DECORATORS = {"require_main_thread", "dcc_mcp_maya.api.require_main_thread"}
+_ALLOWED_DECORATORS = {"require_main_thread", "meshy_dcc_maya.api.require_main_thread"}
 
 
 def _iter_source_files() -> Iterable[Path]:

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Assemble a Maya .mod module from a **local** dcc-mcp-core wheel + dcc-mcp-maya source.
+"""Assemble a Maya .mod module from a **local** meshy-dcc-core wheel + meshy-dcc-maya source.
 
 Does **not** query PyPI. Use after building core, for example::
 
-    cd ../dcc-mcp-core && vx just build
-    cd ../dcc-mcp-maya && python packaging/assemble_mod_local.py --abi3-wheel ..\\\\dcc-mcp-core\\\\dist\\\\dcc_mcp_core-*-cp311-*.whl
+    cd ../meshy-dcc-core && vx just build
+    cd ../meshy-dcc-maya && python packaging/assemble_mod_local.py --abi3-wheel ..\\\\meshy-dcc-core\\\\dist\\\\meshy_dcc_core-*-cp311-*.whl
 
 On Windows, installs by default under ``%USERPROFILE%\\\\Documents\\\\maya\\\\``:
 
 - ``<module-dir>/`` — ``python/``, optional ``python37/``, ``plug-ins/``, ``scripts/``
-- ``modules/dcc_mcp_maya_local.mod`` — points Maya at ``<module-dir>`` (absolute path)
+- ``modules/meshy_dcc_maya_local.mod`` — points Maya at ``<module-dir>`` (absolute path)
 
 Maya 2022 (embedded Python 3.7) on Windows/Linux: also pass ``--cp37-wheel`` with a
 ``cp37-cp37m`` wheel; the script mirrors the layout used by ``assemble_mod.py``.
@@ -50,7 +50,7 @@ def _generate_mod_body(mod_label: str, platform: str, mod_path: str, *, has_pyth
         versions = [v for v in am.supported_maya_versions(platform) if v != "2022"]
         lines = []
         for maya_version in versions:
-            lines.append(f"+ MAYAVERSION:{maya_version} PLATFORM:{platform} dcc_mcp_maya {mod_label} {mod_path}")
+            lines.append(f"+ MAYAVERSION:{maya_version} PLATFORM:{platform} meshy_dcc_maya {mod_label} {mod_path}")
             lines.append(f"PYTHONPATH+:={am.MAYA_PYTHONPATH_BY_VERSION[maya_version]}")
             lines.append("PLUG_IN_PATH+:=plug-ins")
         return "\n".join(lines) + "\n"
@@ -93,19 +93,19 @@ def assemble_local(
         print(f"  Extracting {cp37_wheel.name} extensions -> {python37_dir}/ ...")
         am.extract_wheel(cp37_wheel, python37_dir, extensions_only=True, alt_dest=None)
 
-    plugin_src = project_root / "maya" / "plugin" / "dcc_mcp_maya_plugin.py"
-    shutil.copy2(plugin_src, module_root / "plug-ins" / "dcc_mcp_maya_plugin.py")
+    plugin_src = project_root / "maya" / "plugin" / "meshy_dcc_maya_plugin.py"
+    shutil.copy2(plugin_src, module_root / "plug-ins" / "meshy_dcc_maya_plugin.py")
     usersetup_src = project_root / "maya" / "userSetup.py"
     shutil.copy2(usersetup_src, module_root / "scripts" / "userSetup.py")
 
-    pkg_src = project_root / "src" / "dcc_mcp_maya"
+    pkg_src = project_root / "src" / "meshy_dcc_maya"
     for package_root in (python_dir,):
-        pkg_dest = package_root / "dcc_mcp_maya"
+        pkg_dest = package_root / "meshy_dcc_maya"
         if pkg_dest.exists():
             shutil.rmtree(pkg_dest)
         shutil.copytree(str(pkg_src), str(pkg_dest))
     if (module_root / "python37").is_dir():
-        pkg_dest37 = module_root / "python37" / "dcc_mcp_maya"
+        pkg_dest37 = module_root / "python37" / "meshy_dcc_maya"
         if pkg_dest37.exists():
             shutil.rmtree(pkg_dest37)
         shutil.copytree(str(pkg_src), str(pkg_dest37))
@@ -115,12 +115,12 @@ def assemble_local(
         mod_path = mod_path[0].upper() + mod_path[1:]
 
     mod_body = _generate_mod_body(mod_label, platform, mod_path, has_python37=cp37_wheel is not None)
-    (module_root / "dcc_mcp_maya.mod").write_text(mod_body, encoding="utf-8")
+    (module_root / "meshy_dcc_maya.mod").write_text(mod_body, encoding="utf-8")
 
     if write_modules_mod:
         modules_dir = maya_documents / "modules"
         modules_dir.mkdir(parents=True, exist_ok=True)
-        mod_link = modules_dir / "dcc_mcp_maya_local.mod"
+        mod_link = modules_dir / "meshy_dcc_maya_local.mod"
         mod_link.write_text(mod_body, encoding="utf-8")
         print(f"  Wrote {mod_link}")
 
@@ -131,12 +131,12 @@ def assemble_local(
 def main() -> None:
     default_root = Path(__file__).resolve().parent.parent
     p = argparse.ArgumentParser(description="Assemble Maya module from local core wheel(s)")
-    p.add_argument("--project-root", type=Path, default=default_root, help="dcc-mcp-maya repo root")
+    p.add_argument("--project-root", type=Path, default=default_root, help="meshy-dcc-maya repo root")
     p.add_argument(
         "--abi3-wheel",
         type=Path,
         required=True,
-        help="Path to local dcc-mcp-core cp38-abi3 (or non-abi3) wheel for Maya 2023+",
+        help="Path to local meshy-dcc-core cp38-abi3 (or non-abi3) wheel for Maya 2023+",
     )
     p.add_argument(
         "--cp37-wheel",
@@ -158,7 +158,7 @@ def main() -> None:
     )
     p.add_argument(
         "--module-dir-name",
-        default="dcc-mcp-maya-dev",
+        default="meshy-dcc-maya-dev",
         help="Folder name under maya-documents for the module root",
     )
     p.add_argument(
@@ -169,7 +169,7 @@ def main() -> None:
     p.add_argument(
         "--no-install-mod",
         action="store_true",
-        help="Do not write modules/dcc_mcp_maya_local.mod (only dcc_mcp_maya.mod inside module root)",
+        help="Do not write modules/meshy_dcc_maya_local.mod (only meshy_dcc_maya.mod inside module root)",
     )
     args = p.parse_args()
 

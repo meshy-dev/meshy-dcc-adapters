@@ -2,7 +2,7 @@
 setlocal
 
 echo =========================================
-echo  DCC-MCP-Maya Installer
+echo  Meshy DCC-Maya Installer
 echo =========================================
 echo.
 
@@ -12,7 +12,7 @@ if "%MODULE_DIR:~-1%"=="\" set "MODULE_DIR=%MODULE_DIR:~0,-1%"
 
 REM -- Read version from pre-generated .mod file --
 set "VERSION=unknown"
-for /f "tokens=5" %%v in ('findstr /r "^+ MAYAVERSION" "%MODULE_DIR%\dcc_mcp_maya.mod"') do (
+for /f "tokens=5" %%v in ('findstr /r "^+ MAYAVERSION" "%MODULE_DIR%\meshy_dcc_maya.mod"') do (
     set "VERSION=%%v"
 )
 echo  Version: %VERSION%
@@ -24,7 +24,7 @@ set "MOD_DEST=%USERPROFILE%\Documents\maya\modules"
 if not exist "%MOD_DEST%" mkdir "%MOD_DEST%"
 
 REM -- Remove the legacy descriptor so Maya cannot resolve the old module first --
-set "LEGACY_MOD_FILE=%MOD_DEST%\dcc-mcp-maya.mod"
+set "LEGACY_MOD_FILE=%MOD_DEST%\meshy-dcc-maya.mod"
 if exist "%LEGACY_MOD_FILE%" (
     del /q "%LEGACY_MOD_FILE%"
     echo  Removed legacy module descriptor %LEGACY_MOD_FILE%
@@ -32,7 +32,7 @@ if exist "%LEGACY_MOD_FILE%" (
 
 (
 for %%Y in (2022 2023 2024 2025 2026) do (
-    echo + MAYAVERSION:%%Y PLATFORM:win64 dcc_mcp_maya %VERSION% %MODULE_DIR%
+    echo + MAYAVERSION:%%Y PLATFORM:win64 meshy_dcc_maya %VERSION% %MODULE_DIR%
     if "%%Y"=="2022" (
         echo PYTHONPATH+:=python37
     ) else (
@@ -40,9 +40,9 @@ for %%Y in (2022 2023 2024 2025 2026) do (
     )
     echo PLUG_IN_PATH+:=plug-ins
 )
-) > "%MOD_DEST%\dcc_mcp_maya.mod"
+) > "%MOD_DEST%\meshy_dcc_maya.mod"
 
-echo  Generated %MOD_DEST%\dcc_mcp_maya.mod
+echo  Generated %MOD_DEST%\meshy_dcc_maya.mod
 
 REM -- Deploy userSetup.py --
 set "SCRIPTS_DEST=%USERPROFILE%\Documents\maya\scripts"
@@ -52,7 +52,7 @@ if not exist "%SCRIPTS_DEST%\userSetup.py" (
     copy /y "%MODULE_DIR%\scripts\userSetup.py" "%SCRIPTS_DEST%\userSetup.py" >nul
     echo  Deployed userSetup.py
 ) else (
-    findstr /c:"dcc_mcp_maya" "%SCRIPTS_DEST%\userSetup.py" >nul 2>&1
+    findstr /c:"meshy_dcc_maya" "%SCRIPTS_DEST%\userSetup.py" >nul 2>&1
     if errorlevel 1 (
         echo. >> "%SCRIPTS_DEST%\userSetup.py"
         type "%MODULE_DIR%\scripts\userSetup.py" >> "%SCRIPTS_DEST%\userSetup.py"
@@ -66,9 +66,9 @@ echo.
 echo =========================================
 echo  Installation complete!
 echo.
-echo  .mod file:  %MOD_DEST%\dcc_mcp_maya.mod
+echo  .mod file:  %MOD_DEST%\meshy_dcc_maya.mod
 echo  Module:     %MODULE_DIR%
-echo  Plugin:     %MODULE_DIR%\plug-ins\dcc_mcp_maya_plugin.py
+echo  Plugin:     %MODULE_DIR%\plug-ins\meshy_dcc_maya_plugin.py
 echo.
 echo  The plugin will auto-load when Maya starts.
 echo =========================================

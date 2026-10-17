@@ -16,7 +16,7 @@ pytestmark = [
     # TODO(#58): Gateway never starts under the Docker matrix runner; tests have been
     # silently red on main via `continue-on-error: true`. Unskip once the Docker
     # gateway-startup / wait_for_gateway() path is fixed.
-    pytest.mark.skip(reason="Pre-existing failure tracked in https://github.com/dcc-mcp/dcc-mcp-maya/issues/58"),
+    pytest.mark.skip(reason="Pre-existing failure tracked in https://github.com/meshy-dev/meshy-dcc-maya/issues/58"),
 ]
 
 
@@ -226,11 +226,11 @@ def test_fast_failover_recovery(maya_instance_manager, gateway_client):
 
 @pytest.mark.timeout(120)
 def test_gateway_failover_environment_variable(maya_instance_manager, gateway_client):
-    """Verify DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER env var controls failover."""
+    """Verify MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER env var controls failover."""
     # Create instance with failover explicitly disabled via config
     config = maya_instance_manager.create_config("maya-no-failover")
     config.enable_gateway_failover = False
-    config.env_vars = {"DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER": "0"}
+    config.env_vars = {"MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER": "0"}
 
     assert maya_instance_manager.launch_instance(config), "Failed to launch instance"
 

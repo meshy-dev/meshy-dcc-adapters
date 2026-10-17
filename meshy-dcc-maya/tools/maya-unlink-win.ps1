@@ -2,8 +2,8 @@
 # This script removes symlinks and .mod file from Maya's module directory
 
 $ModDir = Join-Path $env:USERPROFILE "Documents\maya\modules"
-$Target = Join-Path $ModDir "dcc-mcp-maya"
-$ModFile = Join-Path $ModDir "dcc-mcp-maya.mod"
+$Target = Join-Path $ModDir "meshy-dcc-maya"
+$ModFile = Join-Path $ModDir "meshy-dcc-maya.mod"
 
 Write-Host "🧹 Removing Maya dev symlinks..." -ForegroundColor Cyan
 

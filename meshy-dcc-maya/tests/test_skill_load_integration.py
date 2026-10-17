@@ -42,7 +42,7 @@ _SKILL_MD_TEMPLATE = textwrap.dedent("""\
     description: "Integration-test skill that touches files on disk."
     license: MIT
     metadata:
-      dcc-mcp:
+      meshy-dcc:
         dcc: maya
         layer: domain
         version: 1.0.0
@@ -87,7 +87,7 @@ def _write_skill(skill_root: Path, skill_name: str, scripts: dict[str, str]) -> 
 
 def _make_server():
     """Build a real ``MayaMcpServer`` without starting the HTTP listener."""
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     return MayaMcpServer(port=0, server_name="maya-integration-test")
 
@@ -318,7 +318,7 @@ def _bundled_script(stem: str) -> Path:
     return (
         Path(__file__).resolve().parents[1]
         / "src"
-        / "dcc_mcp_maya"
+        / "meshy_dcc_maya"
         / "skills"
         / "maya-scripting"
         / "scripts"

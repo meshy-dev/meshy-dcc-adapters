@@ -1,8 +1,8 @@
-"""Tests for ``dcc_mcp_maya._stale_cleanup`` (issue #126).
+"""Tests for ``meshy_dcc_maya._stale_cleanup`` (issue #126).
 
 Validates the host-side stale FileRegistry detection and warning helper.
 
-See: https://github.com/dcc-mcp/dcc-mcp-maya/issues/126
+See: https://github.com/meshy-dev/meshy-dcc-maya/issues/126
 """
 
 # Import future modules
@@ -19,7 +19,7 @@ from unittest.mock import patch
 import pytest
 
 # Import local modules
-from dcc_mcp_maya import _stale_cleanup
+from meshy_dcc_maya import _stale_cleanup
 
 
 @pytest.fixture()
@@ -42,13 +42,13 @@ class TestRegistryPath:
         assert result == tmp_path / _stale_cleanup.REGISTRY_SUBDIR / _stale_cleanup.REGISTRY_FILE
 
     def test_env_var_used_when_no_arg(self, tmp_path):
-        with patch.dict(os.environ, {"DCC_MCP_REGISTRY_DIR": str(tmp_path)}):
+        with patch.dict(os.environ, {"MESHY_DCC_REGISTRY_DIR": str(tmp_path)}):
             result = _stale_cleanup.registry_path()
             assert result.parent.parent == tmp_path
 
     def test_falls_back_to_tempdir(self):
         env = os.environ.copy()
-        env.pop("DCC_MCP_REGISTRY_DIR", None)
+        env.pop("MESHY_DCC_REGISTRY_DIR", None)
         with patch.dict(os.environ, env, clear=True):
             result = _stale_cleanup.registry_path()
             assert result.name == _stale_cleanup.REGISTRY_FILE

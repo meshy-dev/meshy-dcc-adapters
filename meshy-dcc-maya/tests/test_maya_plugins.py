@@ -13,7 +13,7 @@ import os
 import pytest
 from conftest import load_and_call
 
-from dcc_mcp_maya.plugins import (
+from meshy_dcc_maya.plugins import (
     LOADED_ONLY_FLAGS,
     PLUGIN_PATH_ENV,
     PluginContractError,

@@ -27,8 +27,8 @@ DOCKER_IMAGES = {
 }
 
 # Environment variable to force Docker mode
-ENV_FORCE_DOCKER = "DCC_MCP_FORCE_DOCKER"
-ENV_DOCKER_REGISTRY = "DCC_MCP_DOCKER_REGISTRY"
+ENV_FORCE_DOCKER = "MESHY_DCC_FORCE_DOCKER"
+ENV_DOCKER_REGISTRY = "MESHY_DCC_DOCKER_REGISTRY"
 
 
 def is_docker_available() -> bool:
@@ -79,7 +79,7 @@ class DockerMayaInstanceManager:
 
     def __init__(
         self,
-        gateway_port: int = 9765,
+        gateway_port: int = 19765,
         registry_dir: Optional[str] = None,
         docker_registry: Optional[str] = None,
     ):
@@ -179,10 +179,10 @@ class DockerMayaInstanceManager:
 
             # Build docker run command
             env_vars = {
-                "DCC_MCP_GATEWAY_PORT": str(config.gateway_port),
-                "DCC_MCP_REGISTRY_DIR": "/mnt/registry",
-                "DCC_MCP_MAYA_HOT_RELOAD": "1" if config.enable_hot_reload else "0",
-                "DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER": ("1" if config.enable_gateway_failover else "0"),
+                "MESHY_DCC_GATEWAY_PORT": str(config.gateway_port),
+                "MESHY_DCC_REGISTRY_DIR": "/mnt/registry",
+                "MESHY_DCC_MAYA_HOT_RELOAD": "1" if config.enable_hot_reload else "0",
+                "MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER": ("1" if config.enable_gateway_failover else "0"),
             }
 
             if config.env_vars:
@@ -380,7 +380,7 @@ try:
     logger.info("Maya initialized for {config.instance_id}")
 
     # Import and start MCP server
-    from dcc_mcp_maya import start_server
+    from meshy_dcc_maya import start_server
 
     handle = start_server(
         port={config.port},

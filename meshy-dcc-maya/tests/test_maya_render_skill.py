@@ -611,7 +611,7 @@ def test_render_scene_uses_current_time_instead_of_invalid_arnold_frame_flag(tmp
 
 
 def test_render_scene_is_registered_with_complete_metadata():
-    tools_path = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills" / "maya-render" / "tools.yaml"
+    tools_path = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-render" / "tools.yaml"
     tools = yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]
     tool = next(item for item in tools if item["name"] == "render_scene")
 
@@ -646,7 +646,7 @@ def test_render_frame_rejects_zero_byte_output(tmp_path):
 
 
 def test_render_sequence_reuses_render_frame_for_inclusive_range(tmp_path, monkeypatch):
-    script = Path(__file__).parents[1] / "src/dcc_mcp_maya/skills/maya-render/scripts/render_sequence.py"
+    script = Path(__file__).parents[1] / "src/meshy_dcc_maya/skills/maya-render/scripts/render_sequence.py"
     spec = importlib.util.spec_from_file_location("maya_render_sequence_test", script)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

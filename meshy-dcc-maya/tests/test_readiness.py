@@ -10,11 +10,11 @@ during Maya's boot window:
   deferred no-op job (or synchronously on
   :class:`MayaStandaloneDispatcher`).
 
-The Maya adapter **wraps** :class:`dcc_mcp_core.ReadinessProbe` (core
+The Maya adapter **wraps** :class:`meshy_dcc_core.ReadinessProbe` (core
 0.14.28+) — these tests exercise only the Maya-side plumbing
-(:class:`dcc_mcp_maya.ReadinessBinder`, env-var resolution, dispatcher
+(:class:`meshy_dcc_maya.ReadinessBinder`, env-var resolution, dispatcher
 scheduling, and the ``set_readiness_probe`` publish hop).  The probe's
-own state machine is unit-tested upstream by ``dcc-mcp-core``.
+own state machine is unit-tested upstream by ``meshy-dcc-core``.
 
 The tests avoid importing a real Maya — they use a fake dispatcher for
 the "never pumps" case and :class:`MayaStandaloneDispatcher` for the
@@ -30,18 +30,18 @@ from unittest.mock import MagicMock
 import pytest
 
 try:
-    from dcc_mcp_core import ReadinessProbe
+    from meshy_dcc_core import ReadinessProbe
 except ModuleNotFoundError:
-    # dcc-mcp-core>=0.19.11 ships a py3-none-any.whl that has no _core Rust
+    # meshy-dcc-core>=0.19.11 ships a py3-none-any.whl that has no _core Rust
     # extension.  Python 3.7 (Maya 2022 mayapy) cannot install the cp38-abi3
     # wheel, so ReadinessProbe is unavailable.  The probe state machine is
-    # unit-tested upstream in dcc-mcp-core — skipping here is safe.
+    # unit-tested upstream in meshy-dcc-core — skipping here is safe.
     pytest.skip(
-        "dcc_mcp_core._core not available (py3-none wheel on Python 3.7)",
+        "meshy_dcc_core._core not available (py3-none wheel on Python 3.7)",
         allow_module_level=True,
     )
 
-from dcc_mcp_maya import (
+from meshy_dcc_maya import (
     ENV_READINESS_TIMEOUT_SECS,
     MayaStandaloneDispatcher,
     ReadinessBinder,
@@ -307,7 +307,7 @@ class TestMayaMcpServerReadinessIntegration:
         instantly ready — every call runs on the HTTP worker thread so
         there's no separate main thread to wait on.
         """
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         server = MayaMcpServer(port=0)
         try:
@@ -335,7 +335,7 @@ class TestMayaMcpServerReadinessIntegration:
         re-runs, but since :class:`MayaStandaloneDispatcher` pumps the
         probe job synchronously it lands at the same all-green state.
         """
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         server = MayaMcpServer(port=0)
         try:
@@ -351,7 +351,7 @@ class TestMayaMcpServerReadinessIntegration:
                 pass
 
     def test_constructor_with_dispatcher_lands_all_green(self) -> None:
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         server = MayaMcpServer(
             port=0,
@@ -371,8 +371,8 @@ class TestMayaMcpServerReadinessIntegration:
                 pass
 
     def test_readiness_probe_handle_is_core_instance(self) -> None:
-        """``server.readiness.probe`` is a real :class:`dcc_mcp_core.ReadinessProbe`."""
-        from dcc_mcp_maya import MayaMcpServer
+        """``server.readiness.probe`` is a real :class:`meshy_dcc_core.ReadinessProbe`."""
+        from meshy_dcc_maya import MayaMcpServer
 
         server = MayaMcpServer(port=0)
         try:
@@ -384,7 +384,7 @@ class TestMayaMcpServerReadinessIntegration:
                 pass
 
     def test_readiness_timeout_is_resolved_from_kwarg(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         monkeypatch.delenv(ENV_READINESS_TIMEOUT_SECS, raising=False)
         server = MayaMcpServer(port=0, readiness_timeout_secs=42)
@@ -397,7 +397,7 @@ class TestMayaMcpServerReadinessIntegration:
                 pass
 
     def test_readiness_timeout_is_resolved_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         monkeypatch.setenv(ENV_READINESS_TIMEOUT_SECS, "17")
         server = MayaMcpServer(port=0)

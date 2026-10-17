@@ -19,7 +19,7 @@ from typing import Any, get_type_hints
 
 import yaml
 
-SKILL_ROOT = Path(__file__).resolve().parent.parent / "src" / "dcc_mcp_maya" / "skills" / "maya-render-setup"
+SKILL_ROOT = Path(__file__).resolve().parent.parent / "src" / "meshy_dcc_maya" / "skills" / "maya-render-setup"
 
 SPEC = {
     "create_render_layer": ("sync", "main", "layers", {}),

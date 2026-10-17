@@ -4,7 +4,7 @@ description: "Synthetic async skill for gateway integration tests. Sleeps for N 
 license: "MIT"
 compatibility: "Python>=3.7"
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: maya
     version: "1.0.0"
     tags: ["testing", "async", "mock"]
@@ -38,5 +38,5 @@ Returns `{"slept_secs": <float>, "cancelled": <bool>}`.
 
 ```python
 # examples/skills/maya-mock-async/scripts/mock_async_sleep.py
-from dcc_mcp_core.skill import skill_entry, skill_success
+from meshy_dcc_core.skill import skill_entry, skill_success
 ```

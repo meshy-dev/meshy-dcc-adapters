@@ -5,8 +5,8 @@
 ## 1. 启动 Maya 与 MCP HTTP 服务
 
 1. 启动 Maya（或从仓库运行 `just maya-dev-debug-win`）。
-2. 在 **Windows → Settings/Preferences → Plug-in Manager** 中加载 **`dcc_mcp_maya`**（需要时可设为自动加载）。
-3. 在脚本编辑器 / 标准输出中确认 gateway URL（插件 sidecar 模式通常是 **`http://127.0.0.1:9765/mcp`**）。
+2. 在 **Windows → Settings/Preferences → Plug-in Manager** 中加载 **`meshy_dcc_maya`**（需要时可设为自动加载）。
+3. 在脚本编辑器 / 标准输出中确认 gateway URL（插件 sidecar 模式通常是 **`http://127.0.0.1:19765/mcp`**）。
 
 如果明确启动直连 Python server，请使用 `start_server().mcp_url()` 返回的实际
 URL；默认实例端口由操作系统分配。
@@ -22,7 +22,7 @@ URL；默认实例端口由操作系统分配。
 {
   "mcpServers": {
     "maya-local": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -41,7 +41,7 @@ URL；默认实例端口由操作系统分配。
 {
   "mcpServers": {
     "maya": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -84,15 +84,15 @@ Maya 内嵌 CPython；**debugpy** 是用于 IDE 断点调试的可选增强能�
 
 3. 在 **Cursor / VS Code** 中使用 **Run and Debug → Python: Remote Attach**，主机 `127.0.0.1`、端口 `5678`。
 
-4. 在 `src/dcc_mcp_maya/**/*.py`（或技能脚本）设断点，再从 MCP 触发工具；**仅当代码在 Maya 主线程执行时** 断点才会命中（与 Maya 脚本规则一致）。
+4. 在 `src/meshy_dcc_maya/**/*.py`（或技能脚本）设断点，再从 MCP 触发工具；**仅当代码在 Maya 主线程执行时** 断点才会命中（与 Maya 脚本规则一致）。
 
-**Rust（`dcc_mcp_core`）** 在 Maya 内调试成本较高（原生扩展）；可优先用日志，或在 Maya 外用小型 `mayapy` 复现导入 `dcc_mcp_core` 以加快原生调试。
+**Rust（`meshy_dcc_core`）** 在 Maya 内调试成本较高（原生扩展）；可优先用日志，或在 Maya 外用小型 `mayapy` 复现导入 `meshy_dcc_core` 以加快原生调试。
 
 ## 5. 快速检查表
 
 | 现象 | 处理 |
 |------|------|
-| MCP 404 / 连接被拒绝 | 插件是否加载？使用 gateway `9765`，或启动时报告的实际直连 URL。 |
+| MCP 404 / 连接被拒绝 | 插件是否加载？使用 gateway `19765`，或启动时报告的实际直连 URL。 |
 | 看不到工具 | 极简模式：先调用 `load_skill("…")`（见 AGENTS.md）。 |
 | `debugpy_missing` | 可选：将 debugpy 安装到对应的 `mayapy`，然后重启 Maya，即可获得更强的 IDE attach 调试能力。 |
 | `port_in_use` | 换一个端口，或停止已经占用该端口的进程。 |

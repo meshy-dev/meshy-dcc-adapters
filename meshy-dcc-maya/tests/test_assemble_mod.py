@@ -24,7 +24,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # The Core upper bound this adapter ships, read from the single source of truth so tightening
 # it does not require touching every packaging assertion.
 MAX_CORE_VERSION = re.search(
-    r'"dcc-mcp-core>=[0-9.]+,<(?P<upper>[0-9.]+)"',
+    r'"meshy-dcc-core>=[0-9.]+,<(?P<upper>[0-9.]+)"',
     (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
 ).group("upper")
 
@@ -40,7 +40,7 @@ def _make_fake_wheel(dest: Path, name: str, files: dict[str, bytes]) -> Path:
             zf.writestr(fname, content)
         dist_info_prefix = f"{name.split('-')[0]}-{name.split('-')[1]}.dist-info/"
         if not any(f.startswith(dist_info_prefix) for f in files):
-            zf.writestr(f"{dist_info_prefix}METADATA", "Metadata-Version: 2.1\nName: dcc-mcp-core\n")
+            zf.writestr(f"{dist_info_prefix}METADATA", "Metadata-Version: 2.1\nName: meshy-dcc-core\n")
     return wheel_path
 
 
@@ -52,10 +52,10 @@ def _make_recorded_core_wheel(
     metadata_content: bytes | None = None,
 ) -> Path:
     """Create a Core wheel whose payload is bound by a real wheel RECORD."""
-    dist_info = f"dcc_mcp_core-{version}.dist-info"
+    dist_info = f"meshy_dcc_core-{version}.dist-info"
     entries = dict(files)
     entries[f"{dist_info}/METADATA"] = metadata_content or (
-        f"Metadata-Version: 2.1\nName: dcc-mcp-core\nVersion: {version}\n".encode()
+        f"Metadata-Version: 2.1\nName: meshy-dcc-core\nVersion: {version}\n".encode()
     )
     record_rows = []
     for path, content in sorted(entries.items()):
@@ -63,15 +63,15 @@ def _make_recorded_core_wheel(
         record_rows.append(f"{path},sha256={digest},{len(content)}")
     record_rows.append(f"{dist_info}/RECORD,,")
     entries[f"{dist_info}/RECORD"] = ("\n".join(record_rows) + "\n").encode()
-    return _make_fake_wheel(dest, f"dcc_mcp_core-{version}-{tag}.whl", entries)
+    return _make_fake_wheel(dest, f"meshy_dcc_core-{version}-{tag}.whl", entries)
 
 
 def _make_fake_pyproject(dest: Path, core_version: str = "0.15.7", core_upper: str = "0.21.0") -> Path:
     toml_path = dest / "pyproject.toml"
     toml_path.write_text(
         "[project]\ndependencies = [\n"
-        f'    "dcc-mcp-core>={core_version},<{core_upper}",\n'
-        f'    "dcc-mcp-server>={core_version},<1.0.0",\n'
+        f'    "meshy-dcc-core>={core_version},<{core_upper}",\n'
+        f'    "meshy-dcc-server>={core_version},<1.0.0",\n'
         "]\n",
         encoding="utf-8",
     )
@@ -128,7 +128,7 @@ class TestResolveCoreVersion:
 
     def test_raises_when_no_version_found(self, tmp_path):
         (tmp_path / "pyproject.toml").write_text("[project]\ndependencies = []\n", encoding="utf-8")
-        with pytest.raises(RuntimeError, match="Cannot find dcc-mcp-core version"):
+        with pytest.raises(RuntimeError, match="Cannot find meshy-dcc-core version"):
             assemble_mod.resolve_core_version(tmp_path)
 
 
@@ -141,21 +141,21 @@ class TestResolveServerVersion:
 
     def test_raises_when_no_version_found(self, tmp_path):
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\ndependencies = [\n    "dcc-mcp-core>=0.18.17,<0.21.0",\n]\n',
+            '[project]\ndependencies = [\n    "meshy-dcc-core>=0.18.17,<0.21.0",\n]\n',
             encoding="utf-8",
         )
-        with pytest.raises(RuntimeError, match="Cannot find dcc-mcp-server version"):
+        with pytest.raises(RuntimeError, match="Cannot find meshy-dcc-server version"):
             assemble_mod.resolve_server_version(tmp_path)
 
 
 class TestDownloadCoreWheels:
     def _mock_pypi_response(self, version: str = "0.15.7") -> dict:
         files = [
-            f"dcc_mcp_core-{version}-cp37-cp37m-win_amd64.whl",
-            f"dcc_mcp_core-{version}-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-            f"dcc_mcp_core-{version}-cp38-abi3-win_amd64.whl",
-            f"dcc_mcp_core-{version}-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-            f"dcc_mcp_core-{version}-cp38-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl",
+            f"meshy_dcc_core-{version}-cp37-cp37m-win_amd64.whl",
+            f"meshy_dcc_core-{version}-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+            f"meshy_dcc_core-{version}-cp38-abi3-win_amd64.whl",
+            f"meshy_dcc_core-{version}-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+            f"meshy_dcc_core-{version}-cp38-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl",
         ]
         urls = [{"filename": fn, "url": f"https://example.com/{fn}", "packagetype": "bdist_wheel"} for fn in files]
         return {"info": {"version": version}, "urls": urls, "releases": {version: urls}}
@@ -167,7 +167,7 @@ class TestDownloadCoreWheels:
         mock_resp.__exit__ = MagicMock(return_value=False)
 
         def fake_urlretrieve(_url, dest):
-            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"dcc_mcp_core/__init__.py": b"# abi3"})
+            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"meshy_dcc_core/__init__.py": b"# abi3"})
 
         with patch("urllib.request.urlopen", return_value=mock_resp), patch(
             "urllib.request.urlretrieve", side_effect=fake_urlretrieve
@@ -185,7 +185,7 @@ class TestDownloadCoreWheels:
         mock_resp.__exit__ = MagicMock(return_value=False)
 
         def fake_urlretrieve(_url, dest):
-            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"dcc_mcp_core/__init__.py": b"# linux"})
+            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"meshy_dcc_core/__init__.py": b"# linux"})
 
         with patch("urllib.request.urlopen", return_value=mock_resp), patch(
             "urllib.request.urlretrieve", side_effect=fake_urlretrieve
@@ -203,7 +203,7 @@ class TestDownloadCoreWheels:
         mock_resp.__exit__ = MagicMock(return_value=False)
 
         def fake_urlretrieve(_url, dest):
-            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"dcc_mcp_core/__init__.py": b"# macos"})
+            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"meshy_dcc_core/__init__.py": b"# macos"})
 
         with patch("urllib.request.urlopen", return_value=mock_resp), patch(
             "urllib.request.urlretrieve", side_effect=fake_urlretrieve
@@ -219,14 +219,14 @@ class TestDownloadCoreWheels:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            with pytest.raises(RuntimeError, match="No dcc-mcp-core wheels"):
+            with pytest.raises(RuntimeError, match="No meshy-dcc-core wheels"):
                 assemble_mod.download_core_wheels("0.15.0", "win64", tmp_path)
 
 
 class TestDownloadServerWheel:
     def test_win64_downloads_server_wheel(self, tmp_path):
         version = "0.18.17"
-        filename = f"dcc_mcp_server-{version}-py3-none-win_amd64.whl"
+        filename = f"meshy_dcc_server-{version}-py3-none-win_amd64.whl"
         pypi_data = {
             "info": {"version": version},
             "urls": [{"filename": filename, "url": f"https://example.com/{filename}", "packagetype": "bdist_wheel"}],
@@ -246,8 +246,8 @@ class TestDownloadServerWheel:
                 Path(dest).parent,
                 Path(dest).name,
                 {
-                    "dcc_mcp_server/__init__.py": b"# server",
-                    f"dcc_mcp_server-{version}.data/scripts/dcc-mcp-server.exe": b"server",
+                    "meshy_dcc_server/__init__.py": b"# server",
+                    f"meshy_dcc_server-{version}.data/scripts/meshy-dcc-server.exe": b"server",
                 },
             )
 
@@ -274,7 +274,7 @@ class TestWheelFetchRetry:
         return urllib.error.HTTPError(url, 404, "Not Found", None, None)
 
     def _pypi_response(self, version: str = "0.15.7") -> dict:
-        filename = f"dcc_mcp_core-{version}-cp38-abi3-macosx_11_0_arm64.whl"
+        filename = f"meshy_dcc_core-{version}-cp38-abi3-macosx_11_0_arm64.whl"
         urls = [{"filename": filename, "url": f"https://example.com/{filename}", "packagetype": "bdist_wheel"}]
         return {"info": {"version": version}, "urls": urls, "releases": {version: urls}}
 
@@ -297,7 +297,7 @@ class TestWheelFetchRetry:
         with patch("urllib.request.urlopen", side_effect=fake_urlopen), patch(
             "urllib.request.urlretrieve",
             side_effect=lambda _url, dest: _make_fake_wheel(
-                Path(dest).parent, Path(dest).name, {"dcc_mcp_core/__init__.py": b"# abi3"}
+                Path(dest).parent, Path(dest).name, {"meshy_dcc_core/__init__.py": b"# abi3"}
             ),
         ), patch.object(assemble_mod, "_sleep") as sleep_mock:
             wheels = assemble_mod.download_core_wheels("0.15.7", "macos", tmp_path)
@@ -306,7 +306,7 @@ class TestWheelFetchRetry:
         assert sleep_mock.call_count == 1
 
     def test_http_404_on_the_index_is_not_retried(self, tmp_path):
-        url = "https://pypi.org/pypi/dcc-mcp-core/0.15.7/json"
+        url = "https://pypi.org/pypi/meshy-dcc-core/0.15.7/json"
 
         with patch("urllib.request.urlopen", side_effect=self._not_found_error(url)) as urlopen_mock, patch.object(
             assemble_mod, "_sleep"
@@ -319,7 +319,7 @@ class TestWheelFetchRetry:
 
     def test_transient_wheel_download_error_is_retried_and_succeeds(self, tmp_path):
         """A truncated first transfer is retried, and its partial file is removed."""
-        dest_file = tmp_path / "dcc_mcp_core-0.15.7-cp38-abi3-macosx_11_0_arm64.whl"
+        dest_file = tmp_path / "meshy_dcc_core-0.15.7-cp38-abi3-macosx_11_0_arm64.whl"
         attempts = []
 
         def fake_urlretrieve(_url, dest):
@@ -327,7 +327,7 @@ class TestWheelFetchRetry:
             if len(attempts) == 1:
                 Path(dest).write_bytes(b"partial")  # what an interrupted transfer leaves behind
                 raise self._reset_error()
-            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"dcc_mcp_core/__init__.py": b"# abi3"})
+            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"meshy_dcc_core/__init__.py": b"# abi3"})
 
         with patch("urllib.request.urlopen", return_value=self._json_response(self._pypi_response())), patch(
             "urllib.request.urlretrieve", side_effect=fake_urlretrieve
@@ -342,7 +342,7 @@ class TestWheelFetchRetry:
     def test_http_404_on_a_wheel_download_is_not_retried(self, tmp_path):
         with patch("urllib.request.urlopen", return_value=self._json_response(self._pypi_response())), patch(
             "urllib.request.urlretrieve",
-            side_effect=self._not_found_error("https://example.com/dcc_mcp_core-0.15.7.whl"),
+            side_effect=self._not_found_error("https://example.com/meshy_dcc_core-0.15.7.whl"),
         ) as urlretrieve_mock, patch.object(assemble_mod, "_sleep") as sleep_mock:
             with pytest.raises(urllib.error.HTTPError):
                 assemble_mod.download_core_wheels("0.15.7", "macos", tmp_path)
@@ -360,7 +360,7 @@ class TestWheelFetchRetry:
         the caller ships a module with a missing wheel instead of failing.
         """
         sentinel = self._reset_error()
-        dest = tmp_path / "dcc_mcp_core-0.15.7-cp38-abi3-macosx_11_0_arm64.whl"
+        dest = tmp_path / "meshy_dcc_core-0.15.7-cp38-abi3-macosx_11_0_arm64.whl"
 
         with patch("urllib.request.urlretrieve", side_effect=sentinel) as urlretrieve_mock, patch.object(
             assemble_mod, "_sleep"
@@ -379,7 +379,7 @@ class TestWheelFetchRetry:
         ``dest`` with a complete wheel, so the assertion really locks in the
         ``unlink()`` in the ``except`` branch instead of passing by accident.
         """
-        dest = tmp_path / "dcc_mcp_core-0.15.7-cp38-abi3-macosx_11_0_arm64.whl"
+        dest = tmp_path / "meshy_dcc_core-0.15.7-cp38-abi3-macosx_11_0_arm64.whl"
 
         def die_halfway(_url, dest_path):
             Path(dest_path).write_bytes(b"partial")  # what an interrupted transfer leaves behind
@@ -393,7 +393,7 @@ class TestWheelFetchRetry:
 
     def test_server_wheel_download_retries_a_transient_error(self, tmp_path):
         version = "0.18.17"
-        filename = f"dcc_mcp_server-{version}-py3-none-macosx_11_0_arm64.whl"
+        filename = f"meshy_dcc_server-{version}-py3-none-macosx_11_0_arm64.whl"
         pypi_data = {
             "info": {"version": version},
             "urls": [{"filename": filename, "url": f"https://example.com/{filename}", "packagetype": "bdist_wheel"}],
@@ -409,7 +409,7 @@ class TestWheelFetchRetry:
             attempts.append(dest)
             if len(attempts) == 1:
                 raise self._reset_error()
-            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"dcc_mcp_server/__init__.py": b"# server"})
+            _make_fake_wheel(Path(dest).parent, Path(dest).name, {"meshy_dcc_server/__init__.py": b"# server"})
 
         with patch("urllib.request.urlopen", return_value=self._json_response(pypi_data)), patch(
             "urllib.request.urlretrieve", side_effect=fake_urlretrieve
@@ -439,52 +439,52 @@ class TestWheelFetchRetry:
 class TestExtractWheel:
     def test_extracts_python_files(self, tmp_path):
         files = {
-            "dcc_mcp_core/__init__.py": b"print('hello')",
-            "dcc_mcp_core/skill.py": b"class Skill: pass",
-            "dcc_mcp_core-0.15.0.dist-info/METADATA": b"Metadata-Version: 2.1",
+            "meshy_dcc_core/__init__.py": b"print('hello')",
+            "meshy_dcc_core/skill.py": b"class Skill: pass",
+            "meshy_dcc_core-0.15.0.dist-info/METADATA": b"Metadata-Version: 2.1",
         }
-        wheel = _make_fake_wheel(tmp_path, "dcc_mcp_core-0.15.0-cp38-abi3-win_amd64.whl", files)
+        wheel = _make_fake_wheel(tmp_path, "meshy_dcc_core-0.15.0-cp38-abi3-win_amd64.whl", files)
         dest = tmp_path / "out"
         dest.mkdir()
         assemble_mod.extract_wheel(wheel, dest)
-        assert (dest / "dcc_mcp_core" / "__init__.py").read_bytes() == b"print('hello')"
-        assert (dest / "dcc_mcp_core" / "skill.py").read_bytes() == b"class Skill: pass"
-        assert not (dest / "dcc_mcp_core-0.15.0.dist-info").exists()
+        assert (dest / "meshy_dcc_core" / "__init__.py").read_bytes() == b"print('hello')"
+        assert (dest / "meshy_dcc_core" / "skill.py").read_bytes() == b"class Skill: pass"
+        assert not (dest / "meshy_dcc_core-0.15.0.dist-info").exists()
 
     def test_extensions_only_filters_non_extensions(self, tmp_path):
         files = {
-            "dcc_mcp_core/__init__.py": b"print('hello')",
-            "dcc_mcp_core/_core.pyd": b"\x00binary",
+            "meshy_dcc_core/__init__.py": b"print('hello')",
+            "meshy_dcc_core/_core.pyd": b"\x00binary",
         }
-        wheel = _make_fake_wheel(tmp_path, "dcc_mcp_core-0.15.0-cp38-abi3-win_amd64.whl", files)
+        wheel = _make_fake_wheel(tmp_path, "meshy_dcc_core-0.15.0-cp38-abi3-win_amd64.whl", files)
         dest = tmp_path / "out"
-        (dest / "dcc_mcp_core").mkdir(parents=True)
-        (dest / "dcc_mcp_core" / "__init__.py").write_bytes(b"existing")
+        (dest / "meshy_dcc_core").mkdir(parents=True)
+        (dest / "meshy_dcc_core" / "__init__.py").write_bytes(b"existing")
         assemble_mod.extract_wheel(wheel, dest, extensions_only=True)
-        assert (dest / "dcc_mcp_core" / "__init__.py").read_bytes() == b"existing"
-        assert (dest / "dcc_mcp_core" / "_core.pyd").read_bytes() == b"\x00binary"
+        assert (dest / "meshy_dcc_core" / "__init__.py").read_bytes() == b"existing"
+        assert (dest / "meshy_dcc_core" / "_core.pyd").read_bytes() == b"\x00binary"
 
     def test_extract_server_wheel_maps_scripts_data_dir(self, tmp_path):
         files = {
-            "dcc_mcp_server/__init__.py": b"# server",
-            "dcc_mcp_server-0.18.17.data/scripts/dcc-mcp-server.exe": b"server-bin",
-            "dcc_mcp_server-0.18.17.dist-info/METADATA": b"Metadata-Version: 2.1",
+            "meshy_dcc_server/__init__.py": b"# server",
+            "meshy_dcc_server-0.18.17.data/scripts/meshy-dcc-server.exe": b"server-bin",
+            "meshy_dcc_server-0.18.17.dist-info/METADATA": b"Metadata-Version: 2.1",
         }
-        wheel = _make_fake_wheel(tmp_path, "dcc_mcp_server-0.18.17-py3-none-win_amd64.whl", files)
+        wheel = _make_fake_wheel(tmp_path, "meshy_dcc_server-0.18.17-py3-none-win_amd64.whl", files)
         dest = tmp_path / "out"
         assemble_mod.extract_server_wheel(wheel, dest)
 
-        assert (dest / "dcc_mcp_server" / "__init__.py").read_bytes() == b"# server"
-        assert (dest / "scripts" / "dcc-mcp-server.exe").read_bytes() == b"server-bin"
+        assert (dest / "meshy_dcc_server" / "__init__.py").read_bytes() == b"# server"
+        assert (dest / "scripts" / "meshy-dcc-server.exe").read_bytes() == b"server-bin"
 
 
 @pytest.mark.parametrize(
     "metadata_content",
     (
-        b"Metadata-Version: 2.1\nName: dcc-mcp-core\nName: attacker-core\nVersion: 0.19.45\n",
-        b"Metadata-Version: 2.1\nName: dcc-mcp-core\nVersion: 0.19.45\nVersion: 9.9.9\n",
-        b"Metadata-Version: 2.1\nName: dcc-mcp-core\nVersion: not-a-version\n",
-        b"Metadata-Version: 2.1\nName: dcc-mcp-core\nVersion: 0.19.45\n 9.9.9\n",
+        b"Metadata-Version: 2.1\nName: meshy-dcc-core\nName: attacker-core\nVersion: 0.19.45\n",
+        b"Metadata-Version: 2.1\nName: meshy-dcc-core\nVersion: 0.19.45\nVersion: 9.9.9\n",
+        b"Metadata-Version: 2.1\nName: meshy-dcc-core\nVersion: not-a-version\n",
+        b"Metadata-Version: 2.1\nName: meshy-dcc-core\nVersion: 0.19.45\n 9.9.9\n",
     ),
 )
 def test_verify_core_wheel_rejects_ambiguous_or_invalid_identity_headers(tmp_path, metadata_content):
@@ -492,7 +492,7 @@ def test_verify_core_wheel_rejects_ambiguous_or_invalid_identity_headers(tmp_pat
         tmp_path,
         "0.19.45",
         "cp38-abi3-win_amd64",
-        {"dcc_mcp_core/__init__.py": b"# core\n"},
+        {"meshy_dcc_core/__init__.py": b"# core\n"},
         metadata_content=metadata_content,
     )
 
@@ -512,8 +512,8 @@ class TestGenerateModFile:
         assert "PLUG_IN_PATH+:=plug-ins" in lines[2]
 
     def test_absolute_path(self):
-        content = assemble_mod.generate_mod_file("0.2.2", "win64", path="C:\\tools\\dcc-mcp-maya")
-        assert "C:\\tools\\dcc-mcp-maya" in content
+        content = assemble_mod.generate_mod_file("0.2.2", "win64", path="C:\\tools\\meshy-dcc-maya")
+        assert "C:\\tools\\meshy-dcc-maya" in content
 
     def test_macos_versions(self):
         content = assemble_mod.generate_mod_file("0.2.2", "macos")
@@ -531,7 +531,7 @@ class TestGenerateModuleInfo:
             bundled_server_version="0.18.21",
         )
         info = json.loads(content)
-        assert info["name"] == "dcc_mcp_maya"
+        assert info["name"] == "meshy_dcc_maya"
         assert info["version"] == "0.2.2"
         assert info["adapter_version"] == "0.2.2"
         assert info["embedded_core_version"] == "0.19.4"
@@ -554,10 +554,10 @@ class TestPackagingReadmes:
     def test_module_readmes_document_bundled_sidecar_runtime(self):
         for name in ("README.txt", "README-pipeline.txt"):
             text = (PROJECT_ROOT / "packaging" / name).read_text(encoding="utf-8")
-            assert "dcc-mcp-server sidecar binary" in text
+            assert "meshy-dcc-server sidecar binary" in text
             assert "bundled" in text.lower()
-            assert "DCC_MCP_SERVER_BIN" in text
-            assert "DCC_MCP_MAYA_SIDECAR=0" in text
+            assert "MESHY_DCC_SERVER_BIN" in text
+            assert "MESHY_DCC_MAYA_SIDECAR=0" in text
             assert "resolve_sidecar_binary" in text
 
 
@@ -567,14 +567,14 @@ class TestPackagingInstallers:
         token_match = re.search(r'for /f "tokens=(\d+)" %%v', installer)
 
         assert token_match is not None
-        generated_mod_line = "+ MAYAVERSION:2024 PLATFORM:win64 dcc_mcp_maya 0.9.9 ."
+        generated_mod_line = "+ MAYAVERSION:2024 PLATFORM:win64 meshy_dcc_maya 0.9.9 ."
         token_index = int(token_match.group(1)) - 1
         assert generated_mod_line.split()[token_index] == "0.9.9"
 
     def test_windows_installer_removes_legacy_module_descriptor(self):
         installer = (PROJECT_ROOT / "packaging" / "install.bat").read_text(encoding="utf-8")
 
-        assert 'set "LEGACY_MOD_FILE=%MOD_DEST%\\dcc-mcp-maya.mod"' in installer
+        assert 'set "LEGACY_MOD_FILE=%MOD_DEST%\\meshy-dcc-maya.mod"' in installer
         assert 'del /q "%LEGACY_MOD_FILE%"' in installer
 
 
@@ -585,12 +585,12 @@ def _setup_project(tmp_path: Path, core_version: str = "0.15.0") -> Path:
 
     plugin_dir = project / "maya" / "plugin"
     plugin_dir.mkdir(parents=True)
-    (plugin_dir / "dcc_mcp_maya_plugin.py").write_text("# plugin", encoding="utf-8")
+    (plugin_dir / "meshy_dcc_maya_plugin.py").write_text("# plugin", encoding="utf-8")
 
     maya_dir = project / "maya"
     (maya_dir / "userSetup.py").write_text("# userSetup", encoding="utf-8")
 
-    pkg_src = project / "src" / "dcc_mcp_maya"
+    pkg_src = project / "src" / "meshy_dcc_maya"
     pkg_src.mkdir(parents=True)
     (pkg_src / "__init__.py").write_text("# maya package", encoding="utf-8")
 
@@ -608,18 +608,18 @@ def _setup_project(tmp_path: Path, core_version: str = "0.15.0") -> Path:
 
 def _mock_download_and_resolve(_project: Path, _tmp_path: Path):
     abi3_files = {
-        "dcc_mcp_core/__init__.py": b"# abi3 init",
-        "dcc_mcp_core/_core.pyd": b"\x00abi3_core",
-        "dcc_mcp_core/nested/payload.py": b"NESTED_VERIFIED_CORE = True\n",
-        "dcc_mcp_core/skill.py": b"class Skill: pass",
+        "meshy_dcc_core/__init__.py": b"# abi3 init",
+        "meshy_dcc_core/_core.pyd": b"\x00abi3_core",
+        "meshy_dcc_core/nested/payload.py": b"NESTED_VERIFIED_CORE = True\n",
+        "meshy_dcc_core/skill.py": b"class Skill: pass",
     }
 
     def fake_download(version, _platform, dest):
         cp37_files = dict(abi3_files)
-        cp37_files["dcc_mcp_core/_core.pyd"] = b"\x00cp37_core"
+        cp37_files["meshy_dcc_core/_core.pyd"] = b"\x00cp37_core"
         _make_recorded_core_wheel(dest, version, "cp37-cp37m-win_amd64", cp37_files)
         _make_recorded_core_wheel(dest, version, "cp38-abi3-win_amd64", abi3_files)
-        return list(dest.glob("dcc_mcp_core-*.whl"))
+        return list(dest.glob("meshy_dcc_core-*.whl"))
 
     return fake_download
 
@@ -627,10 +627,10 @@ def _mock_download_and_resolve(_project: Path, _tmp_path: Path):
 def _mock_server_download(version, _platform, dest):
     return _make_fake_wheel(
         dest,
-        f"dcc_mcp_server-{version}-py3-none-win_amd64.whl",
+        f"meshy_dcc_server-{version}-py3-none-win_amd64.whl",
         {
-            "dcc_mcp_server/__init__.py": b"def binary_path(): pass\n",
-            f"dcc_mcp_server-{version}.data/scripts/dcc-mcp-server.exe": b"server-bin",
+            "meshy_dcc_server/__init__.py": b"def binary_path(): pass\n",
+            f"meshy_dcc_server-{version}.data/scripts/meshy-dcc-server.exe": b"server-bin",
         },
     )
 
@@ -676,8 +676,8 @@ class TestAssemble:
             version,
             "cp38-abi3-win_amd64",
             {
-                "dcc_mcp_core/__init__.py": foreign_source,
-                "dcc_mcp_core/_core.pyd": b"\x00foreign_core",
+                "meshy_dcc_core/__init__.py": foreign_source,
+                "meshy_dcc_core/_core.pyd": b"\x00foreign_core",
             },
         )
         original_wheel_bytes = {}
@@ -688,8 +688,8 @@ class TestAssemble:
                 core_version,
                 "cp37-cp37m-win_amd64",
                 {
-                    "dcc_mcp_core/__init__.py": original_source,
-                    "dcc_mcp_core/_core.pyd": b"\x00cp37_core",
+                    "meshy_dcc_core/__init__.py": original_source,
+                    "meshy_dcc_core/_core.pyd": b"\x00cp37_core",
                 },
             )
             abi3 = _make_recorded_core_wheel(
@@ -697,8 +697,8 @@ class TestAssemble:
                 core_version,
                 "cp38-abi3-win_amd64",
                 {
-                    "dcc_mcp_core/__init__.py": original_source,
-                    "dcc_mcp_core/_core.pyd": b"\x00abi3_core",
+                    "meshy_dcc_core/__init__.py": original_source,
+                    "meshy_dcc_core/_core.pyd": b"\x00abi3_core",
                 },
             )
             original_wheel_bytes[abi3.name] = abi3.read_bytes()
@@ -719,7 +719,7 @@ class TestAssemble:
         ), patch.object(assemble_mod, "download_server_wheel", side_effect=_mock_server_download):
             result = assemble_mod.assemble(project, "0.2.2", "win64", output)
 
-        assert (result / "python" / "dcc_mcp_core" / "__init__.py").read_bytes() == original_source
+        assert (result / "python" / "meshy_dcc_core" / "__init__.py").read_bytes() == original_source
         provenance = json.loads((result / assemble_mod.CORE_PROVENANCE_PATH).read_text(encoding="utf-8"))
         abi3_record = next(item for item in provenance["source_wheels"] if "abi3" in item["filename"])
         assert abi3_record["sha256"] == hashlib.sha256(original_wheel_bytes[abi3_record["filename"]]).hexdigest()
@@ -733,7 +733,7 @@ class TestAssemble:
 
         def drift_before_provenance(module_dir, *args, **kwargs):
             for root_name in ("python", "python37"):
-                target = module_dir / root_name / "dcc_mcp_core" / "__init__.py"
+                target = module_dir / root_name / "meshy_dcc_core" / "__init__.py"
                 if target.is_file():
                     target.write_bytes(b"FOREIGN_POST_EXTRACTION_CORE = True\n")
             return real_write_provenance(module_dir, *args, **kwargs)
@@ -755,7 +755,7 @@ class TestAssemble:
         real_write_provenance = assemble_mod._write_core_provenance
 
         def replace_before_provenance(module_dir, *args, **kwargs):
-            target = module_dir / root_name / "dcc_mcp_core" / "__init__.py"
+            target = module_dir / root_name / "meshy_dcc_core" / "__init__.py"
             replacement = target.with_name("replacement.py")
             replacement.write_bytes(target.read_bytes())
             replacement.replace(target)
@@ -779,7 +779,7 @@ class TestAssemble:
         alias = tmp_path / f"{root_name}-external-alias.py"
 
         def hardlink_before_bind(module_dir, expected_roots):
-            target = module_dir / root_name / "dcc_mcp_core" / "__init__.py"
+            target = module_dir / root_name / "meshy_dcc_core" / "__init__.py"
             os.link(target, alias)
             return real_bind(module_dir, expected_roots)
 
@@ -803,7 +803,7 @@ class TestAssemble:
         preserved = tmp_path / f"{root_name}-preserved-core"
 
         def replace_root_with_directory_link(module_dir, expected_roots):
-            core_root = module_dir / root_name / "dcc_mcp_core"
+            core_root = module_dir / root_name / "meshy_dcc_core"
             core_root.replace(preserved)
             if os.name == "nt":
                 result = subprocess.run(
@@ -837,7 +837,7 @@ class TestAssemble:
         preserved = tmp_path / f"{root_name}-preserved-nested-before-bind"
 
         def replace_nested_before_bind(module_dir, expected_roots):
-            nested = module_dir / root_name / "dcc_mcp_core" / "nested"
+            nested = module_dir / root_name / "meshy_dcc_core" / "nested"
             _replace_with_directory_link(nested, preserved)
             return real_bind(module_dir, expected_roots)
 
@@ -867,7 +867,7 @@ class TestAssemble:
                 project, "0.2.2", "win64", output, _with_core_contract=True
             )
 
-        nested = module_dir / root_name / "dcc_mcp_core" / "nested"
+        nested = module_dir / root_name / "meshy_dcc_core" / "nested"
         preserved = tmp_path / f"{root_name}-preserved-nested-recapture"
         _replace_with_directory_link(nested, preserved)
 
@@ -892,7 +892,7 @@ class TestAssemble:
                 project, "0.2.2", "win64", output, _with_core_contract=True
             )
 
-        nested = module_dir / root_name / "dcc_mcp_core" / "nested"
+        nested = module_dir / root_name / "meshy_dcc_core" / "nested"
         preserved = tmp_path / f"{root_name}-preserved-nested-before-archive"
         _replace_with_directory_link(nested, preserved)
 
@@ -924,7 +924,7 @@ class TestAssemble:
 
         def mutate_around_archive(*args, **kwargs):
             nonlocal mutated
-            nested = module_dir / root_name / "dcc_mcp_core" / "nested"
+            nested = module_dir / root_name / "meshy_dcc_core" / "nested"
             if mutation_timing == "before":
                 _replace_with_directory_link(nested, preserved)
             archive_path = real_make_archive(*args, **kwargs)
@@ -953,16 +953,16 @@ class TestAssemble:
         ):
             result = assemble_mod.assemble(project, "0.2.2", "win64", output)
 
-        assert (result / "python" / "dcc_mcp_core" / "__init__.py").exists()
-        assert (result / "python" / "dcc_mcp_core" / "_core.pyd").exists()
-        assert (result / "python" / "dcc_mcp_server" / "__init__.py").exists()
-        assert (result / "python" / "scripts" / "dcc-mcp-server.exe").exists()
-        assert (result / "python" / "dcc_mcp_maya" / "__init__.py").exists()
-        assert (result / "python37" / "dcc_mcp_core" / "__init__.py").exists()
-        assert (result / "python37" / "dcc_mcp_core" / "_core.pyd").read_bytes() == b"\x00cp37_core"
-        assert (result / "python37" / "dcc_mcp_server" / "__init__.py").exists()
-        assert (result / "python37" / "scripts" / "dcc-mcp-server.exe").exists()
-        assert (result / "python37" / "dcc_mcp_maya" / "__init__.py").exists()
+        assert (result / "python" / "meshy_dcc_core" / "__init__.py").exists()
+        assert (result / "python" / "meshy_dcc_core" / "_core.pyd").exists()
+        assert (result / "python" / "meshy_dcc_server" / "__init__.py").exists()
+        assert (result / "python" / "scripts" / "meshy-dcc-server.exe").exists()
+        assert (result / "python" / "meshy_dcc_maya" / "__init__.py").exists()
+        assert (result / "python37" / "meshy_dcc_core" / "__init__.py").exists()
+        assert (result / "python37" / "meshy_dcc_core" / "_core.pyd").read_bytes() == b"\x00cp37_core"
+        assert (result / "python37" / "meshy_dcc_server" / "__init__.py").exists()
+        assert (result / "python37" / "scripts" / "meshy-dcc-server.exe").exists()
+        assert (result / "python37" / "meshy_dcc_maya" / "__init__.py").exists()
         info = json.loads((result / "module-info.json").read_text(encoding="utf-8"))
         assert info["adapter_version"] == "0.2.2"
         assert info["embedded_core_version"] == "0.15.0"
@@ -970,7 +970,7 @@ class TestAssemble:
         assert info["min_core_version"] == "0.15.0"
         assert info["max_core_version_exclusive"] == "0.21.0"
 
-        mod_content = (result / "dcc_mcp_maya.mod").read_text(encoding="utf-8")
+        mod_content = (result / "meshy_dcc_maya.mod").read_text(encoding="utf-8")
         assert "MAYAVERSION:2022" in mod_content
         assert "PYTHONPATH+:=python37" in mod_content
         assert "PYTHONPATH+:=python" in mod_content
@@ -989,7 +989,7 @@ class TestAssemble:
         ):
             result = assemble_mod.assemble(project, "0.2.2", "win64", output)
 
-        assert (result / "plug-ins" / "dcc_mcp_maya_plugin.py").exists()
+        assert (result / "plug-ins" / "meshy_dcc_maya_plugin.py").exists()
         assert (result / "scripts" / "userSetup.py").exists()
 
 
@@ -1093,7 +1093,7 @@ class TestMain:
         assert any("0.2.2-win64-pipeline.zip" in n for n in names), f"Pipeline ZIP not found in {names}"
         for zip_file in zip_files:
             with zipfile.ZipFile(zip_file) as zf:
-                info = json.loads(zf.read("dcc-mcp-maya/module-info.json").decode())
+                info = json.loads(zf.read("meshy-dcc-maya/module-info.json").decode())
             assert info["adapter_version"] == "0.2.2"
             assert info["embedded_core_version"] == "0.15.0"
             assert info["bundled_server_version"] == "0.15.0"
@@ -1114,7 +1114,7 @@ class TestMain:
             nonlocal mutated
             if not mutated:
                 module_dir = Path(kwargs["root_dir"]) / kwargs["base_dir"]
-                target = module_dir / root_name / "dcc_mcp_core" / "__init__.py"
+                target = module_dir / root_name / "meshy_dcc_core" / "__init__.py"
                 os.link(target, alias)
                 alias.write_bytes(foreign)
                 mutated = True
@@ -1147,20 +1147,20 @@ class TestMain:
         assert alias.read_bytes() == foreign
 
     def test_both_release_zips_preserve_core_provenance_and_validate(self, tmp_path):
-        from dcc_mcp_maya import install
+        from meshy_dcc_maya import install
 
         project = _setup_project(tmp_path, install.MIN_CORE_VERSION)
         output = tmp_path / "output"
 
         def recorded_download(version, _platform, dest):
             common = {
-                "dcc_mcp_core/__init__.py": b"# recorded core\n",
-                "dcc_mcp_core/skill.py": b"class Skill: pass\n",
+                "meshy_dcc_core/__init__.py": b"# recorded core\n",
+                "meshy_dcc_core/skill.py": b"class Skill: pass\n",
             }
             cp37 = dict(common)
-            cp37["dcc_mcp_core/_core.pyd"] = b"cp37-core"
+            cp37["meshy_dcc_core/_core.pyd"] = b"cp37-core"
             abi3 = dict(common)
-            abi3["dcc_mcp_core/_core.pyd"] = b"abi3-core"
+            abi3["meshy_dcc_core/_core.pyd"] = b"abi3-core"
             return [
                 _make_recorded_core_wheel(dest, version, "cp37-cp37m-win_amd64", cp37),
                 _make_recorded_core_wheel(dest, version, "cp38-abi3-win_amd64", abi3),
@@ -1194,8 +1194,8 @@ class TestMain:
             normalized = install._validate_module_zip(zip_file)
             assert "core-provenance.json" in normalized
             with zipfile.ZipFile(zip_file) as archive:
-                provenance = json.loads(archive.read("dcc-mcp-maya/core-provenance.json"))
-            assert provenance["name"] == "dcc-mcp-core"
+                provenance = json.loads(archive.read("meshy-dcc-maya/core-provenance.json"))
+            assert provenance["name"] == "meshy-dcc-core"
             assert provenance["version"] == install.MIN_CORE_VERSION
             assert set(provenance["roots"]) == {"python", "python37"}
             assert all(root["files"] for root in provenance["roots"].values())
@@ -1219,10 +1219,10 @@ class TestAssembleLive:
         output.mkdir()
         result = assemble_mod.assemble(PROJECT_ROOT, "0.2.2", "win64", output)
 
-        assert (result / "dcc_mcp_maya.mod").exists()
-        assert (result / "python" / "dcc_mcp_core" / "__init__.py").exists()
-        assert (result / "python" / "dcc_mcp_core" / "_core.pyd").exists()
-        assert (result / "python" / "dcc_mcp_maya" / "__init__.py").exists()
-        assert (result / "plug-ins" / "dcc_mcp_maya_plugin.py").exists()
+        assert (result / "meshy_dcc_maya.mod").exists()
+        assert (result / "python" / "meshy_dcc_core" / "__init__.py").exists()
+        assert (result / "python" / "meshy_dcc_core" / "_core.pyd").exists()
+        assert (result / "python" / "meshy_dcc_maya" / "__init__.py").exists()
+        assert (result / "plug-ins" / "meshy_dcc_maya_plugin.py").exists()
         assert (result / "scripts" / "userSetup.py").exists()
-        assert (result / "python37" / "dcc_mcp_core" / "_core.pyd").exists()
+        assert (result / "python37" / "meshy_dcc_core" / "_core.pyd").exists()

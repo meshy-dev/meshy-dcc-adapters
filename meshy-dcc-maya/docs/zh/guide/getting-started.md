@@ -12,21 +12,21 @@
 将包安装到 Maya 的 Python 解释器中：
 
 ```bash
-mayapy -m pip install dcc-mcp-maya
+mayapy -m pip install meshy-dcc-maya
 ```
 
 Windows 指定 Maya 版本的示例：
 
 ```bash
-"C:\Program Files\Autodesk\Maya2024\bin\mayapy.exe" -m pip install dcc-mcp-maya
+"C:\Program Files\Autodesk\Maya2024\bin\mayapy.exe" -m pip install meshy-dcc-maya
 ```
 
 ## 第二步 — 加载 Maya 插件
 
-打开 Maya，然后加载 `dcc_mcp_maya_plugin.py`：
+打开 Maya，然后加载 `meshy_dcc_maya_plugin.py`：
 
 1. 打开 **窗口 > 设置/首选项 > 插件管理器**。
-2. 找到或浏览到 `maya/plugin/dcc_mcp_maya_plugin.py`。
+2. 找到或浏览到 `maya/plugin/meshy_dcc_maya_plugin.py`。
 3. 勾选 **已加载**。
 4. 如果希望每次打开 Maya 自动启动 MCP，勾选 **自动加载**。
 
@@ -46,7 +46,7 @@ Windows 指定 Maya 版本的示例：
 {
   "mcpServers": {
     "maya": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -65,7 +65,7 @@ Windows 指定 Maya 版本的示例：
 ```json
 {
   "maya": {
-    "url": "http://127.0.0.1:9765/mcp"
+    "url": "http://127.0.0.1:19765/mcp"
   }
 }
 ```
@@ -75,7 +75,7 @@ Windows 指定 Maya 版本的示例：
 插件模式为 MCP 宿主暴露一个 gateway 端点：
 
 ```
-http://127.0.0.1:9765/mcp
+http://127.0.0.1:19765/mcp
 ```
 
 ## 第四步 — 执行第一个 Action
@@ -95,15 +95,15 @@ Agent 应先发现工具、加载需要的 skill（例如 `maya-primitives` 和
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DCC_MCP_MAYA_PORT` | 操作系统分配 | MCP 实例的可选固定 TCP 端口 |
-| `DCC_MCP_MAYA_SERVER_NAME` | `maya-mcp` | MCP `initialize` 响应中显示的名称 |
-| `DCC_MCP_MAYA_SKILL_PATHS` | _(空)_ | 额外 skill 搜索根目录（Windows 用 `;`，Unix 用 `:`）；Rez 可指向 `{root}/skills`，其子目录是各个 skill 包 |
-| `DCC_MCP_GATEWAY_PORT` | 插件模式为 `9765` | MCP 宿主连接的本机 gateway 端口 |
+| `MESHY_DCC_MAYA_PORT` | 操作系统分配 | MCP 实例的可选固定 TCP 端口 |
+| `MESHY_DCC_MAYA_SERVER_NAME` | `maya-mcp` | MCP `initialize` 响应中显示的名称 |
+| `MESHY_DCC_MAYA_SKILL_PATHS` | _(空)_ | 额外 skill 搜索根目录（Windows 用 `;`，Unix 用 `:`）；Rez 可指向 `{root}/skills`，其子目录是各个 skill 包 |
+| `MESHY_DCC_GATEWAY_PORT` | 插件模式为 `19765` | MCP 宿主连接的本机 gateway 端口 |
 
 ## 停止服务器
 
 从插件管理器卸载插件即可。若你是手动启动 Python server，则运行
-`import dcc_mcp_maya; dcc_mcp_maya.stop_server()`。
+`import meshy_dcc_maya; meshy_dcc_maya.stop_server()`。
 
 ## 手动直连服务器
 
@@ -111,17 +111,17 @@ Agent 应先发现工具、加载需要的 skill（例如 `maya-primitives` 和
 传入 UI dispatcher，确保 `affinity: main` 工具在 Maya 主线程执行：
 
 ```python
-from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump
-import dcc_mcp_maya
+from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump
+import meshy_dcc_maya
 
 dispatcher = MayaUiDispatcher()
 MayaUiPump(dispatcher).install()
-handle = dcc_mcp_maya.start_server(host_dispatcher=dispatcher)
+handle = meshy_dcc_maya.start_server(host_dispatcher=dispatcher)
 print(handle.mcp_url())   # 操作系统分配的实例直连地址
 ```
 
-Agent 通常连接稳定网关 `http://127.0.0.1:9765/mcp`；需要实例直连地址时运行
-`dcc-mcp-cli list`。
+Agent 通常连接稳定网关 `http://127.0.0.1:19765/mcp`；需要实例直连地址时运行
+`meshy-dcc list`。
 
 ## 下一步
 

@@ -25,7 +25,7 @@ def _exec_user_setup(monkeypatch, cmds_module, extra_modules=None):
         if name.startswith("maya."):
             setattr(maya_module, name.split(".", 1)[1], module)
 
-    spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_user_setup", USER_SETUP_PATH)
+    spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_user_setup", USER_SETUP_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -61,12 +61,12 @@ def _failures(error_dir):
 
 
 def _isolate_error_dir(monkeypatch, tmp_path):
-    monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_ERROR_DIR", str(tmp_path))
+    monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_ERROR_DIR", str(tmp_path))
     # ``_apply_default_env`` uses ``os.environ.setdefault``; pre-seeding the two
     # ports keeps the deferred callback from leaking them into later tests,
     # which would make port-resolution assertions order-dependent.
-    monkeypatch.setenv("DCC_MCP_MAYA_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+    monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
     return tmp_path
 
 
@@ -77,7 +77,7 @@ def test_user_setup_uses_maya_lowest_priority_queue(monkeypatch, tmp_path) -> No
 
     assert len(scheduled) == 1
     callback, kwargs = scheduled[0]
-    assert callback is module._load_dcc_mcp_maya
+    assert callback is module._load_meshy_dcc_maya
     assert kwargs == {"lowestPriority": True}
 
 
@@ -156,14 +156,14 @@ def test_user_setup_reports_unimportable_adapter(monkeypatch, tmp_path) -> None:
     cmds_module, scheduled, warnings = _stub_cmds()
     _exec_user_setup(monkeypatch, cmds_module)
 
-    monkeypatch.setitem(sys.modules, "dcc_mcp_maya", None)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_maya", None)
     callback, _ = scheduled[0]
     callback()
 
     records = _failures(error_dir)
     assert [record["stage"] for record in records] == ["import"]
     assert issubclass(getattr(builtins, records[0]["error_type"]), ImportError)
-    assert warnings[0].startswith("dcc-mcp-maya auto-load failed")
+    assert warnings[0].startswith("meshy-dcc-maya auto-load failed")
 
 
 def test_user_setup_is_silent_outside_maya(monkeypatch, tmp_path) -> None:
@@ -171,7 +171,7 @@ def test_user_setup_is_silent_outside_maya(monkeypatch, tmp_path) -> None:
     error_dir = _isolate_error_dir(monkeypatch, tmp_path)
     monkeypatch.setitem(sys.modules, "maya", None)
 
-    spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_user_setup", USER_SETUP_PATH)
+    spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_user_setup", USER_SETUP_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -235,9 +235,9 @@ def _stub_openmaya(display_warnings):
 
 
 def _install_adapter_stub(monkeypatch, *, load_side_effect=None):
-    """Inject a fake ``dcc_mcp_maya.install`` so only the load phase varies."""
+    """Inject a fake ``meshy_dcc_maya.install`` so only the load phase varies."""
     calls = []
-    install_module = ModuleType("dcc_mcp_maya.install")
+    install_module = ModuleType("meshy_dcc_maya.install")
 
     def bootstrap_user_setup(defer=True):
         calls.append({"defer": defer})
@@ -245,16 +245,16 @@ def _install_adapter_stub(monkeypatch, *, load_side_effect=None):
             raise load_side_effect
 
     install_module.bootstrap_user_setup = bootstrap_user_setup
-    package = ModuleType("dcc_mcp_maya")
+    package = ModuleType("meshy_dcc_maya")
     package.__path__ = []  # mark as a package so submodule imports resolve
     package.install = install_module
-    monkeypatch.setitem(sys.modules, "dcc_mcp_maya", package)
-    monkeypatch.setitem(sys.modules, "dcc_mcp_maya.install", install_module)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_maya", package)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_maya.install", install_module)
     return calls
 
 
 def _install_core_stub(monkeypatch, core_records, *, with_capture=True):
-    """Inject a fake ``dcc_mcp_core`` exposing the bootstrap-error entry points.
+    """Inject a fake ``meshy_dcc_core`` exposing the bootstrap-error entry points.
 
     Mirrors the two behaviours the dedupe depends on:
     ``capture_bootstrap_errors`` records and then re-raises.
@@ -263,7 +263,7 @@ def _install_core_stub(monkeypatch, core_records, *, with_capture=True):
     ``capture_bootstrap_errors`` entirely: importing that symbol from it
     raises, so nothing is captured and the local record must stay.
     """
-    core_module = ModuleType("dcc_mcp_core")
+    core_module = ModuleType("meshy_dcc_core")
     core_module.__version__ = "4.5.6"
 
     def record_bootstrap_error(dcc_name, exc, **kwargs):
@@ -280,13 +280,13 @@ def _install_core_stub(monkeypatch, core_records, *, with_capture=True):
     core_module.record_bootstrap_error = record_bootstrap_error
     if with_capture:
         core_module.capture_bootstrap_errors = capture_bootstrap_errors
-    monkeypatch.setitem(sys.modules, "dcc_mcp_core", core_module)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_core", core_module)
     return core_module
 
 
 def _stub_versions(monkeypatch, *, adapter="1.2.3", core="4.5.6"):
     """Pin the version provenance a record is required to carry."""
-    for name, version in (("dcc_mcp_maya", adapter), ("dcc_mcp_core", core)):
+    for name, version in (("meshy_dcc_maya", adapter), ("meshy_dcc_core", core)):
         module = ModuleType(name)
         module.__version__ = version
         monkeypatch.setitem(sys.modules, name, module)
@@ -314,7 +314,7 @@ def test_failure_is_mirrored_to_the_maya_status_line(monkeypatch, tmp_path) -> N
         raise OSError("status line check")
 
     monkeypatch.setattr(module, "_apply_default_env", boom)
-    module._load_dcc_mcp_maya()
+    module._load_meshy_dcc_maya()
 
     assert cmds_module._display_warnings
     assert "status line check" in cmds_module._display_warnings[0]
@@ -328,7 +328,7 @@ def test_silent_noop_load_is_reported(monkeypatch, tmp_path) -> None:
     module = _exec_user_setup(monkeypatch, cmds_module)
     _install_adapter_stub(monkeypatch)
 
-    module._load_dcc_mcp_maya()
+    module._load_meshy_dcc_maya()
 
     records = _failures(error_dir)
     assert "plugin_verify" in [record["stage"] for record in records]
@@ -402,7 +402,7 @@ def test_failure_record_carries_the_exception_traceback(monkeypatch, tmp_path) -
         raise ValueError("raised inside the load")
 
     monkeypatch.setattr(module, "_apply_default_env", raises)
-    module._load_dcc_mcp_maya()
+    module._load_meshy_dcc_maya()
 
     records = _failures(error_dir)
     assert records[0]["traceback"]
@@ -431,7 +431,7 @@ def test_failure_record_names_the_versions_that_failed(monkeypatch, tmp_path) ->
     Core stamps ``adapter_version`` / ``core_version`` / ``dcc_type`` onto its
     own host-error records. The stages core does *not* cover stay here, so
     they must carry the same provenance or an operator has to guess which
-    ``dcc_mcp_maya`` and which ``dcc_mcp_core`` produced the trace.
+    ``meshy_dcc_maya`` and which ``meshy_dcc_core`` produced the trace.
     """
     error_dir = _isolate_error_dir(monkeypatch, tmp_path)
     _stub_versions(monkeypatch)
@@ -469,13 +469,13 @@ def test_plugin_load_failure_is_recorded_once_in_core_schema(monkeypatch, tmp_pa
     def load_failing_inside_core_capture(_bootstrap_user_setup):
         # Reproduces ``bootstrap_user_setup(defer=False)``: the failure is
         # raised from inside core's capture, so core owns the record.
-        from dcc_mcp_core import capture_bootstrap_errors
+        from meshy_dcc_core import capture_bootstrap_errors
 
         with capture_bootstrap_errors("maya", adapter_version="1.2.3", phase="userSetup", log_dir=str(error_dir)):
             raise RuntimeError("loadPlugin exploded")
 
     monkeypatch.setattr(module, "_load_via_bootstrap", load_failing_inside_core_capture)
-    module._load_dcc_mcp_maya()
+    module._load_meshy_dcc_maya()
 
     assert _failures(error_dir) == [], "core already persisted this failure"
     assert len(core_records) == 1, "one failure must mean one record"
@@ -508,10 +508,10 @@ def test_plugin_load_failure_is_recorded_locally_when_core_cannot_capture(monkey
         # Reproduces core < 0.19.90: ``install.bootstrap_user_setup`` cannot
         # even import the capture helper, so the ImportError escapes as a
         # ``plugin_load`` failure that no capture ever saw.
-        from dcc_mcp_core import capture_bootstrap_errors  # noqa: F401
+        from meshy_dcc_core import capture_bootstrap_errors  # noqa: F401
 
     monkeypatch.setattr(module, "_load_via_bootstrap", load_failing_before_any_capture)
-    module._load_dcc_mcp_maya()
+    module._load_meshy_dcc_maya()
 
     assert [record["stage"] for record in _failures(error_dir)] == ["plugin_load"]
     assert core_records == [], "a core that cannot capture records nothing"
@@ -521,7 +521,7 @@ def test_plugin_load_failure_is_recorded_locally_when_core_cannot_capture(monkey
 def test_successful_load_leaves_no_failure_record(monkeypatch, tmp_path) -> None:
     """A working load must not leave a ``failed`` record behind.
 
-    The JSONL is shared with ``dcc_mcp_maya._bootstrap_watch``, which
+    The JSONL is shared with ``meshy_dcc_maya._bootstrap_watch``, which
     legitimately appends a ``finished`` event, so this asserts on the *status*
     rather than on the file being empty. A stale ``failed`` record on the happy
     path is what made this channel untrustworthy: an operator greps the
@@ -532,7 +532,7 @@ def test_successful_load_leaves_no_failure_record(monkeypatch, tmp_path) -> None
     module = _exec_user_setup(monkeypatch, cmds_module)
     _install_adapter_stub(monkeypatch)
 
-    module._load_dcc_mcp_maya()
+    module._load_meshy_dcc_maya()
 
     assert [record for record in _failures(error_dir) if record.get("status") == "failed"] == []
     assert cmds_module._warnings == []
@@ -540,12 +540,12 @@ def test_successful_load_leaves_no_failure_record(monkeypatch, tmp_path) -> None
 
 def test_bootstrap_error_dir_defaults_to_the_receipts_tree(monkeypatch, tmp_path) -> None:
     """With no override the records land in the shared receipts directory."""
-    monkeypatch.setenv("DCC_MCP_MAYA_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
-    monkeypatch.delenv("DCC_MCP_MAYA_BOOTSTRAP_ERROR_DIR", raising=False)
+    monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
+    monkeypatch.delenv("MESHY_DCC_MAYA_BOOTSTRAP_ERROR_DIR", raising=False)
     module = _exec_user_setup(monkeypatch, _stub_cmds()[0])
 
-    assert module._bootstrap_error_dir() == Path.home() / ".dcc-mcp" / "receipts" / "bootstrap-errors"
+    assert module._bootstrap_error_dir() == Path.home() / ".meshy-dcc" / "receipts" / "bootstrap-errors"
 
 
 def test_failure_records_use_lf_line_endings(monkeypatch, tmp_path) -> None:

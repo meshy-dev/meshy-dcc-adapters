@@ -8,11 +8,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from conftest import load_and_call
-from dcc_mcp_core import scan_and_load_strict, yaml_loads
-from dcc_mcp_core.recipes import register_recipes_tools
+from meshy_dcc_core import scan_and_load_strict, yaml_loads
+from meshy_dcc_core.recipes import register_recipes_tools
 from jsonschema import Draft202012Validator, ValidationError
 
-SKILLS_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills"
 EXPECTED_RECIPES = {
     "auto_uv_for_export",
     "loft_hull_from_sections",

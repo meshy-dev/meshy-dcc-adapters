@@ -19,9 +19,9 @@ runtime_root = 'python37' if sys.version_info[:2] == (3, 7) else 'python'
 sys.path.insert(0, str(root / runtime_root))
 assert importlib.util.find_spec('packaging') is None
 assert importlib.util.find_spec('pip') is None
-import dcc_mcp_core, dcc_mcp_maya
-from dcc_mcp_maya import install
-for module in (dcc_mcp_core, dcc_mcp_maya, install):
+import meshy_dcc_core, meshy_dcc_maya
+from meshy_dcc_maya import install
+for module in (meshy_dcc_core, meshy_dcc_maya, install):
     assert str(pathlib.Path(module.__file__).resolve()).startswith(str(root))
 assert not any(name == 'packaging' or name.startswith('packaging.') for name in sys.modules)
 loaded = []
@@ -34,9 +34,9 @@ maya.cmds = cmds
 sys.modules['maya'] = maya
 sys.modules['maya.cmds'] = cmds
 runpy.run_path(str(root / 'scripts' / 'userSetup.py'))
-assert loaded == ['dcc_mcp_maya_plugin'], loaded
+assert loaded == ['meshy_dcc_maya_plugin'], loaded
 assert not any(name == 'packaging' or name.startswith('packaging.') for name in sys.modules)
-print(json.dumps({'bootstrap': 'PASS', 'maya_origin': install.__file__, 'core_version': dcc_mcp_core.__version__, 'host': 'modeled; no licensed acceptance'}))
+print(json.dumps({'bootstrap': 'PASS', 'maya_origin': install.__file__, 'core_version': meshy_dcc_core.__version__, 'host': 'modeled; no licensed acceptance'}))
 """
 
 
@@ -44,7 +44,7 @@ def test_bootstrap_import_does_not_load_packaging():
     script = r"""
 import importlib.abc, sys
 sys.path.insert(0, sys.argv[1])
-import dcc_mcp_maya
+import meshy_dcc_maya
 for name in list(sys.modules):
     if name == 'packaging' or name.startswith('packaging.'):
         del sys.modules[name]
@@ -53,7 +53,7 @@ class NoLifecycleDependencies(importlib.abc.MetaPathFinder):
         if fullname == 'packaging' or fullname.startswith('packaging.'):
             raise AssertionError('bootstrap imported lifecycle dependency: ' + fullname)
 sys.meta_path.insert(0, NoLifecycleDependencies())
-from dcc_mcp_maya.install import bootstrap_user_setup
+from meshy_dcc_maya.install import bootstrap_user_setup
 assert callable(bootstrap_user_setup)
 """
     result = subprocess.run(
@@ -70,7 +70,7 @@ assert callable(bootstrap_user_setup)
 @pytest.mark.parametrize("variant", ["portable", "pipeline"])
 def test_actual_module_zip_bootstraps_without_site_or_pip(variant, tmp_path):
     """Run against sealed real ZIPs supplied by the release build gate."""
-    location = os.environ.get("DCC_MCP_MAYA_TEST_MODULE_ZIPS")
+    location = os.environ.get("MESHY_DCC_MAYA_TEST_MODULE_ZIPS")
     if not location:
         pytest.skip("requires real portable/pipeline ZIP outputs")
     payloads = list((Path(location) / variant).glob("*.zip"))
@@ -78,7 +78,7 @@ def test_actual_module_zip_bootstraps_without_site_or_pip(variant, tmp_path):
     with zipfile.ZipFile(payloads[0]) as archive:
         archive.extractall(tmp_path)
     result = subprocess.run(
-        [sys.executable, "-I", "-S", "-c", OFFLINE_BOOTSTRAP, str(tmp_path / "dcc-mcp-maya")],
+        [sys.executable, "-I", "-S", "-c", OFFLINE_BOOTSTRAP, str(tmp_path / "meshy-dcc-maya")],
         capture_output=True,
         universal_newlines=True,
         timeout=30,

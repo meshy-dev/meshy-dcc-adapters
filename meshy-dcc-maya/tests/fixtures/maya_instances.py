@@ -2,7 +2,7 @@
 
 This module provides utilities for launching multiple standalone mayapy processes,
 each running an independent MCP server on different ports, but all competing for
-the same gateway port (default 9765). Used to test:
+the same gateway port (default 19765). Used to test:
 
 - Gateway failover (RTO < 15s, backup elevation < 5s)
 - Multi-instance discovery (50+ instances)
@@ -75,7 +75,7 @@ class MayaInstanceConfig:
 
     instance_id: str  # Unique identifier (e.g., "maya-2025-01")
     port: int  # Local HTTP port for this instance
-    gateway_port: int  # Shared gateway port (default 9765)
+    gateway_port: int  # Shared gateway port (default 19765)
     registry_dir: str  # Shared registry directory
     maya_version: str  # Maya version string (e.g., "2025")
     scene_file: Optional[str] = None  # Optional scene file to report
@@ -87,7 +87,7 @@ class MayaInstanceConfig:
 class MayaInstanceManager:
     """Manages lifecycle of multiple standalone Maya MCP instances."""
 
-    def __init__(self, gateway_port: int = 9765, registry_dir: Optional[str] = None):
+    def __init__(self, gateway_port: int = 19765, registry_dir: Optional[str] = None):
         """Initialize instance manager.
 
         Args:
@@ -160,10 +160,10 @@ class MayaInstanceManager:
 
             # Setup environment
             env = os.environ.copy()
-            env["DCC_MCP_GATEWAY_PORT"] = str(config.gateway_port)
-            env["DCC_MCP_REGISTRY_DIR"] = config.registry_dir
-            env["DCC_MCP_MAYA_HOT_RELOAD"] = "1" if config.enable_hot_reload else "0"
-            env["DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER"] = "1" if config.enable_gateway_failover else "0"
+            env["MESHY_DCC_GATEWAY_PORT"] = str(config.gateway_port)
+            env["MESHY_DCC_REGISTRY_DIR"] = config.registry_dir
+            env["MESHY_DCC_MAYA_HOT_RELOAD"] = "1" if config.enable_hot_reload else "0"
+            env["MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER"] = "1" if config.enable_gateway_failover else "0"
 
             if config.env_vars:
                 env.update(config.env_vars)
@@ -337,7 +337,7 @@ try:
     logger.info("Maya initialized for {config.instance_id}")
 
     # Import and start MCP server
-    from dcc_mcp_maya import start_server
+    from meshy_dcc_maya import start_server
 
     handle = start_server(
         port={config.port},
@@ -369,7 +369,7 @@ except Exception as e:
 
 if __name__ == "__main__":
     # Example usage
-    manager = MayaInstanceManager(gateway_port=9765)
+    manager = MayaInstanceManager(gateway_port=19765)
 
     # Create configs for 3 instances (2025, 2024, 2025)
     configs = [

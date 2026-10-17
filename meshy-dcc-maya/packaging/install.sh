@@ -5,12 +5,12 @@ set -e
 MODULE_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "========================================="
-echo " DCC-MCP-Maya Installer"
+echo " Meshy DCC-Maya Installer"
 echo "========================================="
 echo
 
 # -- Read version from pre-generated .mod file --
-VERSION=$(grep -m1 '^+ MAYAVERSION' "$MODULE_DIR/dcc_mcp_maya.mod" | awk '{print $4}')
+VERSION=$(grep -m1 '^+ MAYAVERSION' "$MODULE_DIR/meshy_dcc_maya.mod" | awk '{print $4}')
 VERSION="${VERSION:-unknown}"
 echo " Version: ${VERSION}"
 echo " Module:  ${MODULE_DIR}"
@@ -34,7 +34,7 @@ mkdir -p "$MOD_DEST"
 
 {
     for year in $MAYA_VERSIONS; do
-        echo "+ MAYAVERSION:$year PLATFORM:$PLATFORM dcc_mcp_maya $VERSION $MODULE_DIR"
+        echo "+ MAYAVERSION:$year PLATFORM:$PLATFORM meshy_dcc_maya $VERSION $MODULE_DIR"
         if [ "$year" = "2022" ]; then
             echo "PYTHONPATH+:=python37"
         else
@@ -42,9 +42,9 @@ mkdir -p "$MOD_DEST"
         fi
         echo "PLUG_IN_PATH+:=plug-ins"
     done
-} > "$MOD_DEST/dcc_mcp_maya.mod"
+} > "$MOD_DEST/meshy_dcc_maya.mod"
 
-echo " Generated $MOD_DEST/dcc_mcp_maya.mod"
+echo " Generated $MOD_DEST/meshy_dcc_maya.mod"
 
 # -- Deploy userSetup.py --
 mkdir -p "$SCRIPTS_DEST"
@@ -54,7 +54,7 @@ if [ ! -f "$USERSETUP_DEST" ]; then
     cp "$MODULE_DIR/scripts/userSetup.py" "$USERSETUP_DEST"
     echo " Deployed userSetup.py"
 else
-    if ! grep -q "dcc_mcp_maya" "$USERSETUP_DEST" 2>/dev/null; then
+    if ! grep -q "meshy_dcc_maya" "$USERSETUP_DEST" 2>/dev/null; then
         echo "" >> "$USERSETUP_DEST"
         cat "$MODULE_DIR/scripts/userSetup.py" >> "$USERSETUP_DEST"
         echo " Appended to existing userSetup.py"
@@ -67,9 +67,9 @@ echo
 echo "========================================="
 echo " Installation complete!"
 echo
-echo " .mod file:  $MOD_DEST/dcc_mcp_maya.mod"
+echo " .mod file:  $MOD_DEST/meshy_dcc_maya.mod"
 echo " Module:     $MODULE_DIR"
-echo " Plugin:     $MODULE_DIR/plug-ins/dcc_mcp_maya_plugin.py"
+echo " Plugin:     $MODULE_DIR/plug-ins/meshy_dcc_maya_plugin.py"
 echo
 echo " The plugin will auto-load when Maya starts."
 echo "========================================="

@@ -1,10 +1,10 @@
 """Keep every packaging / docs version claim on one source of truth.
 
-``dcc-mcp-maya`` ships its version through release-please, which bumps
+``meshy-dcc-maya`` ships its version through release-please, which bumps
 ``pyproject.toml`` (``project.version``) and every file carrying the
 ``x-release-please-version`` marker in the same release commit.  A wheel's
 ``.dist-info`` metadata is generated from ``project.version`` while the
-runtime reports ``dcc_mcp_maya.__version__``, so a divergence between those
+runtime reports ``meshy_dcc_maya.__version__``, so a divergence between those
 two files is exactly the "metadata says 0.9.14, the module says 0.9.16"
 failure from the field report.
 
@@ -38,9 +38,9 @@ PYPROJECT = ROOT / "pyproject.toml"
 #: other claim and what ``.github/workflows/version-consistency.yml`` treats as
 #: the source of truth (that job only runs when one of these files changes).
 RELEASE_MANIFEST = ROOT / ".release-please-manifest.json"
-VERSION_MODULE = ROOT / "src" / "dcc_mcp_maya" / "__version__.py"
+VERSION_MODULE = ROOT / "src" / "meshy_dcc_maya" / "__version__.py"
 RELEASE_PLEASE_CONFIG = ROOT / "release-please-config.json"
-SERVER_MODULE = ROOT / "src" / "dcc_mcp_maya" / "server.py"
+SERVER_MODULE = ROOT / "src" / "meshy_dcc_maya" / "server.py"
 
 MARKER = "x-release-please-version"
 VERSION_LITERAL = re.compile(r'^__version__\s*=\s*"(?P<version>[^"]+)"', re.MULTILINE)
@@ -85,7 +85,7 @@ def test_release_please_manages_the_version_module_and_pyproject():
     extra_files = config["packages"]["."]["extra-files"]
     paths = {entry["path"].replace("\\", "/") for entry in extra_files}
 
-    assert "src/dcc_mcp_maya/__version__.py" in paths
+    assert "src/meshy_dcc_maya/__version__.py" in paths
     toml_entry = next(entry for entry in extra_files if entry["path"] == "pyproject.toml")
     assert toml_entry["jsonpath"] == "$.project.version"
 
@@ -111,13 +111,13 @@ def test_every_released_version_claim_matches(path: Path):
 def test_advertised_server_version_comes_from_the_single_source():
     """The MCP ``initialize`` version must not be a hand-copied literal."""
     text = SERVER_MODULE.read_text(encoding="utf-8")
-    assert "from dcc_mcp_maya.__version__ import __version__" in text
+    assert "from meshy_dcc_maya.__version__ import __version__" in text
     assert re.search(r"^DEFAULT_SERVER_VERSION = __version__$", text, re.MULTILINE) is not None
 
 
 def test_managed_file_set_covers_the_known_surfaces():
     """Guard against the release-please file list silently shrinking."""
     relative = {str(path.relative_to(ROOT)).replace("\\", "/") for path in _release_please_files()}
-    assert "src/dcc_mcp_maya/__version__.py" in relative
+    assert "src/meshy_dcc_maya/__version__.py" in relative
     assert "AGENTS.md" in relative
     assert "llms.txt" in relative

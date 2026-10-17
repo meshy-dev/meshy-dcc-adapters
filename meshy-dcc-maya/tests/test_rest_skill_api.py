@@ -40,14 +40,14 @@ import urllib.request
 import pytest
 
 # The plugin manifest module side-effects — silence bundled Maya detection.
-os.environ.setdefault("DCC_MCP_DISABLE_FILE_LOGGING", "1")
+os.environ.setdefault("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
 
 # Ensure we import the local src rather than any installed wheel.
 _SRC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from dcc_mcp_maya.server import MayaMcpServer  # noqa: E402
+from meshy_dcc_maya.server import MayaMcpServer  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -59,7 +59,7 @@ def running_server():
     """Start a Maya MCP server in minimal mode on an ephemeral port.
 
     Gateway is fully disabled so ``publish_capability_snapshot`` takes the
-    no-op branch deterministically (CI may set ``DCC_MCP_GATEWAY_PORT`` and
+    no-op branch deterministically (CI may set ``MESHY_DCC_GATEWAY_PORT`` and
     a non-zero default would otherwise make the "no gateway" test flap).
     """
     server = MayaMcpServer(port=0, enable_gateway_failover=False, gateway_port=0)
@@ -526,7 +526,7 @@ def test_publish_capability_snapshot_is_noop_without_gateway(running_server):
     the in-process dispatcher" without gateway coupling required.
 
     The fixture pins ``gateway_port=0`` so the short-circuit path is
-    deterministic regardless of the ``DCC_MCP_GATEWAY_PORT`` env var that
+    deterministic regardless of the ``MESHY_DCC_GATEWAY_PORT`` env var that
     CI runners may set.
     """
     server, _ = running_server

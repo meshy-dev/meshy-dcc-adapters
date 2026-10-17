@@ -1,8 +1,8 @@
 # Introduction
 
-**dcc-mcp-maya** is the Maya-specific integration layer for the [DCC-MCP](https://github.com/dcc-mcp/dcc-mcp-core) ecosystem.
+**meshy-dcc-maya** is the Maya-specific integration layer for the [Meshy DCC](https://github.com/meshy-dev/meshy-dcc-core) ecosystem.
 
-It makes Maya available through a standards-compliant **MCP Streamable HTTP** surface. Plugin deployments use the Rust `dcc-mcp-server` sidecar as the standard runtime: HTTP and gateway work stay outside Maya, while scene operations are dispatched back through the Maya-safe Qt bridge.
+It makes Maya available through a standards-compliant **MCP Streamable HTTP** surface. Plugin deployments use the Rust `meshy-dcc-server` sidecar as the standard runtime: HTTP and gateway work stay outside Maya, while scene operations are dispatched back through the Maya-safe Qt bridge.
 
 ## Who Is This For?
 
@@ -18,7 +18,7 @@ It makes Maya available through a standards-compliant **MCP Streamable HTTP** su
 ┌─────────────────────────────────────────────────────────┐
 │  Maya (embedded Python)                                  │
 │                                                          │
-│  dcc_mcp_maya_plugin.py                                 │
+│  meshy_dcc_maya_plugin.py                                 │
 │  Qt dispatcher + sidecar bridge                         │
 │                                                          │
 │  ┌─────────────────────────────────────────────────┐   │
@@ -32,7 +32,7 @@ It makes Maya available through a standards-compliant **MCP Streamable HTTP** su
 │  │  MayaHost / dispatcher / skill executor         │   │
 │  └─────────────────────────────────────────────────┘   │
 └─────────────────────────────┬───────────────────────────┘
-                               │  http://127.0.0.1:9765/mcp
+                               │  http://127.0.0.1:19765/mcp
 ┌─────────────────────────────▼───────────────────────────┐
 │  MCP Host  (Claude Desktop / OpenClaw / Cursor / …)      │
 └─────────────────────────────────────────────────────────┘
@@ -81,8 +81,8 @@ Paths are resolved in order (highest priority first):
 
 1. `extra_skill_paths` argument
 2. Built-in skills shipped with this package
-3. `DCC_MCP_MAYA_SKILL_PATHS` environment variable
-4. `DCC_MCP_SKILL_PATHS` environment variable
+3. `MESHY_DCC_MAYA_SKILL_PATHS` environment variable
+4. `MESHY_DCC_SKILL_PATHS` environment variable
 5. Platform default skills directory
 
 Each environment entry is a skill search root: either the skill package itself

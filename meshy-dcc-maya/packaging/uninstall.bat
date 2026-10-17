@@ -2,11 +2,11 @@
 setlocal
 
 echo =========================================
-echo  DCC-MCP-Maya Uninstaller
+echo  Meshy DCC-Maya Uninstaller
 echo =========================================
 echo.
 
-set "MOD_FILE=%USERPROFILE%\Documents\maya\modules\dcc_mcp_maya.mod"
+set "MOD_FILE=%USERPROFILE%\Documents\maya\modules\meshy_dcc_maya.mod"
 
 if not exist "%MOD_FILE%" (
     echo .mod file not found at: %MOD_FILE%

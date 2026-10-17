@@ -17,7 +17,7 @@ mayapy maya_bootstrap.py
 ```
 
 By default the OS assigns a free instance port. Copy the URL printed by the
-bootstrap (or run `dcc-mcp-cli list`), for example:
+bootstrap (or run `meshy-dcc list`), for example:
 
 ```text
 http://127.0.0.1:<assigned-port>/mcp
@@ -39,12 +39,12 @@ Useful environment variables:
 
 | Variable | Default | Use |
 |---|---|---|
-| `DCC_MCP_MAYA_PORT` | OS-assigned | Optional fixed direct MCP port for this `mayapy` process. |
-| `DCC_MCP_GATEWAY_PORT` | `0` in bootstrap | Set `9765` only when you intentionally want gateway registration. |
-| `DCC_MCP_MAYA_SKILL_PATHS` | none | Extra skill roots for custom standalone-safe skills. |
+| `MESHY_DCC_MAYA_PORT` | OS-assigned | Optional fixed direct MCP port for this `mayapy` process. |
+| `MESHY_DCC_GATEWAY_PORT` | `0` in bootstrap | Set `19765` only when you intentionally want gateway registration. |
+| `MESHY_DCC_MAYA_SKILL_PATHS` | none | Extra skill roots for custom standalone-safe skills. |
 
 There is also a runnable example at
-[`examples/standalone/run_maya_mcp.py`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/examples/standalone/run_maya_mcp.py):
+[`examples/standalone/run_maya_mcp.py`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/examples/standalone/run_maya_mcp.py):
 
 ```bash
 mayapy examples/standalone/run_maya_mcp.py
@@ -58,8 +58,8 @@ If you need full control, initialize Maya and attach the standalone dispatcher:
 import threading
 import maya.standalone
 
-from dcc_mcp_maya import start_server, stop_server
-from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+from meshy_dcc_maya import start_server, stop_server
+from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
 maya.standalone.initialize(name="python")
 
@@ -94,8 +94,8 @@ rules:
 Minimal skill script:
 
 ```python
-from dcc_mcp_core.skill import skill_entry
-from dcc_mcp_maya.api import maya_success, maya_from_exception
+from meshy_dcc_core.skill import skill_entry
+from meshy_dcc_maya.api import maya_success, maya_from_exception
 
 
 def create_batch_cube(name: str = "batch_cube") -> dict:
@@ -129,25 +129,25 @@ tools:
           default: batch_cube
 ```
 
-Load custom skills by pointing `DCC_MCP_MAYA_SKILL_PATHS` at the directory that
+Load custom skills by pointing `MESHY_DCC_MAYA_SKILL_PATHS` at the directory that
 contains skill packages:
 
 ```bash
 # Windows PowerShell
-$env:DCC_MCP_MAYA_SKILL_PATHS = "$PWD\examples\standalone\custom-skills"
+$env:MESHY_DCC_MAYA_SKILL_PATHS = "$PWD\examples\standalone\custom-skills"
 mayapy examples/standalone/run_maya_mcp.py
 ```
 
 The repo includes a complete example skill at
-[`examples/standalone/custom-skills/standalone-scene-report`](https://github.com/dcc-mcp/dcc-mcp-maya/tree/main/examples/standalone/custom-skills/standalone-scene-report).
+[`examples/standalone/custom-skills/standalone-scene-report`](https://github.com/meshy-dev/meshy-dcc-maya/tree/main/examples/standalone/custom-skills/standalone-scene-report).
 
 ## Existing Examples
 
-- [`maya_bootstrap.py`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/maya_bootstrap.py) starts the packaged standalone
+- [`maya_bootstrap.py`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/maya_bootstrap.py) starts the packaged standalone
   service.
-- [`examples/standalone/run_maya_mcp.py`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/examples/standalone/run_maya_mcp.py)
+- [`examples/standalone/run_maya_mcp.py`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/examples/standalone/run_maya_mcp.py)
   is a copy-paste service script.
-- [`examples/standalone/custom-skills/standalone-scene-report`](https://github.com/dcc-mcp/dcc-mcp-maya/tree/main/examples/standalone/custom-skills/standalone-scene-report)
+- [`examples/standalone/custom-skills/standalone-scene-report`](https://github.com/meshy-dev/meshy-dcc-maya/tree/main/examples/standalone/custom-skills/standalone-scene-report)
   shows a headless-safe custom skill.
 - `tests/e2e_standalone/` contains real `mayapy` E2E coverage for built-in
   tools and MCP protocol calls.
@@ -156,7 +156,7 @@ The repo includes a complete example skill at
 
 | Symptom | Fix |
 |---|---|
-| MCP host cannot connect | Confirm `mayapy` is running, then refresh the direct URL with `dcc-mcp-cli list`. |
+| MCP host cannot connect | Confirm `mayapy` is running, then refresh the direct URL with `meshy-dcc list`. |
 | Tool needs viewport or modelPanel | Use GUI plugin mode; headless Maya has no interactive viewport. |
-| Custom skill not found | Set `DCC_MCP_MAYA_SKILL_PATHS` to the parent directory of the skill package, then restart the standalone service. |
+| Custom skill not found | Set `MESHY_DCC_MAYA_SKILL_PATHS` to the parent directory of the skill package, then restart the standalone service. |
 | Concurrent calls corrupt scene state | Route all Maya-touching tools through `affinity: main`; `MayaStandaloneDispatcher` serializes them. |

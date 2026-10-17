@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 pytestmark = pytest.mark.integration
 
@@ -31,7 +31,7 @@ class _Handle:
 def _server(scene="/path/to/initial_scene.ma", version="2025"):
     server = object.__new__(MayaMcpServer)
     server._dcc_name = "maya"
-    server._config = SimpleNamespace(gateway_port=9765, scene=scene, dcc_version=version)
+    server._config = SimpleNamespace(gateway_port=19765, scene=scene, dcc_version=version)
     server._handle = _Handle()
     return server
 

@@ -31,7 +31,7 @@ from typing import Any, Dict, Optional  # noqa: F401 — Optional kept for publi
 
 import pytest
 
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 # ---------------------------------------------------------------------------
 # Helpers — keep them short and explicit so the assertions read clearly.
@@ -46,10 +46,10 @@ def _qualified_action_name(skill: str, stem: str) -> str:
 _SKILL_MD = textwrap.dedent("""\
     ---
     name: {name}
-    description: HTTP e2e skill for dcc-mcp-maya regression tests.
+    description: HTTP e2e skill for meshy-dcc-maya regression tests.
     license: MIT
     metadata:
-      dcc-mcp:
+      meshy-dcc:
         dcc: maya
         layer: domain
         version: 1.0.0
@@ -150,7 +150,7 @@ def _initialise(mcp_url: str) -> str:
             "params": {
                 "protocolVersion": "2025-03-26",
                 "capabilities": {},
-                "clientInfo": {"name": "dcc-mcp-maya-http-e2e", "version": "1"},
+                "clientInfo": {"name": "meshy-dcc-maya-http-e2e", "version": "1"},
             },
         },
     )
@@ -232,7 +232,7 @@ def test_http_post_initialize_and_list_tools(running_server, tmp_path):
     """Verify a vanilla ``urllib.request`` client can drive the server.
 
     The dynamic skill's action is registered and callable; ``tools/list``
-    may omit it (dcc-mcp/dcc-mcp-core#702 tracks the advertisement gap),
+    may omit it (upstream core issue 702 tracks the advertisement gap),
     so this test sticks to what MCP guarantees today: the handshake
     succeeds, ``tools/list`` returns a well-formed envelope, and the
     registry-qualified ``tools/call`` dispatches end-to-end.
@@ -284,7 +284,7 @@ def test_custom_skill_registered_and_callable_over_http(running_server, tmp_path
     """Create a skill on disk, start the server, call its tool via HTTP, assert side-effects.
 
     ``tools/list`` currently omits actions registered through
-    ``extra_skill_paths`` (tracked as dcc-mcp/dcc-mcp-core#702). ``tools/call``
+    ``extra_skill_paths`` (tracked as upstream core issue 702). ``tools/call``
     still works over the wire by either bare name or
     ``{skill_snake}__{tool}`` qualified name, so the contract this test
     locks in is: a custom skill *is* callable from a plain HTTP client
@@ -438,9 +438,9 @@ def test_malformed_skill_is_logged_and_does_not_poison_valid_skills(running_serv
         {"http_good_ok": "def main(**kwargs):\n    return {'success': True, 'message': 'good'}\n"},
     )
 
-    caplog.set_level(logging.DEBUG, logger="dcc_mcp_skills")
-    caplog.set_level(logging.DEBUG, logger="dcc_mcp_core")
-    caplog.set_level(logging.DEBUG, logger="dcc_mcp_maya")
+    caplog.set_level(logging.DEBUG, logger="meshy_dcc_skills")
+    caplog.set_level(logging.DEBUG, logger="meshy_dcc_core")
+    caplog.set_level(logging.DEBUG, logger="meshy_dcc_maya")
 
     running_server.register_builtin_actions(
         extra_skill_paths=[str(tmp_path)],
@@ -458,7 +458,7 @@ def test_malformed_skill_is_logged_and_does_not_poison_valid_skills(running_serv
 
     # Healthy skill still reaches the registry — ``tools/call`` by
     # qualified name must succeed even if ``tools/list`` hides it (see
-    # dcc-mcp/dcc-mcp-core#702).
+    # upstream core issue 702).
     qualified_ok = _qualified_action_name("maya-http-e2e-good", "http_good_ok")
     envelope = _extract_envelope(_tools_call(mcp_url, session, qualified_ok, {}))
     assert envelope["success"] is True
@@ -481,17 +481,17 @@ def test_malformed_skill_is_logged_and_does_not_poison_valid_skills(running_serv
 
     # The broken directory name must appear in *some* log line — the exact
     # logger varies by core version, so we search across everything caplog
-    # captured. Upstream tracking issue: dcc-mcp/dcc-mcp-core#701.
+    # captured. Upstream tracking issue: upstream core issue 701.
     captured = "\n".join(record.getMessage() for record in caplog.records)
     if "maya-http-e2e-broken" not in captured:
         pytest.xfail(
             "core scanner silently skipped the malformed skill without emitting a log line — "
-            "tracked as dcc-mcp/dcc-mcp-core#701; flip to assert once core logs every rejection"
+            "tracked as upstream core issue 701; flip to assert once core logs every rejection"
         )
 
 
 def test_strict_scan_raises_on_malformed_skill(tmp_path):
-    """``DCC_MCP_MAYA_STRICT_SKILL_SCAN=1`` should turn silent skips into loud failures.
+    """``MESHY_DCC_MAYA_STRICT_SKILL_SCAN=1`` should turn silent skips into loud failures.
 
     Today core's ``scan_and_load_strict`` still silently ignores folders
     that don't look like skills (missing ``SKILL.md`` / ``tools.yaml``),

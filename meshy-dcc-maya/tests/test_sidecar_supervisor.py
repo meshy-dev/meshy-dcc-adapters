@@ -8,8 +8,8 @@ from uuid import UUID
 
 import pytest
 
-from dcc_mcp_maya.sidecar import _supervisor
-from dcc_mcp_maya.sidecar._supervisor import start_sidecar
+from meshy_dcc_maya.sidecar import _supervisor
+from meshy_dcc_maya.sidecar._supervisor import start_sidecar
 
 
 class _FakeProc:
@@ -35,7 +35,7 @@ def _fake_core_sidecar_command(monkeypatch):
                 normalized_instance_id = str(UUID(str(instance_id)))
             except ValueError:
                 normalized_instance_id = None
-        gateway_port = str(kwargs.get("gateway_port") if kwargs.get("gateway_port") is not None else 9765)
+        gateway_port = str(kwargs.get("gateway_port") if kwargs.get("gateway_port") is not None else 19765)
         command = [
             str(kwargs["server_bin"]),
             "sidecar",
@@ -71,8 +71,8 @@ def _fake_core_sidecar_command(monkeypatch):
             "command": command,
             "environment": {
                 "set": {
-                    "DCC_MCP_REGISTRY_DIR": str(registry_dir),
-                    "DCC_MCP_GATEWAY_PORT": gateway_port,
+                    "MESHY_DCC_REGISTRY_DIR": str(registry_dir),
+                    "MESHY_DCC_GATEWAY_PORT": gateway_port,
                 }
             },
             "readiness_selector": {
@@ -83,7 +83,7 @@ def _fake_core_sidecar_command(monkeypatch):
             "recommended_next_action": "wait for readiness",
         }
 
-    import dcc_mcp_core.install_lifecycle as lifecycle
+    import meshy_dcc_core.install_lifecycle as lifecycle
 
     monkeypatch.setattr(lifecycle, "build_sidecar_command", fake_build_sidecar_command)
 
@@ -97,17 +97,17 @@ def test_start_sidecar_forwards_identity_flags(monkeypatch):
         return _FakeProc()
 
     monkeypatch.setattr("subprocess.Popen", fake_popen)
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
 
     handle = start_sidecar(
         maya_pid=1234,
-        binary_override=Path("dcc-mcp-server"),
+        binary_override=Path("meshy-dcc-server"),
         qt_port_override=45555,
         instance_id="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
         display_name="Maya 2025 pid 1234",
         adapter_version="0.0.0-test",
         discovery_mcp_url="http://127.0.0.1:8765/mcp",
-        gateway_name="dcc-mcp-gateway@workstation-01",
+        gateway_name="meshy-dcc-gateway@workstation-01",
         start_qt_server_fn=lambda port: {
             "host": "127.0.0.1",
             "port": port,
@@ -117,7 +117,7 @@ def test_start_sidecar_forwards_identity_flags(monkeypatch):
 
     assert handle.host_rpc_uri == "qtserver://127.0.0.1:45555"
     assert captured["cmd"] == handle.command
-    assert captured["cmd"][:2] == ["dcc-mcp-server", "sidecar"]
+    assert captured["cmd"][:2] == ["meshy-dcc-server", "sidecar"]
     assert _flag_value(captured["cmd"], "--dcc") == "maya"
     assert _flag_value(captured["cmd"], "--host-rpc") == "qtserver://127.0.0.1:45555"
     assert _flag_value(captured["cmd"], "--watch-pid") == "1234"
@@ -125,15 +125,15 @@ def test_start_sidecar_forwards_identity_flags(monkeypatch):
     assert _flag_value(captured["cmd"], "--display-name") == "Maya 2025 pid 1234"
     assert _flag_value(captured["cmd"], "--adapter-version") == "0.0.0-test"
     assert _flag_value(captured["cmd"], "--discovery-mcp-url") == "http://127.0.0.1:8765/mcp"
-    assert _flag_value(captured["cmd"], "--gateway-name") == "dcc-mcp-gateway@workstation-01"
-    assert _flag_value(captured["cmd"], "--gateway-port") == "9765"
+    assert _flag_value(captured["cmd"], "--gateway-name") == "meshy-dcc-gateway@workstation-01"
+    assert _flag_value(captured["cmd"], "--gateway-port") == "19765"
     assert _flag_value(captured["cmd"], "--gateway-remote-host") == "0.0.0.0"
     assert _flag_value(captured["cmd"], "--gateway-remote-port") == "59765"
     assert _flag_value(captured["cmd"], "--registry-dir")
-    assert captured["kwargs"]["env"]["DCC_MCP_REGISTRY_DIR"] == _flag_value(captured["cmd"], "--registry-dir")
-    assert captured["kwargs"]["env"]["DCC_MCP_GATEWAY_PORT"] == "9765"
-    assert captured["kwargs"]["env"]["DCC_MCP_GATEWAY_REMOTE_HOST"] == "0.0.0.0"
-    assert captured["kwargs"]["env"]["DCC_MCP_GATEWAY_REMOTE_PORT"] == "59765"
+    assert captured["kwargs"]["env"]["MESHY_DCC_REGISTRY_DIR"] == _flag_value(captured["cmd"], "--registry-dir")
+    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_PORT"] == "19765"
+    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_REMOTE_HOST"] == "0.0.0.0"
+    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_REMOTE_PORT"] == "59765"
     assert handle.launch_contract["role"] == "per-dcc-sidecar"
     assert handle.launch_contract["recommended_next_action"]
 
@@ -150,7 +150,7 @@ def test_start_sidecar_omits_invalid_instance_id(monkeypatch):
 
     handle = start_sidecar(
         maya_pid=1234,
-        binary_override=Path("dcc-mcp-server"),
+        binary_override=Path("meshy-dcc-server"),
         qt_port_override=45555,
         instance_id="unknown",
         start_qt_server_fn=lambda port: {
@@ -165,7 +165,7 @@ def test_start_sidecar_omits_invalid_instance_id(monkeypatch):
 
 
 def test_start_sidecar_falls_back_when_core_helper_lacks_discovery_mcp_url(monkeypatch):
-    import dcc_mcp_core.install_lifecycle as lifecycle
+    import meshy_dcc_core.install_lifecycle as lifecycle
 
     captured = {"calls": []}
 
@@ -193,7 +193,7 @@ def test_start_sidecar_falls_back_when_core_helper_lacks_discovery_mcp_url(monke
             "role": "per-dcc-sidecar",
             "registry_dir": str(registry_dir),
             "command": command,
-            "environment": {"set": {"DCC_MCP_REGISTRY_DIR": str(registry_dir)}},
+            "environment": {"set": {"MESHY_DCC_REGISTRY_DIR": str(registry_dir)}},
             "readiness_selector": {
                 "dcc_type": kwargs["dcc_type"],
                 "instance_id": None,
@@ -212,7 +212,7 @@ def test_start_sidecar_falls_back_when_core_helper_lacks_discovery_mcp_url(monke
 
     handle = start_sidecar(
         maya_pid=1234,
-        binary_override=Path("dcc-mcp-server"),
+        binary_override=Path("meshy-dcc-server"),
         qt_port_override=45555,
         discovery_mcp_url="http://127.0.0.1:8765/mcp",
         start_qt_server_fn=lambda port: {
@@ -242,7 +242,7 @@ def test_start_sidecar_captures_stdio_to_registry_logs(monkeypatch, tmp_path):
 
     handle = start_sidecar(
         maya_pid=1234,
-        binary_override=Path("dcc-mcp-server"),
+        binary_override=Path("meshy-dcc-server"),
         qt_port_override=45555,
         registry_dir=registry_dir,
         start_qt_server_fn=lambda port: {
@@ -256,8 +256,8 @@ def test_start_sidecar_captures_stdio_to_registry_logs(monkeypatch, tmp_path):
     stderr_path = Path(captured["kwargs"]["stderr"].name)
     assert stdout_path.parent == registry_dir / "logs"
     assert stderr_path.parent == registry_dir / "logs"
-    assert stdout_path.name.startswith("dcc-mcp-sidecar-1234-")
-    assert stderr_path.name.startswith("dcc-mcp-sidecar-1234-")
+    assert stdout_path.name.startswith("meshy-dcc-sidecar-1234-")
+    assert stderr_path.name.startswith("meshy-dcc-sidecar-1234-")
     assert handle.stdout_path == stdout_path
     assert handle.stderr_path == stderr_path
 
@@ -271,22 +271,22 @@ def test_start_sidecar_honors_extra_env_gateway_port_zero(monkeypatch):
         return _FakeProc()
 
     monkeypatch.setattr("subprocess.Popen", fake_popen)
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
 
     start_sidecar(
         maya_pid=1234,
-        binary_override=Path("dcc-mcp-server"),
+        binary_override=Path("meshy-dcc-server"),
         qt_port_override=45555,
         start_qt_server_fn=lambda port: {
             "host": "127.0.0.1",
             "port": port,
             "qt_binding": "fake-test-stub",
         },
-        extra_env={"DCC_MCP_GATEWAY_PORT": "0"},
+        extra_env={"MESHY_DCC_GATEWAY_PORT": "0"},
     )
 
     assert _flag_value(captured["cmd"], "--gateway-port") == "0"
-    assert captured["kwargs"]["env"]["DCC_MCP_GATEWAY_PORT"] == "0"
+    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_PORT"] == "0"
 
 
 def test_start_qt_server_imports_core_dispatcher(monkeypatch):
@@ -300,11 +300,11 @@ def test_start_qt_server_imports_core_dispatcher(monkeypatch):
             "qt_binding": "fake-core",
         }
 
-    monkeypatch.setattr("dcc_mcp_core.qt_dispatcher.start_qt_server", fake_start_qt_server)
+    monkeypatch.setattr("meshy_dcc_core.qt_dispatcher.start_qt_server", fake_start_qt_server)
 
     info = _supervisor._start_qt_server(0, start_qt_server_fn=None)
 
     assert info["port"] == 45555
     assert captured["port"] == 0
-    current_dispatcher = sys.modules["dcc_mcp_maya.sidecar._dispatcher"]
+    current_dispatcher = sys.modules["meshy_dcc_maya.sidecar._dispatcher"]
     assert captured["dispatch_handler"] is current_dispatcher.dispatch_payload

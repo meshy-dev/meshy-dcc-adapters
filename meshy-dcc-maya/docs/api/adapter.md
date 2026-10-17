@@ -5,7 +5,7 @@
 ## Class: `MayaMcpServer`
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 ```
 
 ### Constructor
@@ -36,9 +36,9 @@ MayaMcpServer(
 | `dcc_version` | str \| None | `None` | Maya version reported to the registry |
 | `scene` | str \| None | `None` | Scene path reported to the registry |
 | `enable_gateway_failover` | bool | `True` | Allow gateway failover auto-promotion |
-| `metrics_enabled` | bool \| None | `None` | Enable Prometheus `/metrics`. `None` reads `DCC_MCP_MAYA_METRICS=1` |
+| `metrics_enabled` | bool \| None | `None` | Enable Prometheus `/metrics`. `None` reads `MESHY_DCC_MAYA_METRICS=1` |
 | `job_storage_path` | str \| None | `None` | SQLite job DB path. `None` reads env or defaults to `<data_dir>/jobs.db`. `""` disables |
-| `job_recovery` | str \| None | `None` | Interrupted job policy: `"drop"` or `"requeue"`. `None` reads `DCC_MCP_MAYA_JOB_RECOVERY` |
+| `job_recovery` | str \| None | `None` | Interrupted job policy: `"drop"` or `"requeue"`. `None` reads `MESHY_DCC_MAYA_JOB_RECOVERY` |
 
 ### Methods
 
@@ -57,7 +57,7 @@ server.register_builtin_actions(extra_skill_paths=["/my/skills"])
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `extra_skill_paths` | list[str] | `None` | Additional skill directories to scan |
-| `include_bundled` | bool | `True` | Include bundled `dcc-mcp-core` skills |
+| `include_bundled` | bool | `True` | Include bundled `meshy-dcc-core` skills |
 
 Returns: `self` (fluent interface)
 
@@ -90,7 +90,7 @@ server.stop()
 ### Example
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 server = MayaMcpServer(server_name="my-maya")
 server.register_builtin_actions(extra_skill_paths=["/studio/skills"])
@@ -110,9 +110,9 @@ server.stop()
 Start (or return the already-running) Maya MCP server as a singleton.
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-handle = dcc_mcp_maya.start_server(
+handle = meshy_dcc_maya.start_server(
     server_name="maya-mcp",
     register_builtins=True,
     extra_skill_paths=None,
@@ -132,7 +132,7 @@ handle = dcc_mcp_maya.start_server(
 | `server_name` | str | `"maya-mcp"` | MCP server name |
 | `register_builtins` | bool | `True` | Discover built-in skills during startup; toolsets load on demand |
 | `extra_skill_paths` | list[str] | `None` | Additional skill paths |
-| `include_bundled` | bool | `True` | Include bundled `dcc-mcp-core` skills |
+| `include_bundled` | bool | `True` | Include bundled `meshy-dcc-core` skills |
 | `gateway_port` | int \| None | `None` | Gateway election port for multi-instance discovery |
 | `registry_dir` | str \| None | `None` | Shared registry directory for discovery metadata |
 | `dcc_version` | str \| None | `None` | Maya version reported to the registry |
@@ -147,7 +147,7 @@ Returns: `McpServerHandle`
 Stop the module-level singleton server.
 
 ```python
-dcc_mcp_maya.stop_server()
+meshy_dcc_maya.stop_server()
 ```
 
 ## McpServerHandle

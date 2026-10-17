@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Optional
 
-from dcc_mcp_maya.dispatcher.ui import MayaUiDispatcher
+from meshy_dcc_maya.dispatcher.ui import MayaUiDispatcher
 
 
 def test_dispatch_callable_forwards_timeout_hint_as_timeout_ms(monkeypatch) -> None:

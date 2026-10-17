@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble a Maya .mod module directory for dcc-mcp-maya.
+"""Assemble a Maya .mod module directory for meshy-dcc-maya.
 
 Usage:
     python assemble_mod.py --version 0.3.0 --platform win64 --output dist/mod
@@ -7,8 +7,8 @@ Usage:
 This script:
 1. Creates the .mod module directory structure
 2. Copies the Python package and plugin files
-3. Extracts dcc_mcp_core from a downloaded wheel into python/dcc_mcp_core/
-4. Generates dcc_mcp_maya.mod with relative paths
+3. Extracts meshy_dcc_core from a downloaded wheel into python/meshy_dcc_core/
+4. Generates meshy_dcc_maya.mod with relative paths
 5. Produces two ZIP variants:
    - Portable (with install scripts)
    - Pipeline (with module-info.json, no install scripts)
@@ -93,13 +93,13 @@ if os.name == "nt":
 
 
 def resolve_core_version(project_root: Path) -> str:
-    """Resolve the best available dcc-mcp-core version from PyPI."""
-    return _resolve_dependency_version(project_root, "dcc-mcp-core")
+    """Resolve the best available meshy-dcc-core version from PyPI."""
+    return _resolve_dependency_version(project_root, "meshy-dcc-core")
 
 
 def resolve_server_version(project_root: Path) -> str:
-    """Resolve the best available dcc-mcp-server version from PyPI."""
-    return _resolve_dependency_version(project_root, "dcc-mcp-server")
+    """Resolve the best available meshy-dcc-server version from PyPI."""
+    return _resolve_dependency_version(project_root, "meshy-dcc-server")
 
 
 def _resolve_dependency_version(project_root: Path, package_name: str) -> str:
@@ -257,7 +257,7 @@ def _download_file(url: str, dest: Path, attempts: int = PYPI_RETRY_ATTEMPTS) ->
 
 
 def download_core_wheels(version: str, platform: str, dest: Path) -> List[Path]:
-    """Download dcc-mcp-core wheels for the target platform.
+    """Download meshy-dcc-core wheels for the target platform.
 
     Maya 2022 embeds Python 3.7, which cannot import ``cp38-abi3``
     extension wheels.  For platforms where core publishes cp37 wheels,
@@ -267,7 +267,7 @@ def download_core_wheels(version: str, platform: str, dest: Path) -> List[Path]:
     """
     wheel_patterns = _core_wheel_patterns(platform)
 
-    pypi_url = f"https://pypi.org/pypi/dcc-mcp-core/{version}/json"
+    pypi_url = f"https://pypi.org/pypi/meshy-dcc-core/{version}/json"
     print(f"  Querying PyPI: {pypi_url}")
     pypi_data = _fetch_json(pypi_url, timeout=30)
 
@@ -292,16 +292,16 @@ def download_core_wheels(version: str, platform: str, dest: Path) -> List[Path]:
         print(f"  Downloading {filename} ({desc})...")
         _download_file(url, dest_file)
 
-    wheels = list(dest.glob("dcc_mcp_core-*.whl"))
+    wheels = list(dest.glob("meshy_dcc_core-*.whl"))
     if not wheels:
-        raise RuntimeError(f"No dcc-mcp-core wheels could be downloaded for platform={platform}, version={version}")
+        raise RuntimeError(f"No meshy-dcc-core wheels could be downloaded for platform={platform}, version={version}")
     print(f"  Downloaded {len(wheels)} wheel(s)")
     return wheels
 
 
 def download_server_wheel(version: str, platform: str, dest: Path) -> Path:
-    """Download the dcc-mcp-server sidecar wheel for the target platform."""
-    pypi_url = f"https://pypi.org/pypi/dcc-mcp-server/{version}/json"
+    """Download the meshy-dcc-server sidecar wheel for the target platform."""
+    pypi_url = f"https://pypi.org/pypi/meshy-dcc-server/{version}/json"
     print(f"  Querying PyPI: {pypi_url}")
     pypi_data = _fetch_json(pypi_url, timeout=30)
 
@@ -325,7 +325,7 @@ def download_server_wheel(version: str, platform: str, dest: Path) -> Path:
         _download_file(file_map[filename], dest_file)
         return dest_file
     raise RuntimeError(
-        f"No dcc-mcp-server wheel matching {patterns!r} found on PyPI for platform={platform}, version={version}"
+        f"No meshy-dcc-server wheel matching {patterns!r} found on PyPI for platform={platform}, version={version}"
     )
 
 
@@ -603,7 +603,7 @@ def _parse_core_metadata(metadata_content: bytes, wheel_name: str) -> Tuple[str,
         version = Version(versions[0].strip())
     except (UnicodeDecodeError, InvalidVersion, ValueError, TypeError) as exc:
         raise RuntimeError(f"Core wheel {wheel_name} has invalid METADATA") from exc
-    if canonicalize_name(name) != "dcc-mcp-core":
+    if canonicalize_name(name) != "meshy-dcc-core":
         raise RuntimeError(f"Core wheel {wheel_name} has invalid METADATA identity")
     return name, version
 
@@ -628,7 +628,7 @@ def verify_core_wheel(wheel_path: Path, expected_version: str) -> dict:
         except InvalidVersion as exc:
             raise RuntimeError(f"Core wheel {wheel_path.name} expected version is invalid") from exc
         if metadata_version != expected:
-            raise RuntimeError(f"Core wheel {wheel_path.name} identity does not match dcc-mcp-core {expected_version}")
+            raise RuntimeError(f"Core wheel {wheel_path.name} identity does not match meshy-dcc-core {expected_version}")
 
         dist_info_dir = metadata_name.rsplit("/", 1)[0]
         record_name = dist_info_dir + "/RECORD"
@@ -644,17 +644,17 @@ def verify_core_wheel(wheel_path: Path, expected_version: str) -> dict:
                 raise RuntimeError(f"Core wheel {wheel_path.name} has ambiguous RECORD entries")
             records[row[0]] = (row[1], row[2])
 
-        bound_names = [name for name in file_names if name.startswith("dcc_mcp_core/")]
+        bound_names = [name for name in file_names if name.startswith("meshy_dcc_core/")]
         bound_names.append(metadata_name)
-        if not any(name.startswith("dcc_mcp_core/") for name in bound_names):
-            raise RuntimeError(f"Core wheel {wheel_path.name} has no dcc_mcp_core payload")
+        if not any(name.startswith("meshy_dcc_core/") for name in bound_names):
+            raise RuntimeError(f"Core wheel {wheel_path.name} has no meshy_dcc_core payload")
         payload_files = {}
         for name in bound_names:
             digest_value, size_value = records.get(name, (None, None))
             content = archive.read(name)
             if digest_value != "sha256=" + _record_digest(content) or size_value != str(len(content)):
                 raise RuntimeError(f"Core wheel {wheel_path.name} RECORD does not bind {name}")
-            if name.startswith("dcc_mcp_core/"):
+            if name.startswith("meshy_dcc_core/"):
                 payload_files[name] = {"sha256": hashlib.sha256(content).hexdigest(), "size": len(content)}
 
     return {
@@ -669,7 +669,7 @@ def verify_core_wheel(wheel_path: Path, expected_version: str) -> dict:
 def _bind_extracted_core_objects(module_dir: Path, expected_roots: dict) -> None:
     for root_name, expected in expected_roots.items():
         runtime_root = module_dir / root_name
-        core_root = runtime_root / "dcc_mcp_core"
+        core_root = runtime_root / "meshy_dcc_core"
         _assert_safe_assembled_directory(runtime_root)
         _assert_safe_assembled_directory(core_root)
         actual_paths = _safe_regular_file_paths(core_root, runtime_root)
@@ -698,10 +698,10 @@ def _write_core_provenance(
     module_dir: Path, core_version: str, wheel_provenance: List[dict], expected_roots: dict
 ) -> dict:
     roots = {}
-    metadata_name = f"dcc_mcp_core-{core_version}.dist-info/METADATA"
+    metadata_name = f"meshy_dcc_core-{core_version}.dist-info/METADATA"
     for root_name in ("python", "python37"):
         runtime_root = module_dir / root_name
-        core_root = runtime_root / "dcc_mcp_core"
+        core_root = runtime_root / "meshy_dcc_core"
         if not core_root.is_dir():
             continue
         _assert_safe_assembled_directory(runtime_root)
@@ -752,7 +752,7 @@ def _write_core_provenance(
         raise RuntimeError("No bundled Core runtime roots were assembled")
     provenance = {
         "schema_version": 1,
-        "name": "dcc-mcp-core",
+        "name": "meshy-dcc-core",
         "version": core_version,
         "source_wheels": [
             {"filename": item["filename"], "sha256": item["sha256"]}
@@ -769,7 +769,7 @@ def _write_core_provenance(
 def _assert_bound_core_objects(module_dir: Path, expected_roots: dict) -> None:
     for root_name, expected in expected_roots.items():
         runtime_root = module_dir / root_name
-        core_root = runtime_root / "dcc_mcp_core"
+        core_root = runtime_root / "meshy_dcc_core"
         _assert_safe_assembled_directory(runtime_root)
         _assert_safe_assembled_directory(core_root)
         actual_paths = _safe_regular_file_paths(core_root, runtime_root)
@@ -805,7 +805,7 @@ def _validate_archive_core_payload(archive_path: Path, base_dir: str, expected_r
             raise RuntimeError("Archive contains duplicate paths")
         name_set = set(names)
         for root_name, expected in expected_roots.items():
-            core_prefix = f"{base_dir}/{root_name}/dcc_mcp_core/"
+            core_prefix = f"{base_dir}/{root_name}/meshy_dcc_core/"
             actual_core = {name for name in name_set if name.startswith(core_prefix)}
             expected_core = {f"{base_dir}/{root_name}/{relative}" for relative in expected["files"]}
             if actual_core != expected_core:
@@ -883,9 +883,9 @@ def _extract_wheel_bytes(
 
 
 def extract_server_wheel(wheel_path: Path, dest: Path) -> None:
-    """Extract dcc-mcp-server package files and its binary into *dest*.
+    """Extract meshy-dcc-server package files and its binary into *dest*.
 
-    ``pip install`` maps ``*.data/scripts/dcc-mcp-server`` into the target
+    ``pip install`` maps ``*.data/scripts/meshy-dcc-server`` into the target
     environment's scripts directory.  Module ZIP assembly extracts wheels
     directly, so we perform that mapping explicitly.
     """
@@ -900,7 +900,7 @@ def extract_server_wheel(wheel_path: Path, dest: Path) -> None:
                 continue
             if len(parts) >= 3 and parts[0].endswith(".data") and parts[1] == "scripts":
                 dest_file = dest / "scripts" / Path(*parts[2:])
-            elif parts[0] == "dcc_mcp_server":
+            elif parts[0] == "meshy_dcc_server":
                 dest_file = dest / info.filename
             else:
                 continue
@@ -916,7 +916,7 @@ def generate_mod_file(version: str, platform: str, path: str = ".") -> str:
     """Generate .mod file content for the supported Maya versions."""
     lines = []
     for maya_version in supported_maya_versions(platform):
-        lines.append(f"+ MAYAVERSION:{maya_version} PLATFORM:{platform} dcc_mcp_maya {version} {path}")
+        lines.append(f"+ MAYAVERSION:{maya_version} PLATFORM:{platform} meshy_dcc_maya {version} {path}")
         lines.append(f"PYTHONPATH+:={MAYA_PYTHONPATH_BY_VERSION[maya_version]}")
         lines.append("PLUG_IN_PATH+:=plug-ins")
 
@@ -942,10 +942,10 @@ def generate_module_info(
     """Generate module-info.json content with build metadata."""
     minimum_core, maximum_core = dependency_bounds(
         project_root or Path(__file__).resolve().parents[1],
-        "dcc-mcp-core",
+        "meshy-dcc-core",
     )
     info = {
-        "name": "dcc_mcp_maya",
+        "name": "meshy_dcc_maya",
         "version": version,
         "adapter_version": version,
         "embedded_core_version": embedded_core_version,
@@ -966,7 +966,7 @@ def assemble(project_root: Path, version: str, platform: str, output: Path, *, _
     scripts, and a pre-generated .mod file with relative paths.
     Returns the module directory path.
     """
-    module_name = "dcc-mcp-maya"
+    module_name = "meshy-dcc-maya"
     module_dir = output / module_name
 
     # Clean output
@@ -980,11 +980,11 @@ def assemble(project_root: Path, version: str, platform: str, output: Path, *, _
     python_dir.mkdir(parents=True)
     python37_dir = module_dir / "python37"
 
-    # 1. Download and extract dcc_mcp_core
+    # 1. Download and extract meshy_dcc_core
     core_version = resolve_core_version(project_root)
-    print(f"  Resolved dcc-mcp-core version: >={core_version}")
+    print(f"  Resolved meshy-dcc-core version: >={core_version}")
     server_version = resolve_server_version(project_root)
-    print(f"  Resolved dcc-mcp-server version: >={server_version}")
+    print(f"  Resolved meshy-dcc-server version: >={server_version}")
 
     with tempfile.TemporaryDirectory() as wheel_cache:
         cache_dir = Path(wheel_cache)
@@ -1001,7 +1001,7 @@ def assemble(project_root: Path, version: str, platform: str, output: Path, *, _
         for wheel in full_wheels:
             print(f"  Extracting {wheel.name} to python/...")
             _extract_wheel_bytes(verified_by_name[wheel.name]["wheel_bytes"], python_dir)
-        metadata_name = f"dcc_mcp_core-{core_version}.dist-info"
+        metadata_name = f"meshy_dcc_core-{core_version}.dist-info"
         metadata_dir = python_dir / metadata_name
         metadata_dir.mkdir()
         full_verified = verified_by_name[full_wheels[0].name]
@@ -1043,12 +1043,12 @@ def assemble(project_root: Path, version: str, platform: str, output: Path, *, _
             print(f"  Extracting {server_wheel.name} to {package_root.name}/...")
             extract_server_wheel(server_wheel, package_root)
         _bind_extracted_core_objects(module_dir, expected_roots)
-    print("  Extracted dcc_mcp_core")
-    print("  Extracted dcc_mcp_server")
+    print("  Extracted meshy_dcc_core")
+    print("  Extracted meshy_dcc_server")
 
     # 2. Copy Maya plugin
-    plugin_src = project_root / "maya" / "plugin" / "dcc_mcp_maya_plugin.py"
-    shutil.copy2(plugin_src, module_dir / "plug-ins" / "dcc_mcp_maya_plugin.py")
+    plugin_src = project_root / "maya" / "plugin" / "meshy_dcc_maya_plugin.py"
+    shutil.copy2(plugin_src, module_dir / "plug-ins" / "meshy_dcc_maya_plugin.py")
     print("  Copied plugin to plug-ins/")
 
     # 3. Copy userSetup.py
@@ -1056,21 +1056,21 @@ def assemble(project_root: Path, version: str, platform: str, output: Path, *, _
     shutil.copy2(usersetup_src, module_dir / "scripts" / "userSetup.py")
     print("  Copied userSetup.py to scripts/")
 
-    # 4. Copy dcc_mcp_maya Python package
-    pkg_src = project_root / "src" / "dcc_mcp_maya"
+    # 4. Copy meshy_dcc_maya Python package
+    pkg_src = project_root / "src" / "meshy_dcc_maya"
     for package_root in (python_dir, python37_dir):
         if not package_root.is_dir():
             continue
-        pkg_dest = package_root / "dcc_mcp_maya"
+        pkg_dest = package_root / "meshy_dcc_maya"
         if pkg_dest.exists():
             shutil.rmtree(pkg_dest)
         shutil.copytree(str(pkg_src), str(pkg_dest))
-    print("  Copied dcc_mcp_maya package")
+    print("  Copied meshy_dcc_maya package")
 
     # 5. Generate .mod file with relative paths
     mod_content = generate_mod_file(version, platform, path=".")
-    (module_dir / "dcc_mcp_maya.mod").write_text(mod_content, encoding="utf-8")
-    print(f"  Generated dcc_mcp_maya.mod (version={version}, platform={platform})")
+    (module_dir / "meshy_dcc_maya.mod").write_text(mod_content, encoding="utf-8")
+    print(f"  Generated meshy_dcc_maya.mod (version={version}, platform={platform})")
 
     # 6. Bind every bundled Core payload file to verified wheel provenance.
     core_provenance = _write_core_provenance(module_dir, core_version, verified_wheels, expected_roots)
@@ -1129,7 +1129,7 @@ def assemble_pipeline(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Assemble Maya .mod module for dcc-mcp-maya")
+    parser = argparse.ArgumentParser(description="Assemble Maya .mod module for meshy-dcc-maya")
     parser.add_argument("--version", required=True, help="Package version (e.g. 0.3.0)")
     parser.add_argument("--platform", required=True, choices=["win64", "linux", "macos"], help="Target platform")
     parser.add_argument("--output", default="dist/mod", help="Output directory")
@@ -1147,8 +1147,8 @@ def main() -> None:
     _portable_module, portable_contract = assemble_portable(
         project_root, args.version, args.platform, portable_output, _with_core_contract=True
     )
-    zip_path = portable_output / f"dcc-mcp-maya-{args.version}-{args.platform}"
-    archive_path = _make_bound_archive(zip_path, portable_output, "dcc-mcp-maya", portable_contract)
+    zip_path = portable_output / f"meshy-dcc-maya-{args.version}-{args.platform}"
+    archive_path = _make_bound_archive(zip_path, portable_output, "meshy-dcc-maya", portable_contract)
     print(f"Created: {archive_path}")
 
     # --- Pipeline ZIP ---
@@ -1158,8 +1158,8 @@ def main() -> None:
     _pipeline_module, pipeline_contract = assemble_pipeline(
         project_root, args.version, args.platform, pipeline_output, _with_core_contract=True
     )
-    zip_path = pipeline_output / f"dcc-mcp-maya-{args.version}-{args.platform}-pipeline"
-    archive_path = _make_bound_archive(zip_path, pipeline_output, "dcc-mcp-maya", pipeline_contract)
+    zip_path = pipeline_output / f"meshy-dcc-maya-{args.version}-{args.platform}-pipeline"
+    archive_path = _make_bound_archive(zip_path, pipeline_output, "meshy-dcc-maya", pipeline_contract)
     print(f"Created: {archive_path}")
 
 

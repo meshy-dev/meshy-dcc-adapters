@@ -1,7 +1,7 @@
 """Tests for MayaMcpServer job persistence, Prometheus metrics, and gateway
 job routing — issues #86, #87, #89.
 
-All tests run without a real Maya install. The dcc-mcp-core 0.14.3 wheel
+All tests run without a real Maya install. The meshy-dcc-core 0.14.3 wheel
 ships the required features: ``McpHttpConfig.enable_prometheus``,
 ``McpHttpConfig.job_storage_path``, ``McpHttpConfig.enable_job_notifications``,
 and the ``jobs_get_status`` built-in tool.
@@ -42,15 +42,15 @@ def mock_maya(monkeypatch):
 
 def _fresh_server_module():
     for mod in list(sys.modules):
-        if "dcc_mcp_maya" in mod:
+        if "meshy_dcc_maya" in mod:
             del sys.modules[mod]
-    return importlib.import_module("dcc_mcp_maya.server")
+    return importlib.import_module("meshy_dcc_maya.server")
 
 
 def _builtin_skills_dir():
-    import dcc_mcp_maya
+    import meshy_dcc_maya
 
-    return str(Path(dcc_mcp_maya.__file__).parent / "skills")
+    return str(Path(meshy_dcc_maya.__file__).parent / "skills")
 
 
 # ---------------------------------------------------------------------------
@@ -74,15 +74,15 @@ class TestPrometheusMetrics:
         assert server._config.enable_prometheus is True
 
     def test_metrics_enabled_via_env_var(self, monkeypatch):
-        """``DCC_MCP_MAYA_METRICS=1`` env var enables Prometheus."""
-        monkeypatch.setenv("DCC_MCP_MAYA_METRICS", "1")
+        """``MESHY_DCC_MAYA_METRICS=1`` env var enables Prometheus."""
+        monkeypatch.setenv("MESHY_DCC_MAYA_METRICS", "1")
         srv_mod = _fresh_server_module()
         server = srv_mod.MayaMcpServer(port=0)
         assert server._config.enable_prometheus is True
 
     def test_metrics_env_var_zero_is_disabled(self, monkeypatch):
-        """``DCC_MCP_MAYA_METRICS=0`` keeps the endpoint disabled."""
-        monkeypatch.setenv("DCC_MCP_MAYA_METRICS", "0")
+        """``MESHY_DCC_MAYA_METRICS=0`` keeps the endpoint disabled."""
+        monkeypatch.setenv("MESHY_DCC_MAYA_METRICS", "0")
         srv_mod = _fresh_server_module()
         server = srv_mod.MayaMcpServer(port=0)
         assert server._config.enable_prometheus is False
@@ -125,22 +125,22 @@ class TestJobPersistence:
         assert server._config.job_storage_path == db
 
     def test_job_storage_path_set_via_env_var(self, monkeypatch, tmp_path):
-        """``DCC_MCP_MAYA_JOB_STORAGE`` env var sets the job DB path."""
+        """``MESHY_DCC_MAYA_JOB_STORAGE`` env var sets the job DB path."""
         db = str(tmp_path / "env-jobs.db")
-        monkeypatch.setenv("DCC_MCP_MAYA_JOB_STORAGE", db)
+        monkeypatch.setenv("MESHY_DCC_MAYA_JOB_STORAGE", db)
         srv_mod = _fresh_server_module()
         server = srv_mod.MayaMcpServer(port=0)
         assert server._config.job_storage_path == db
 
     def test_job_storage_path_default_is_platform_dir(self, monkeypatch):
         """Without explicit config the default path is inside get_data_dir()."""
-        monkeypatch.delenv("DCC_MCP_MAYA_JOB_STORAGE", raising=False)
+        monkeypatch.delenv("MESHY_DCC_MAYA_JOB_STORAGE", raising=False)
         srv_mod = _fresh_server_module()
         server = srv_mod.MayaMcpServer(port=0, job_storage_path=None)
         path = server._config.job_storage_path
         assert path is not None
         assert path.endswith("jobs.db")
-        assert "dcc-mcp-maya" in path
+        assert "meshy-dcc-maya" in path
 
     def test_job_storage_disabled_with_empty_string(self):
         """Passing ``job_storage_path=""`` disables persistence."""
@@ -161,8 +161,8 @@ class TestJobPersistence:
         assert server._job_recovery == "requeue"
 
     def test_job_recovery_requeue_via_env_var(self, monkeypatch):
-        """``DCC_MCP_MAYA_JOB_RECOVERY=requeue`` sets recovery flag."""
-        monkeypatch.setenv("DCC_MCP_MAYA_JOB_RECOVERY", "requeue")
+        """``MESHY_DCC_MAYA_JOB_RECOVERY=requeue`` sets recovery flag."""
+        monkeypatch.setenv("MESHY_DCC_MAYA_JOB_RECOVERY", "requeue")
         srv_mod = _fresh_server_module()
         server = srv_mod.MayaMcpServer(port=0)
         assert server._job_recovery == "requeue"

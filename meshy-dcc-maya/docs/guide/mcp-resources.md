@@ -1,8 +1,8 @@
 # Maya MCP Resources
 
-Issue [#187](https://github.com/dcc-mcp/dcc-mcp-maya/issues/187) wires
-`dcc-mcp-maya` into the Rust [`ResourceRegistry`][resource-handle]
-shipped by `dcc-mcp-core` 0.15.0.  Out of the box, MCP clients now see:
+Issue [#187](https://github.com/meshy-dev/meshy-dcc-maya/issues/187) wires
+`meshy-dcc-maya` into the Rust [`ResourceRegistry`][resource-handle]
+shipped by `meshy-dcc-core` 0.15.0.  Out of the box, MCP clients now see:
 
 * **`scene://current`** — JSON snapshot of the live Maya scene
   (`pid`, `dcc`, `scene`, `selection`, `frame`, `frame_range`,
@@ -19,11 +19,11 @@ shipped by `dcc-mcp-core` 0.15.0.  Out of the box, MCP clients now see:
 * **`maya-project://current`** — active workspace root + `fileRule`
   table for the running Maya session.
 
-[resource-handle]: https://github.com/dcc-mcp/dcc-mcp-core/blob/main/llms.txt
+[resource-handle]: https://github.com/meshy-dev/meshy-dcc-core/blob/main/llms.txt
 
 ## Quick check
 
-Once you have `dcc_mcp_maya.start_server()` running, point an MCP
+Once you have `meshy_dcc_maya.start_server()` running, point an MCP
 client (Claude Desktop, Cursor, etc.) at the printed URL and watch
 the resource surface light up:
 
@@ -88,7 +88,7 @@ Tune the throttle window (0.5 s default) by passing
 
 | Variable                       | Default | Effect                                                   |
 |--------------------------------|---------|----------------------------------------------------------|
-| `DCC_MCP_MAYA_RESOURCES`       | `1`     | Set to `0` to disable Maya resource publishing entirely. |
+| `MESHY_DCC_MAYA_RESOURCES`       | `1`     | Set to `0` to disable Maya resource publishing entirely. |
 
 When disabled, `scene://current` stays at the core default
 `{"status": "no_scene_published"}` and the three `maya-*://` schemes
@@ -98,7 +98,7 @@ are not registered.  Use this to let an embedding host drive
 ## Python API
 
 ```python
-from dcc_mcp_maya import (
+from meshy_dcc_maya import (
     MayaResourceBinder,    # SOLID composition root
     install_resources,     # one-shot helper
     SCHEME_MAYA_CMDS,
@@ -169,7 +169,7 @@ code change required.
 
 ## See also
 
-* [`AGENTS.md`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) — overview of the SOLID binder
+* [`AGENTS.md`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) — overview of the SOLID binder
   pattern (`ReadinessBinder`, `ProjectToolsIntegration`,
   `MayaResourceBinder`).
 * [`docs/guide/scene.md`](./scene.md) — the existing scene-info tool

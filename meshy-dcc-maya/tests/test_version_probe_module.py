@@ -1,4 +1,4 @@
-"""Tests for ``dcc_mcp_maya._version_probe`` (issue #127)."""
+"""Tests for ``meshy_dcc_maya._version_probe`` (issue #127)."""
 
 # Import future modules
 from __future__ import annotations
@@ -8,7 +8,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 # Import local modules
-from dcc_mcp_maya import _version_probe
+from meshy_dcc_maya import _version_probe
 
 
 class TestMayaAvailable:
@@ -38,8 +38,8 @@ class TestGetMayaVersionString:
         main = MagicMock(name="main")
         with patch.object(_version_probe, "maya_available", return_value=True):
             with patch.dict(sys.modules, modules):
-                with patch("dcc_mcp_maya._version_probe.threading.current_thread", return_value=worker):
-                    with patch("dcc_mcp_maya._version_probe.threading.main_thread", return_value=main):
+                with patch("meshy_dcc_maya._version_probe.threading.current_thread", return_value=worker):
+                    with patch("meshy_dcc_maya._version_probe.threading.main_thread", return_value=main):
                         assert _version_probe.get_maya_version_string() == _version_probe.UNKNOWN_VERSION
         fake_cmds.about.assert_not_called()
 

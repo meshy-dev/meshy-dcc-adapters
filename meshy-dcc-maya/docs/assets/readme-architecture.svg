@@ -1,6 +1,6 @@
 <svg width="1120" height="650" viewBox="0 0 1120 650" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">dcc-mcp-maya architecture</title>
-  <desc id="desc">MCP clients connect to a local or LAN gateway, which routes through the dcc-mcp-server sidecar and Maya Qt dispatcher into the in-process Maya bridge, skill tools, resources, readiness, and project state.</desc>
+  <title id="title">meshy-dcc-maya architecture</title>
+  <desc id="desc">MCP clients connect to a local or LAN gateway, which routes through the meshy-dcc-server sidecar and Maya Qt dispatcher into the in-process Maya bridge, skill tools, resources, readiness, and project state.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1120" y2="650" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#F7FAFC"/>
@@ -35,7 +35,7 @@
   </defs>
 
   <rect width="1120" height="650" rx="28" fill="url(#bg)"/>
-  <text x="52" y="58" class="title">dcc-mcp-maya runtime architecture</text>
+  <text x="52" y="58" class="title">meshy-dcc-maya runtime architecture</text>
   <text x="52" y="84" class="small">Default plugin mode isolates HTTP in a Rust sidecar while Maya work stays on Maya-safe dispatch paths.</text>
 
   <rect x="52" y="126" width="232" height="118" class="box"/>
@@ -46,9 +46,9 @@
 
   <rect x="392" y="116" width="338" height="138" fill="url(#sidecar)" stroke="#A5B4FC" stroke-width="1.5" rx="22" filter="url(#shadow)"/>
   <text x="420" y="150" class="tiny">DEFAULT PLUGIN PATH</text>
-  <text x="420" y="180" class="label">dcc-mcp-server sidecar</text>
+  <text x="420" y="180" class="label">meshy-dcc-server sidecar</text>
   <text x="420" y="207" class="small">Streamable HTTP, REST gateway, local election</text>
-  <text x="420" y="231" class="code">127.0.0.1:9765  |  LAN :59765</text>
+  <text x="420" y="231" class="code">127.0.0.1:19765  |  LAN :59765</text>
 
   <rect x="820" y="126" width="236" height="118" class="box"/>
   <text x="844" y="160" class="tiny">DIRECT PYTHON MODE</text>

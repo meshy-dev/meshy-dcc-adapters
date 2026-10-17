@@ -13,8 +13,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from conftest import load_and_call
 
-from dcc_mcp_maya import render_setup as render_setup_mod
-from dcc_mcp_maya.render_setup import (
+from meshy_dcc_maya import render_setup as render_setup_mod
+from meshy_dcc_maya.render_setup import (
     AOV_TYPE_MAX,
     AOV_TYPE_MIN,
     AOV_TYPES,

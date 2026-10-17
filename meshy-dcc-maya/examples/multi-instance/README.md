@@ -16,14 +16,14 @@ your existing `userSetup.py`):
 
 On every Maya launch:
 
-1. Leaves the instance port unset so `dcc-mcp-core` binds port `0`; the
+1. Leaves the instance port unset so `meshy-dcc-core` binds port `0`; the
    operating system assigns a free port atomically and the exact URL is
    published to discovery.
-2. Exports `DCC_MCP_MAYA_DCC_PID=<os.getpid()>` so `diagnostics__*`
+2. Exports `MESHY_DCC_MAYA_DCC_PID=<os.getpid()>` so `diagnostics__*`
    tools route to the correct Maya.
-3. Exports `DCC_MCP_GATEWAY_PORT=9765` so every instance shares the
+3. Exports `MESHY_DCC_GATEWAY_PORT=19765` so every instance shares the
    same gateway election.
-4. Loads the `dcc_mcp_maya_plugin` via `executeDeferred`.
+4. Loads the `meshy_dcc_maya_plugin` via `executeDeferred`.
 
 The `apply_multi_instance_env` helper is unit-tested in
 `tests/test_multi_instance_example.py`; see the full

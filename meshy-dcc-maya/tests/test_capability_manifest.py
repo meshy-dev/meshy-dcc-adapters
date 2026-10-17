@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`dcc_mcp_maya.capability_manifest` (issue #163).
+"""Unit tests for :mod:`meshy_dcc_maya.capability_manifest` (issue #163).
 
 These tests verify the SOLID projection from live catalog state into a
 compact gateway-friendly manifest — the core #163 deliverable on the
@@ -24,7 +24,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 from unittest.mock import MagicMock
 
-from dcc_mcp_maya.capability_manifest import (
+from meshy_dcc_maya.capability_manifest import (
     CapabilityRecord,
     MayaCapabilityManifestBuilder,
     _as_dict,

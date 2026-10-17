@@ -15,14 +15,14 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional
 
-from dcc_mcp_maya.sidecar._resolver import SidecarBinaryError, resolve_sidecar_binary
+from meshy_dcc_maya.sidecar._resolver import SidecarBinaryError, resolve_sidecar_binary
 
 _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-os.environ.setdefault("DCC_MCP_DISABLE_FILE_LOGGING", "1")
-os.environ.setdefault("DCC_MCP_ALLOW_AMBIENT_PYTHON", "1")
+os.environ.setdefault("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
+os.environ.setdefault("MESHY_DCC_ALLOW_AMBIENT_PYTHON", "1")
 
 
 def sidecar_binary_available() -> bool:
@@ -169,7 +169,7 @@ def wait_for_sidecar_registry_row(
             else:
                 for entry in iter_registry_entries(payload):
                     metadata = entry.get("metadata") or {}
-                    if metadata.get("dcc_mcp_role") != "per-dcc-sidecar":
+                    if metadata.get("meshy_dcc_role") != "per-dcc-sidecar":
                         continue
                     if host_rpc_uri is not None and metadata.get("host_rpc_uri") != host_rpc_uri:
                         continue
@@ -305,7 +305,7 @@ class QtJsonLineStubServer:
     """Minimal ``qtserver://`` peer that forwards ``dispatch`` to Maya."""
 
     def __init__(self, port: int, *, server_lookup: Callable[[], Any]) -> None:
-        from dcc_mcp_maya.sidecar._dispatcher import dispatch_payload
+        from meshy_dcc_maya.sidecar._dispatcher import dispatch_payload
 
         self._port = port
         self._dispatch_payload = dispatch_payload

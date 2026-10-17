@@ -1,21 +1,21 @@
-# dcc-mcp-maya Install SOP v1
+# meshy-dcc-maya Install SOP v1
 
 This is the owning-repository install contract for Autodesk Maya. The stable
 catalog route is
-`https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-maya/main/install.md`.
+`https://raw.githubusercontent.com/meshy-dev/meshy-dcc-maya/main/install.md`.
 
 ## Requirements
 
 - Autodesk Maya and its exact `mayapy` interpreter.
-- `dcc-mcp-maya` installed in that interpreter, with
-  `dcc-mcp-core>=0.20.0,<0.21.0`.
+- `meshy-dcc-maya` installed in that interpreter, with
+  `meshy-dcc-core>=0.20.0,<0.21.0`.
 - Write access to the selected Maya user profile.
 - Close Maya before replacing or removing a loaded module on Windows.
 
 Install the Python package with the target interpreter first:
 
 ```bash
-mayapy -m pip install --upgrade dcc-mcp-maya
+mayapy -m pip install --upgrade meshy-dcc-maya
 ```
 
 The legacy repository setup helper remains available for source checkouts, but
@@ -42,7 +42,7 @@ The host and profile boundaries are explicit on all three platforms:
 Always resolve and inspect a non-mutating plan first:
 
 ```bash
-dcc-mcp-maya install --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+meshy-dcc-maya install --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
 ```
 
 Both paths are overrides. If omitted, discovery checks the Maya environment,
@@ -53,7 +53,7 @@ Review `host`, `python`, `install_state`, `steps`, and the executable
 `next_steps`. Execute the same validated target only with explicit consent:
 
 ```bash
-dcc-mcp-maya install --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+meshy-dcc-maya install --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
 ```
 
 Exit codes are stable: `0` success, `10` preflight, `20` acquisition, `30`
@@ -64,8 +64,8 @@ partial install is classified as a repair.
 ## Manual path
 
 The lifecycle command stages a complete Maya module tree before commit. It
-installs the adapter package, `dcc_mcp_maya_plugin.py`, the packaged
-`userSetup.py`, and an absolute `dcc_mcp_maya.mod` descriptor. It also writes a
+installs the adapter package, `meshy_dcc_maya_plugin.py`, the packaged
+`userSetup.py`, and an absolute `meshy_dcc_maya.mod` descriptor. It also writes a
 bounded managed block to the profile `scripts/userSetup.py`.
 
 To consume an immutable released module ZIP instead of assembling the module
@@ -83,13 +83,13 @@ There is no delete-then-copy window.
 For a repository checkout, the old helper is compatibility-only:
 
 ```bash
-python skills/dcc-mcp-maya-setup/scripts/setup_dcc_mcp_maya.py --mayapy "/absolute/path/to/mayapy"
+python skills/meshy-dcc-maya-setup/scripts/setup_meshy_dcc_maya.py --mayapy "/absolute/path/to/mayapy"
 ```
 
 ## Status
 
 ```bash
-dcc-mcp-maya status --json --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+meshy-dcc-maya status --json --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
 ```
 
 `fresh`, `current`, `upgrade`, and `partial` are reported from the receipt and
@@ -98,7 +98,7 @@ artifact hashes. Unknown unreceipted files are never removed automatically.
 ## Verify
 
 ```bash
-dcc-mcp-maya verify --json --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy" --timeout 30
+meshy-dcc-maya verify --json --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy" --timeout 30
 ```
 
 Verification fails closed through these boundaries:
@@ -115,7 +115,7 @@ is expected and `next_steps` provides the exact launch and verify commands.
 The fixed GUI diagnostic from the dependent bootstrap work remains available:
 
 ```bash
-mayapy -m dcc_mcp_maya.gui_bootstrap launch --maya-executable "/absolute/path/to/maya" --timeout 120
+mayapy -m meshy_dcc_maya.gui_bootstrap launch --maya-executable "/absolute/path/to/maya" --timeout 120
 ```
 
 It captures ordered plug-in/registry/sidecar stages without changing Plug-in
@@ -126,8 +126,8 @@ Manager Auto Load or using UI automation.
 Upgrade requires an existing valid receipt:
 
 ```bash
-dcc-mcp-maya upgrade --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
-dcc-mcp-maya upgrade --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+meshy-dcc-maya upgrade --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+meshy-dcc-maya upgrade --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
 ```
 
 The upgrade uses the same staged transaction and rollback path as install. It
@@ -138,8 +138,8 @@ preserves the original pre-install userSetup state across repeated upgrades.
 Plan, then consume only the matching receipt:
 
 ```bash
-dcc-mcp-maya uninstall --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
-dcc-mcp-maya uninstall --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+meshy-dcc-maya uninstall --json --dry-run --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
+meshy-dcc-maya uninstall --json --yes --dcc-path "/absolute/path/to/Maya" --python "/absolute/path/to/mayapy"
 ```
 
 Uninstall removes only receipted module content and restores the prior

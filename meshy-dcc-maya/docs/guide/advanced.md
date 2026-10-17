@@ -74,9 +74,9 @@ def main(
 ### Register Your Skills
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-handle = dcc_mcp_maya.start_server(
+handle = meshy_dcc_maya.start_server(
     extra_skill_paths=[
         "/path/to/my-skills-folder",
         "/another/skills/directory",
@@ -88,10 +88,10 @@ Or use the environment variable:
 
 ```bash
 # Semicolon-separated on Windows
-set DCC_MCP_MAYA_SKILL_PATHS=C:\studio\maya-skills;C:\personal\skills
+set MESHY_DCC_MAYA_SKILL_PATHS=C:\studio\maya-skills;C:\personal\skills
 
 # Colon-separated on Linux/macOS
-export DCC_MCP_MAYA_SKILL_PATHS=/studio/maya-skills:/personal/skills
+export MESHY_DCC_MAYA_SKILL_PATHS=/studio/maya-skills:/personal/skills
 ```
 
 ### Rez-Shipped Studio Skills
@@ -113,10 +113,10 @@ Then append that directory in `package.py`:
 
 ```python
 def commands():
-    env.DCC_MCP_MAYA_SKILL_PATHS.append("{root}/skills")
+    env.MESHY_DCC_MAYA_SKILL_PATHS.append("{root}/skills")
 ```
 
-The adapter scans `DCC_MCP_MAYA_SKILL_PATHS` during `register_builtin_actions()`
+The adapter scans `MESHY_DCC_MAYA_SKILL_PATHS` during `register_builtin_actions()`
 or `start_server()`. Gateway search, `dcc_capability_manifest`, `search_skills`,
 and `load_skill` all use that discovered catalog. After changing a Rez context
 or appending a new environment path, restart/reload the Maya plugin or start a
@@ -148,9 +148,9 @@ result = maya.utils.executeInMainThreadWithResult(_my_operation)
 ### Custom Port and Name
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-handle = dcc_mcp_maya.start_server(
+handle = meshy_dcc_maya.start_server(
     port=9000,
     server_name="maya-studio-2024",
 )
@@ -162,7 +162,7 @@ print(handle.mcp_url())   # http://127.0.0.1:9000/mcp
 For more control, use the class directly:
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 server = MayaMcpServer(
     server_name="maya-mcp",
@@ -179,7 +179,7 @@ server.stop()
 ### Check Server Status
 
 ```python
-from dcc_mcp_maya.server import _server_instance
+from meshy_dcc_maya.server import _server_instance
 
 if _server_instance and _server_instance.is_running:
     print(f"Running at: {_server_instance.mcp_url}")
@@ -190,7 +190,7 @@ if _server_instance and _server_instance.is_running:
 Once the server is running, query the MCP endpoint:
 
 ```bash
-# Set this from `dcc-mcp-cli list`, then list all available tools
+# Set this from `meshy-dcc list`, then list all available tools
 curl "$MCP_INSTANCE_URL" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
@@ -198,10 +198,10 @@ curl "$MCP_INSTANCE_URL" \
 
 ## Hot-Reload Skills
 
-Skills can be reloaded without restarting the server (requires dcc-mcp-core v0.13+):
+Skills can be reloaded without restarting the server (requires meshy-dcc-core v0.13+):
 
 ```python
-from dcc_mcp_maya.server import _server_instance
+from meshy_dcc_maya.server import _server_instance
 
 # Reload a specific skill
 _server_instance._server.load_skill("my-custom-skill")
@@ -213,14 +213,14 @@ Enable debug logging for troubleshooting:
 
 ```python
 import logging
-logging.getLogger("dcc_mcp_maya").setLevel(logging.DEBUG)
-logging.getLogger("dcc_mcp_core").setLevel(logging.DEBUG)
+logging.getLogger("meshy_dcc_maya").setLevel(logging.DEBUG)
+logging.getLogger("meshy_dcc_core").setLevel(logging.DEBUG)
 ```
 
 Or set the environment variable:
 
 ```bash
-set DCC_MCP_LOG_LEVEL=DEBUG
+set MESHY_DCC_LOG_LEVEL=DEBUG
 ```
 
 ## Long-Running Scripts: `defer=True`
@@ -253,14 +253,14 @@ set DCC_MCP_LOG_LEVEL=DEBUG
 }
 ```
 
-The server returns immediately with a deferred handle; `dcc-mcp-core` polls the handle every 100&nbsp;ms and streams the final `ToolResult` back to the client when the script completes (or `timeout_secs` elapses).
+The server returns immediately with a deferred handle; `meshy-dcc-core` polls the handle every 100&nbsp;ms and streams the final `ToolResult` back to the client when the script completes (or `timeout_secs` elapses).
 
 ### Cancellation
 
 Long-running scripts that opt into `defer=True` should also cooperate with cancellation:
 
 ```python
-from dcc_mcp_maya import check_maya_cancelled
+from meshy_dcc_maya import check_maya_cancelled
 
 for frame in frames:
     check_maya_cancelled()       # raises CancelledError when cancelled
@@ -272,7 +272,7 @@ When the MCP client sends `notifications/cancelled` (or the dispatcher signals c
 
 ### Returning `DeferredToolResult` from a custom skill
 
-Any skill can adopt the same pattern by importing the helper from `dcc-mcp-core`:
+Any skill can adopt the same pattern by importing the helper from `meshy-dcc-core`:
 
 ```python
 """my_long_action.py"""
@@ -293,7 +293,7 @@ def main(target: str, defer: bool = True, timeout_secs: float = 600.0):
         _runner(state, target)
         return state["result"]
 
-    from dcc_mcp_core._server import DeferredToolResult  # lazy import
+    from meshy_dcc_core._server import DeferredToolResult  # lazy import
 
     state = {"done": False, "result": None}
 
@@ -331,7 +331,7 @@ Declare it as `execution: async` in `tools.yaml` so the dispatcher allocates a w
 
 ### How the dispatcher routes deferred results
 
-`MayaMcpServer._executor` duck-types the return value: if it exposes `check_is_finished`, the result is passed straight through to `dcc-mcp-core`'s poll loop. No wrapping, no copy, no main-thread reflection. This means dispatcher errors raised before the deferred kick-off are still caught and returned as structured `{"success": False, ...}` envelopes, while the polled completion uses your skill's own envelope.
+`MayaMcpServer._executor` duck-types the return value: if it exposes `check_is_finished`, the result is passed straight through to `meshy-dcc-core`'s poll loop. No wrapping, no copy, no main-thread reflection. This means dispatcher errors raised before the deferred kick-off are still caught and returned as structured `{"success": False, ...}` envelopes, while the polled completion uses your skill's own envelope.
 
 ### Configuration knobs
 
@@ -353,9 +353,9 @@ The MCP server listens on `127.0.0.1` (localhost) by default — it is **not acc
 The server runs in a background thread and consumes minimal resources when idle. For long-running Maya sessions, monitor the server health via:
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 # If handle is alive, server is running
-handle = dcc_mcp_maya.start_server()
+handle = meshy_dcc_maya.start_server()
 print(handle.port)
 ```
 
@@ -369,10 +369,10 @@ import os
 import maya.cmds as cmds
 
 def _start_mcp_if_enabled():
-    if os.environ.get("DCC_MCP_MAYA_AUTOSTART", "1") == "0":
+    if os.environ.get("MESHY_DCC_MAYA_AUTOSTART", "1") == "0":
         return
-    import dcc_mcp_maya
-    handle = dcc_mcp_maya.start_server()
+    import meshy_dcc_maya
+    handle = meshy_dcc_maya.start_server()
     print(f"[studio] Maya MCP: {handle.mcp_url()}")
 
 cmds.evalDeferred(_start_mcp_if_enabled, lowestPriority=True)

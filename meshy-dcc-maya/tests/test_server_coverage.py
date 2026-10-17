@@ -39,9 +39,9 @@ def _import_server():
     import importlib
 
     for mod in list(sys.modules):
-        if "dcc_mcp_maya" in mod:
+        if "meshy_dcc_maya" in mod:
             del sys.modules[mod]
-    return importlib.import_module("dcc_mcp_maya.server")
+    return importlib.import_module("meshy_dcc_maya.server")
 
 
 # ── collect_skill_search_paths coverage ───────────────────────────────────────
@@ -49,7 +49,7 @@ def _import_server():
 
 def _make_bare_server(builtin_dir=None):
     """Create a MayaMcpServer without __init__ for path-collection tests."""
-    from dcc_mcp_maya.server import _BUILTIN_SKILLS_DIR, MayaMcpServer
+    from meshy_dcc_maya.server import _BUILTIN_SKILLS_DIR, MayaMcpServer
 
     srv = object.__new__(MayaMcpServer)
     srv._dcc_name = "maya"
@@ -58,7 +58,7 @@ def _make_bare_server(builtin_dir=None):
     srv._enable_gateway_failover = False
     srv._hot_reloader = None
     srv._gateway_election = None
-    from dcc_mcp_core import McpHttpConfig
+    from meshy_dcc_core import McpHttpConfig
 
     srv._config = McpHttpConfig()
     srv._server = MagicMock()
@@ -80,9 +80,9 @@ class TestCollectSkillSearchPathsCoverage:
 
         fake_builtin = pathlib.Path("/nonexistent/fake/skills/dir")
         srv = _make_bare_server(builtin_dir=fake_builtin)
-        with patch("dcc_mcp_core.get_app_skill_paths_from_env", return_value=[]), patch(
-            "dcc_mcp_core._core.get_skill_paths_from_env", return_value=[], create=True
-        ), patch("dcc_mcp_core._server.skill_discovery.get_skills_dir", return_value=None):
+        with patch("meshy_dcc_core.get_app_skill_paths_from_env", return_value=[]), patch(
+            "meshy_dcc_core._core.get_skill_paths_from_env", return_value=[], create=True
+        ), patch("meshy_dcc_core._server.skill_discovery.get_skills_dir", return_value=None):
             paths = srv.collect_skill_search_paths(include_bundled=False)
         assert str(fake_builtin) not in paths
 
@@ -90,30 +90,30 @@ class TestCollectSkillSearchPathsCoverage:
         """get_skills_dir() result is appended when not already in paths."""
         sentinel = "/sentinel/default/skills"
         srv = _make_bare_server()
-        with patch("dcc_mcp_core._server.skill_discovery.get_skills_dir", return_value=sentinel), patch(
-            "dcc_mcp_core.get_app_skill_paths_from_env", return_value=[]
-        ), patch("dcc_mcp_core.get_skill_paths_from_env", return_value=[]):
+        with patch("meshy_dcc_core._server.skill_discovery.get_skills_dir", return_value=sentinel), patch(
+            "meshy_dcc_core.get_app_skill_paths_from_env", return_value=[]
+        ), patch("meshy_dcc_core.get_skill_paths_from_env", return_value=[]):
             paths = srv.collect_skill_search_paths(include_bundled=False)
         assert sentinel in paths
 
     def test_default_skills_dir_not_duplicated(self):
         """get_skills_dir() result is NOT appended if already in paths."""
-        from dcc_mcp_maya.server import _BUILTIN_SKILLS_DIR
+        from meshy_dcc_maya.server import _BUILTIN_SKILLS_DIR
 
         builtin = str(_BUILTIN_SKILLS_DIR)
         srv = _make_bare_server()
-        with patch("dcc_mcp_core.get_app_skill_paths_from_env", return_value=[]), patch(
-            "dcc_mcp_core._core.get_skill_paths_from_env", return_value=[], create=True
-        ), patch("dcc_mcp_core._server.skill_discovery.get_skills_dir", return_value=builtin):
+        with patch("meshy_dcc_core.get_app_skill_paths_from_env", return_value=[]), patch(
+            "meshy_dcc_core._core.get_skill_paths_from_env", return_value=[], create=True
+        ), patch("meshy_dcc_core._server.skill_discovery.get_skills_dir", return_value=builtin):
             paths = srv.collect_skill_search_paths(include_bundled=False)
         assert paths.count(builtin) == 1
 
     def test_default_skills_dir_none_not_appended(self):
         """get_skills_dir() returning None is handled gracefully."""
         srv = _make_bare_server()
-        with patch("dcc_mcp_core.get_app_skill_paths_from_env", return_value=[]), patch(
-            "dcc_mcp_core._core.get_skill_paths_from_env", return_value=[], create=True
-        ), patch("dcc_mcp_core._server.skill_discovery.get_skills_dir", return_value=None):
+        with patch("meshy_dcc_core.get_app_skill_paths_from_env", return_value=[]), patch(
+            "meshy_dcc_core._core.get_skill_paths_from_env", return_value=[], create=True
+        ), patch("meshy_dcc_core._server.skill_discovery.get_skills_dir", return_value=None):
             paths = srv.collect_skill_search_paths(include_bundled=False)
         assert None not in paths
 

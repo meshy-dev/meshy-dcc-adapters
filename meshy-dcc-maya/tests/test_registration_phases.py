@@ -4,12 +4,12 @@ Maya re-uses the shared core phase pipeline, so these tests cover the
 Maya-facing surface only: that ``default_registration_phases()`` returns
 the standard core order, and that the re-exported executor honours the
 order / non-fatal-failure contract. Host-hook delegation and fatal-abort
-behaviour are covered in dcc-mcp-core's ``test_registration_pipeline``.
+behaviour are covered in meshy-dcc-core's ``test_registration_pipeline``.
 """
 
 from __future__ import annotations
 
-from dcc_mcp_maya import _registration
+from meshy_dcc_maya import _registration
 
 
 class _RecordingPhase(_registration.RegistrationPhase):

@@ -17,7 +17,7 @@ from __future__ import annotations
 import threading
 import time
 
-from dcc_mcp_maya.dispatcher import (
+from meshy_dcc_maya.dispatcher import (
     MayaStandaloneDispatcher,
     MayaUiDispatcher,
 )
@@ -87,7 +87,7 @@ class TestSubmitAsyncCallable:
         done = threading.Event()
 
         def task():
-            from dcc_mcp_maya.dispatcher import _current_job
+            from meshy_dcc_maya.dispatcher import _current_job
 
             job = _current_job.get()
             if job is not None:

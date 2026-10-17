@@ -1,6 +1,6 @@
 # Shutdown Safety Matrix
 
-Issue [#186](https://github.com/dcc-mcp/dcc-mcp-maya/issues/186) hardens the
+Issue [#186](https://github.com/meshy-dev/meshy-dcc-maya/issues/186) hardens the
 Maya MCP plugin's shutdown behaviour so non-cooperative Maya exits stop
 leaking `FileRegistry` rows. The operator-visible symptom *"Maya 退出后
 plugin 服务好像没有退出"* — `list_dcc_instances` continuing to advertise a
@@ -20,10 +20,10 @@ out of whichever ones they own.
 
 | Net                                   | Env var opt-out                              | Default | What it catches                                                                                              |
 |---------------------------------------|----------------------------------------------|---------|--------------------------------------------------------------------------------------------------------------|
-| `MSceneMessage.kMayaExiting` hook     | `DCC_MCP_MAYA_KMAYA_EXITING_HOOK=0`          | on      | Clean `File → Exit Maya`, `⌘Q` / Alt+F4 — fires **before** `uninitializePlugin`.                             |
-| `atexit` fallback                     | `DCC_MCP_MAYA_ATEXIT_HOOK=0`                 | on      | Plain interpreter teardown (`mayapy` scripts, REPL quit, embedding host that skips `unloadPlugin`).          |
-| Crash-resilient process sentinel      | `DCC_MCP_MAYA_PROCESS_SENTINEL=0`            | on      | Hard crashes / `kill -9` / Task Manager End Task — the OS drops the marker file when the process dies.       |
-| Defensive `__del__` guard (opt-in)    | `DCC_MCP_MAYA_DEFENSIVE_DEL=1` to enable     | off     | `mayapy` / test-fixture code paths that never call `stop_server()`; disabled by default to avoid Tokio deadlocks during interpreter teardown. |
+| `MSceneMessage.kMayaExiting` hook     | `MESHY_DCC_MAYA_KMAYA_EXITING_HOOK=0`          | on      | Clean `File → Exit Maya`, `⌘Q` / Alt+F4 — fires **before** `uninitializePlugin`.                             |
+| `atexit` fallback                     | `MESHY_DCC_MAYA_ATEXIT_HOOK=0`                 | on      | Plain interpreter teardown (`mayapy` scripts, REPL quit, embedding host that skips `unloadPlugin`).          |
+| Crash-resilient process sentinel      | `MESHY_DCC_MAYA_PROCESS_SENTINEL=0`            | on      | Hard crashes / `kill -9` / Task Manager End Task — the OS drops the marker file when the process dies.       |
+| Defensive `__del__` guard (opt-in)    | `MESHY_DCC_MAYA_DEFENSIVE_DEL=1` to enable     | off     | `mayapy` / test-fixture code paths that never call `stop_server()`; disabled by default to avoid Tokio deadlocks during interpreter teardown. |
 
 All four are composed by `ShutdownCoordinator` which the plugin
 instantiates once after `_start()` and tears down in
@@ -57,10 +57,10 @@ the worst-case ghost-row window is bounded at ≈ 45 s for any exit path.
 
 | Variable                                | Default | Values          | Purpose                                                                                  |
 |-----------------------------------------|---------|-----------------|------------------------------------------------------------------------------------------|
-| `DCC_MCP_MAYA_KMAYA_EXITING_HOOK`       | `1`     | `0` / `1`       | Disable the `MSceneMessage.kMayaExiting` hook registration.                              |
-| `DCC_MCP_MAYA_ATEXIT_HOOK`              | `1`     | `0` / `1`       | Disable the `atexit` fallback.                                                           |
-| `DCC_MCP_MAYA_PROCESS_SENTINEL`         | `1`     | `0` / `1`       | Disable the crash-resilient sentinel file (saves one file descriptor per Maya instance). |
-| `DCC_MCP_MAYA_DEFENSIVE_DEL`            | `0`     | `0` / `1`       | Opt in to the defensive `__del__` guard. Recommended only for `mayapy` / test fixtures.  |
+| `MESHY_DCC_MAYA_KMAYA_EXITING_HOOK`       | `1`     | `0` / `1`       | Disable the `MSceneMessage.kMayaExiting` hook registration.                              |
+| `MESHY_DCC_MAYA_ATEXIT_HOOK`              | `1`     | `0` / `1`       | Disable the `atexit` fallback.                                                           |
+| `MESHY_DCC_MAYA_PROCESS_SENTINEL`         | `1`     | `0` / `1`       | Disable the crash-resilient sentinel file (saves one file descriptor per Maya instance). |
+| `MESHY_DCC_MAYA_DEFENSIVE_DEL`            | `0`     | `0` / `1`       | Opt in to the defensive `__del__` guard. Recommended only for `mayapy` / test fixtures.  |
 
 Values follow the standard truthy/falsy tokens (`0`/`1`, `true`/`false`,
 `yes`/`no`, `on`/`off`). Malformed values fall back to the default and
@@ -69,7 +69,7 @@ log a debug-level message so a typo never kills plugin load.
 ## Python API
 
 ```python
-from dcc_mcp_maya import (
+from meshy_dcc_maya import (
     ShutdownCoordinator,           # composes all four nets
     ProcessSentinel,               # low-level OS marker wrapper
     DefensiveShutdownGuard,        # opt-in __del__ belt

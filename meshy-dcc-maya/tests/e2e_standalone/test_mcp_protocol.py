@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 from ._support import _mcp_list_all_tools, _mcp_post, _new_scene
 
@@ -157,7 +157,7 @@ class TestMcpHttpConnectivity:
         )
 
     @pytest.mark.xfail(
-        reason="dcc-mcp-core subprocess executor uses relative script path; known issue",
+        reason="meshy-dcc-core subprocess executor uses relative script path; known issue",
         strict=False,
     )
     def test_tools_call_get_session_info_via_http(self):
@@ -179,7 +179,7 @@ class TestMcpHttpConnectivity:
         assert "maya_version" in text or "success" in text
 
     @pytest.mark.xfail(
-        reason="dcc-mcp-core subprocess executor uses relative script path; known issue",
+        reason="meshy-dcc-core subprocess executor uses relative script path; known issue",
         strict=False,
     )
     def test_tools_call_create_sphere_via_http(self):
@@ -204,7 +204,7 @@ class TestMcpHttpConnectivity:
         assert "success" in text or "httpSphere" in text
 
     @pytest.mark.xfail(
-        reason="dcc-mcp-core subprocess executor uses relative script path; known issue",
+        reason="meshy-dcc-core subprocess executor uses relative script path; known issue",
         strict=False,
     )
     def test_tools_call_execute_python_via_http(self):
@@ -243,14 +243,14 @@ class TestScriptingHttpE2E:
 
     @pytest.fixture(autouse=True, scope="class")
     def _start_server_and_load_scripting(self, request):
-        # In-process skill execution requires dcc-mcp-core to trust that
+        # In-process skill execution requires meshy-dcc-core to trust that
         # ``import maya.cmds`` works under the ambient interpreter
-        # (upstream issue dcc-mcp-core#231).  We are running inside
+        # (upstream issue meshy-dcc-core#231).  We are running inside
         # mayapy where that guarantee holds, but core has no reliable
         # way to detect that — flip the documented test escape hatch
         # so the skill script actually executes instead of short-
         # circuiting with an ``EXECUTION_FAILED`` envelope.
-        ambient_env = "DCC_MCP_ALLOW_AMBIENT_PYTHON"
+        ambient_env = "MESHY_DCC_ALLOW_AMBIENT_PYTHON"
         previous_env = os.environ.get(ambient_env)
         os.environ[ambient_env] = "1"
 
@@ -356,7 +356,7 @@ class TestScriptingHttpE2E:
         """Issue #151 — ``cmds.warning(...)`` must surface in the HTTP payload.
 
         Uses a deliberately simple single-statement snippet to stay on
-        the happy path of dcc-mcp-core's parameter marshalling — the
+        the happy path of meshy-dcc-core's parameter marshalling — the
         subprocess executor has trouble with compound statements in
         some environments, and that is orthogonal to what this test is
         verifying (the Maya-output-capture hook itself).

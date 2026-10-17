@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: dcc-mcp-maya
+  name: meshy-dcc-maya
   text: AI-Powered Maya Automation
   tagline: Run Maya through the standard sidecar gateway, with progressive typed MCP tools and a Maya-safe dispatcher bridge.
   image:
     src: /logo.svg
-    alt: dcc-mcp-maya
+    alt: meshy-dcc-maya
   actions:
     - theme: brand
       text: Quick Start
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/dcc-mcp/dcc-mcp-maya
+      link: https://github.com/meshy-dev/meshy-dcc-maya
 
 features:
   - icon: 🤖
@@ -28,7 +28,7 @@ features:
     details: Capture any Maya viewport as a base64-encoded PNG with a single MCP call. Perfect for AI visual feedback loops.
   - icon: 🔌
     title: Sidecar Gateway by Default
-    details: Plugin deployments start the dcc-mcp-server sidecar as the standard runtime, keeping HTTP and gateway work outside Maya while dispatching scene work back safely.
+    details: Plugin deployments start the meshy-dcc-server sidecar as the standard runtime, keeping HTTP and gateway work outside Maya while dispatching scene work back safely.
   - icon: ⚡
     title: Progressive Skill Architecture
     details: Start with a compact minimal tool surface, discover unloaded capabilities with dcc_capability_manifest, then load domain skills on demand.

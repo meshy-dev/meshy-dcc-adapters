@@ -12,7 +12,7 @@ if (-not $ProjectRoot) {
     $ProjectRoot = $PSScriptRoot | Split-Path | Split-Path
 }
 $ModDir = Join-Path $env:USERPROFILE "Documents\maya\modules"
-$Target = Join-Path $ModDir "dcc-mcp-maya"
+$Target = Join-Path $ModDir "meshy-dcc-maya"
 
 Write-Host "🔗 Setting up Maya dev symlinks (Maya $MayaVersion)..." -ForegroundColor Cyan
 Write-Host "   Project  : $ProjectRoot" -ForegroundColor Gray
@@ -43,8 +43,8 @@ try {
 }
 
 # Copy plugin file
-Copy-Item -Path (Join-Path $ProjectRoot "maya\plugin\dcc_mcp_maya_plugin.py") -Destination (Join-Path $Target "plug-ins") -Force
-Write-Host "   ✅ Copied: plug-ins/dcc_mcp_maya_plugin.py" -ForegroundColor Green
+Copy-Item -Path (Join-Path $ProjectRoot "maya\plugin\meshy_dcc_maya_plugin.py") -Destination (Join-Path $Target "plug-ins") -Force
+Write-Host "   ✅ Copied: plug-ins/meshy_dcc_maya_plugin.py" -ForegroundColor Green
 
 # Copy userSetup.py
 Copy-Item -Path (Join-Path $ProjectRoot "maya\userSetup.py") -Destination (Join-Path $Target "scripts") -Force
@@ -52,19 +52,19 @@ Write-Host "   ✅ Copied: scripts/userSetup.py" -ForegroundColor Green
 
 # Generate .mod file
 $ModContent = @(
-    "+ dcc-mcp-maya 0.0.0-dev $Target",
+    "+ meshy-dcc-maya 0.0.0-dev $Target",
     "PYTHONPATH+:=python",
     "MAYA_PLUG_IN_PATH+:=plug-ins",
     "MAYA_SCRIPT_PATH+:=scripts"
 )
-$ModContent | Out-File -FilePath (Join-Path $ModDir "dcc-mcp-maya.mod") -Encoding ASCII
+$ModContent | Out-File -FilePath (Join-Path $ModDir "meshy-dcc-maya.mod") -Encoding ASCII
 
 Write-Host ""
 Write-Host "   ✅ Setup complete:" -ForegroundColor Green
 Write-Host "      python/     → src/ (live source)"
 Write-Host "      plug-ins/   → maya/plugin/"
 Write-Host "      scripts/    → maya/userSetup.py"
-Write-Host "      .mod file   → $(Join-Path $ModDir 'dcc-mcp-maya.mod')"
+Write-Host "      .mod file   → $(Join-Path $ModDir 'meshy-dcc-maya.mod')"
 Write-Host ""
 Write-Host "   Next: start Maya $MayaVersion — the plugin loads automatically." -ForegroundColor Cyan
 Write-Host "   Edit source → restart Maya (or use hot-reload) to see changes." -ForegroundColor Cyan

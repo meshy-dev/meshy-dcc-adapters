@@ -1,9 +1,9 @@
-"""Tests for ``dcc_mcp_maya._pyexec.auto_correct`` (issue #125).
+"""Tests for ``meshy_dcc_maya._pyexec.auto_correct`` (issue #125).
 
-Validates that ``DCC_MCP_PYTHON_EXECUTABLE`` is auto-corrected when the user
+Validates that ``MESHY_DCC_PYTHON_EXECUTABLE`` is auto-corrected when the user
 sets it to a DCC GUI binary instead of the headless Python sibling.
 
-See: https://github.com/dcc-mcp/dcc-mcp-maya/issues/125
+See: https://github.com/meshy-dev/meshy-dcc-maya/issues/125
 """
 
 # Import future modules
@@ -17,7 +17,7 @@ import types
 from unittest.mock import patch
 
 # Import local modules
-from dcc_mcp_maya import _pyexec
+from meshy_dcc_maya import _pyexec
 
 
 class TestAutoCorrect:
@@ -151,14 +151,14 @@ class TestAutoCorrect:
         maya.write_text("", encoding="utf-8")
         mayapy.write_text("", encoding="utf-8")
 
-        fake_core = types.ModuleType("dcc_mcp_core")
+        fake_core = types.ModuleType("meshy_dcc_core")
 
         def _missing(_name: str) -> object:
-            raise ModuleNotFoundError("No module named 'dcc_mcp_core._core'")
+            raise ModuleNotFoundError("No module named 'meshy_dcc_core._core'")
 
         fake_core.__getattr__ = _missing  # type: ignore[attr-defined]
 
-        with patch.dict(sys.modules, {"dcc_mcp_core": fake_core}, clear=False):
+        with patch.dict(sys.modules, {"meshy_dcc_core": fake_core}, clear=False):
             with patch.dict(os.environ, {_pyexec.ENV_VAR: str(maya)}, clear=False):
                 assert os.fspath(_pyexec.auto_correct()) == str(mayapy)
                 assert os.environ[_pyexec.ENV_VAR] == str(mayapy)

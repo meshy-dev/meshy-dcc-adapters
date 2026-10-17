@@ -1,8 +1,8 @@
 # 简介
 
-**dcc-mcp-maya** 是 [DCC-MCP](https://github.com/dcc-mcp/dcc-mcp-core) 生态系统的 Maya 专属集成层。
+**meshy-dcc-maya** 是 [Meshy DCC](https://github.com/meshy-dev/meshy-dcc-core) 生态系统的 Maya 专属集成层。
 
-它让 Maya 通过符合标准的 **MCP Streamable HTTP** 表面对外服务。插件部署默认使用 Rust `dcc-mcp-server` sidecar 作为标准运行时：HTTP 与 gateway 工作留在 Maya 进程外，场景操作再通过 Maya-safe Qt bridge 调度回 Maya。
+它让 Maya 通过符合标准的 **MCP Streamable HTTP** 表面对外服务。插件部署默认使用 Rust `meshy-dcc-server` sidecar 作为标准运行时：HTTP 与 gateway 工作留在 Maya 进程外，场景操作再通过 Maya-safe Qt bridge 调度回 Maya。
 
 ## 适用人群
 
@@ -18,7 +18,7 @@
 ┌─────────────────────────────────────────────────────────┐
 │  Maya（内嵌 Python）                                     │
 │                                                          │
-│  dcc_mcp_maya_plugin.py                                 │
+│  meshy_dcc_maya_plugin.py                                 │
 │  Qt dispatcher + sidecar bridge                         │
 │                                                          │
 │  ┌─────────────────────────────────────────────────┐   │
@@ -32,7 +32,7 @@
 │  │  MayaHost / dispatcher / skill executor         │   │
 │  └─────────────────────────────────────────────────┘   │
 └─────────────────────────────┬───────────────────────────┘
-                               │  http://127.0.0.1:9765/mcp
+                               │  http://127.0.0.1:19765/mcp
 ┌─────────────────────────────▼───────────────────────────┐
 │  MCP 宿主（Claude Desktop / OpenClaw / Cursor / …）      │
 └─────────────────────────────────────────────────────────┘
@@ -77,8 +77,8 @@ load_skill("maya-primitives")
 
 1. `extra_skill_paths` 参数
 2. 本包内置的 `skills/` 目录
-3. `DCC_MCP_MAYA_SKILL_PATHS` 环境变量（Maya 专属）
-4. `DCC_MCP_SKILL_PATHS` 环境变量（全局回退）
+3. `MESHY_DCC_MAYA_SKILL_PATHS` 环境变量（Maya 专属）
+4. `MESHY_DCC_SKILL_PATHS` 环境变量（全局回退）
 5. 平台默认 Skill 目录
 
 每个环境变量条目都是一个 skill 搜索根目录：它可以直接是 skill 包，也可以是多个

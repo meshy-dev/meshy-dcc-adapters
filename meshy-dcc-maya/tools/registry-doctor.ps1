@@ -1,5 +1,5 @@
 # Inspect + optionally clean both FileRegistry directories used by
-# dcc-mcp (Maya in-process + sidecar binary). Diagnoses the split-brain
+# meshy-dcc (Maya in-process + sidecar binary). Diagnoses the split-brain
 # scenario described in RFC #998 follow-up (2026-05-16): the Rust
 # sidecar binary used to default to a different temp subdir than the
 # Maya in-process GatewayRunner, so gateway competition went split-brain.
@@ -22,8 +22,8 @@ $ErrorActionPreference = "Stop"
 
 $temp = $env:TEMP
 $paths = @(
-    @{Label = "GatewayRunner / Maya in-process (canonical)"; Path = "$temp\dcc-mcp-registry\services.json"}
-    @{Label = "Sidecar default (split-brain, pre-fix)"; Path = "$temp\dcc-mcp\registry\services.json"}
+    @{Label = "GatewayRunner / Maya in-process (canonical)"; Path = "$temp\meshy-dcc-registry\services.json"}
+    @{Label = "Sidecar default (split-brain, pre-fix)"; Path = "$temp\meshy-dcc\registry\services.json"}
 )
 
 function Test-PidAlive([int]$ProcessId) {
@@ -102,7 +102,7 @@ if ($Nuke) {
     }
     Write-Output ""
     Write-Output "Also wiping sentinel lock dirs..."
-    foreach ($lock_dir in @("$temp\dcc-mcp-registry\locks", "$temp\dcc-mcp\registry\locks")) {
+    foreach ($lock_dir in @("$temp\meshy-dcc-registry\locks", "$temp\meshy-dcc\registry\locks")) {
         if (Test-Path $lock_dir) {
             Get-ChildItem $lock_dir -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
             Write-Output "  cleared: $lock_dir"
@@ -111,13 +111,13 @@ if ($Nuke) {
 }
 
 Write-Output ""
-Write-Output "=== 9765 status ==="
-$g = Get-NetTCPConnection -LocalPort 9765 -State Listen -ErrorAction SilentlyContinue
+Write-Output "=== 19765 status ==="
+$g = Get-NetTCPConnection -LocalPort 19765 -State Listen -ErrorAction SilentlyContinue
 if ($g) {
     foreach ($c in $g) {
         $proc = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
         Write-Output ("  LISTENING  pid={0} name={1}" -f $c.OwningProcess, $proc.ProcessName)
     }
 } else {
-    Write-Output "  no listener on 9765"
+    Write-Output "  no listener on 19765"
 }

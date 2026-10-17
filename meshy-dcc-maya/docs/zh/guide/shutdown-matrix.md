@@ -1,6 +1,6 @@
 # 退出场景安全矩阵
 
-Issue [#186](https://github.com/dcc-mcp/dcc-mcp-maya/issues/186) 强化了 Maya MCP 插件在
+Issue [#186](https://github.com/meshy-dev/meshy-dcc-maya/issues/186) 强化了 Maya MCP 插件在
 **非协作式退出**（崩溃、`kill -9`、任务管理器结束进程等）下的清理能力，避免
 `FileRegistry` 条目长时间泄漏。运维同学常见的症状
 "Maya 退出后 plugin 服务好像没有退出"（`list_dcc_instances` 继续通告一个刚刚关闭的 Maya）
@@ -15,10 +15,10 @@ Issue [#186](https://github.com/dcc-mcp/dcc-mcp-maya/issues/186) 强化了 Maya 
 
 | 安全网                                    | 关闭环境变量                                 | 默认 | 覆盖场景                                                                                     |
 |-------------------------------------------|----------------------------------------------|------|----------------------------------------------------------------------------------------------|
-| `MSceneMessage.kMayaExiting` 钩子         | `DCC_MCP_MAYA_KMAYA_EXITING_HOOK=0`          | 开启 | `File → Exit Maya` 清退、`⌘Q` / Alt+F4——**早于** `uninitializePlugin` 触发。                 |
-| `atexit` 兜底                             | `DCC_MCP_MAYA_ATEXIT_HOOK=0`                 | 开启 | 普通 Python 解释器退出（`mayapy` 脚本、REPL 退出、跳过 `unloadPlugin` 的嵌入场景）。         |
-| 抗崩溃进程哨兵文件                        | `DCC_MCP_MAYA_PROCESS_SENTINEL=0`            | 开启 | 硬崩溃 / `kill -9` / 任务管理器结束——**操作系统会在进程死亡时自动删除哨兵**。               |
-| 防御式 `__del__` 兜底（默认关闭）         | `DCC_MCP_MAYA_DEFENSIVE_DEL=1` 开启          | 关闭 | `mayapy` / 测试 fixture 里从未调用 `stop_server()` 的路径；默认关闭以规避 Tokio 嵌套死锁。   |
+| `MSceneMessage.kMayaExiting` 钩子         | `MESHY_DCC_MAYA_KMAYA_EXITING_HOOK=0`          | 开启 | `File → Exit Maya` 清退、`⌘Q` / Alt+F4——**早于** `uninitializePlugin` 触发。                 |
+| `atexit` 兜底                             | `MESHY_DCC_MAYA_ATEXIT_HOOK=0`                 | 开启 | 普通 Python 解释器退出（`mayapy` 脚本、REPL 退出、跳过 `unloadPlugin` 的嵌入场景）。         |
+| 抗崩溃进程哨兵文件                        | `MESHY_DCC_MAYA_PROCESS_SENTINEL=0`            | 开启 | 硬崩溃 / `kill -9` / 任务管理器结束——**操作系统会在进程死亡时自动删除哨兵**。               |
+| 防御式 `__del__` 兜底（默认关闭）         | `MESHY_DCC_MAYA_DEFENSIVE_DEL=1` 开启          | 关闭 | `mayapy` / 测试 fixture 里从未调用 `stop_server()` 的路径；默认关闭以规避 Tokio 嵌套死锁。   |
 
 四个网由 `ShutdownCoordinator` 统一组合：插件启动后构造一次、
 `uninitializePlugin` 时拆除。Coordinator 内部的一次性触发守卫保证即便多个网
@@ -45,10 +45,10 @@ Issue [#186](https://github.com/dcc-mcp/dcc-mcp-maya/issues/186) 强化了 Maya 
 
 | 变量                                    | 默认 | 取值            | 用途                                                                         |
 |-----------------------------------------|------|-----------------|------------------------------------------------------------------------------|
-| `DCC_MCP_MAYA_KMAYA_EXITING_HOOK`       | `1`  | `0` / `1`       | 关闭 `MSceneMessage.kMayaExiting` 钩子注册。                                 |
-| `DCC_MCP_MAYA_ATEXIT_HOOK`              | `1`  | `0` / `1`       | 关闭 `atexit` 兜底。                                                         |
-| `DCC_MCP_MAYA_PROCESS_SENTINEL`         | `1`  | `0` / `1`       | 关闭抗崩溃哨兵文件（节省 1 个文件描述符）。                                  |
-| `DCC_MCP_MAYA_DEFENSIVE_DEL`            | `0`  | `0` / `1`       | 启用防御式 `__del__` 兜底。推荐仅在 `mayapy` / 测试 fixture 中开启。         |
+| `MESHY_DCC_MAYA_KMAYA_EXITING_HOOK`       | `1`  | `0` / `1`       | 关闭 `MSceneMessage.kMayaExiting` 钩子注册。                                 |
+| `MESHY_DCC_MAYA_ATEXIT_HOOK`              | `1`  | `0` / `1`       | 关闭 `atexit` 兜底。                                                         |
+| `MESHY_DCC_MAYA_PROCESS_SENTINEL`         | `1`  | `0` / `1`       | 关闭抗崩溃哨兵文件（节省 1 个文件描述符）。                                  |
+| `MESHY_DCC_MAYA_DEFENSIVE_DEL`            | `0`  | `0` / `1`       | 启用防御式 `__del__` 兜底。推荐仅在 `mayapy` / 测试 fixture 中开启。         |
 
 取值遵循常见真值约定（`0`/`1`、`true`/`false`、`yes`/`no`、`on`/`off`）。
 书写错误会降级为默认值并打 debug 日志，不会阻塞插件加载。
@@ -56,7 +56,7 @@ Issue [#186](https://github.com/dcc-mcp/dcc-mcp-maya/issues/186) 强化了 Maya 
 ## Python API
 
 ```python
-from dcc_mcp_maya import (
+from meshy_dcc_maya import (
     ShutdownCoordinator,           # 组合四个安全网的总线
     ProcessSentinel,               # 底层 OS 哨兵文件封装
     DefensiveShutdownGuard,        # 可选的 __del__ 兜底包装器

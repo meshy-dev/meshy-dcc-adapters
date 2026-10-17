@@ -1,20 +1,20 @@
-# dcc-mcp-maya
+# meshy-dcc-maya
 
-Autodesk Maya 的 [DCC Model Context Protocol](https://github.com/dcc-mcp/dcc-mcp-core) (MCP) 生态系统插件。
+Autodesk Maya 的 [DCC Model Context Protocol](https://github.com/meshy-dev/meshy-dcc-core) (MCP) 生态系统插件。
 
 将符合标准的 **MCP Streamable HTTP 服务器**（2025-03-26 规范）直接嵌入 Maya — 无需外部网关或单独的 IPC 进程。
 
-[![CI](https://github.com/dcc-mcp/dcc-mcp-maya/actions/workflows/ci.yml/badge.svg)](https://github.com/dcc-mcp/dcc-mcp-maya/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/dcc-mcp/dcc-mcp-maya/graph/badge.svg)](https://codecov.io/gh/dcc-mcp/dcc-mcp-maya)
-[![PyPI](https://img.shields.io/pypi/v/dcc-mcp-maya)](https://pypi.org/project/dcc-mcp-maya/)
-[![Python](https://img.shields.io/pypi/pyversions/dcc-mcp-maya)](https://pypi.org/project/dcc-mcp-maya/)
+[![CI](https://github.com/meshy-dev/meshy-dcc-maya/actions/workflows/ci.yml/badge.svg)](https://github.com/meshy-dev/meshy-dcc-maya/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/meshy-dcc/meshy-dcc-maya/graph/badge.svg)](https://codecov.io/gh/meshy-dcc/meshy-dcc-maya)
+[![PyPI](https://img.shields.io/pypi/v/meshy-dcc-maya)](https://pypi.org/project/meshy-dcc-maya/)
+[![Python](https://img.shields.io/pypi/pyversions/meshy-dcc-maya)](https://pypi.org/project/meshy-dcc-maya/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Showcase
 
 ![从 ZBrush 导入 Maya 并在视口中取景的 500 万面 Fantasy Dragon](docs/images/zbrush-maya-fantasy-dragon-showcase.png)
 
-这是 Maya 2026 中真实的类型化 ZBrush→Maya 联调证据：导入独立 Namespace 后严格核对 **2,499,970 个顶点 / 5,000,000 个面**，再保存场景。Fantasy Dragon 模型由 [Artec 3D](https://www.artec3d.com/3d-models/fantasy-dragon) 提供，按 CC BY 4.0 使用；本仓库不包含源模型。查看[完整流程和可复制提示词](https://dcc-mcp.github.io/showcase#zbrush-maya-roundtrip)。
+这是 Maya 2026 中真实的类型化 ZBrush→Maya 联调证据：导入独立 Namespace 后严格核对 **2,499,970 个顶点 / 5,000,000 个面**，再保存场景。Fantasy Dragon 模型由 [Artec 3D](https://www.artec3d.com/3d-models/fantasy-dragon) 提供，按 CC BY 4.0 使用；本仓库不包含源模型。查看[完整流程和可复制提示词](https://www.meshy.ai/meshy-dcc/showcase#zbrush-maya-roundtrip)。
 
 ## 架构
 
@@ -22,16 +22,16 @@ Autodesk Maya 的 [DCC Model Context Protocol](https://github.com/dcc-mcp/dcc-mc
 ┌─────────────────────────────────────────────────────────┐
 │  Maya (embedded Python)                                  │
 │                                                          │
-│  import dcc_mcp_maya                                    │
-│  handle = dcc_mcp_maya.start_server()                   │
+│  import meshy_dcc_maya                                    │
+│  handle = meshy_dcc_maya.start_server()                   │
 │                                                          │
 │  ┌─────────────────────────────────────────────────┐   │
-│  │  McpHttpServer  (dcc-mcp-core / Rust/axum)      │   │
+│  │  McpHttpServer  (meshy-dcc-core / Rust/axum)      │   │
 │  │  POST /mcp  ──►  ToolRegistry                   │   │
 │  │  GET  /mcp  ──►  SSE stream                     │   │
 │  └─────────────────────────────────────────────────┘   │
 └─────────────────────────────┬───────────────────────────┘
-                               │  http://127.0.0.1:9765/mcp（稳定网关）
+                               │  http://127.0.0.1:19765/mcp（稳定网关）
 ┌─────────────────────────────▼───────────────────────────┐
 │  MCP Host  (Claude Desktop / OpenClaw / Cursor / …)      │
 └─────────────────────────────────────────────────────────┘
@@ -42,17 +42,17 @@ Autodesk Maya 的 [DCC Model Context Protocol](https://github.com/dcc-mcp/dcc-mc
 ### 安装到 Maya Python
 
 ```bash
-mayapy -m pip install dcc-mcp-maya
+mayapy -m pip install meshy-dcc-maya
 ```
 
 ### 作为 Maya 插件
 
-1. 通过 **Window > Settings/Preferences > Plug-in Manager** 加载插件，找到 `dcc_mcp_maya`。
+1. 通过 **Window > Settings/Preferences > Plug-in Manager** 加载插件，找到 `meshy_dcc_maya`。
 2. 或者添加到 `userSetup.py`：
 
    ```python
    import maya.cmds as cmds
-   cmds.loadPlugin("dcc_mcp_maya_plugin")
+   cmds.loadPlugin("meshy_dcc_maya_plugin")
    ```
 
 ## 快速开始
@@ -61,20 +61,20 @@ mayapy -m pip install dcc-mcp-maya
 Maya 插件管理器里启用插件，可以直接对 agent 说：
 
 ```text
-帮我参考 https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/install.md 去安装
+帮我参考 https://github.com/meshy-dev/meshy-dcc-maya/blob/main/install.md 去安装
 ```
 
 Agent 应先阅读
-[`install.md`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/install.md)，再按
-[`skills/dcc-mcp-maya-setup`](https://github.com/dcc-mcp/dcc-mcp-maya/tree/main/skills/dcc-mcp-maya-setup)
+[`install.md`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/install.md)，再按
+[`skills/meshy-dcc-maya-setup`](https://github.com/meshy-dev/meshy-dcc-maya/tree/main/skills/meshy-dcc-maya-setup)
 中的 setup skill 完成安装、MCP 配置和 smoke prompt 测试。
 
 ### 选项 A — 从 Python 脚本面板
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-handle = dcc_mcp_maya.start_server()
+handle = meshy_dcc_maya.start_server()
 print(handle.mcp_url())   # 操作系统分配的实例直连地址
 ```
 
@@ -82,26 +82,26 @@ print(handle.mcp_url())   # 操作系统分配的实例直连地址
 
 ### 选项 B — 加载插件
 
-将 `maya/plugin/dcc_mcp_maya_plugin.py` 复制到 `MAYA_PLUG_IN_PATH` 上的目录。
+将 `maya/plugin/meshy_dcc_maya_plugin.py` 复制到 `MAYA_PLUG_IN_PATH` 上的目录。
 服务器在插件加载时自动启动。
 
 ### 配置
 
 | 环境变量 | 默认值 | 说明 |
 |---|---|---|
-| `DCC_MCP_MAYA_PORT` | 操作系统分配 | 可选固定的 MCP 实例 TCP 端口 |
-| `DCC_MCP_MAYA_SERVER_NAME` | `maya-mcp` | MCP initialize 中显示的名称 |
-| `DCC_MCP_MAYA_SKILL_PATHS` | _(无)_ | Maya 专用 skill 搜索根目录（Windows 用分号分隔，Unix 用冒号）；每个根目录可以是单个 skill 包，也可以包含多个子 skill 包 |
-| `DCC_MCP_SKILL_PATHS` | _(无)_ | 所有 DCC 适配器的全局回退 skill 搜索根目录 |
-| `DCC_MCP_MINIMAL` | `1` | `0` = full mode；`1` = minimal mode |
-| `DCC_MCP_DEFAULT_TOOLS` | _(无)_ | 启动时加载的逗号分隔技能名称（覆盖最小默认） |
-| `DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON` | `0` | `1`/`true`/`yes`/`on` — 拒绝 `execute_python`（强制技能优先） |
-| `DCC_MCP_MAYA_DISABLE_EXECUTE_MEL` | `0` | 同上真值 — 仅拒绝 `execute_mel` |
-| `DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT` | `0` | 同上真值 — 同时拒绝 `execute_python` 与 `execute_mel` |
+| `MESHY_DCC_MAYA_PORT` | 操作系统分配 | 可选固定的 MCP 实例 TCP 端口 |
+| `MESHY_DCC_MAYA_SERVER_NAME` | `maya-mcp` | MCP initialize 中显示的名称 |
+| `MESHY_DCC_MAYA_SKILL_PATHS` | _(无)_ | Maya 专用 skill 搜索根目录（Windows 用分号分隔，Unix 用冒号）；每个根目录可以是单个 skill 包，也可以包含多个子 skill 包 |
+| `MESHY_DCC_SKILL_PATHS` | _(无)_ | 所有 DCC 适配器的全局回退 skill 搜索根目录 |
+| `MESHY_DCC_MINIMAL` | `1` | `0` = full mode；`1` = minimal mode |
+| `MESHY_DCC_DEFAULT_TOOLS` | _(无)_ | 启动时加载的逗号分隔技能名称（覆盖最小默认） |
+| `MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON` | `0` | `1`/`true`/`yes`/`on` — 拒绝 `execute_python`（强制技能优先） |
+| `MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL` | `0` | 同上真值 — 仅拒绝 `execute_mel` |
+| `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT` | `0` | 同上真值 — 同时拒绝 `execute_python` 与 `execute_mel` |
 
 ### Studio Skill 路径与 Rez
 
-`DCC_MCP_MAYA_SKILL_PATHS` 会在服务器注册/启动时读取，并按平台路径分隔符切分
+`MESHY_DCC_MAYA_SKILL_PATHS` 会在服务器注册/启动时读取，并按平台路径分隔符切分
 （Windows 为 `;`，Linux/macOS 为 `:`）。每一项都是一个 skill 搜索根目录：
 它可以直接是单个 skill 包，也可以是多个子 skill 包的父目录：
 
@@ -121,7 +121,7 @@ Rez 包可以在 `package.py` 的 `commands()` 中追加 `skills` 根目录：
 
 ```python
 def commands():
-    env.DCC_MCP_MAYA_SKILL_PATHS.append("{root}/skills")
+    env.MESHY_DCC_MAYA_SKILL_PATHS.append("{root}/skills")
 ```
 
 `load_skill("lightbox-maya-dev")`、`search_skills`、gateway `/v1/search` 与
@@ -131,7 +131,7 @@ Rez context 或环境变量发生变化，需要重启/重载插件或重新启�
 
 ### 渐进式加载（最小模式）
 
-默认情况下，`dcc-mcp-maya` 以**最小工具面**启动 — 仅加载核心技能（`maya-scripting`、`maya-scene`），且只激活基本工具：
+默认情况下，`meshy-dcc-maya` 以**最小工具面**启动 — 仅加载核心技能（`maya-scripting`、`maya-scene`），且只激活基本工具：
 
 | 工具 | 角色 | 来源技能 |
 |------|------|-------------|
@@ -147,13 +147,13 @@ Rez context 或环境变量发生变化，需要重启/重载插件或重新启�
 | `list_skills` | 浏览 | 核心 |
 | `load_skill` | 渐进式激活 | 核心 |
 
-所有其他技能显示为 `__skill__<name>` 存根。Agent 调用 `load_skill("maya-primitives")` 按需扩展工具面，并调用 `activate_group("extended")` 在已加载技能中暴露额外的工具组。**推荐策略：**先 `search_skills` / `dcc_capability_manifest` → `load_skill` → 调用带 `inputSchema` 的具体工具；加载/卸载插件优先使用 `list_plugins` / `load_plugin` / `unload_plugin`，仅在无对应技能或需批量内联时再使用 `execute_python` / `execute_mel`（可用 `DCC_MCP_MAYA_DISABLE_*` 在生产环境禁用）。
+所有其他技能显示为 `__skill__<name>` 存根。Agent 调用 `load_skill("maya-primitives")` 按需扩展工具面，并调用 `activate_group("extended")` 在已加载技能中暴露额外的工具组。**推荐策略：**先 `search_skills` / `dcc_capability_manifest` → `load_skill` → 调用带 `inputSchema` 的具体工具；加载/卸载插件优先使用 `list_plugins` / `load_plugin` / `unload_plugin`，仅在无对应技能或需批量内联时再使用 `execute_python` / `execute_mel`（可用 `MESHY_DCC_MAYA_DISABLE_*` 在生产环境禁用）。
 
 **退出**（恢复旧的全加载行为）：
 
 ```bash
 # 环境变量
-export DCC_MCP_MINIMAL=0
+export MESHY_DCC_MINIMAL=0
 ```
 
 ```python
@@ -167,12 +167,12 @@ handle = server.start()
 
 ```bash
 # 仅在启动时加载特定技能
-export DCC_MCP_DEFAULT_TOOLS="maya-scripting,maya-scene,maya-primitives"
+export MESHY_DCC_DEFAULT_TOOLS="maya-scripting,maya-scene,maya-primitives"
 ```
 
 ### 内置技能（零配置）
 
-`dcc-mcp-maya` 自动加载附带在 `dcc-mcp-core` wheel 中的**内置通用技能** — 无需路径配置。
+`meshy-dcc-maya` 自动加载附带在 `meshy-dcc-core` wheel 中的**内置通用技能** — 无需路径配置。
 
 | 技能 | 工具 | 说明 |
 |-------|-------|-------|
@@ -186,7 +186,7 @@ export DCC_MCP_DEFAULT_TOOLS="maya-scripting,maya-scene,maya-primitives"
 
 ```python
 # 禁用所有内置核心技能
-handle = dcc_mcp_maya.start_server(include_bundled=False)
+handle = meshy_dcc_maya.start_server(include_bundled=False)
 
 # 或细粒度控制
 server = MayaMcpServer()
@@ -197,14 +197,14 @@ server.register_builtin_actions(include_bundled=False)
 
 1. `extra_skill_paths` 参数
 2. 内置 Maya 技能（随此包发布）
-3. `DCC_MCP_MAYA_SKILL_PATHS` 环境变量
-4. `DCC_MCP_SKILL_PATHS` 环境变量
-5. 内置 `dcc-mcp-core` 技能 ← 默认加载
+3. `MESHY_DCC_MAYA_SKILL_PATHS` 环境变量
+4. `MESHY_DCC_SKILL_PATHS` 环境变量
+5. 内置 `meshy-dcc-core` 技能 ← 默认加载
 6. 平台默认技能目录
 
 ## 可用的 MCP 工具
 
-`dcc-mcp-maya` 附带 **28 个内置技能包**和 **212 个 Maya MCP 工具**。
+`meshy-dcc-maya` 附带 **28 个内置技能包**和 **212 个 Maya MCP 工具**。
 在默认最小模式下，仅核心工具在启动时激活；其余通过 `load_skill` 渐进式加载。
 
 以下章节是代表性类别，而非详尽清单。
@@ -314,13 +314,13 @@ tools:
       idempotent_hint: true
 ```
 
-分类规则（参见 [issue #84](https://github.com/dcc-mcp/dcc-mcp-maya/issues/84)）：
+分类规则（参见 [issue #84](https://github.com/meshy-dev/meshy-dcc-maya/issues/84)）：
 
 | 字段 | 使用时机 | 说明 |
 |-------|-------------|-------|
 | `execution: async` | 典型挂钟时间 > 2s（渲染、烘焙、缓存、大型导入/导出、模拟） | 还必须设置 `timeout_hint_secs`。在 MCP 中显示为 `deferredHint=true`。 |
 | `execution: sync` | 有界时间查询和单属性设置器 | 默认值。 |
-| `affinity: main` | 任何导入 `maya.*`、调用 `OpenMaya` 或使用 `dcc_mcp_maya.api.validate_*` 的内容 | Maya 工具的安全默认值。 |
+| `affinity: main` | 任何导入 `maya.*`、调用 `OpenMaya` 或使用 `meshy_dcc_maya.api.validate_*` 的内容 | Maya 工具的安全默认值。 |
 | `affinity: any` | 纯文件系统 / 纯 Python 工具，从不触碰 Maya | 通过 grep 脚本中的 `import maya` 验证。 |
 | `timeout_hint_secs: N` | 与 `execution: async` 一起使用时必需 | 正整数；在 `tools/list` 上变为 `_meta.dcc.timeout_hint_secs`。 |
 
@@ -344,7 +344,7 @@ lint 在 `Lint Skills` CI 作业中运行，因此添加新工具而没有这些
 {
   "mcpServers": {
     "maya": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -353,14 +353,14 @@ lint 在 `Lint Skills` CI 作业中运行，因此添加新工具而没有这些
 ## 要求
 
 - Maya 2020+（Python 3.7+）
-- [`dcc-mcp-core`](https://github.com/dcc-mcp/dcc-mcp-core)：`dcc-mcp-core>=0.20.0,<0.21.0`
+- [`meshy-dcc-core`](https://github.com/meshy-dev/meshy-dcc-core)：`meshy-dcc-core>=0.20.0,<0.21.0`
 
 ## 技能脚本中的协作取消
 
 长时间运行的技能脚本（渲染、烘焙、动作捕捉摄取等）应在安全的检查点轮询 `check_maya_cancelled()`，以便调度器可以在 MCP 客户端发送 `notifications/cancelled` 时抢占它们：
 
 ```python
-from dcc_mcp_maya import check_maya_cancelled, maya_success
+from meshy_dcc_maya import check_maya_cancelled, maya_success
 
 def render_frames(frames):
     for frame in frames:
@@ -372,7 +372,7 @@ def render_frames(frames):
 
 `check_maya_cancelled()` 检查两个取消源：
 
-1. **MCP 请求令牌**（`dcc_mcp_core.cancellation.check_cancelled`）— 当 `tools/call` 的 `notifications/cancelled` 到达时由 HTTP 处理程序设置。
+1. **MCP 请求令牌**（`meshy_dcc_core.cancellation.check_cancelled`）— 当 `tools/call` 的 `notifications/cancelled` 到达时由 HTTP 处理程序设置。
 2. **每作业调度器标志** — 由 `MayaUiDispatcher.cancel(...)` 或 `MayaUiDispatcher.shutdown(...)` 设置。覆盖在 MCP 请求外启动的作业（排队批量渲染、scriptJob 等），其中 contextvar 令牌未安装。
 
 在任何这些上下文之外，调用是廉价的无操作，因此即使脚本从交互式 REPL 或单元测试运行，将其放入循环也是安全的。
@@ -382,8 +382,8 @@ def render_frames(frames):
 ### 克隆和安装
 
 ```bash
-git clone https://github.com/dcc-mcp/dcc-mcp-maya
-cd dcc-mcp-maya
+git clone https://github.com/meshy-dev/meshy-dcc-maya
+cd meshy-dcc-maya
 pip install -e ".[dev]"
 pytest tests/
 ```
@@ -396,7 +396,7 @@ pytest tests/
 # 将源代码链接到 Maya 模块目录
 just maya-link
 
-# 将 dcc-mcp-core 安装到 Maya Python
+# 将 meshy-dcc-core 安装到 Maya Python
 just maya-install-core maya-py=/path/to/mayapy
 # 或者如果 mayapy 在 PATH 上：
 just maya-install-core
@@ -414,7 +414,7 @@ just maya-dev
 # 将源代码链接到 Maya 模块目录
 just maya-link-win
 
-# 将 dcc-mcp-core 安装到 Maya Python
+# 将 meshy-dcc-core 安装到 Maya Python
 just maya-install-core-win maya-version=2025
 
 # 检查链接状态

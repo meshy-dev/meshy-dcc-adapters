@@ -1,0 +1,150 @@
+"""Set Maya render settings."""
+
+# Import future modules
+from __future__ import annotations
+
+# Import built-in modules
+from typing import Optional
+
+# Import local modules
+from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
+
+
+def _ensure_arnold_default_driver(cmds) -> bool:
+    """Create MtoA default nodes when the driver is still lazy in standalone."""
+    if cmds.objExists("defaultArnoldDriver"):
+        return False
+    from mtoa.core import createOptions  # type: ignore[import-not-found]  # noqa: PLC0415
+
+    createOptions()
+    if not cmds.objExists("defaultArnoldDriver"):
+        raise RuntimeError("mtoa.core.createOptions did not create defaultArnoldDriver")
+    return True
+
+
+def set_render_settings(
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+    start_frame: Optional[float] = None,
+    end_frame: Optional[float] = None,
+    renderer: Optional[str] = None,
+    image_format: Optional[str] = None,
+    output_path: Optional[str] = None,
+) -> dict:
+    """Set Maya render settings.
+
+    Args:
+        width: Render width in pixels.
+        height: Render height in pixels.
+        start_frame: Animation start frame.
+        end_frame: Animation end frame.
+        renderer: Render engine name (e.g. ``"mayaSoftware"``, ``"mayaHardware2"``,
+            ``"arnold"``, ``"vray"``).
+        image_format: Image format string (e.g. ``"png"``, ``"exr"``, ``"jpg"``).
+        output_path: Output directory path for rendered images.
+
+    Returns:
+        ToolResult dict with applied settings.
+    """
+
+    try:
+        import maya.cmds as cmds  # noqa: PLC0415
+
+        applied = {}
+        arnold_defaults_initialized = None
+        format_name = image_format.lower() if image_format is not None else None
+        arnold_driver = {
+            "png": "png",
+            "exr": "exr",
+            "jpg": "jpeg",
+            "jpeg": "jpeg",
+            "tif": "tiff",
+            "tiff": "tiff",
+        }.get(format_name)
+        active_renderer = renderer or cmds.getAttr("defaultRenderGlobals.currentRenderer")
+        if image_format is not None and active_renderer == "arnold" and arnold_driver:
+            try:
+                arnold_defaults_initialized = _ensure_arnold_default_driver(cmds)
+            except Exception as exc:  # noqa: BLE001
+                return skill_error(
+                    "Arnold default nodes are unavailable",
+                    "ARNOLD_DEFAULT_NODES_UNAVAILABLE",
+                    possible_solutions=[
+                        "Load the mtoa plug-in before setting Arnold render options.",
+                        "Verify that mtoa.core.createOptions is available in this Maya installation.",
+                    ],
+                    code="ARNOLD_DEFAULT_NODES_UNAVAILABLE",
+                    detail="{}: {}".format(type(exc).__name__, exc),
+                    renderer=active_renderer,
+                    image_format=image_format,
+                )
+
+        if width is not None:
+            cmds.setAttr("defaultResolution.width", width)
+            applied["width"] = width
+        if height is not None:
+            cmds.setAttr("defaultResolution.height", height)
+            applied["height"] = height
+        if start_frame is not None:
+            cmds.setAttr("defaultRenderGlobals.startFrame", start_frame)
+            applied["start_frame"] = start_frame
+        if end_frame is not None:
+            cmds.setAttr("defaultRenderGlobals.endFrame", end_frame)
+            applied["end_frame"] = end_frame
+        if renderer is not None:
+            cmds.setAttr("defaultRenderGlobals.currentRenderer", renderer, type="string")
+            applied["renderer"] = renderer
+        if image_format is not None:
+            # Format code mapping for mayaSoftware
+            _fmt_map = {
+                "gif": 0,
+                "soft": 1,
+                "rla": 2,
+                "tiff": 3,
+                "sgi": 5,
+                "jpg": 8,
+                "jpeg": 8,
+                "eps": 9,
+                "iff": 10,
+                "png": 32,
+                "maya16iff": 13,
+                "exr": 40,
+                "tga": 19,
+                "bmp": 20,
+            }
+            fmt_code = _fmt_map.get(format_name, 32)
+            cmds.setAttr("defaultRenderGlobals.imageFormat", fmt_code)
+            if active_renderer == "arnold" and arnold_driver:
+                cmds.setAttr("defaultArnoldDriver.aiTranslator", arnold_driver, type="string")
+            applied["image_format"] = image_format
+        if output_path is not None:
+            cmds.setAttr("defaultRenderGlobals.imageFilePrefix", output_path, type="string")
+            applied["output_path"] = output_path
+
+        if not applied:
+            return skill_error("No settings provided", "Specify at least one render setting to update")
+
+        context = dict(applied)
+        if arnold_defaults_initialized is not None:
+            context["arnold_defaults_initialized"] = arnold_defaults_initialized
+        return skill_success(
+            "Updated render settings: {}".format(", ".join(applied.keys())),
+            prompt="Use render_frame or playblast to render with the new settings.",
+            **context,
+        )
+    except ImportError:
+        return skill_error("Maya not available", "maya.cmds could not be imported")
+    except Exception as exc:
+        return skill_exception(exc, message="Failed to set render settings")
+
+
+@skill_entry
+def main(**kwargs) -> dict:
+    """Entry point; delegates to :func:`set_render_settings`."""
+    return set_render_settings(**kwargs)
+
+
+if __name__ == "__main__":
+    from meshy_dcc_core.skill import run_main
+
+    run_main(main)

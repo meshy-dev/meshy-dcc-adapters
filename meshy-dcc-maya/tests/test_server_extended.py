@@ -32,21 +32,21 @@ def _import_server():
     import importlib
 
     for mod in list(sys.modules):
-        if "dcc_mcp_maya" in mod:
+        if "meshy_dcc_maya" in mod:
             del sys.modules[mod]
-    return importlib.import_module("dcc_mcp_maya.server")
+    return importlib.import_module("meshy_dcc_maya.server")
 
 
 class TestMayaAvailable:
     def test_maya_available_true(self):
         _import_server()
-        from dcc_mcp_maya._version_probe import maya_available
+        from meshy_dcc_maya._version_probe import maya_available
 
         assert maya_available() is True
 
     def test_maya_available_false(self):
         _import_server()
-        from dcc_mcp_maya._version_probe import maya_available
+        from meshy_dcc_maya._version_probe import maya_available
 
         with patch.dict(sys.modules, {"maya.cmds": None}):
             assert maya_available() is False

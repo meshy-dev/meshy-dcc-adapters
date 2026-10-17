@@ -160,7 +160,7 @@ def _measure_mode(client: GatewayClient, tool_slug: str, mode: str, iterations: 
 def _base_url(cli_value: Optional[str]) -> str:
     if cli_value:
         return cli_value.rstrip("/")
-    return os.environ.get("DCC_MCP_GATEWAY_BASE_URL", "http://127.0.0.1:9765").rstrip("/")
+    return os.environ.get("MESHY_DCC_GATEWAY_BASE_URL", "http://127.0.0.1:19765").rstrip("/")
 
 
 def run(args: argparse.Namespace) -> Dict[str, Any]:

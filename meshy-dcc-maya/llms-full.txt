@@ -1,4 +1,4 @@
-# llms-full.txt — dcc-mcp-maya Complete API Reference for AI Agents
+# llms-full.txt — meshy-dcc-maya Complete API Reference for AI Agents
 
 > Exhaustive reference. For a condensed one-page version see llms.txt.
 
@@ -6,39 +6,39 @@
 
 ## Project Metadata
 
-**dcc-mcp-maya** — Maya plugin for the DCC Model Context Protocol (MCP) ecosystem.  
+**meshy-dcc-maya** — Maya plugin for the DCC Model Context Protocol (MCP) ecosystem.  
 Embeds a standards-compliant MCP Streamable HTTP server (2025-03-26 spec) directly inside Maya.
 
 - **Version:** 0.9.35 <!-- x-release-please-version -->
 - **License:** MIT
-- **Repository:** https://github.com/dcc-mcp/dcc-mcp-maya
+- **Repository:** https://github.com/meshy-dev/meshy-dcc-maya
 - **Python:** >=3.7
 - **Maya:** 2020+
-- **Core dependency:** `dcc-mcp-core>=0.20.0,<0.21.0`
-- **Entry point:** `dcc_mcp.adapters` → `maya = "dcc_mcp_maya:MayaMcpServer"`
+- **Core dependency:** `meshy-dcc-core>=0.20.0,<0.21.0`
+- **Entry point:** `meshy_dcc.adapters` → `maya = "meshy_dcc_maya:MayaMcpServer"`
 
 ---
 
 ## Quick Start
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
 # Singleton helper
-handle = dcc_mcp_maya.start_server()
+handle = meshy_dcc_maya.start_server()
 print(handle.mcp_url())   # exact OS-assigned direct URL
 handle.shutdown()
 
 # Or full control
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 server = MayaMcpServer()
 server.register_builtin_actions()
 handle = server.start()
 server.stop()
 ```
 
-Plugin mode: copy `maya/plugin/dcc_mcp_maya_plugin.py` to a directory on `MAYA_PLUG_IN_PATH`.
-The server starts automatically when the plugin loads. In interactive mode a "DCC MCP" menu is added to Maya.
+Plugin mode: copy `maya/plugin/meshy_dcc_maya_plugin.py` to a directory on `MAYA_PLUG_IN_PATH`.
+The server starts automatically when the plugin loads. In interactive mode a "Meshy DCC" menu is added to Maya.
 
 **Bulk / batch (agents):** Prefer one `execute_python` loop for N imports/exports/naming; gateway `call_tools` / `/v1/call_batch` for ≤25 distinct tool steps. See root `AGENTS.md` § *Bulk import, export, and naming* and `examples/workflows/maya_bulk_rbd_fbx.md`.
 
@@ -71,14 +71,14 @@ MayaMcpServer(
 | `port` | `Optional[int]` | `None` | Optional fixed TCP port; unset/`0` lets the OS assign one. |
 | `server_name` | `str` | `"maya-mcp"` | Name in MCP `initialize` response. |
 | `server_version` | `str` | `"0.9.35"` | Version reported in `initialize`. | <!-- x-release-please-version -->
-| `gateway_port` | `int \| None` | `None` | Multi-instance gateway port. `None` reads `DCC_MCP_GATEWAY_PORT`; `0` disables. |
+| `gateway_port` | `int \| None` | `None` | Multi-instance gateway port. `None` reads `MESHY_DCC_GATEWAY_PORT`; `0` disables. |
 | `registry_dir` | `str \| None` | `None` | Shared `FileRegistry` directory for service discovery. |
 | `dcc_version` | `str \| None` | `None` | Maya version string advertised to the registry. |
 | `scene` | `str \| None` | `None` | Current scene path advertised to the registry. |
 | `enable_gateway_failover` | `bool` | `True` | Allow non-gateway instances to promote on gateway loss. |
-| `metrics_enabled` | `bool \| None` | `None` | Enable Prometheus `/metrics`. `None` reads `DCC_MCP_MAYA_METRICS=1`. |
-| `job_storage_path` | `str \| None` | `None` | SQLite job DB path. `None` reads `DCC_MCP_MAYA_JOB_STORAGE`, else defaults to `<data_dir>/dcc-mcp-maya/jobs.db`. Set `""` to disable. |
-| `job_recovery` | `str \| None` | `None` | Interrupted job policy: `"drop"` (default) or `"requeue"`. `None` reads `DCC_MCP_MAYA_JOB_RECOVERY`. |
+| `metrics_enabled` | `bool \| None` | `None` | Enable Prometheus `/metrics`. `None` reads `MESHY_DCC_MAYA_METRICS=1`. |
+| `job_storage_path` | `str \| None` | `None` | SQLite job DB path. `None` reads `MESHY_DCC_MAYA_JOB_STORAGE`, else defaults to `<data_dir>/meshy-dcc-maya/jobs.db`. Set `""` to disable. |
+| `job_recovery` | `str \| None` | `None` | Interrupted job policy: `"drop"` (default) or `"requeue"`. `None` reads `MESHY_DCC_MAYA_JOB_RECOVERY`. |
 
 ### Methods
 
@@ -88,7 +88,7 @@ register_builtin_actions(
     include_bundled: bool = True,
 ) -> MayaMcpServer
 ```
-Discover built-in Maya skills + bundled `dcc-mcp-core` skills. Returns `self` for chaining.
+Discover built-in Maya skills + bundled `meshy-dcc-core` skills. Returns `self` for chaining.
 
 ```python
 start() -> McpServerHandle
@@ -105,7 +105,7 @@ attach_dispatcher(dispatcher: Any) -> None
 ```
 Register a `MayaUiDispatcher` for lifecycle integration. `None` detaches.
 
-### Inherited from DccServerBase (dcc-mcp-core)
+### Inherited from DccServerBase (meshy-dcc-core)
 
 ```python
 discover(extra_paths: Optional[List[str]] = None, dcc_name: str = "maya") -> int
@@ -181,7 +181,7 @@ stop_server() -> None
 ### MayaUiDispatcher
 
 ```python
-from dcc_mcp_maya.dispatcher import MayaUiDispatcher, MayaUiPump, check_maya_cancelled
+from meshy_dcc_maya.dispatcher import MayaUiDispatcher, MayaUiPump, check_maya_cancelled
 
 dispatcher = MayaUiDispatcher()
 pump = MayaUiPump(dispatcher, budget_ms=8)
@@ -213,7 +213,7 @@ pump.uninstall()
 For `mayapy` / batch contexts where there is no event loop. All jobs execute directly on the calling thread.
 
 ```python
-from dcc_mcp_maya.dispatcher import MayaStandaloneDispatcher
+from meshy_dcc_maya.dispatcher import MayaStandaloneDispatcher
 
 dispatcher = MayaStandaloneDispatcher()
 result = dispatcher.submit_callable(request_id="x", task=..., affinity="main")
@@ -224,7 +224,7 @@ result = dispatcher.submit_callable(request_id="x", task=..., affinity="main")
 High-performance dispatcher backed by Rust core. Uses string-payload dispatch for better performance:
 
 ```python
-from dcc_mcp_maya.dispatcher import PyPumpedDispatcher, create_pumped_dispatcher
+from meshy_dcc_maya.dispatcher import PyPumpedDispatcher, create_pumped_dispatcher
 
 # Factory function (recommended)
 dispatcher = create_pumped_dispatcher()
@@ -245,7 +245,7 @@ Key differences from `MayaUiDispatcher`:
 Rust-backed standalone dispatcher for `mayapy` / batch contexts:
 
 ```python
-from dcc_mcp_maya.dispatcher import PyStandaloneDispatcher
+from meshy_dcc_maya.dispatcher import PyStandaloneDispatcher
 
 dispatcher = PyStandaloneDispatcher()
 result = dispatcher.submit_callable(request_id="x", task=..., affinity="main")
@@ -386,7 +386,7 @@ description: "My custom Maya automation skill"
 license: MIT
 allowed-tools: ["Bash", "Read"]
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: maya
     version: "1.0.0"
     tags: [maya, custom]
@@ -442,37 +442,37 @@ tools:
 
 | Variable | Default | Scope | Description |
 |----------|---------|-------|-------------|
-| `DCC_MCP_MAYA_PORT` | unset (`0`) | per-process | Optional fixed MCP HTTP port; unset/`0` = OS-assigned. |
-| `DCC_MCP_MAYA_SERVER_NAME` | `maya-mcp` | per-process | Name in MCP `initialize`. |
-| `DCC_MCP_MAYA_SKILL_PATHS` | — | per-process | Maya skill search roots (`;` Win, `:` Unix); each root may be one skill package or a parent such as Rez `{root}/skills`. |
-| `DCC_MCP_SKILL_PATHS` | — | global fallback | Global skill search roots for all DCC adapters. |
-| `DCC_MCP_MAYA_DEV_ROOTS` | — | per-process | Optional path-list of trusted roots for `maya-dev` project attachment. |
-| `DCC_MCP_MINIMAL` | `1` | per-process | `0`=full mode; `1`=minimal mode. |
-| `DCC_MCP_DEFAULT_TOOLS` | — | per-process | Comma-separated skill names overriding minimal mode. |
-| `DCC_MCP_MAYA_METRICS` | `0` | per-process | `1`=enable Prometheus `/metrics`. |
-| `DCC_MCP_MAYA_JOB_STORAGE` | `<data_dir>/jobs.db` | per-process | SQLite job persistence path. `""`=disable. |
-| `DCC_MCP_MAYA_JOB_RECOVERY` | `drop` | per-process | `requeue`=resume idempotent interrupted jobs on startup. |
-| `DCC_MCP_MAYA_HOT_RELOAD` | `0` | per-process | `1`=watch bundled skills for edit-on-disk reload. |
-| `DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON` | `0` | per-process | `1`/`true`/`yes`/`on` — refuse `execute_python` (skills-first enforcement). |
-| `DCC_MCP_MAYA_DISABLE_EXECUTE_MEL` | `0` | per-process | Same truthy tokens — refuse `execute_mel` only. |
-| `DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT` | `0` | per-process | Same truthy tokens — refuse both `execute_python` and `execute_mel`. |
-| `DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER` | `1` | per-process | Auto-promote on gateway loss. |
-| `DCC_MCP_MAYA_DCC_PID` | `os.getpid()` | per-process | PID advertised to gateway for diagnostics routing. |
-| `DCC_MCP_MAYA_READINESS_TIMEOUT_SECS` | — | per-process | Advisory timeout (positive integer seconds) for the three-state readiness probe (issue #184). Consumed by orchestrators; never auto-fails the probe on its own. |
-| `DCC_MCP_MAYA_KMAYA_EXITING_HOOK` | `1` | per-process | `0`=disable the `MSceneMessage.kMayaExiting` shutdown hook (issue #186). |
-| `DCC_MCP_MAYA_ATEXIT_HOOK` | `1` | per-process | `0`=disable the `atexit` shutdown fallback (issue #186). |
-| `DCC_MCP_MAYA_PROCESS_SENTINEL` | `1` | per-process | `0`=disable the crash-resilient sentinel file used by sweepers (issue #186). |
-| `DCC_MCP_MAYA_DEFENSIVE_DEL` | `0` | per-process | `1`=enable defensive `__del__` guard. Off in interactive Maya (Tokio deadlock risk); recommended for `mayapy` / test fixtures (issue #186). |
-| `DCC_MCP_MAYA_RESOURCES` | `1` | per-process | `0`=disable Maya MCP resource publishing (`scene://current` snapshot + `maya-cmds://` / `maya-api://` / `maya-project://` producers).  Issue #187 / core 0.15.0. |
-| `DCC_MCP_MAYA_FAULTHANDLER` | `1` | per-process | `0`=disable plugin-installed Python fatal-signal traceback logging. Logs are written under `DCC_MCP_LOG_DIR` or the OS temp directory. |
-| `DCC_MCP_MAYA_AUTO_DISMISS_CRASH_DIALOG` | `0` | per-process | `1`=best-effort dismiss detected Maya Qt recovery dialogs after `affinity: main` tool calls and surface `maya_recovered` in result contexts / `scene://current`. |
-| `DCC_MCP_GATEWAY_PORT` | `9765` | per-host | Gateway election port. `0`=disable gateway mode. |
-| `DCC_MCP_GATEWAY_NAME` | `dcc-mcp-gateway@<hostname>` | per-host | Human-readable standalone gateway label surfaced in admin, health, and CLI diagnostics. |
-| `DCC_MCP_GATEWAY_REMOTE_PORT` | `59765` | per-host | LAN gateway listener port opened by the standalone gateway. `0`=disable remote listener; local gateway remains on `127.0.0.1:9765`. |
-| `DCC_MCP_GATEWAY_REMOTE_HOST` | `0.0.0.0` | per-host | LAN gateway listener bind address. Use a specific interface IP to narrow exposure. |
-| `DCC_MCP_REGISTRY_DIR` | OS temp dir | per-user | Shared FileRegistry directory. |
-| `DCC_MCP_PYTHON_EXECUTABLE` | `sys.executable` | per-process | Python interpreter for skill worker subprocesses. |
-| `DCC_MCP_PYTHON_INIT_SNIPPET` | `import maya.standalone; maya.standalone.initialize(name='python')` | per-process | One-liner run by workers before tool scripts. |
+| `MESHY_DCC_MAYA_PORT` | unset (`0`) | per-process | Optional fixed MCP HTTP port; unset/`0` = OS-assigned. |
+| `MESHY_DCC_MAYA_SERVER_NAME` | `maya-mcp` | per-process | Name in MCP `initialize`. |
+| `MESHY_DCC_MAYA_SKILL_PATHS` | — | per-process | Maya skill search roots (`;` Win, `:` Unix); each root may be one skill package or a parent such as Rez `{root}/skills`. |
+| `MESHY_DCC_SKILL_PATHS` | — | global fallback | Global skill search roots for all DCC adapters. |
+| `MESHY_DCC_MAYA_DEV_ROOTS` | — | per-process | Optional path-list of trusted roots for `maya-dev` project attachment. |
+| `MESHY_DCC_MINIMAL` | `1` | per-process | `0`=full mode; `1`=minimal mode. |
+| `MESHY_DCC_DEFAULT_TOOLS` | — | per-process | Comma-separated skill names overriding minimal mode. |
+| `MESHY_DCC_MAYA_METRICS` | `0` | per-process | `1`=enable Prometheus `/metrics`. |
+| `MESHY_DCC_MAYA_JOB_STORAGE` | `<data_dir>/jobs.db` | per-process | SQLite job persistence path. `""`=disable. |
+| `MESHY_DCC_MAYA_JOB_RECOVERY` | `drop` | per-process | `requeue`=resume idempotent interrupted jobs on startup. |
+| `MESHY_DCC_MAYA_HOT_RELOAD` | `0` | per-process | `1`=watch bundled skills for edit-on-disk reload. |
+| `MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON` | `0` | per-process | `1`/`true`/`yes`/`on` — refuse `execute_python` (skills-first enforcement). |
+| `MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL` | `0` | per-process | Same truthy tokens — refuse `execute_mel` only. |
+| `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT` | `0` | per-process | Same truthy tokens — refuse both `execute_python` and `execute_mel`. |
+| `MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER` | `1` | per-process | Auto-promote on gateway loss. |
+| `MESHY_DCC_MAYA_DCC_PID` | `os.getpid()` | per-process | PID advertised to gateway for diagnostics routing. |
+| `MESHY_DCC_MAYA_READINESS_TIMEOUT_SECS` | — | per-process | Advisory timeout (positive integer seconds) for the three-state readiness probe (issue #184). Consumed by orchestrators; never auto-fails the probe on its own. |
+| `MESHY_DCC_MAYA_KMAYA_EXITING_HOOK` | `1` | per-process | `0`=disable the `MSceneMessage.kMayaExiting` shutdown hook (issue #186). |
+| `MESHY_DCC_MAYA_ATEXIT_HOOK` | `1` | per-process | `0`=disable the `atexit` shutdown fallback (issue #186). |
+| `MESHY_DCC_MAYA_PROCESS_SENTINEL` | `1` | per-process | `0`=disable the crash-resilient sentinel file used by sweepers (issue #186). |
+| `MESHY_DCC_MAYA_DEFENSIVE_DEL` | `0` | per-process | `1`=enable defensive `__del__` guard. Off in interactive Maya (Tokio deadlock risk); recommended for `mayapy` / test fixtures (issue #186). |
+| `MESHY_DCC_MAYA_RESOURCES` | `1` | per-process | `0`=disable Maya MCP resource publishing (`scene://current` snapshot + `maya-cmds://` / `maya-api://` / `maya-project://` producers).  Issue #187 / core 0.15.0. |
+| `MESHY_DCC_MAYA_FAULTHANDLER` | `1` | per-process | `0`=disable plugin-installed Python fatal-signal traceback logging. Logs are written under `MESHY_DCC_LOG_DIR` or the OS temp directory. |
+| `MESHY_DCC_MAYA_AUTO_DISMISS_CRASH_DIALOG` | `0` | per-process | `1`=best-effort dismiss detected Maya Qt recovery dialogs after `affinity: main` tool calls and surface `maya_recovered` in result contexts / `scene://current`. |
+| `MESHY_DCC_GATEWAY_PORT` | `19765` | per-host | Gateway election port. `0`=disable gateway mode. |
+| `MESHY_DCC_GATEWAY_NAME` | `meshy-dcc-gateway@<hostname>` | per-host | Human-readable standalone gateway label surfaced in admin, health, and CLI diagnostics. |
+| `MESHY_DCC_GATEWAY_REMOTE_PORT` | `59765` | per-host | LAN gateway listener port opened by the standalone gateway. `0`=disable remote listener; local gateway remains on `127.0.0.1:19765`. |
+| `MESHY_DCC_GATEWAY_REMOTE_HOST` | `0.0.0.0` | per-host | LAN gateway listener bind address. Use a specific interface IP to narrow exposure. |
+| `MESHY_DCC_REGISTRY_DIR` | OS temp dir | per-user | Shared FileRegistry directory. |
+| `MESHY_DCC_PYTHON_EXECUTABLE` | `sys.executable` | per-process | Python interpreter for skill worker subprocesses. |
+| `MESHY_DCC_PYTHON_INIT_SNIPPET` | `import maya.standalone; maya.standalone.initialize(name='python')` | per-process | One-liner run by workers before tool scripts. |
 
 ---
 
@@ -481,7 +481,7 @@ tools:
 Long-running skills must poll `check_maya_cancelled()` at safe checkpoints:
 
 ```python
-from dcc_mcp_maya import check_maya_cancelled, maya_success
+from meshy_dcc_maya import check_maya_cancelled, maya_success
 
 def render_frames(frames):
     for frame in frames:
@@ -505,8 +505,8 @@ Run N Maya sessions on one workstation behind a single gateway:
 
 ```python
 # examples/multi-instance/userSetup.py
-# Leaves DCC_MCP_MAYA_PORT unset, sets DCC_MCP_GATEWAY_PORT=9765,
-# DCC_MCP_MAYA_DCC_PID=os.getpid(), then auto-starts the server. Core binds
+# Leaves MESHY_DCC_MAYA_PORT unset, sets MESHY_DCC_GATEWAY_PORT=19765,
+# MESHY_DCC_MAYA_DCC_PID=os.getpid(), then auto-starts the server. Core binds
 # port 0 atomically and publishes the exact URL through discovery.
 ```
 
@@ -535,14 +535,14 @@ legacy `list_dcc_instances` / `connect_to_dcc` meta-tools.
 | `AGENTS.md` | Progressive disclosure map for agents |
 | `llms.txt` | Condensed one-page AI reference |
 | `llms-full.txt` | This file — exhaustive reference |
-| `src/dcc_mcp_maya/__init__.py` | Public API exports (29 symbols) |
-| `src/dcc_mcp_maya/server.py` | `MayaMcpServer`, discovery, metrics, jobs |
-| `src/dcc_mcp_maya/dispatcher/` | Thread-affinity dispatchers + cancellation (directory module) |
-| `src/dcc_mcp_maya/api.py` | 18 skill-authoring helpers |
-| `src/dcc_mcp_maya/_recovery_dialog.py` | Qt-level Maya recovery dialog detector + `maya_recovered` status surfacing |
-| `src/dcc_mcp_maya/capabilities.py` | DCC capability declarations |
-| `src/dcc_mcp_maya/skills/` | 30 built-in skill packages, 245 typed MCP tools |
+| `src/meshy_dcc_maya/__init__.py` | Public API exports (29 symbols) |
+| `src/meshy_dcc_maya/server.py` | `MayaMcpServer`, discovery, metrics, jobs |
+| `src/meshy_dcc_maya/dispatcher/` | Thread-affinity dispatchers + cancellation (directory module) |
+| `src/meshy_dcc_maya/api.py` | 18 skill-authoring helpers |
+| `src/meshy_dcc_maya/_recovery_dialog.py` | Qt-level Maya recovery dialog detector + `maya_recovered` status surfacing |
+| `src/meshy_dcc_maya/capabilities.py` | DCC capability declarations |
+| `src/meshy_dcc_maya/skills/` | 30 built-in skill packages, 245 typed MCP tools |
 | `docs/` | VitePress site (EN + ZH) |
 | `tests/` | pytest suite |
-| `maya/plugin/dcc_mcp_maya_plugin.py` | Maya plugin file for `MAYA_PLUG_IN_PATH` |
+| `maya/plugin/meshy_dcc_maya_plugin.py` | Maya plugin file for `MAYA_PLUG_IN_PATH` |
 | `examples/multi-instance/userSetup.py` | Drop-in multi-instance setup |

@@ -32,7 +32,7 @@ import pytest
 
 pytestmark = pytest.mark.e2e
 
-SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "meshy_dcc_maya" / "skills"
 
 # Skip entire module when the referenced skill directories no longer exist.
 _MISSING_SKILLS = [d for d in ("maya-grooming", "maya-paint-effects") if not (SKILLS_ROOT / d).is_dir()]

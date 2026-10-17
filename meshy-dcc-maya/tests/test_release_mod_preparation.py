@@ -53,12 +53,12 @@ def test_missing_or_late_preparation_is_not_a_valid_release_plan(mutation):
 
 @pytest.mark.packaging
 def test_clean_release_preparation_builds_actual_module_archives(tmp_path):
-    """Network gate: DCC_MCP_RELEASE_PYTHON selects the workflow's Python."""
+    """Network gate: MESHY_DCC_RELEASE_PYTHON selects the workflow's Python."""
     steps = release_steps()
     version = next(step["with"]["python-version"] for step in steps if "setup-python@" in step.get("uses", ""))
-    interpreter = os.environ.get("DCC_MCP_RELEASE_PYTHON", sys.executable)
+    interpreter = os.environ.get("MESHY_DCC_RELEASE_PYTHON", sys.executable)
     environment = os.environ.copy()
-    for name in ("PYTHONPATH", "PYTHONHOME", "DCC_MCP_LOG_DIR"):
+    for name in ("PYTHONPATH", "PYTHONHOME", "MESHY_DCC_LOG_DIR"):
         environment.pop(name, None)
     environment["PYTHONNOUSERSITE"] = "1"
     environment["PIP_CONFIG_FILE"] = os.devnull
@@ -95,7 +95,7 @@ def test_clean_release_preparation_builds_actual_module_archives(tmp_path):
     inventory = run("inventory", [python, "-I", "-m", "pip", "list", "--format=json"])
     assert inventory.returncode == 0, inventory.stderr
     names = {entry["name"].lower().replace("_", "-") for entry in json.loads(inventory.stdout)}
-    assert {"dcc-mcp-maya", "pytest", "build", "hatchling"}.isdisjoint(names), names
+    assert {"meshy-dcc-maya", "pytest", "build", "hatchling"}.isdisjoint(names), names
     prepared = run("prepared-consumer", consumer + ["--help"])
     assert prepared.returncode == 0, prepared.stdout + prepared.stderr
     # Use the actual workflow assembler arguments, substituting only runner

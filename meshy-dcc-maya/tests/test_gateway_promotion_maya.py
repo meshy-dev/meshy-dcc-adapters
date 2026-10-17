@@ -40,9 +40,9 @@ def fake_maya_batch():
 
 
 def test_upgrade_to_gateway_uses_main_thread_when_interactive(fake_maya_interactive) -> None:
-    from dcc_mcp_core.server_base import DccServerBase
+    from meshy_dcc_core.server_base import DccServerBase
 
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     utils_mod = sys.modules["maya.utils"]
     server = MayaMcpServer(port=0)
@@ -59,9 +59,9 @@ def test_upgrade_to_gateway_uses_main_thread_when_interactive(fake_maya_interact
 
 
 def test_upgrade_to_gateway_skips_main_thread_marshal_in_batch(fake_maya_batch) -> None:
-    from dcc_mcp_core.server_base import DccServerBase
+    from meshy_dcc_core.server_base import DccServerBase
 
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     utils_mod = sys.modules["maya.utils"]
     server = MayaMcpServer(port=0)

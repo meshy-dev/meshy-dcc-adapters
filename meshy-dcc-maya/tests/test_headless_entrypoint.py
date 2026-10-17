@@ -10,14 +10,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from dcc_mcp_maya.__main__ import main
-from dcc_mcp_maya.server import DccServerOptions, MayaServerOptions
+from meshy_dcc_maya.__main__ import main
+from meshy_dcc_maya.server import DccServerOptions, MayaServerOptions
 
 
 @pytest.fixture
 def headless():
     # Dependency-contract tests reload adapter modules; patch the current one.
-    return importlib.import_module("dcc_mcp_maya.headless")
+    return importlib.import_module("meshy_dcc_maya.headless")
 
 
 @pytest.fixture
@@ -128,7 +128,7 @@ def test_off_main_thread_is_rejected(stack, headless):
 
 def test_old_core_is_rejected_before_server_start(stack, monkeypatch, headless):
     monkeypatch.setattr(headless, "core_version", "0.19.45")
-    with pytest.raises(RuntimeError, match="dcc-mcp-core>=0.19.64"):
+    with pytest.raises(RuntimeError, match="meshy-dcc-core>=0.19.64"):
         headless.serve_headless()
     assert stack[0] == []
 

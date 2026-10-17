@@ -46,29 +46,29 @@ def user_setup():
 
 
 def test_gateway_port_remains_stable(user_setup):
-    assert user_setup.DEFAULT_GATEWAY_PORT == 9765
+    assert user_setup.DEFAULT_GATEWAY_PORT == 19765
 
 
 def test_apply_multi_instance_env_sets_expected_keys(user_setup, monkeypatch):
     """``apply_multi_instance_env`` populates the three env vars from #88."""
-    for key in ("DCC_MCP_MAYA_PORT", "DCC_MCP_GATEWAY_PORT", "DCC_MCP_MAYA_DCC_PID"):
+    for key in ("MESHY_DCC_MAYA_PORT", "MESHY_DCC_GATEWAY_PORT", "MESHY_DCC_MAYA_DCC_PID"):
         monkeypatch.delenv(key, raising=False)
 
     user_setup.apply_multi_instance_env(dcc_pid=424242)
 
-    assert os.environ["DCC_MCP_MAYA_DCC_PID"] == "424242"
-    assert os.environ["DCC_MCP_GATEWAY_PORT"] == str(user_setup.DEFAULT_GATEWAY_PORT)
-    assert "DCC_MCP_MAYA_PORT" not in os.environ
+    assert os.environ["MESHY_DCC_MAYA_DCC_PID"] == "424242"
+    assert os.environ["MESHY_DCC_GATEWAY_PORT"] == str(user_setup.DEFAULT_GATEWAY_PORT)
+    assert "MESHY_DCC_MAYA_PORT" not in os.environ
 
 
 def test_apply_multi_instance_env_preserves_operator_overrides(user_setup, monkeypatch):
-    """An operator-set ``DCC_MCP_GATEWAY_PORT`` must not be clobbered."""
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9999")
-    monkeypatch.setenv("DCC_MCP_MAYA_DCC_PID", "12345")
-    monkeypatch.setenv("DCC_MCP_MAYA_PORT", "19001")
+    """An operator-set ``MESHY_DCC_GATEWAY_PORT`` must not be clobbered."""
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "9999")
+    monkeypatch.setenv("MESHY_DCC_MAYA_DCC_PID", "12345")
+    monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "19001")
 
     user_setup.apply_multi_instance_env()
 
-    assert os.environ["DCC_MCP_GATEWAY_PORT"] == "9999"
-    assert os.environ["DCC_MCP_MAYA_DCC_PID"] == "12345"
-    assert os.environ["DCC_MCP_MAYA_PORT"] == "19001"
+    assert os.environ["MESHY_DCC_GATEWAY_PORT"] == "9999"
+    assert os.environ["MESHY_DCC_MAYA_DCC_PID"] == "12345"
+    assert os.environ["MESHY_DCC_MAYA_PORT"] == "19001"

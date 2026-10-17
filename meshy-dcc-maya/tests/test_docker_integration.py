@@ -110,7 +110,7 @@ class TestDockerInstanceManager:
         Note: This test requires Docker to be actually available.
         """
         # Force Docker mode via environment variable
-        monkeypatch.setenv("DCC_MCP_FORCE_DOCKER", "1")
+        monkeypatch.setenv("MESHY_DCC_FORCE_DOCKER", "1")
 
         try:
             manager = get_instance_manager(
@@ -130,7 +130,7 @@ class TestInstanceFactoryAutoSelection:
 
     def test_factory_selects_docker_when_forced(self, temp_registry_dir, monkeypatch):
         """Test explicit Docker mode selection."""
-        monkeypatch.setenv("DCC_MCP_FORCE_DOCKER", "1")
+        monkeypatch.setenv("MESHY_DCC_FORCE_DOCKER", "1")
 
         try:
             manager = get_instance_manager(
@@ -147,7 +147,7 @@ class TestInstanceFactoryAutoSelection:
     def test_factory_falls_back_to_local(self, temp_registry_dir, monkeypatch):
         """Test fallback to local mayapy when Docker unavailable."""
         # Don't force Docker, let it try local
-        monkeypatch.delenv("DCC_MCP_FORCE_DOCKER", raising=False)
+        monkeypatch.delenv("MESHY_DCC_FORCE_DOCKER", raising=False)
 
         try:
             manager = get_instance_manager(

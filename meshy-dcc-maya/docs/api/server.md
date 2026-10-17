@@ -7,7 +7,7 @@ The `MayaMcpServer` class is the main entry point for embedding an MCP server in
 ### `start_server`
 
 ```python
-dcc_mcp_maya.start_server(
+meshy_dcc_maya.start_server(
     port: Optional[int] = None,
     server_name: str = "maya-mcp",
     register_builtins: bool = True,
@@ -41,16 +41,16 @@ Start (or return the already-running) module-level singleton server.
 | `server_name` | `str` | `"maya-mcp"` | Name shown in MCP `initialize` response. |
 | `register_builtins` | `bool` | `True` | Discover built-in skills during startup; concrete toolsets load on demand. |
 | `extra_skill_paths` | `List[str]` | `None` | Additional directories to scan for `SKILL.md` files. |
-| `include_bundled` | `bool` | `True` | Include bundled `dcc-mcp-core` skills during discovery. |
+| `include_bundled` | `bool` | `True` | Include bundled `meshy-dcc-core` skills during discovery. |
 | `gateway_port` | `int \| None` | `None` | Port used for the multi-instance gateway. |
 | `registry_dir` | `str \| None` | `None` | Shared registry directory for service discovery metadata. |
 | `dcc_version` | `str \| None` | `None` | Maya version reported to the discovery registry. |
 | `scene` | `str \| None` | `None` | Current scene path reported to the discovery registry. |
 | `enable_hot_reload` | `bool` | `False` | Enable skill hot-reload support. |
 | `enable_gateway_failover` | `bool` | `True` | Allow non-gateway instances to promote themselves on gateway loss. |
-| `metrics_enabled` | `bool \| None` | `None` | Enable Prometheus `/metrics` endpoint. `None` reads `DCC_MCP_MAYA_METRICS=1`. |
-| `job_storage_path` | `str \| None` | `None` | SQLite job persistence DB path. `None` reads `DCC_MCP_MAYA_JOB_STORAGE`, else defaults to `<data_dir>/jobs.db`. Set `""` to disable. |
-| `job_recovery` | `str \| None` | `None` | Interrupted job recovery: `"drop"` (default) or `"requeue"`. `None` reads `DCC_MCP_MAYA_JOB_RECOVERY`. |
+| `metrics_enabled` | `bool \| None` | `None` | Enable Prometheus `/metrics` endpoint. `None` reads `MESHY_DCC_MAYA_METRICS=1`. |
+| `job_storage_path` | `str \| None` | `None` | SQLite job persistence DB path. `None` reads `MESHY_DCC_MAYA_JOB_STORAGE`, else defaults to `<data_dir>/jobs.db`. Set `""` to disable. |
+| `job_recovery` | `str \| None` | `None` | Interrupted job recovery: `"drop"` (default) or `"requeue"`. `None` reads `MESHY_DCC_MAYA_JOB_RECOVERY`. |
 | `dcc_pid` | `int \| None` | `None` | PID advertised to the registry and gateway diagnostics. |
 | `dcc_window_title` | `str \| None` | `None` | Window title advertised to discovery surfaces. |
 | `dcc_window_handle` | `int \| None` | `None` | Native window handle advertised to discovery surfaces. |
@@ -62,14 +62,14 @@ Start (or return the already-running) module-level singleton server.
 
 **Example:**
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
 # Basic start
-handle = dcc_mcp_maya.start_server()
+handle = meshy_dcc_maya.start_server()
 print(handle.mcp_url())  # exact OS-assigned instance URL
 
 # Custom port + extra skills
-handle = dcc_mcp_maya.start_server(
+handle = meshy_dcc_maya.start_server(
     port=9000,
     extra_skill_paths=["C:/studio/maya-skills"],
     include_bundled=False,
@@ -81,7 +81,7 @@ handle = dcc_mcp_maya.start_server(
 ### `stop_server`
 
 ```python
-dcc_mcp_maya.stop_server() -> None
+meshy_dcc_maya.stop_server() -> None
 ```
 
 Stop the module-level singleton server.
@@ -91,7 +91,7 @@ Stop the module-level singleton server.
 ## Class: MayaMcpServer
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 ```
 
 ### Constructor
@@ -160,7 +160,7 @@ Gracefully stop the server.
 ### Example: Full Lifecycle
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 # Create and configure
 server = MayaMcpServer(server_name="hero-maya")
@@ -192,21 +192,21 @@ Returned by `server.start()` and `start_server()`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DCC_MCP_MAYA_PORT` | OS-assigned | Optional fixed TCP port for direct instances |
-| `DCC_MCP_MAYA_SERVER_NAME` | `maya-mcp` | Default server name |
-| `DCC_MCP_MAYA_SKILL_PATHS` | — | Maya-specific skill search roots (`;` on Windows, `:` on Unix); each root may be one skill package or a parent of skill packages |
-| `DCC_MCP_SKILL_PATHS` | — | Global fallback skill search roots |
-| `DCC_MCP_MAYA_HOT_RELOAD` | `0` | Enable skill hot-reload when set to `1` |
-| `DCC_MCP_MAYA_METRICS` | `0` | Enable Prometheus `/metrics` endpoint when set to `1` |
-| `DCC_MCP_MAYA_JOB_STORAGE` | `<data_dir>/jobs.db` | SQLite job persistence database path |
-| `DCC_MCP_MAYA_JOB_RECOVERY` | `drop` | `requeue` to resume idempotent interrupted jobs on startup |
-| `DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER` | `1` | Enable automatic gateway failover election |
-| `DCC_MCP_MAYA_ENABLE_WORKFLOWS` | `0` | Enable core workflow tools |
-| `DCC_MCP_MAYA_READINESS_TIMEOUT_SECS` | — | Advisory timeout value for readiness consumers |
-| `DCC_MCP_MAYA_EXCLUDE_STUBS_FROM_TOOLS_LIST` | `0` | Hide unloaded skill/group stubs from `tools/list` |
-| `DCC_MCP_MAYA_SIDECAR` | `1` | Set `0` to disable the default `dcc-mcp-server sidecar` from the Maya plugin |
-| `DCC_MCP_GATEWAY_PORT` | `9765` in plugin mode | Standalone gateway port; `0` disables gateway mode |
-| `DCC_MCP_GATEWAY_NAME` | `dcc-mcp-gateway@<hostname>` in sidecar mode | Human-readable standalone gateway label surfaced in admin, health, and CLI diagnostics |
-| `DCC_MCP_GATEWAY_REMOTE_PORT` | `59765` in sidecar mode | LAN gateway listener port opened by the standalone gateway; `0` disables remote access |
-| `DCC_MCP_GATEWAY_REMOTE_HOST` | `0.0.0.0` | Bind address for the LAN gateway listener |
-| `DCC_MCP_REGISTRY_DIR` | OS temp dir | Shared registry directory for service discovery |
+| `MESHY_DCC_MAYA_PORT` | OS-assigned | Optional fixed TCP port for direct instances |
+| `MESHY_DCC_MAYA_SERVER_NAME` | `maya-mcp` | Default server name |
+| `MESHY_DCC_MAYA_SKILL_PATHS` | — | Maya-specific skill search roots (`;` on Windows, `:` on Unix); each root may be one skill package or a parent of skill packages |
+| `MESHY_DCC_SKILL_PATHS` | — | Global fallback skill search roots |
+| `MESHY_DCC_MAYA_HOT_RELOAD` | `0` | Enable skill hot-reload when set to `1` |
+| `MESHY_DCC_MAYA_METRICS` | `0` | Enable Prometheus `/metrics` endpoint when set to `1` |
+| `MESHY_DCC_MAYA_JOB_STORAGE` | `<data_dir>/jobs.db` | SQLite job persistence database path |
+| `MESHY_DCC_MAYA_JOB_RECOVERY` | `drop` | `requeue` to resume idempotent interrupted jobs on startup |
+| `MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER` | `1` | Enable automatic gateway failover election |
+| `MESHY_DCC_MAYA_ENABLE_WORKFLOWS` | `0` | Enable core workflow tools |
+| `MESHY_DCC_MAYA_READINESS_TIMEOUT_SECS` | — | Advisory timeout value for readiness consumers |
+| `MESHY_DCC_MAYA_EXCLUDE_STUBS_FROM_TOOLS_LIST` | `0` | Hide unloaded skill/group stubs from `tools/list` |
+| `MESHY_DCC_MAYA_SIDECAR` | `1` | Set `0` to disable the default `meshy-dcc-server sidecar` from the Maya plugin |
+| `MESHY_DCC_GATEWAY_PORT` | `19765` in plugin mode | Standalone gateway port; `0` disables gateway mode |
+| `MESHY_DCC_GATEWAY_NAME` | `meshy-dcc-gateway@<hostname>` in sidecar mode | Human-readable standalone gateway label surfaced in admin, health, and CLI diagnostics |
+| `MESHY_DCC_GATEWAY_REMOTE_PORT` | `59765` in sidecar mode | LAN gateway listener port opened by the standalone gateway; `0` disables remote access |
+| `MESHY_DCC_GATEWAY_REMOTE_HOST` | `0.0.0.0` | Bind address for the LAN gateway listener |
+| `MESHY_DCC_REGISTRY_DIR` | OS temp dir | Shared registry directory for service discovery |

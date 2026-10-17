@@ -1,4 +1,4 @@
-"""Tests for ``dcc_mcp_maya._env`` env-var resolution helpers (issue #127)."""
+"""Tests for ``meshy_dcc_maya._env`` env-var resolution helpers (issue #127)."""
 
 # Import future modules
 from __future__ import annotations
@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 
 # Import local modules
-from dcc_mcp_maya import _env
+from meshy_dcc_maya import _env
 
 
 class TestResolveMetricsEnabled:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dcc_mcp_core.skill import skill_entry
+from meshy_dcc_core.skill import skill_entry
 
-from dcc_mcp_maya.api import maya_error, maya_from_exception, maya_success
+from meshy_dcc_maya.api import maya_error, maya_from_exception, maya_success
 
 
 def create_report_cube(name: str = "standalone_report_cube", size: float = 1.0) -> dict:
@@ -33,6 +33,6 @@ def main(**kwargs) -> dict:
 
 
 if __name__ == "__main__":
-    from dcc_mcp_core.skill import run_main
+    from meshy_dcc_core.skill import run_main
 
     run_main(main)

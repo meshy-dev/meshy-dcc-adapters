@@ -3,7 +3,7 @@
 ``MayaMcpServer.stop()`` removes ``scriptJob`` hooks (the idle pump and the
 MCP resource scene-event hooks).  ``maya.cmds`` is **not** thread-safe, and
 the plug-in's *Restart MCP Server* runs ``stop_server()`` on the
-``dcc-mcp-restart`` daemon thread, so every ``cmds.scriptJob(kill=...)`` was
+``meshy-dcc-restart`` daemon thread, so every ``cmds.scriptJob(kill=...)`` was
 rejected by Maya (``TypeError``) and swallowed.  Because the owning objects
 still reset their bookkeeping, the ids were lost and the live scriptJobs
 could never be removed again.
@@ -35,9 +35,9 @@ import types
 
 import pytest
 
-from dcc_mcp_maya import _main_thread as main_thread_mod
-from dcc_mcp_maya import _resources as resources_mod
-from dcc_mcp_maya.dispatcher import pump as pump_mod
+from meshy_dcc_maya import _main_thread as main_thread_mod
+from meshy_dcc_maya import _resources as resources_mod
+from meshy_dcc_maya.dispatcher import pump as pump_mod
 
 
 class FakeCmds:
@@ -136,7 +136,7 @@ def _run_in_worker(fn):
         except BaseException as exc:  # noqa: BLE001
             box["exc"] = exc
 
-    thread = threading.Thread(target=_target, name="dcc-mcp-restart", daemon=True)
+    thread = threading.Thread(target=_target, name="meshy-dcc-restart", daemon=True)
     thread.start()
     thread.join(timeout=10.0)
     assert not thread.is_alive(), "worker thread hung"

@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     sys.exit(2)
 
 
-SKILLS_ROOT = Path(__file__).resolve().parent.parent / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_ROOT = Path(__file__).resolve().parent.parent / "src" / "meshy_dcc_maya" / "skills"
 
 
 def lint_file(path: Path) -> List[Tuple[str, str]]:

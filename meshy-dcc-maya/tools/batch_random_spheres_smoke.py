@@ -17,8 +17,8 @@ SPREAD = 8.0
 NAME_PREFIX = "mcp_random_sphere_"
 GROUP_NAME = "mcp_random_spheres_grp"
 FBX_BASENAME = "mcp_random_spheres_batch.fbx"
-# Override via env for quick tests, e.g. DCC_MCP_SMOKE_FBX=C:/test.fbx
-FBX_OVERRIDE = os.environ.get("DCC_MCP_SMOKE_FBX", "").strip()
+# Override via env for quick tests, e.g. MESHY_DCC_SMOKE_FBX=C:/test.fbx
+FBX_OVERRIDE = os.environ.get("MESHY_DCC_SMOKE_FBX", "").strip()
 
 
 def _resolve_fbx_path() -> str:

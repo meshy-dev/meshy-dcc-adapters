@@ -6,7 +6,7 @@ description: |-
 license: MIT
 allowed-tools: Bash Read
 metadata:
-  dcc-mcp:
+  meshy-dcc:
     dcc: maya
     layer: example
     stage: authoring

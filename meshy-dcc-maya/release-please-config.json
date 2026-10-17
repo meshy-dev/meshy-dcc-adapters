@@ -4,7 +4,7 @@
   "include-v-in-tag": true,
   "packages": {
     ".": {
-      "package-name": "dcc-mcp-maya",
+      "package-name": "meshy-dcc-maya",
       "include-component-in-tag": false,
       "release-type": "python",
       "changelog-path": "CHANGELOG.md",
@@ -16,7 +16,7 @@
           "path": "pyproject.toml",
           "jsonpath": "$.project.version"
         },
-        {"type": "generic", "path": "src/dcc_mcp_maya/__version__.py"},
+        {"type": "generic", "path": "src/meshy_dcc_maya/__version__.py"},
         {"type": "generic", "path": "AGENTS.md"},
         {"type": "generic", "path": "llms.txt"},
         {"type": "generic", "path": "llms-full.txt"},

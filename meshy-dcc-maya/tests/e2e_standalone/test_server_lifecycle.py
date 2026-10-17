@@ -11,7 +11,7 @@ class TestServerLifecycle:
     """MayaMcpServer starts, reports a valid URL, and stops cleanly."""
 
     def test_start_and_stop(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = MayaMcpServer(port=0)
         server.register_builtin_actions()
@@ -26,7 +26,7 @@ class TestServerLifecycle:
         assert not server.is_running
 
     def test_singleton_start_server(self):
-        from dcc_mcp_maya import start_server, stop_server
+        from meshy_dcc_maya import start_server, stop_server
 
         handle = start_server(port=0)
         assert handle is not None
@@ -34,7 +34,7 @@ class TestServerLifecycle:
 
     def test_skills_discovered(self):
         """Skills are discovered via SKILL.md (progressive loading — discovered, not loaded)."""
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = MayaMcpServer(port=0)
         server.register_builtin_actions()

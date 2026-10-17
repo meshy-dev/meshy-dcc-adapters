@@ -2,19 +2,19 @@
 layout: home
 
 hero:
-  name: dcc-mcp-maya
+  name: meshy-dcc-maya
   text: AI 驱动的 Maya 自动化
   tagline: 通过标准 sidecar gateway 运行 Maya，提供渐进式 typed MCP tools 和 Maya 安全 dispatcher bridge。
   image:
     src: /logo.svg
-    alt: dcc-mcp-maya
+    alt: meshy-dcc-maya
   actions:
     - theme: brand
       text: 快速开始
       link: /zh/guide/getting-started
     - theme: alt
       text: 在 GitHub 查看
-      link: https://github.com/dcc-mcp/dcc-mcp-maya
+      link: https://github.com/meshy-dev/meshy-dcc-maya
 
 features:
   - icon: 🤖
@@ -28,7 +28,7 @@ features:
     details: 一次 MCP 调用即可将任意 Maya 视口捕获为 base64 编码的 PNG 图像，完美支持 AI 视觉反馈循环。
   - icon: 🔌
     title: 默认 Sidecar Gateway
-    details: 插件部署默认启动 dcc-mcp-server sidecar 作为标准运行时，将 HTTP 与 gateway 工作放在 Maya 进程外，再安全调度回 Maya 执行场景操作。
+    details: 插件部署默认启动 meshy-dcc-server sidecar 作为标准运行时，将 HTTP 与 gateway 工作放在 Maya 进程外，再安全调度回 Maya 执行场景操作。
   - icon: ⚡
     title: 渐进式 Skill 架构
     details: 启动时保持精简工具面，通过 dcc_capability_manifest 发现未加载能力，再按需加载领域 Skill。

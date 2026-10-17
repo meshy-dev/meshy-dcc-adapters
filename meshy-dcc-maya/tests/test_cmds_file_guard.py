@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_maya._cmds_file_guard import MayaFilePromptBlockedError, guard_cmds_file
-from dcc_mcp_maya._executor import run_skill_script
+from meshy_dcc_maya._cmds_file_guard import MayaFilePromptBlockedError, guard_cmds_file
+from meshy_dcc_maya._executor import run_skill_script
 
 
 class _FakeCmds:
@@ -71,7 +71,7 @@ def test_guard_restores_original_file_callable(fake_maya_modules):
     original_func = fake_maya_modules.file.__func__
 
     with guard_cmds_file(fake_maya_modules):
-        assert getattr(fake_maya_modules.file, "_dcc_mcp_file_guard", False)
+        assert getattr(fake_maya_modules.file, "_meshy_dcc_file_guard", False)
 
     assert fake_maya_modules.file.__func__ is original_func
 

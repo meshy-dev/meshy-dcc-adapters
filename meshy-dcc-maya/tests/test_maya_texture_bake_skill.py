@@ -14,7 +14,7 @@ def test_bake_textures_defaults_to_arnold() -> None:
     source = (
         Path(__file__).parents[1]
         / "src"
-        / "dcc_mcp_maya"
+        / "meshy_dcc_maya"
         / "skills"
         / "maya-texture-bake"
         / "scripts"
@@ -66,7 +66,7 @@ def test_bake_textures_activates_requested_renderer_before_conversion() -> None:
 
 
 def test_bake_textures_schema_only_advertises_arnold() -> None:
-    tools_path = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills" / "maya-texture-bake" / "tools.yaml"
+    tools_path = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-texture-bake" / "tools.yaml"
     tools = yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]
     tool = next(item for item in tools if item["name"] == "bake_textures")
     assert tool["input_schema"]["properties"]["renderer"]["enum"] == ["arnold"]

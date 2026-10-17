@@ -8,8 +8,8 @@ import types
 
 import pytest
 
-from dcc_mcp_maya import _resources as resources_mod
-from dcc_mcp_maya.context_snapshot import MayaContextSnapshotProvider, collect_gateway_metadata
+from meshy_dcc_maya import _resources as resources_mod
+from meshy_dcc_maya.context_snapshot import MayaContextSnapshotProvider, collect_gateway_metadata
 
 
 def _in_worker(callback):

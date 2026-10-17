@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`dcc_mcp_maya.context_snapshot` (issues #163, #165).
+"""Unit tests for :mod:`meshy_dcc_maya.context_snapshot` (issues #163, #165).
 
 These tests exercise the Maya context snapshot provider without a live
 Maya: a fake ``cmds`` is injected via the ``cmds_provider`` parameter so
@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dcc_mcp_maya import _recovery_dialog
-from dcc_mcp_maya.context_snapshot import (
+from meshy_dcc_maya import _recovery_dialog
+from meshy_dcc_maya.context_snapshot import (
     MayaContextSnapshotProvider,
     collect_gateway_metadata,
     make_snapshot_provider,

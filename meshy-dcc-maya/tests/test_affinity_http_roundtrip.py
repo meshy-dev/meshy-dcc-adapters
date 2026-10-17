@@ -22,7 +22,7 @@ the executor entry point in isolation), these tests spin up a real
    sane byte budget for a trivial call and that no non-contract keys
    leak in.
 
-3. **REST ``/v1/*``** — when the installed ``dcc-mcp-core`` build
+3. **REST ``/v1/*``** — when the installed ``meshy-dcc-core`` build
    mounts :class:`SkillRestService`, we round-trip the same tools via
    REST to prove parity between the MCP and REST facades.  If the REST
    endpoint is not exposed in the current core build (still Rust-internal),
@@ -56,18 +56,18 @@ from typing import Any, Callable, Dict, List, Optional
 import pytest
 
 # The plugin manifest module side-effects — silence bundled Maya detection.
-os.environ.setdefault("DCC_MCP_DISABLE_FILE_LOGGING", "1")
+os.environ.setdefault("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
 # Allow the ambient Python interpreter to be used for skill handlers — in
 # these tests we never actually call ``import maya.cmds``, we only assert
 # the routing decisions made by our executor.  Without this, core aborts
 # ``tools/call`` with ``EXECUTION_FAILED`` before our dispatcher is hit.
-os.environ.setdefault("DCC_MCP_ALLOW_AMBIENT_PYTHON", "1")
+os.environ.setdefault("MESHY_DCC_ALLOW_AMBIENT_PYTHON", "1")
 
 _SRC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from dcc_mcp_maya.server import MayaMcpServer  # noqa: E402
+from meshy_dcc_maya.server import MayaMcpServer  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Recording dispatcher

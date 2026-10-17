@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_instance_manager(
-    gateway_port: int = 9765,
+    gateway_port: int = 19765,
     registry_dir: Optional[str] = None,
     mode: Optional[str] = None,
 ) -> Union[MayaInstanceManager, DockerMayaInstanceManager]:
@@ -23,7 +23,7 @@ def get_instance_manager(
 
     Selection logic:
     1. If mode is explicitly specified, use that mode
-    2. If DCC_MCP_FORCE_DOCKER environment variable is set, use Docker
+    2. If MESHY_DCC_FORCE_DOCKER environment variable is set, use Docker
     3. If Docker is available and has images, prefer Docker
     4. Otherwise, fall back to local mayapy
     5. If neither is available, raise an error
@@ -39,8 +39,8 @@ def get_instance_manager(
     Raises:
         RuntimeError: If no suitable instance manager can be created
     """
-    force_docker = os.getenv("DCC_MCP_FORCE_DOCKER", "").lower() in ("1", "true", "yes")
-    docker_registry = os.getenv("DCC_MCP_DOCKER_REGISTRY", "")
+    force_docker = os.getenv("MESHY_DCC_FORCE_DOCKER", "").lower() in ("1", "true", "yes")
+    docker_registry = os.getenv("MESHY_DCC_DOCKER_REGISTRY", "")
 
     # Explicit mode selection
     if mode == "docker":
@@ -68,7 +68,7 @@ def get_instance_manager(
 
     # Check for forced Docker
     if force_docker:
-        logger.info("DCC_MCP_FORCE_DOCKER set; using Docker mode")
+        logger.info("MESHY_DCC_FORCE_DOCKER set; using Docker mode")
         try:
             return DockerMayaInstanceManager(
                 gateway_port=gateway_port,

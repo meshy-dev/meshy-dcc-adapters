@@ -2,8 +2,8 @@
 # This script shows the status of Maya dev symlinks
 
 $ModDir = Join-Path $env:USERPROFILE "Documents\maya\modules"
-$Target = Join-Path $ModDir "dcc-mcp-maya"
-$ModFile = Join-Path $ModDir "dcc-mcp-maya.mod"
+$Target = Join-Path $ModDir "meshy-dcc-maya"
+$ModFile = Join-Path $ModDir "meshy-dcc-maya.mod"
 
 Write-Host "📋 Maya dev link status:" -ForegroundColor Cyan
 Write-Host "   Modules dir: $ModDir"
@@ -23,7 +23,7 @@ if (Test-Path $PythonPath) {
 }
 
 # Check plug-ins
-$PluginPath = Join-Path $Target "plug-ins\dcc_mcp_maya_plugin.py"
+$PluginPath = Join-Path $Target "plug-ins\meshy_dcc_maya_plugin.py"
 if (Test-Path $PluginPath) {
     $Item = Get-Item $PluginPath
     if ($Item.LinkType -eq 'SymbolicLink') {

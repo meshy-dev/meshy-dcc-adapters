@@ -5,8 +5,8 @@ Use this after a **dev link** (`just maya-dev-build-link-core-win` / `just maya-
 ## 1. Start Maya and the MCP HTTP server
 
 1. Launch Maya (or `just maya-dev-debug-win` from the repo).
-2. Load **`dcc_mcp_maya`** in **Windows → Settings/Preferences → Plug-in Manager** (auto-load if you want it every session).
-3. Confirm the gateway URL in the Script Editor / stdout (usually **`http://127.0.0.1:9765/mcp`** in plugin sidecar mode).
+2. Load **`meshy_dcc_maya`** in **Windows → Settings/Preferences → Plug-in Manager** (auto-load if you want it every session).
+3. Confirm the gateway URL in the Script Editor / stdout (usually **`http://127.0.0.1:19765/mcp`** in plugin sidecar mode).
 
 For a deliberately direct Python server, use the exact URL returned by
 `start_server().mcp_url()`; its instance port is OS-assigned by default.
@@ -22,7 +22,7 @@ Copy the JSON fragment from [`examples/mcp/cursor-maya-streamable-http.json`](..
 {
   "mcpServers": {
     "maya-local": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -41,7 +41,7 @@ Add to `claude_desktop_config.json` (see [`docs/integrations/claude.md`](../inte
 {
   "mcpServers": {
     "maya": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -84,15 +84,15 @@ The rest of `maya-dev` works without it, and `maya_dev__start_debugpy` reports `
 
 3. In **Cursor / VS Code**, use **Run and Debug → Python: Remote Attach** with host `127.0.0.1` and port `5678`.
 
-4. Set breakpoints in `src/dcc_mcp_maya/**/*.py` (or your skill scripts), then invoke the tool from MCP; execution should stop on breakpoints **when that code runs on the main thread** (same rules as Maya scripting).
+4. Set breakpoints in `src/meshy_dcc_maya/**/*.py` (or your skill scripts), then invoke the tool from MCP; execution should stop on breakpoints **when that code runs on the main thread** (same rules as Maya scripting).
 
-**Rust (`dcc_mcp_core`)** debugging inside Maya is heavier (native extension); use logging, or build a small `mayapy` repro that imports `dcc_mcp_core` outside Maya for faster native debug cycles.
+**Rust (`meshy_dcc_core`)** debugging inside Maya is heavier (native extension); use logging, or build a small `mayapy` repro that imports `meshy_dcc_core` outside Maya for faster native debug cycles.
 
 ## 5. Quick checklist
 
 | Check | Action |
 |-------|--------|
-| MCP 404 / connection refused | Plugin loaded? Use gateway `9765`, or the exact direct URL reported at startup. |
+| MCP 404 / connection refused | Plugin loaded? Use gateway `19765`, or the exact direct URL reported at startup. |
 | Tools missing | Minimal mode: call `load_skill("…")` first (see AGENTS.md). |
 | `debugpy_missing` | Optional: install debugpy into the matching `mayapy`, then restart Maya to unlock stronger IDE attach debugging. |
 | `port_in_use` | Pick another port or stop the process already listening there. |

@@ -1,8 +1,8 @@
-"""Tests for ``dcc_mcp_maya._version_check`` — runtime version provenance.
+"""Tests for ``meshy_dcc_maya._version_check`` — runtime version provenance.
 
 The reported bug this guards: inside one Maya host
-``importlib.metadata.version("dcc-mcp-maya")`` answered ``0.9.14`` while
-``dcc_mcp_maya.__version__`` answered ``0.9.16``.  Every way of asking for
+``importlib.metadata.version("meshy-dcc-maya")`` answered ``0.9.14`` while
+``meshy_dcc_maya.__version__`` answered ``0.9.16``.  Every way of asking for
 the version must agree, and when they cannot, the drift must be logged
 instead of silently accepted.
 """
@@ -22,7 +22,7 @@ from unittest.mock import patch
 import pytest
 
 # Import local modules
-from dcc_mcp_maya import _env, _version_check
+from meshy_dcc_maya import _env, _version_check
 
 
 def _module(version, path="<memory>"):
@@ -36,9 +36,9 @@ def _raise_not_found(*_args, **_kwargs):
 
 class TestBuildReport:
     def test_consistent_when_both_answers_agree(self):
-        module = _module("0.9.30", "/site-packages/dcc_mcp_maya/__init__.py")
+        module = _module("0.9.30", "/site-packages/meshy_dcc_maya/__init__.py")
         with patch.object(_version_check, "distribution_version", return_value="0.9.30"):
-            report = _version_check.build_report("dcc-mcp-maya", module=module)
+            report = _version_check.build_report("meshy-dcc-maya", module=module)
 
         assert report.status == _version_check.STATUS_CONSISTENT
         assert report.consistent is True
@@ -48,14 +48,14 @@ class TestBuildReport:
 
     def test_pep440_normalisation_treats_equal_versions_as_consistent(self):
         with patch.object(_version_check, "distribution_version", return_value="0.9.2"):
-            report = _version_check.build_report("dcc-mcp-maya", module=_module("0.9.02"))
+            report = _version_check.build_report("meshy-dcc-maya", module=_module("0.9.02"))
 
         assert report.status == _version_check.STATUS_CONSISTENT
 
     def test_mismatch_reports_both_answers(self):
-        module = _module("0.9.16", "/modules/dcc_mcp_maya/__init__.py")
+        module = _module("0.9.16", "/modules/meshy_dcc_maya/__init__.py")
         with patch.object(_version_check, "distribution_version", return_value="0.9.14"):
-            report = _version_check.build_report("dcc-mcp-maya", module=module)
+            report = _version_check.build_report("meshy-dcc-maya", module=module)
 
         assert report.status == _version_check.STATUS_MISMATCH
         assert report.consistent is False
@@ -66,7 +66,7 @@ class TestBuildReport:
     def test_no_distribution_metadata_is_not_a_mismatch(self):
         module = _module("0.9.30")
         with patch.object(_version_check, "distribution_version", return_value=None):
-            report = _version_check.build_report("dcc-mcp-maya", module=module)
+            report = _version_check.build_report("meshy-dcc-maya", module=module)
 
         # A source checkout has no .dist-info — that is normal, not drift.
         assert report.status == _version_check.STATUS_NOT_INSTALLED
@@ -79,7 +79,7 @@ class TestBuildReport:
         # instead of "cannot decide".
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         with patch.object(_version_check, "_metadata_module", return_value=None):
-            report = _version_check.build_report("dcc-mcp-maya", module=_module("0.9.30"))
+            report = _version_check.build_report("meshy-dcc-maya", module=_module("0.9.30"))
 
         assert report.status == _version_check.STATUS_UNKNOWN
         assert "importlib_metadata" in report.detail
@@ -91,13 +91,13 @@ class TestBuildReport:
         # a missing package on hosts where the real cause was a bad sys.path.
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         with patch.object(_version_check, "_metadata_module", return_value=None):
-            report = _version_check.build_report("dcc-mcp-maya", module=_module("0.9.30"))
+            report = _version_check.build_report("meshy-dcc-maya", module=_module("0.9.30"))
 
         assert report.status == _version_check.STATUS_UNKNOWN
         assert "importlib.metadata" in report.detail
         assert "importlib_metadata" in report.detail
         assert "sys.path" in report.detail
-        assert "dcc-mcp-maya" in report.detail
+        assert "meshy-dcc-maya" in report.detail
         # "not-installed" is a different verdict: it means an API exists and
         # answered "no such distribution", so the two must not be confused.
         assert report.distribution_version is None
@@ -110,21 +110,21 @@ class TestBuildReport:
             lambda: SimpleNamespace(version=_raise_not_found, distribution=_raise_not_found),
         )
 
-        report = _version_check.build_report("dcc-mcp-maya", module=_module("0.9.30"))
+        report = _version_check.build_report("meshy-dcc-maya", module=_module("0.9.30"))
 
         assert report.status == _version_check.STATUS_NOT_INSTALLED
         assert "sys.path" not in report.detail
 
     def test_module_without_dunder_version_is_unknown(self):
         with patch.object(_version_check, "distribution_version", return_value="0.9.30"):
-            report = _version_check.build_report("dcc-mcp-maya", module=SimpleNamespace())
+            report = _version_check.build_report("meshy-dcc-maya", module=SimpleNamespace())
 
         assert report.status == _version_check.STATUS_UNKNOWN
 
     def test_explicit_runtime_version_wins_over_module(self):
         with patch.object(_version_check, "distribution_version", return_value="0.9.30"):
             report = _version_check.build_report(
-                "dcc-mcp-maya",
+                "meshy-dcc-maya",
                 module=_module("0.9.1"),
                 runtime_version="0.9.30",
             )
@@ -134,12 +134,12 @@ class TestBuildReport:
     def test_report_is_json_serialisable(self):
         with patch.object(_version_check, "distribution_version", return_value="0.9.30"):
             report = _version_check.build_report(
-                "dcc-mcp-maya",
+                "meshy-dcc-maya",
                 module=_module("0.9.30", "/x/__init__.py"),
             )
         payload = report.to_dict()
 
-        assert payload["package"] == "dcc-mcp-maya"
+        assert payload["package"] == "meshy-dcc-maya"
         assert payload["status"] == _version_check.STATUS_CONSISTENT
         assert payload["module_path"] == "/x/__init__.py"
         assert set(payload) == {
@@ -157,10 +157,10 @@ class TestBuildReport:
 
 class TestLogging:
     def test_drift_logs_a_warning_naming_both_versions(self, caplog):
-        module = _module("0.9.16", "/modules/dcc_mcp_maya/__init__.py")
+        module = _module("0.9.16", "/modules/meshy_dcc_maya/__init__.py")
         with patch.object(_version_check, "distribution_version", return_value="0.9.14"):
             with patch.object(_version_check, "distribution_location", return_value="/site-packages"):
-                report = _version_check.build_report("dcc-mcp-maya", module=module)
+                report = _version_check.build_report("meshy-dcc-maya", module=module)
 
         with caplog.at_level(logging.WARNING):
             _version_check.log_report(report, logging.getLogger("drift-test"))
@@ -169,12 +169,12 @@ class TestLogging:
         assert warnings, "version drift must not be silent"
         message = warnings[0].getMessage()
         assert "0.9.14" in message and "0.9.16" in message
-        assert "/modules/dcc_mcp_maya/__init__.py" in message
+        assert "/modules/meshy_dcc_maya/__init__.py" in message
         assert "/site-packages" in message
 
     def test_healthy_report_logs_info_not_warning(self, caplog):
         report = _version_check.VersionReport(
-            package="dcc-mcp-maya",
+            package="meshy-dcc-maya",
             runtime_version="0.9.30",
             distribution_version="0.9.30",
             status=_version_check.STATUS_CONSISTENT,
@@ -189,7 +189,7 @@ class TestLogging:
 
     def test_not_installed_is_debug_only(self, caplog):
         report = _version_check.VersionReport(
-            package="dcc-mcp-maya",
+            package="meshy-dcc-maya",
             runtime_version="0.9.30",
             distribution_version=None,
             status=_version_check.STATUS_NOT_INSTALLED,
@@ -209,13 +209,13 @@ class TestCollectAndRun:
             _version_check, "core_report"
         ) as core:
             adapter.return_value = _version_check.VersionReport(
-                package="dcc-mcp-maya",
+                package="meshy-dcc-maya",
                 runtime_version="0.9.30",
                 distribution_version="0.9.30",
                 status=_version_check.STATUS_CONSISTENT,
             )
             core.return_value = _version_check.VersionReport(
-                package="dcc-mcp-core",
+                package="meshy-dcc-core",
                 runtime_version="0.19.45",
                 distribution_version="0.19.45",
                 status=_version_check.STATUS_CONSISTENT,
@@ -223,7 +223,7 @@ class TestCollectAndRun:
             payload = _version_check.version_report()
 
         assert payload["consistent"] is True
-        assert payload["adapter"]["package"] == "dcc-mcp-maya"
+        assert payload["adapter"]["package"] == "meshy-dcc-maya"
         assert payload["core"]["runtime_version"] == "0.19.45"
 
     def test_core_mismatch_makes_the_payload_inconsistent(self):
@@ -231,13 +231,13 @@ class TestCollectAndRun:
             _version_check, "core_report"
         ) as core:
             adapter.return_value = _version_check.VersionReport(
-                package="dcc-mcp-maya",
+                package="meshy-dcc-maya",
                 runtime_version="0.9.30",
                 distribution_version="0.9.30",
                 status=_version_check.STATUS_CONSISTENT,
             )
             core.return_value = _version_check.VersionReport(
-                package="dcc-mcp-core",
+                package="meshy-dcc-core",
                 runtime_version="0.19.2",
                 distribution_version="0.19.3",
                 status=_version_check.STATUS_MISMATCH,
@@ -252,7 +252,7 @@ class TestCollectAndRun:
     def test_core_can_be_excluded(self):
         with patch.object(_version_check, "adapter_report") as adapter:
             adapter.return_value = _version_check.VersionReport(
-                package="dcc-mcp-maya",
+                package="meshy-dcc-maya",
                 runtime_version="0.9.30",
                 distribution_version="0.9.30",
                 status=_version_check.STATUS_CONSISTENT,
@@ -273,14 +273,14 @@ class TestCollectAndRun:
             _version_check, "core_report"
         ) as core:
             adapter.return_value = _version_check.VersionReport(
-                package="dcc-mcp-maya",
+                package="meshy-dcc-maya",
                 runtime_version="0.9.16",
                 distribution_version="0.9.14",
                 status=_version_check.STATUS_MISMATCH,
                 detail="installed distribution metadata reports 0.9.14 but the imported module reports 0.9.16",
             )
             core.return_value = _version_check.VersionReport(
-                package="dcc-mcp-core",
+                package="meshy-dcc-core",
                 runtime_version="0.19.45",
                 distribution_version="0.19.45",
                 status=_version_check.STATUS_CONSISTENT,
@@ -319,12 +319,12 @@ class TestDistributionScanFallback:
         return dist_info
 
     def test_stale_dist_info_is_detected_as_drift(self, tmp_path, monkeypatch):
-        site = self._make_dist_info(tmp_path, "dcc-mcp-maya", "0.9.14")
+        site = self._make_dist_info(tmp_path, "meshy-dcc-maya", "0.9.14")
         monkeypatch.setattr(sys, "path", [str(tmp_path)] + list(sys.path))
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
         report = _version_check.build_report(
-            "dcc-mcp-maya", module=_module("0.9.16", "/modules/dcc_mcp_maya/__init__.py")
+            "meshy-dcc-maya", module=_module("0.9.16", "/modules/meshy_dcc_maya/__init__.py")
         )
 
         assert report.distribution_version == "0.9.14"
@@ -334,74 +334,74 @@ class TestDistributionScanFallback:
         assert str(site).lower() in (report.distribution_path or "").lower()
 
     def test_matching_dist_info_is_consistent(self, tmp_path, monkeypatch):
-        self._make_dist_info(tmp_path, "dcc-mcp-maya", "0.9.30")
+        self._make_dist_info(tmp_path, "meshy-dcc-maya", "0.9.30")
         monkeypatch.setattr(sys, "path", [str(tmp_path)] + list(sys.path))
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        report = _version_check.build_report("dcc-mcp-maya", module=_module("0.9.30"))
+        report = _version_check.build_report("meshy-dcc-maya", module=_module("0.9.30"))
 
         assert report.status == _version_check.STATUS_CONSISTENT
 
     def test_egg_info_is_also_recognised(self, tmp_path, monkeypatch):
-        egg_info = tmp_path / "dcc_mcp_maya-0.9.1.egg-info"
+        egg_info = tmp_path / "meshy_dcc_maya-0.9.1.egg-info"
         egg_info.mkdir(parents=True)
-        (egg_info / "PKG-INFO").write_text("Name: dcc-mcp-maya\nVersion: 0.9.1\n", encoding="utf-8")
+        (egg_info / "PKG-INFO").write_text("Name: meshy-dcc-maya\nVersion: 0.9.1\n", encoding="utf-8")
         monkeypatch.setattr(sys, "path", [str(tmp_path)] + list(sys.path))
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.1"
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.1"
 
     def test_single_file_egg_info_is_parsed(self, tmp_path, monkeypatch):
         # setuptools documents the ``.egg-info`` artifact as possibly being a
         # single file that *is* the PKG-INFO payload, with no directory around it.
-        egg_info = tmp_path / "dcc_mcp_maya.egg-info"
-        egg_info.write_text("Name: dcc-mcp-maya\nVersion: 0.9.7\n", encoding="utf-8")
+        egg_info = tmp_path / "meshy_dcc_maya.egg-info"
+        egg_info.write_text("Name: meshy-dcc-maya\nVersion: 0.9.7\n", encoding="utf-8")
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.7"
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.7"
         # There is no directory to delete, so the artifact itself is the answer.
-        assert _version_check.distribution_location("dcc-mcp-maya") == str(egg_info)
+        assert _version_check.distribution_location("meshy-dcc-maya") == str(egg_info)
 
     def test_unversioned_egg_info_directory_is_recognised(self, tmp_path, monkeypatch):
         # Editable installs write an unversioned ``<package>.egg-info`` directory.
-        egg_info = tmp_path / "dcc-mcp-maya.egg-info"
+        egg_info = tmp_path / "meshy-dcc-maya.egg-info"
         egg_info.mkdir(parents=True)
-        (egg_info / "PKG-INFO").write_text("Name: dcc-mcp-maya\nVersion: 0.9.8\n", encoding="utf-8")
+        (egg_info / "PKG-INFO").write_text("Name: meshy-dcc-maya\nVersion: 0.9.8\n", encoding="utf-8")
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.8"
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.8"
 
     def test_highest_pep440_version_wins_in_one_directory(self, tmp_path, monkeypatch):
         # Lexicographic ordering ranks "0.9.2" above "0.9.30" -- the opposite of
         # what an operator reading a drift warning needs.
         for version in ("0.9.2", "0.9.30", "0.9.16"):
-            self._make_dist_info(tmp_path, "dcc-mcp-maya", version)
+            self._make_dist_info(tmp_path, "meshy-dcc-maya", version)
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.30"
-        expected = str(tmp_path / "dcc-mcp-maya-0.9.30.dist-info")
-        assert _version_check.distribution_location("dcc-mcp-maya") == expected
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.30"
+        expected = str(tmp_path / "meshy-dcc-maya-0.9.30.dist-info")
+        assert _version_check.distribution_location("meshy-dcc-maya") == expected
 
     def test_sys_path_order_still_beats_version_ordering(self, tmp_path, monkeypatch):
         # Version ordering applies *within* one sys.path entry only; the first
         # entry on sys.path is still the one Python would import.
         first = tmp_path / "first"
         second = tmp_path / "second"
-        self._make_dist_info(first, "dcc-mcp-maya", "0.9.2")
-        self._make_dist_info(second, "dcc-mcp-maya", "0.9.30")
+        self._make_dist_info(first, "meshy-dcc-maya", "0.9.2")
+        self._make_dist_info(second, "meshy-dcc-maya", "0.9.30")
         monkeypatch.setattr(sys, "path", [str(first), str(second)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.2"
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.2"
 
     def test_metadata_api_answering_none_falls_through_to_the_scan(self, tmp_path, monkeypatch):
         # A malformed METADATA without a ``Version:`` field can make the API
         # answer empty; str() would have smuggled the literal "None" into the
         # report, so the scan has to get its turn instead.
-        self._make_dist_info(tmp_path, "dcc-mcp-maya", "0.9.30")
+        self._make_dist_info(tmp_path, "meshy-dcc-maya", "0.9.30")
         monkeypatch.setattr(sys, "path", [str(tmp_path)] + list(sys.path))
         monkeypatch.setattr(
             _version_check,
@@ -409,10 +409,10 @@ class TestDistributionScanFallback:
             lambda: SimpleNamespace(version=lambda _name: None),
         )
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.30"
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.30"
 
     def test_metadata_api_answering_empty_string_falls_through(self, tmp_path, monkeypatch):
-        self._make_dist_info(tmp_path, "dcc-mcp-maya", "0.9.30")
+        self._make_dist_info(tmp_path, "meshy-dcc-maya", "0.9.30")
         monkeypatch.setattr(sys, "path", [str(tmp_path)] + list(sys.path))
         monkeypatch.setattr(
             _version_check,
@@ -420,7 +420,7 @@ class TestDistributionScanFallback:
             lambda: SimpleNamespace(version=lambda _name: ""),
         )
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.30"
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.30"
 
     def test_empty_api_answer_without_dist_info_stays_none(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
@@ -430,9 +430,9 @@ class TestDistributionScanFallback:
             lambda: SimpleNamespace(version=lambda _name: None),
         )
 
-        assert _version_check.distribution_version("dcc-mcp-maya") is None
+        assert _version_check.distribution_version("meshy-dcc-maya") is None
         # ...and the report therefore says "not installed", never "None".
-        report = _version_check.build_report("dcc-mcp-maya", module=_module("0.9.30"))
+        report = _version_check.build_report("meshy-dcc-maya", module=_module("0.9.30"))
 
         assert report.status == _version_check.STATUS_NOT_INSTALLED
         assert report.distribution_version is None
@@ -445,41 +445,41 @@ class TestDistributionScanFallback:
         # to delete a distribution the report never quoted.
         first = tmp_path / "first"
         second = tmp_path / "second"
-        broken = first / "dcc-mcp-maya-0.9.30.dist-info"
+        broken = first / "meshy-dcc-maya-0.9.30.dist-info"
         broken.mkdir(parents=True)
-        (broken / "METADATA").write_text("Metadata-Version: 2.1\nName: dcc-mcp-maya\n", encoding="utf-8")
-        good = self._make_dist_info(second, "dcc-mcp-maya", "0.9.2")
+        (broken / "METADATA").write_text("Metadata-Version: 2.1\nName: meshy-dcc-maya\n", encoding="utf-8")
+        good = self._make_dist_info(second, "meshy-dcc-maya", "0.9.2")
         monkeypatch.setattr(sys, "path", [str(first), str(second)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.2"
-        assert _version_check.distribution_location("dcc-mcp-maya") == str(good)
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.2"
+        assert _version_check.distribution_location("meshy-dcc-maya") == str(good)
 
     def test_scan_finds_nothing_without_metadata_dirs(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check.distribution_version("dcc-mcp-maya") is None
-        assert _version_check.distribution_location("dcc-mcp-maya") is None
+        assert _version_check.distribution_version("meshy-dcc-maya") is None
+        assert _version_check.distribution_location("meshy-dcc-maya") is None
 
     def test_metadata_api_takes_priority_when_available(self, tmp_path, monkeypatch):
         """When the metadata API works it is consulted before the scan."""
-        self._make_dist_info(tmp_path, "dcc-mcp-maya", "0.9.14")
+        self._make_dist_info(tmp_path, "meshy-dcc-maya", "0.9.14")
         monkeypatch.setattr(sys, "path", [str(tmp_path)] + list(sys.path))
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: SimpleNamespace(version=lambda _name: "0.9.99"))
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.99"
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.99"
 
     def test_drift_flag_is_independent_of_undecidable_reports(self):
         """``consistent`` is strict; ``drift`` means "two answers disagree"."""
         undecidable = _version_check.VersionReport(
-            package="dcc-mcp-maya",
+            package="meshy-dcc-maya",
             runtime_version="0.9.30",
             distribution_version=None,
             status=_version_check.STATUS_NOT_INSTALLED,
         )
         drifted = _version_check.VersionReport(
-            package="dcc-mcp-core",
+            package="meshy-dcc-core",
             runtime_version="0.19.2",
             distribution_version="0.19.3",
             status=_version_check.STATUS_MISMATCH,
@@ -493,7 +493,7 @@ class TestDistributionScanFallback:
         assert payload["drift"] is True
 
         healthy = _version_check.VersionReport(
-            package="dcc-mcp-core",
+            package="meshy-dcc-core",
             runtime_version="0.19.3",
             distribution_version="0.19.3",
             status=_version_check.STATUS_CONSISTENT,
@@ -546,10 +546,10 @@ class TestDistributionLocation:
         monkeypatch.setattr(
             _version_check,
             "_metadata_module",
-            lambda: self._fake_metadata("/sp/dcc_mcp_maya-0.9.30.dist-info", "/sp"),
+            lambda: self._fake_metadata("/sp/meshy_dcc_maya-0.9.30.dist-info", "/sp"),
         )
 
-        assert _version_check.distribution_location("dcc-mcp-maya") == "/sp/dcc_mcp_maya-0.9.30.dist-info"
+        assert _version_check.distribution_location("meshy-dcc-maya") == "/sp/meshy_dcc_maya-0.9.30.dist-info"
 
     def test_falls_back_to_locate_file_without_dist_info_path(self, monkeypatch):
         # Backports that do not expose ``_path`` must still get an answer.
@@ -559,7 +559,7 @@ class TestDistributionLocation:
             lambda: self._fake_metadata(None, "/site-packages"),
         )
 
-        assert _version_check.distribution_location("dcc-mcp-maya") == "/site-packages"
+        assert _version_check.distribution_location("meshy-dcc-maya") == "/site-packages"
 
     def test_empty_dist_info_path_falls_back_to_locate_file(self, monkeypatch):
         monkeypatch.setattr(
@@ -568,7 +568,7 @@ class TestDistributionLocation:
             lambda: self._fake_metadata("", "/site-packages"),
         )
 
-        assert _version_check.distribution_location("dcc-mcp-maya") == "/site-packages"
+        assert _version_check.distribution_location("meshy-dcc-maya") == "/site-packages"
 
     def test_returns_none_when_both_api_answers_are_unusable(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
@@ -578,67 +578,67 @@ class TestDistributionLocation:
             lambda: self._fake_metadata(None, None),
         )
 
-        assert _version_check.distribution_location("dcc-mcp-maya") is None
+        assert _version_check.distribution_location("meshy-dcc-maya") is None
 
     def test_empty_api_version_ignores_the_api_path(self, tmp_path, monkeypatch):
         # The version falls through to the scan, so the path has to fall
         # through with it.  Taking the path from a metadata API that could not
         # produce a version pairs the report with an artifact it never quoted.
-        dist_info = tmp_path / "dcc-mcp-maya-0.9.30.dist-info"
+        dist_info = tmp_path / "meshy-dcc-maya-0.9.30.dist-info"
         dist_info.mkdir()
-        (dist_info / "METADATA").write_text("Name: dcc-mcp-maya\nVersion: 0.9.30\n", encoding="utf-8")
+        (dist_info / "METADATA").write_text("Name: meshy-dcc-maya\nVersion: 0.9.30\n", encoding="utf-8")
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(
             _version_check,
             "_metadata_module",
-            lambda: self._fake_metadata("/stale/dcc-mcp-maya-0.9.14.dist-info", "/site-packages", version=None),
+            lambda: self._fake_metadata("/stale/meshy-dcc-maya-0.9.14.dist-info", "/site-packages", version=None),
         )
 
-        assert _version_check.distribution_version("dcc-mcp-maya") == "0.9.30"
-        assert _version_check.distribution_location("dcc-mcp-maya") == str(dist_info)
+        assert _version_check.distribution_version("meshy-dcc-maya") == "0.9.30"
+        assert _version_check.distribution_location("meshy-dcc-maya") == str(dist_info)
 
     def test_report_pairs_the_version_with_its_own_path(self, tmp_path, monkeypatch):
         # End-to-end shape of the same rule: build_report prints
         # "distribution: <path>" so the operator deletes a stale install, and
         # that path has to be the artifact the quoted version came from.
-        dist_info = tmp_path / "dcc-mcp-maya-0.9.30.dist-info"
+        dist_info = tmp_path / "meshy-dcc-maya-0.9.30.dist-info"
         dist_info.mkdir()
-        (dist_info / "METADATA").write_text("Name: dcc-mcp-maya\nVersion: 0.9.30\n", encoding="utf-8")
+        (dist_info / "METADATA").write_text("Name: meshy-dcc-maya\nVersion: 0.9.30\n", encoding="utf-8")
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(
             _version_check,
             "_metadata_module",
-            lambda: self._fake_metadata("/stale/dcc-mcp-maya-0.9.14.dist-info", "/site-packages", version=None),
+            lambda: self._fake_metadata("/stale/meshy-dcc-maya-0.9.14.dist-info", "/site-packages", version=None),
         )
 
-        report = _version_check.build_report("dcc-mcp-maya", module=_module("0.9.16"))
+        report = _version_check.build_report("meshy-dcc-maya", module=_module("0.9.16"))
 
         assert report.distribution_version == "0.9.30"
         assert report.distribution_path == str(dist_info)
         assert report.status == _version_check.STATUS_MISMATCH
 
     def test_resolve_distribution_pairs_version_with_its_own_path(self, tmp_path, monkeypatch):
-        dist_info = tmp_path / "dcc-mcp-maya-0.9.30.dist-info"
+        dist_info = tmp_path / "meshy-dcc-maya-0.9.30.dist-info"
         dist_info.mkdir()
-        (dist_info / "METADATA").write_text("Name: dcc-mcp-maya\nVersion: 0.9.30\n", encoding="utf-8")
+        (dist_info / "METADATA").write_text("Name: meshy-dcc-maya\nVersion: 0.9.30\n", encoding="utf-8")
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check._resolve_distribution("dcc-mcp-maya") == ("0.9.30", str(dist_info))
+        assert _version_check._resolve_distribution("meshy-dcc-maya") == ("0.9.30", str(dist_info))
 
     def test_resolve_distribution_returns_empty_pair_when_nothing_found(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
 
-        assert _version_check._resolve_distribution("dcc-mcp-maya") == (None, None)
+        assert _version_check._resolve_distribution("meshy-dcc-maya") == (None, None)
 
     def test_both_paths_agree_on_granularity(self, tmp_path, monkeypatch):
         # The scan branch always answered with the ``.dist-info`` directory;
         # the API branch used to answer with its parent.  Neither is useful
         # while the two disagree, so pin them together.
-        dist_info = tmp_path / "dcc-mcp-maya-0.9.30.dist-info"
+        dist_info = tmp_path / "meshy-dcc-maya-0.9.30.dist-info"
         dist_info.mkdir()
-        (dist_info / "METADATA").write_text("Name: dcc-mcp-maya\nVersion: 0.9.30\n", encoding="utf-8")
+        (dist_info / "METADATA").write_text("Name: meshy-dcc-maya\nVersion: 0.9.30\n", encoding="utf-8")
         monkeypatch.setattr(sys, "path", [str(tmp_path)])
 
         monkeypatch.setattr(
@@ -646,10 +646,10 @@ class TestDistributionLocation:
             "_metadata_module",
             lambda: self._fake_metadata(str(dist_info), str(tmp_path)),
         )
-        via_api = _version_check.distribution_location("dcc-mcp-maya")
+        via_api = _version_check.distribution_location("meshy-dcc-maya")
 
         monkeypatch.setattr(_version_check, "_metadata_module", lambda: None)
-        via_scan = _version_check.distribution_location("dcc-mcp-maya")
+        via_scan = _version_check.distribution_location("meshy-dcc-maya")
 
         assert via_api == via_scan == str(dist_info)
 
@@ -678,7 +678,7 @@ class TestServerWiring:
     @pytest.fixture()
     def server(self):
         # Build the instance without running ``__init__`` (no Maya, no HTTP).
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         instance = MayaMcpServer.__new__(MayaMcpServer)
         instance._dcc_name = "maya"
@@ -688,7 +688,7 @@ class TestServerWiring:
 
     def test_start_runs_the_check_exactly_once(self, server):
         with patch(
-            "dcc_mcp_maya.server.run_version_self_check",
+            "meshy_dcc_maya.server.run_version_self_check",
             return_value={"consistent": True},
         ) as run:
             server._run_version_self_check()
@@ -699,20 +699,20 @@ class TestServerWiring:
 
     def test_env_opt_out_skips_the_check(self, server):
         with patch.dict(os.environ, {_env.ENV_VERSION_CHECK: "0"}):
-            with patch("dcc_mcp_maya.server.run_version_self_check") as run:
+            with patch("meshy_dcc_maya.server.run_version_self_check") as run:
                 server._run_version_self_check()
 
         assert run.call_count == 0
 
     def test_a_failing_check_never_breaks_startup(self, server):
-        with patch("dcc_mcp_maya.server.run_version_self_check", side_effect=RuntimeError("boom")):
+        with patch("meshy_dcc_maya.server.run_version_self_check", side_effect=RuntimeError("boom")):
             server._run_version_self_check()  # must not raise
 
         assert server._version_report is None
 
     def test_version_report_degrades_to_empty_dict(self, server):
         # Resolve through the server module: several suites purge
-        # ``dcc_mcp_maya*`` from ``sys.modules`` and re-import the package,
+        # ``meshy_dcc_maya*`` from ``sys.modules`` and re-import the package,
         # so a module reference captured at import time can go stale.
-        with patch("dcc_mcp_maya.server._version_check.version_report", side_effect=RuntimeError("boom")):
+        with patch("meshy_dcc_maya.server._version_check.version_report", side_effect=RuntimeError("boom")):
             assert server.version_report() == {}

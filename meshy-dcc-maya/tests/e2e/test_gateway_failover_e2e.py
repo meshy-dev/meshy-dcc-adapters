@@ -1,7 +1,7 @@
 """Gateway election smoke tests under real mayapy (Rust server + Python thread).
 
 These complement ``tests/test_gateway_promotion_maya.py`` (mocked maya) and
-``dcc-mcp-core/tests/test_gateway_election_e2e.py`` (HTTP fake gateway): here we
+``meshy-dcc-core/tests/test_gateway_election_e2e.py`` (HTTP fake gateway): here we
 assert that a normal ``MayaMcpServer.start()`` with a unique ``gateway_port``
 actually wires ``DccGatewayElection`` and reports it as running.
 
@@ -40,7 +40,7 @@ def test_gateway_election_thread_starts_with_isolated_registry(tmp_path: Path) -
 
     maya.standalone.initialize(name="python")
 
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     reg = tmp_path / "registry"
     reg.mkdir(parents=True, exist_ok=True)
@@ -71,9 +71,9 @@ def test_maya_upgrade_from_background_thread_invokes_main_thread_utils(tmp_path:
     maya.standalone.initialize(name="python")
 
     import maya.cmds as cmds  # noqa: PLC0415
-    from dcc_mcp_core.server_base import DccServerBase
+    from meshy_dcc_core.server_base import DccServerBase
 
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     reg = tmp_path / "registry-mt"
     reg.mkdir(parents=True, exist_ok=True)

@@ -66,9 +66,9 @@ def main(
 ### 注册自定义 Skill
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-handle = dcc_mcp_maya.start_server(
+handle = meshy_dcc_maya.start_server(
     extra_skill_paths=[
         "/path/to/my-skills-folder",
         "/another/skills/directory",
@@ -80,10 +80,10 @@ handle = dcc_mcp_maya.start_server(
 
 ```bash
 # Windows（分号分隔）
-set DCC_MCP_MAYA_SKILL_PATHS=C:\studio\maya-skills;C:\personal\skills
+set MESHY_DCC_MAYA_SKILL_PATHS=C:\studio\maya-skills;C:\personal\skills
 
 # Linux/macOS（冒号分隔）
-export DCC_MCP_MAYA_SKILL_PATHS=/studio/maya-skills:/personal/skills
+export MESHY_DCC_MAYA_SKILL_PATHS=/studio/maya-skills:/personal/skills
 ```
 
 ### Rez 发布的 Studio Skills
@@ -105,11 +105,11 @@ studio_maya_dev_skills/
 
 ```python
 def commands():
-    env.DCC_MCP_MAYA_SKILL_PATHS.append("{root}/skills")
+    env.MESHY_DCC_MAYA_SKILL_PATHS.append("{root}/skills")
 ```
 
 适配器会在 `register_builtin_actions()` 或 `start_server()` 期间扫描
-`DCC_MCP_MAYA_SKILL_PATHS`。Gateway search、`dcc_capability_manifest`、
+`MESHY_DCC_MAYA_SKILL_PATHS`。Gateway search、`dcc_capability_manifest`、
 `search_skills` 与 `load_skill` 都使用这份已发现的 catalog。Rez context 或环境路径
 变更后，请重启/重载 Maya 插件或启动新的 server，让 discovery 重新执行；
 `load_skill` 只会激活启动扫描已发现的 skill。
@@ -139,9 +139,9 @@ result = maya.utils.executeInMainThreadWithResult(_my_operation)
 ### 自定义端口和名称
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-handle = dcc_mcp_maya.start_server(
+handle = meshy_dcc_maya.start_server(
     port=9000,
     server_name="maya-studio-2024",
 )
@@ -151,7 +151,7 @@ print(handle.mcp_url())   # http://127.0.0.1:9000/mcp
 ### 直接使用 MayaMcpServer
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 server = MayaMcpServer(server_name="maya-mcp")
 server.register_builtin_actions(extra_skill_paths=["/my/custom/skills"])
@@ -167,8 +167,8 @@ server.stop()
 
 ```python
 import logging
-logging.getLogger("dcc_mcp_maya").setLevel(logging.DEBUG)
-logging.getLogger("dcc_mcp_core").setLevel(logging.DEBUG)
+logging.getLogger("meshy_dcc_maya").setLevel(logging.DEBUG)
+logging.getLogger("meshy_dcc_core").setLevel(logging.DEBUG)
 ```
 
 ## 长任务执行：`defer=True`
@@ -201,14 +201,14 @@ logging.getLogger("dcc_mcp_core").setLevel(logging.DEBUG)
 }
 ```
 
-服务端立即返回一个延迟句柄；`dcc-mcp-core` 每 100&nbsp;ms 轮询一次该句柄，并在脚本完成（或 `timeout_secs` 到期）时把最终的 `ToolResult` 推送给客户端。
+服务端立即返回一个延迟句柄；`meshy-dcc-core` 每 100&nbsp;ms 轮询一次该句柄，并在脚本完成（或 `timeout_secs` 到期）时把最终的 `ToolResult` 推送给客户端。
 
 ### 取消支持
 
 启用 `defer=True` 的长任务也应配合取消机制：
 
 ```python
-from dcc_mcp_maya import check_maya_cancelled
+from meshy_dcc_maya import check_maya_cancelled
 
 for frame in frames:
     check_maya_cancelled()       # 取消时抛出 CancelledError
@@ -220,7 +220,7 @@ for frame in frames:
 
 ### 在自定义技能中返回 `DeferredToolResult`
 
-任何技能都可以通过引入 `dcc-mcp-core` 的辅助类来采用同样的模式：
+任何技能都可以通过引入 `meshy-dcc-core` 的辅助类来采用同样的模式：
 
 ```python
 """my_long_action.py"""
@@ -241,7 +241,7 @@ def main(target: str, defer: bool = True, timeout_secs: float = 600.0):
         _runner(state, target)
         return state["result"]
 
-    from dcc_mcp_core._server import DeferredToolResult  # 延迟导入
+    from meshy_dcc_core._server import DeferredToolResult  # 延迟导入
 
     state = {"done": False, "result": None}
 
@@ -279,7 +279,7 @@ def main(target: str, defer: bool = True, timeout_secs: float = 600.0):
 
 ### Dispatcher 如何路由延迟结果
 
-`MayaMcpServer._executor` 通过鸭子类型识别返回值：只要带有 `check_is_finished` 属性，结果就直接透传给 `dcc-mcp-core` 的轮询循环，无需包装、无需复制、无需主线程反射。这意味着延迟启动前抛出的 dispatcher 异常仍会被捕获并以结构化的 `{"success": False, ...}` 信封返回，而轮询完成时则使用技能自身的信封。
+`MayaMcpServer._executor` 通过鸭子类型识别返回值：只要带有 `check_is_finished` 属性，结果就直接透传给 `meshy-dcc-core` 的轮询循环，无需包装、无需复制、无需主线程反射。这意味着延迟启动前抛出的 dispatcher 异常仍会被捕获并以结构化的 `{"success": False, ...}` 信封返回，而轮询完成时则使用技能自身的信封。
 
 ### 配置项
 
@@ -306,10 +306,10 @@ import os
 import maya.cmds as cmds
 
 def _start_mcp_if_enabled():
-    if os.environ.get("DCC_MCP_MAYA_AUTOSTART", "1") == "0":
+    if os.environ.get("MESHY_DCC_MAYA_AUTOSTART", "1") == "0":
         return
-    import dcc_mcp_maya
-    handle = dcc_mcp_maya.start_server()
+    import meshy_dcc_maya
+    handle = meshy_dcc_maya.start_server()
     print(f"[studio] Maya MCP: {handle.mcp_url()}")
 
 cmds.evalDeferred(_start_mcp_if_enabled, lowestPriority=True)

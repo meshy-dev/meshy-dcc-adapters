@@ -29,7 +29,7 @@ def test_create_curve_contract_remains_backward_compatible():
 
 
 def test_create_guide_curve_schema_is_bounded_and_has_no_arbitrary_metadata():
-    tools_path = Path(__file__).parent.parent / "src" / "dcc_mcp_maya" / "skills" / "maya-rigging" / "tools.yaml"
+    tools_path = Path(__file__).parent.parent / "src" / "meshy_dcc_maya" / "skills" / "maya-rigging" / "tools.yaml"
     tools = yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]
     spec = next(tool for tool in tools if tool["name"] == "create_guide_curve")
     schema = spec["input_schema"]

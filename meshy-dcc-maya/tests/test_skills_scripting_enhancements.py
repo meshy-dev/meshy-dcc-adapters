@@ -42,11 +42,11 @@ class TestMayaOutputCaptureFallback:
 
     def test_default_is_noop_without_opt_in(self):
         """Default path: env var not set, no ``force`` — must NOT touch OpenMaya."""
-        from dcc_mcp_maya._maya_output import MayaOutputCapture
+        from meshy_dcc_maya._maya_output import MayaOutputCapture
 
         fake_module = MagicMock()
-        with patch.dict("os.environ", {"DCC_MCP_MAYA_HOOK_MAYA_OUTPUT": ""}, clear=False):
-            with patch("dcc_mcp_maya._maya_output._load_openmaya", return_value=fake_module):
+        with patch.dict("os.environ", {"MESHY_DCC_MAYA_HOOK_MAYA_OUTPUT": ""}, clear=False):
+            with patch("meshy_dcc_maya._maya_output._load_openmaya", return_value=fake_module):
                 with MayaOutputCapture() as cap:
                     pass
         fake_module.MCommandMessage.addCommandOutputCallback.assert_not_called()
@@ -54,18 +54,18 @@ class TestMayaOutputCaptureFallback:
         assert cap.stderr == ""
 
     def test_opt_in_via_env_registers_callback(self):
-        """Setting ``DCC_MCP_MAYA_HOOK_MAYA_OUTPUT=1`` restores the OpenMaya bridge."""
-        from dcc_mcp_maya._maya_output import MayaOutputCapture
+        """Setting ``MESHY_DCC_MAYA_HOOK_MAYA_OUTPUT=1`` restores the OpenMaya bridge."""
+        from meshy_dcc_maya._maya_output import MayaOutputCapture
 
         fake_module = MagicMock()
-        with patch.dict("os.environ", {"DCC_MCP_MAYA_HOOK_MAYA_OUTPUT": "1"}, clear=False):
-            with patch("dcc_mcp_maya._maya_output._load_openmaya", return_value=fake_module):
+        with patch.dict("os.environ", {"MESHY_DCC_MAYA_HOOK_MAYA_OUTPUT": "1"}, clear=False):
+            with patch("meshy_dcc_maya._maya_output._load_openmaya", return_value=fake_module):
                 with MayaOutputCapture():
                     pass
         fake_module.MCommandMessage.addCommandOutputCallback.assert_called_once()
 
     def test_no_maya_returns_empty_buffers(self):
-        from dcc_mcp_maya._maya_output import MayaOutputCapture
+        from meshy_dcc_maya._maya_output import MayaOutputCapture
 
         with patch.dict(
             sys.modules,
@@ -77,11 +77,11 @@ class TestMayaOutputCaptureFallback:
         assert cap.stderr == ""
 
     def test_callback_registration_failure_is_swallowed(self):
-        from dcc_mcp_maya._maya_output import MayaOutputCapture
+        from meshy_dcc_maya._maya_output import MayaOutputCapture
 
         fake_module = MagicMock()
         fake_module.MCommandMessage.addCommandOutputCallback.side_effect = RuntimeError("nope")
-        with patch("dcc_mcp_maya._maya_output._load_openmaya", return_value=fake_module):
+        with patch("meshy_dcc_maya._maya_output._load_openmaya", return_value=fake_module):
             with MayaOutputCapture(force=True) as cap:
                 pass
         assert cap.stdout == ""
@@ -94,25 +94,25 @@ class TestMayaOutputCaptureFallback:
 
 
 class TestArbitraryScriptPolicyEnv:
-    """``DCC_MCP_MAYA_DISABLE_*`` gates short-circuit before Maya I/O."""
+    """``MESHY_DCC_MAYA_DISABLE_*`` gates short-circuit before Maya I/O."""
 
     def test_disable_execute_python_returns_structured_error(self):
         mod = load_skill_script("maya-scripting", "execute_python")
-        with patch.dict(os.environ, {"DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON": "1"}):
+        with patch.dict(os.environ, {"MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON": "1"}):
             out = mod.execute_python(code="1+1")
         assert out.get("success") is False
         assert "policy" in (out.get("message") or "").lower()
 
     def test_disable_arbitrary_script_blocks_execute_mel(self):
         mod = load_skill_script("maya-scripting", "execute_mel")
-        with patch.dict(os.environ, {"DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT": "true"}):
+        with patch.dict(os.environ, {"MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT": "true"}):
             out = mod.execute_mel(code="1")
         assert out.get("success") is False
         assert "policy" in (out.get("message") or "").lower()
 
     def test_disable_arbitrary_script_blocks_execute_python(self):
         mod = load_skill_script("maya-scripting", "execute_python")
-        with patch.dict(os.environ, {"DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT": "on"}):
+        with patch.dict(os.environ, {"MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT": "on"}):
             out = mod.execute_python(code="pass")
         assert out.get("success") is False
 
@@ -257,7 +257,7 @@ class TestExecutePythonMainThreadMarshalling:
     def test_inplace_true_skips_main_thread_routing(self):
         """``inplace=True`` opts out — neither the queue nor the bridge is touched."""
         # Import local modules
-        from dcc_mcp_maya import _main_thread_queue
+        from meshy_dcc_maya import _main_thread_queue
 
         _main_thread_queue.reset_for_tests()
         mod = load_skill_script("maya-scripting", "execute_python")
@@ -275,7 +275,7 @@ class TestExecutePythonMainThreadMarshalling:
     def test_off_main_thread_routes_through_queue_and_marshals_to_main(self):
         """Default path: off main thread → queue → executeInMainThreadWithResult."""
         # Import local modules
-        from dcc_mcp_maya import _main_thread_queue
+        from meshy_dcc_maya import _main_thread_queue
 
         _main_thread_queue.reset_for_tests()
         mod = load_skill_script("maya-scripting", "execute_python")
@@ -305,7 +305,7 @@ class TestExecutePythonMainThreadMarshalling:
     def test_already_on_main_thread_runs_inline(self):
         """When already on main thread, the queue marshalling must NOT fire."""
         # Import local modules
-        from dcc_mcp_maya import _main_thread_queue
+        from meshy_dcc_maya import _main_thread_queue
 
         _main_thread_queue.reset_for_tests()
         mod = load_skill_script("maya-scripting", "execute_python")
@@ -324,7 +324,7 @@ class TestExecutePythonMainThreadMarshalling:
     def test_no_maya_falls_back_to_inplace(self):
         """``mayapy`` / pytest: no Maya bridge → queue pump runs job inline."""
         # Import local modules
-        from dcc_mcp_maya import _main_thread_queue
+        from meshy_dcc_maya import _main_thread_queue
 
         _main_thread_queue.reset_for_tests()
         mod = load_skill_script("maya-scripting", "execute_python")
@@ -352,7 +352,7 @@ class TestExecutePythonMainThreadMarshalling:
         # Import local modules
         import threading as _threading
 
-        from dcc_mcp_maya import _main_thread_queue
+        from meshy_dcc_maya import _main_thread_queue
 
         _main_thread_queue.reset_for_tests()
         mod = load_skill_script("maya-scripting", "execute_python")
@@ -420,7 +420,7 @@ class TestExecutePythonMainThreadMarshalling:
         from concurrent.futures import Future
 
         # Import local modules
-        from dcc_mcp_maya import _main_thread_queue
+        from meshy_dcc_maya import _main_thread_queue
 
         _main_thread_queue.reset_for_tests()
         mod = load_skill_script("maya-scripting", "execute_python")
@@ -461,7 +461,7 @@ class TestExecutePythonMainThreadMarshalling:
         ran.
         """
         # Import local modules
-        from dcc_mcp_maya import _main_thread_queue
+        from meshy_dcc_maya import _main_thread_queue
 
         _main_thread_queue.reset_for_tests()
         mod = load_skill_script("maya-scripting", "execute_python")
@@ -602,7 +602,7 @@ class TestWriteModule:
 
     def test_disabled_by_env_var(self):
         mod = load_skill_script("maya-scripting", "write_module")
-        with patch.dict(os.environ, {"DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON": "1"}):
+        with patch.dict(os.environ, {"MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON": "1"}):
             out = mod.write_module(name="_mcp_test_writemodule_blocked", source="value = 1\n")
         assert out.get("success") is False
         assert "policy" in (out.get("message") or "").lower()
@@ -718,7 +718,7 @@ class TestToolsYamlContract:
     """Pin the public schema for the maya-scripting tools."""
 
     def _load_tools(self) -> dict:
-        path = Path(__file__).parent.parent / "src" / "dcc_mcp_maya" / "skills" / "maya-scripting" / "tools.yaml"
+        path = Path(__file__).parent.parent / "src" / "meshy_dcc_maya" / "skills" / "maya-scripting" / "tools.yaml"
         return yaml.safe_load(path.read_text(encoding="utf-8"))
 
     def _input_schema(self, tool: dict) -> dict:
@@ -868,9 +868,9 @@ def test_execute_python_injects_node_summary_helpers(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _reset_safe_session_env():
-    saved = os.environ.get("DCC_MCP_MAYA_SAFE_SESSION")
+    saved = os.environ.get("MESHY_DCC_MAYA_SAFE_SESSION")
     yield
     if saved is None:
-        os.environ.pop("DCC_MCP_MAYA_SAFE_SESSION", None)
+        os.environ.pop("MESHY_DCC_MAYA_SAFE_SESSION", None)
     else:
-        os.environ["DCC_MCP_MAYA_SAFE_SESSION"] = saved
+        os.environ["MESHY_DCC_MAYA_SAFE_SESSION"] = saved

@@ -1,11 +1,11 @@
 """Regression tests for the dynamic stage taxonomy + safe-session firewall.
 
-These tests pin three invariants the dcc-mcp-core / dcc-mcp-maya
+These tests pin three invariants the meshy-dcc-core / meshy-dcc-maya
 contract depends on:
 
 1. **Frontmatter is the single source of truth for stage.** Every
-   bundled ``SKILL.md`` declares ``metadata.dcc-mcp.stage``;
-   ``dcc_mcp_core.parse_skill_md`` parses it into the typed
+   bundled ``SKILL.md`` declares ``metadata.meshy-dcc.stage``;
+   ``meshy_dcc_core.parse_skill_md`` parses it into the typed
    :attr:`SkillMetadata.stage` field; ``_skill_loader.skills_for_stage``
    derives the per-stage skill set at runtime from that field. There
    is **no** hand-maintained ``SKILL_STAGE`` shadow table — these
@@ -29,7 +29,7 @@ from typing import Dict, List
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SKILLS_DIR = REPO_ROOT / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_DIR = REPO_ROOT / "src" / "meshy_dcc_maya" / "skills"
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
 _STAGE_LINE_RE = re.compile(r"^\s*stage:\s*([A-Za-z0-9_-]+)\s*$", re.MULTILINE)
@@ -46,7 +46,7 @@ def _bundled_skill_dirs() -> List[Path]:
 
 
 def _read_stage_field(skill_md: Path) -> str:
-    """Extract ``metadata.dcc-mcp.stage`` from a SKILL.md frontmatter.
+    """Extract ``metadata.meshy-dcc.stage`` from a SKILL.md frontmatter.
 
     The file uses YAML frontmatter; we deliberately do not import
     PyYAML so the test stays runnable in any minimal venv.
@@ -66,8 +66,8 @@ def _read_stage_field(skill_md: Path) -> str:
 
 
 def test_every_skill_dir_has_stage_field() -> None:
-    """Every bundled SKILL.md must declare ``metadata.dcc-mcp.stage``."""
-    from dcc_mcp_maya._skill_loader import STAGES
+    """Every bundled SKILL.md must declare ``metadata.meshy-dcc.stage``."""
+    from meshy_dcc_maya._skill_loader import STAGES
 
     for skill_dir in _bundled_skill_dirs():
         skill_md = skill_dir / "SKILL.md"
@@ -77,7 +77,7 @@ def test_every_skill_dir_has_stage_field() -> None:
 
 def test_skills_index_stage_table_matches_disk() -> None:
     """The human-readable skill inventory must match the bundled skill dirs."""
-    from dcc_mcp_maya._skill_loader import STAGES
+    from meshy_dcc_maya._skill_loader import STAGES
 
     index_text = (SKILLS_DIR / "SKILLS_INDEX.md").read_text(encoding="utf-8")
     count_match = re.search(r"The (\d+) bundled skills", index_text)
@@ -103,22 +103,22 @@ def test_no_hardcoded_skill_stage_dict_exists() -> None:
     """The deprecated ``SKILL_STAGE`` constant must NOT be re-exposed.
 
     The whole point of moving stage discovery to a dynamic frontmatter
-    scan (backed by ``dcc_mcp_core.SkillMetadata.stage``) is that no
+    scan (backed by ``meshy_dcc_core.SkillMetadata.stage``) is that no
     Python file in this repo carries a parallel ``{name → stage}``
     mapping that can drift out of sync with the SKILL.md files. This
     test fails loudly the moment someone reintroduces the shadow
     table — at the module surface or as a top-level package export.
     """
-    import dcc_mcp_maya
-    from dcc_mcp_maya import _skill_loader
+    import meshy_dcc_maya
+    from meshy_dcc_maya import _skill_loader
 
     assert not hasattr(_skill_loader, "SKILL_STAGE"), (
         "_skill_loader.SKILL_STAGE re-introduced — stage data must be "
         "derived from each SKILL.md frontmatter on demand, not from "
         "a hand-maintained dict."
     )
-    assert not hasattr(dcc_mcp_maya, "SKILL_STAGE"), (
-        "dcc_mcp_maya.SKILL_STAGE re-introduced — see _skill_loader.py docstring for the dynamic alternatives."
+    assert not hasattr(meshy_dcc_maya, "SKILL_STAGE"), (
+        "meshy_dcc_maya.SKILL_STAGE re-introduced — see _skill_loader.py docstring for the dynamic alternatives."
     )
 
 
@@ -132,16 +132,16 @@ def test_no_hardcoded_minimal_deactivate_groups_dict_exists() -> None:
     Reintroducing a hand-maintained mirror would silently get out of
     sync the next time a skill author flipped a group's default state.
     """
-    import dcc_mcp_maya
-    from dcc_mcp_maya import _skill_loader
+    import meshy_dcc_maya
+    from meshy_dcc_maya import _skill_loader
 
     assert not hasattr(_skill_loader, "MINIMAL_DEACTIVATE_GROUPS"), (
         "_skill_loader.MINIMAL_DEACTIVATE_GROUPS re-introduced — "
         "default-inactive groups must be derived from each skill's "
         "groups.yaml on demand."
     )
-    assert not hasattr(dcc_mcp_maya, "MINIMAL_DEACTIVATE_GROUPS"), (
-        "dcc_mcp_maya.MINIMAL_DEACTIVATE_GROUPS re-introduced — see "
+    assert not hasattr(meshy_dcc_maya, "MINIMAL_DEACTIVATE_GROUPS"), (
+        "meshy_dcc_maya.MINIMAL_DEACTIVATE_GROUPS re-introduced — see "
         "_skill_loader._default_minimal_deactivate_groups() instead."
     )
 
@@ -151,7 +151,7 @@ def test_default_minimal_deactivate_groups_matches_groups_yaml(tmp_path) -> None
     bundled ``groups.yaml`` correctly: every group whose
     ``default_active`` is ``false`` becomes a deactivation entry, and
     every other group is omitted."""
-    from dcc_mcp_maya._skill_loader import (
+    from meshy_dcc_maya._skill_loader import (
         MINIMAL_SKILLS,
         _default_minimal_deactivate_groups,
         _read_default_inactive_groups,
@@ -184,7 +184,7 @@ def test_build_minimal_mode_config_pulls_deactivate_from_groups_yaml() -> None:
     deactivate map into ``MinimalModeConfig.deactivate_groups`` so the
     ``default_active: false`` declarations in each ``groups.yaml`` are
     actually honoured at startup."""
-    from dcc_mcp_maya._skill_loader import (
+    from meshy_dcc_maya._skill_loader import (
         MINIMAL_SKILLS,
         _default_minimal_deactivate_groups,
         build_minimal_mode_config,
@@ -199,24 +199,24 @@ def test_build_minimal_mode_config_pulls_deactivate_from_groups_yaml() -> None:
     assert dict(cfg.deactivate_groups) == expected
 
 
-def test_core_parses_metadata_dcc_mcp_stage_into_typed_field() -> None:
-    """``dcc_mcp_core.parse_skill_md`` must populate the typed
+def test_core_parses_metadata_meshy_dcc_stage_into_typed_field() -> None:
+    """``meshy_dcc_core.parse_skill_md`` must populate the typed
     :attr:`SkillMetadata.stage` field for any bundled skill.
 
     This is the contract Maya relies on — if core stops setting the
     typed field, ``skills_for_stage()`` silently returns empty tuples.
     """
-    import dcc_mcp_core
+    import meshy_dcc_core
 
     sample = SKILLS_DIR / "maya-scripting"
     assert (sample / "SKILL.md").is_file(), sample
-    meta = dcc_mcp_core.parse_skill_md(str(sample))
+    meta = meshy_dcc_core.parse_skill_md(str(sample))
     assert meta is not None, "core failed to parse a known-good SKILL.md"
     on_disk_stage = _read_stage_field(sample / "SKILL.md")
     typed_stage = getattr(meta, "stage", None)
     assert typed_stage == on_disk_stage, (
         "core.parse_skill_md(...).stage={!r} disagrees with SKILL.md "
-        "frontmatter stage={!r} — the metadata.dcc-mcp.stage parser arm "
+        "frontmatter stage={!r} — the metadata.meshy-dcc.stage parser arm "
         "is not wired through to SkillMetadata.stage".format(typed_stage, on_disk_stage)
     )
 
@@ -229,7 +229,7 @@ def test_skills_for_stage_matches_dynamic_frontmatter_scan() -> None:
     this test (independent of ``_skill_loader``'s own scan), so any
     drift between the helper and the on-disk truth fails the test.
     """
-    from dcc_mcp_maya._skill_loader import STAGES, skills_for_stage
+    from meshy_dcc_maya._skill_loader import STAGES, skills_for_stage
 
     on_disk: Dict[str, str] = {
         skill_dir.name: _read_stage_field(skill_dir / "SKILL.md") for skill_dir in _bundled_skill_dirs()
@@ -248,11 +248,11 @@ def test_skills_for_stage_matches_dynamic_frontmatter_scan() -> None:
 
 
 def test_skills_for_stage_ignores_skills_without_stage(tmp_path) -> None:
-    """A SKILL.md without ``metadata.dcc-mcp.stage`` must NOT crash the
+    """A SKILL.md without ``metadata.meshy-dcc.stage`` must NOT crash the
     helper, and must NOT be returned by any ``skills_for_stage(...)``
     call. We simulate this by pointing the loader at a temp directory
     containing one staged + one un-staged skill."""
-    from dcc_mcp_maya import _skill_loader
+    from meshy_dcc_maya import _skill_loader
 
     # Two skills: one declares stage=authoring, one declares no stage.
     (tmp_path / "with-stage" / "scripts").mkdir(parents=True)
@@ -261,7 +261,7 @@ def test_skills_for_stage_ignores_skills_without_stage(tmp_path) -> None:
         "name: with-stage\n"
         "description: Has a stage tag.\n"
         "metadata:\n"
-        "  dcc-mcp:\n"
+        "  meshy-dcc:\n"
         "    dcc: maya\n"
         "    stage: authoring\n"
         "---\n",
@@ -269,7 +269,7 @@ def test_skills_for_stage_ignores_skills_without_stage(tmp_path) -> None:
     )
     (tmp_path / "no-stage" / "scripts").mkdir(parents=True)
     (tmp_path / "no-stage" / "SKILL.md").write_text(
-        "---\nname: no-stage\ndescription: Has no stage tag.\nmetadata:\n  dcc-mcp:\n    dcc: maya\n---\n",
+        "---\nname: no-stage\ndescription: Has no stage tag.\nmetadata:\n  meshy-dcc:\n    dcc: maya\n---\n",
         encoding="utf-8",
     )
 
@@ -292,7 +292,7 @@ def test_skills_for_stage_ignores_skills_without_stage(tmp_path) -> None:
 
 
 def test_build_minimal_mode_for_stages_always_includes_bootstrap() -> None:
-    from dcc_mcp_maya._skill_loader import build_minimal_mode_for_stages
+    from meshy_dcc_maya._skill_loader import build_minimal_mode_for_stages
 
     # User asks only for 'interchange'. Bootstrap must still be present.
     cfg = build_minimal_mode_for_stages(["interchange"])
@@ -303,7 +303,7 @@ def test_build_minimal_mode_for_stages_always_includes_bootstrap() -> None:
 
 
 def test_build_minimal_mode_for_stages_rejects_unknown() -> None:
-    from dcc_mcp_maya._skill_loader import build_minimal_mode_for_stages
+    from meshy_dcc_maya._skill_loader import build_minimal_mode_for_stages
 
     with pytest.raises(ValueError):
         build_minimal_mode_for_stages(["not-a-stage"])
@@ -313,7 +313,7 @@ def test_build_minimal_mode_for_stages_rejects_unknown() -> None:
 # Safe-session firewall — REMOVED 2026-05-16 (regression guards below)
 # ---------------------------------------------------------------------------
 #
-# `dcc_mcp_maya._safe_session` no longer exists. Three sequential field
+# `meshy_dcc_maya._safe_session` no longer exists. Three sequential field
 # reports forced removal of every responsibility the module used to carry:
 #
 # 1. `cmds.confirmDialog` / `fileDialog2` monkey-patch crashed Maya on
@@ -322,7 +322,7 @@ def test_build_minimal_mode_for_stages_rejects_unknown() -> None:
 # 2. AutoSave per-job snooze had a between-jobs window where the
 #    timer fired and popped Maya's "must give a name" modal — moved
 #    to a session-wide persistent disable in
-#    `maya/plugin/dcc_mcp_maya_plugin.py::_disable_autosave_for_session`.
+#    `maya/plugin/meshy_dcc_maya_plugin.py::_disable_autosave_for_session`.
 # 3. With (1) and (2) gone, `mcp_safe_session` was a no-op
 #    context-manager wrapper around every dispatched job; removing it
 #    aligns the dispatch path with PatrickPalmer/maya-mcp-server,
@@ -334,14 +334,14 @@ def test_build_minimal_mode_for_stages_rejects_unknown() -> None:
 
 
 def test_safe_session_module_is_absent() -> None:
-    """``dcc_mcp_maya._safe_session`` must not exist as an import target.
+    """``meshy_dcc_maya._safe_session`` must not exist as an import target.
 
     Pins the 2026-05-16 removal. If someone resurrects the module
     (even as an empty shim that re-exports stale names), this test
     fails first so they read the rationale block above.
     """
     with pytest.raises(ImportError):
-        import dcc_mcp_maya._safe_session  # noqa: F401
+        import meshy_dcc_maya._safe_session  # noqa: F401
 
 
 def test_executor_runs_skill_without_safe_session_import() -> None:
@@ -356,7 +356,7 @@ def test_executor_runs_skill_without_safe_session_import() -> None:
     import ast
     import inspect
 
-    from dcc_mcp_maya import _executor
+    from meshy_dcc_maya import _executor
 
     tree = ast.parse(inspect.getsource(_executor))
 
@@ -390,7 +390,7 @@ def test_executor_runs_skill_without_safe_session_import() -> None:
 
 
 def test_public_init_does_not_export_safe_session_symbols() -> None:
-    """``dcc_mcp_maya.__all__`` must not list ``mcp_safe_session`` / friends.
+    """``meshy_dcc_maya.__all__`` must not list ``mcp_safe_session`` / friends.
 
     The previous public surface re-exported ``mcp_safe_session`` /
     ``suppressed_dialog_calls`` / ``ENV_SAFE_SESSION``. All three are
@@ -398,10 +398,10 @@ def test_public_init_does_not_export_safe_session_symbols() -> None:
     of them (which would mean the symbol must still resolve, i.e.
     the module came back).
     """
-    import dcc_mcp_maya
+    import meshy_dcc_maya
 
-    public = getattr(dcc_mcp_maya, "__all__", ())
+    public = getattr(meshy_dcc_maya, "__all__", ())
     for forbidden in ("mcp_safe_session", "suppressed_dialog_calls", "ENV_SAFE_SESSION"):
         assert forbidden not in public, (
-            f"{forbidden!r} must not appear in dcc_mcp_maya.__all__ — the safe-session module was removed 2026-05-16."
+            f"{forbidden!r} must not appear in meshy_dcc_maya.__all__ — the safe-session module was removed 2026-05-16."
         )

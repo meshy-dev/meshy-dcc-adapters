@@ -1,6 +1,6 @@
 # 贡献自定义技能包
 
-`dcc-mcp-maya` 设计为可扩展的架构。你可以将自己的技能包与内置包并行部署，无需修改核心代码。
+`meshy-dcc-maya` 设计为可扩展的架构。你可以将自己的技能包与内置包并行部署，无需修改核心代码。
 
 ## 技能包目录结构
 
@@ -45,7 +45,7 @@ def create_locator_grid(
     """
     # 始终在函数内延迟导入 maya.cmds，以允许在 Maya 外部进行技能发现
     import maya.cmds as cmds
-    from dcc_mcp_core import success_result, error_result
+    from meshy_dcc_core import success_result, error_result
 
     try:
         locators = []
@@ -75,7 +75,7 @@ def main(**kwargs):
 | 规则 | 原因 |
 |------|------|
 | 在函数**内部**延迟导入 `maya.cmds` | 技能发现在 Maya 外部进行 |
-| 返回 `dict`（使用 `dcc_mcp_core.success_result` / `error_result`）| 统一的 MCP 响应格式 |
+| 返回 `dict`（使用 `meshy_dcc_core.success_result` / `error_result`）| 统一的 MCP 响应格式 |
 | 函数名 = 文件名（无扩展名）| 自动注册依赖此约定 |
 | 模块文档字符串 = MCP 工具描述 | 显示给 AI 的工具列表中 |
 
@@ -100,7 +100,7 @@ def main(**kwargs):
 
 ### 方式 1 — 环境变量
 
-将 `DCC_MCP_MAYA_SKILL_PATHS`（或 `DCC_MCP_SKILL_PATHS`）指向技能包的**父目录**：
+将 `MESHY_DCC_MAYA_SKILL_PATHS`（或 `MESHY_DCC_SKILL_PATHS`）指向技能包的**父目录**：
 
 ```
 my-skills/
@@ -112,24 +112,24 @@ my-skills/
 
 ```bash
 # Windows PowerShell
-$env:DCC_MCP_MAYA_SKILL_PATHS = "C:\Users\me\my-skills"
+$env:MESHY_DCC_MAYA_SKILL_PATHS = "C:\Users\me\my-skills"
 ```
 
 ```python
 # 或在启动 Server 前设置
 import os
-os.environ["DCC_MCP_MAYA_SKILL_PATHS"] = r"C:\Users\me\my-skills"
+os.environ["MESHY_DCC_MAYA_SKILL_PATHS"] = r"C:\Users\me\my-skills"
 
-import dcc_mcp_maya
-dcc_mcp_maya.start_server()
+import meshy_dcc_maya
+meshy_dcc_maya.start_server()
 ```
 
 ### 方式 2 — 直接传入路径
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-dcc_mcp_maya.start_server(
+meshy_dcc_maya.start_server(
     extra_skill_paths=[r"C:\Users\me\my-skills"]
 )
 ```
@@ -139,7 +139,7 @@ dcc_mcp_maya.start_server(
 将技能文件夹复制到已安装包的目录下：
 
 ```
-<site-packages>/dcc_mcp_maya/skills/my-skill/
+<site-packages>/meshy_dcc_maya/skills/my-skill/
 ```
 
 > **注意：** 此方式在包升级时会丢失。推荐开发时使用环境变量，生产部署使用方式 2。

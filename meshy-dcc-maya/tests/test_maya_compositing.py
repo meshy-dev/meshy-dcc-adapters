@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 from conftest import load_and_call
 
-from dcc_mcp_maya.compositing import (
+from meshy_dcc_maya.compositing import (
     BLEND_MODES,
     INPUT_PLUGS,
     MERGE_OPS,

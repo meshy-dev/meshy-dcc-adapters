@@ -1,7 +1,7 @@
 """Tests for hot-reload support in Maya MCP server.
 
 After the DccServerBase refactor, hot-reload is provided by
-dcc_mcp_core.hotreload.DccSkillHotReloader.  These tests verify the
+meshy_dcc_core.hotreload.DccSkillHotReloader.  These tests verify the
 integration through the MayaMcpServer API.
 """
 
@@ -30,7 +30,7 @@ class TestDccSkillHotReloaderViaMaya:
         return server
 
     def _make_reloader(self):
-        from dcc_mcp_core.hotreload import DccSkillHotReloader
+        from meshy_dcc_core.hotreload import DccSkillHotReloader
 
         return DccSkillHotReloader(dcc_name="maya", server=MagicMock())
 
@@ -62,8 +62,8 @@ class TestDccSkillHotReloaderViaMaya:
         mock_watcher.watch = MagicMock()
 
         reloader = self._make_reloader()
-        with patch("dcc_mcp_core.hotreload.SkillWatcher", return_value=mock_watcher, create=True):
-            with patch("dcc_mcp_core.hotreload.DccSkillHotReloader.enable", return_value=True) as m:
+        with patch("meshy_dcc_core.hotreload.SkillWatcher", return_value=mock_watcher, create=True):
+            with patch("meshy_dcc_core.hotreload.DccSkillHotReloader.enable", return_value=True) as m:
                 result = reloader.enable(skill_paths=["/path/to/skills"])
                 m.assert_called_once()
                 # result is from the mock
@@ -72,7 +72,7 @@ class TestDccSkillHotReloaderViaMaya:
     def test_enable_already_enabled_returns_true(self):
         """Calling enable() twice returns True without error."""
         reloader = self._make_reloader()
-        with patch("dcc_mcp_core.hotreload.DccSkillHotReloader.enable", return_value=True):
+        with patch("meshy_dcc_core.hotreload.DccSkillHotReloader.enable", return_value=True):
             result1 = reloader.enable(skill_paths=["/path"])
             result2 = reloader.enable(skill_paths=["/path"])
             assert result1 is True
@@ -113,7 +113,7 @@ class TestDccSkillHotReloaderViaMaya:
     def test_debounce_parameter_passed(self):
         """enable() passes debounce_ms to SkillWatcher."""
         reloader = self._make_reloader()
-        with patch("dcc_mcp_core.hotreload.DccSkillHotReloader.enable", return_value=True) as m:
+        with patch("meshy_dcc_core.hotreload.DccSkillHotReloader.enable", return_value=True) as m:
             reloader.enable(skill_paths=["/path"], debounce_ms=500)
             m.assert_called_once_with(skill_paths=["/path"], debounce_ms=500)
 
@@ -122,22 +122,22 @@ class TestMayaServerHotReloadAPI:
     """Test that MayaMcpServer exposes the correct hot-reload interface."""
 
     def test_enable_hot_reload_method_exists(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "enable_hot_reload")
 
     def test_disable_hot_reload_method_exists(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "disable_hot_reload")
 
     def test_is_hot_reload_enabled_property(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "is_hot_reload_enabled")
 
     def test_hot_reload_stats_property(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "hot_reload_stats")
 
@@ -146,30 +146,30 @@ class TestHotReloadIntegration:
     """Integration tests (require optional dependencies)."""
 
     @pytest.mark.skipif(
-        os.environ.get("DCC_MCP_MAYA_SKIP_INTEGRATION") == "1",
+        os.environ.get("MESHY_DCC_MAYA_SKIP_INTEGRATION") == "1",
         reason="Integration tests skipped",
     )
     def test_skill_watcher_available(self):
-        """SkillWatcher can be imported from dcc-mcp-core."""
+        """SkillWatcher can be imported from meshy-dcc-core."""
         try:
-            from dcc_mcp_core import SkillWatcher  # noqa: F401
+            from meshy_dcc_core import SkillWatcher  # noqa: F401
 
             assert True
         except ImportError:
-            pytest.skip("dcc-mcp-core SkillWatcher not available")
+            pytest.skip("meshy-dcc-core SkillWatcher not available")
 
     @pytest.mark.skipif(
-        os.environ.get("DCC_MCP_MAYA_SKIP_INTEGRATION") == "1",
+        os.environ.get("MESHY_DCC_MAYA_SKIP_INTEGRATION") == "1",
         reason="Integration tests skipped",
     )
     def test_reloader_with_real_temp_dir(self):
         """DccSkillHotReloader works with a real temporary directory."""
         try:
-            from dcc_mcp_core import SkillWatcher  # noqa: F401
+            from meshy_dcc_core import SkillWatcher  # noqa: F401
         except ImportError:
-            pytest.skip("dcc-mcp-core SkillWatcher not available")
+            pytest.skip("meshy-dcc-core SkillWatcher not available")
 
-        from dcc_mcp_core.hotreload import DccSkillHotReloader
+        from meshy_dcc_core.hotreload import DccSkillHotReloader
 
         mock_server = MagicMock()
         mock_server._server = MagicMock()

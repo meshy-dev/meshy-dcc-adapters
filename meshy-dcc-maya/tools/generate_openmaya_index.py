@@ -6,7 +6,7 @@ Editor) to produce ``maya_<version>.json`` for the bundled index.
 Usage (from repo root, with mayapy on PATH)::
 
     mayapy tools/generate_openmaya_index.py \\
-        --output src/dcc_mcp_maya/skills/maya-scripting/references/openmaya_signatures/
+        --output src/meshy_dcc_maya/skills/maya-scripting/references/openmaya_signatures/
 
 Or via justfile::
 
@@ -243,7 +243,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--output",
         "-o",
-        default="src/dcc_mcp_maya/skills/maya-scripting/references/openmaya_signatures/",
+        default="src/meshy_dcc_maya/skills/maya-scripting/references/openmaya_signatures/",
         help="Output directory for JSON files.",
     )
     parser.add_argument(

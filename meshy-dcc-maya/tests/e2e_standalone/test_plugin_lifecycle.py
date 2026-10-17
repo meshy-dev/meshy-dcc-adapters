@@ -31,8 +31,8 @@ class TestPluginEntryPoint:
     @pytest.fixture
     def plugin_module(self):
         """Import the plugin script as a plain Python module."""
-        plugin_path = Path(__file__).parents[2] / "maya" / "plugin" / "dcc_mcp_maya_plugin.py"
-        spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_plugin", plugin_path)
+        plugin_path = Path(__file__).parents[2] / "maya" / "plugin" / "meshy_dcc_maya_plugin.py"
+        spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_plugin", plugin_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         return mod
@@ -93,7 +93,7 @@ class TestPluginEntryPoint:
         """initializePlugin starts the MCP server without raising."""
         import os
 
-        os.environ.setdefault("DCC_MCP_MAYA_PORT", "0")
+        os.environ.setdefault("MESHY_DCC_MAYA_PORT", "0")
         try:
             plugin_module.initializePlugin(mock_mfn_plugin)
             assert plugin_module._handle is not None or True  # server may be None if start fails gracefully
@@ -110,7 +110,7 @@ class TestPluginEntryPoint:
         """uninitializePlugin stops the MCP server without raising."""
         import os
 
-        os.environ.setdefault("DCC_MCP_MAYA_PORT", "0")
+        os.environ.setdefault("MESHY_DCC_MAYA_PORT", "0")
         try:
             plugin_module.initializePlugin(mock_mfn_plugin)
         except Exception:
@@ -125,7 +125,7 @@ class TestPluginEntryPoint:
         """Full init → uninit cycle runs cleanly (simulates plugin load/unload)."""
         import os
 
-        os.environ.setdefault("DCC_MCP_MAYA_PORT", "0")
+        os.environ.setdefault("MESHY_DCC_MAYA_PORT", "0")
         errors = []
         try:
             plugin_module.initializePlugin(mock_mfn_plugin)
@@ -162,7 +162,7 @@ class TestSingletonReentrancy:
 
     def test_idempotent_start_returns_same_handle(self):
         """Calling start_server twice without stopping returns the same handle."""
-        from dcc_mcp_maya import start_server, stop_server
+        from meshy_dcc_maya import start_server, stop_server
 
         h1 = start_server(port=0)
         h2 = start_server(port=0)
@@ -174,7 +174,7 @@ class TestSingletonReentrancy:
 
     def test_stop_then_restart_creates_new_server(self):
         """After stop_server(), start_server() creates a fresh server instance."""
-        from dcc_mcp_maya import start_server, stop_server
+        from meshy_dcc_maya import start_server, stop_server
 
         h1 = start_server(port=0)
         stop_server()
@@ -188,7 +188,7 @@ class TestSingletonReentrancy:
 
     def test_concurrent_start_server_calls_are_safe(self):
         """Multiple threads calling start_server() concurrently get the same handle."""
-        from dcc_mcp_maya import start_server, stop_server
+        from meshy_dcc_maya import start_server, stop_server
 
         handles = []
         errors = []

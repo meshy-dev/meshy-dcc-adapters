@@ -25,7 +25,7 @@ import pytest
 
 pytestmark = pytest.mark.e2e
 
-SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "meshy_dcc_maya" / "skills"
 
 # Check whether maya-annotation skill directory exists for conditional skip.
 _ANNOTATION_SKILL_EXISTS = (SKILLS_ROOT / "maya-annotation").is_dir()

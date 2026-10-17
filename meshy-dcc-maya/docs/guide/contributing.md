@@ -1,13 +1,13 @@
 # Contributing a Custom Skill
 
-`dcc-mcp-maya` is designed to be extended. You can ship your own skill packages
+`meshy-dcc-maya` is designed to be extended. You can ship your own skill packages
 alongside the built-ins — without touching the core package.
 
 Cross-repo maintenance checklist (frontmatter, I/O copy, reference wiring):
-[skill-maintenance.md](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/docs/guide/skill-maintenance.md)
-in **dcc-mcp-core**. Bundled reference skills live under
-`dcc-mcp-core/python/dcc_mcp_core/skills/`. Before opening a PR, run
-`python tools/lint_skills.py` from the **dcc-mcp-maya** repo root on your skill tree.
+[skill-maintenance.md](https://github.com/meshy-dev/meshy-dcc-core/blob/main/docs/guide/skill-maintenance.md)
+in **meshy-dcc-core**. Bundled reference skills live under
+`meshy-dcc-core/python/meshy_dcc_core/skills/`. Before opening a PR, run
+`python tools/lint_skills.py` from the **meshy-dcc-maya** repo root on your skill tree.
 
 ## Skill Package Layout
 
@@ -54,7 +54,7 @@ def create_locator_grid(
     """
     # Always lazy-import maya.cmds to allow skill discovery outside Maya
     import maya.cmds as cmds
-    from dcc_mcp_core import success_result, error_result
+    from meshy_dcc_core import success_result, error_result
 
     try:
         locators = []
@@ -84,7 +84,7 @@ def main(**kwargs):
 | Rule | Why |
 |------|-----|
 | Lazy-import `maya.cmds` **inside** the function | Skills are discovered without a running Maya |
-| Return a `dict` (use `dcc_mcp_core.success_result` / `error_result`) | Consistent MCP response format |
+| Return a `dict` (use `meshy_dcc_core.success_result` / `error_result`) | Consistent MCP response format |
 | Function name = file stem | Auto-registration relies on this convention |
 | Module docstring = MCP tool description | Shown to the AI in the tool list |
 
@@ -110,7 +110,7 @@ overrides are reserved for adapter runtime compatibility shims.
 
 ### Option 1 — Environment variable
 
-Point `DCC_MCP_MAYA_SKILL_PATHS` (or `DCC_MCP_SKILL_PATHS`) at the **parent
+Point `MESHY_DCC_MAYA_SKILL_PATHS` (or `MESHY_DCC_SKILL_PATHS`) at the **parent
 directory** of your skill folders:
 
 ```
@@ -123,24 +123,24 @@ my-skills/
 
 ```bash
 # Windows PowerShell
-$env:DCC_MCP_MAYA_SKILL_PATHS = "C:\Users\me\my-skills"
+$env:MESHY_DCC_MAYA_SKILL_PATHS = "C:\Users\me\my-skills"
 ```
 
 ```python
 # Or set it before starting the server
 import os
-os.environ["DCC_MCP_MAYA_SKILL_PATHS"] = r"C:\Users\me\my-skills"
+os.environ["MESHY_DCC_MAYA_SKILL_PATHS"] = r"C:\Users\me\my-skills"
 
-import dcc_mcp_maya
-dcc_mcp_maya.start_server()
+import meshy_dcc_maya
+meshy_dcc_maya.start_server()
 ```
 
 ### Option 2 — Pass paths directly
 
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
-dcc_mcp_maya.start_server(
+meshy_dcc_maya.start_server(
     extra_skill_paths=[r"C:\Users\me\my-skills"]
 )
 ```
@@ -150,7 +150,7 @@ dcc_mcp_maya.start_server(
 For permanent additions, copy your skill folder into the installed package:
 
 ```
-<site-packages>/dcc_mcp_maya/skills/my-skill/
+<site-packages>/meshy_dcc_maya/skills/my-skill/
 ```
 
 > **Note:** This approach will be lost on package upgrades. Prefer env vars for

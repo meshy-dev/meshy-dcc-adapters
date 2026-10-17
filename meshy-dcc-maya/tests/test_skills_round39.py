@@ -1,11 +1,11 @@
 """Round 39 tests: Cross-DCC data model helpers + server bind_and_register/search_skills.
 
 Covers:
-- dcc_mcp_maya.api: scene_object_from_node, object_transform_from_node, bounding_box_from_node
+- meshy_dcc_maya.api: scene_object_from_node, object_transform_from_node, bounding_box_from_node
 - server.py: search_skills, bind_and_register, find_best_service, rank_services
 - maya-scene/get_scene_info.py  (uses scene_object_from_node)
 - maya-scene/get_bounding_box.py  (uses bounding_box_from_node)
-- dcc_mcp_maya.__init__ re-exports for the new helpers
+- meshy_dcc_maya.__init__ re-exports for the new helpers
 """
 
 # Import future modules
@@ -70,7 +70,7 @@ def _load_skill(rel_path, mock_cmds, func_name="main", **kwargs):
         os.path.dirname(__file__),
         "..",
         "src",
-        "dcc_mcp_maya",
+        "meshy_dcc_maya",
         "skills",
     )
     full_path = os.path.normpath(os.path.join(skill_root, rel_path))
@@ -127,10 +127,10 @@ class TestFindByPattern:
 
 
 class TestSceneObjectFromNode:
-    """Tests for dcc_mcp_maya.api.scene_object_from_node."""
+    """Tests for meshy_dcc_maya.api.scene_object_from_node."""
 
     def _call(self, cmds):
-        from dcc_mcp_maya.api import scene_object_from_node
+        from meshy_dcc_maya.api import scene_object_from_node
 
         return scene_object_from_node(cmds, "|group1|pSphere1")
 
@@ -175,7 +175,7 @@ class TestSceneObjectFromNode:
         assert result["metadata"] == {}
 
     def test_visible_defaults_true_on_getattr_exception(self):
-        from dcc_mcp_maya.api import scene_object_from_node
+        from meshy_dcc_maya.api import scene_object_from_node
 
         cmds = MagicMock()
         cmds.objectType.return_value = "transform"
@@ -191,10 +191,10 @@ class TestSceneObjectFromNode:
 
 
 class TestObjectTransformFromNode:
-    """Tests for dcc_mcp_maya.api.object_transform_from_node."""
+    """Tests for meshy_dcc_maya.api.object_transform_from_node."""
 
     def _call(self, cmds):
-        from dcc_mcp_maya.api import object_transform_from_node
+        from meshy_dcc_maya.api import object_transform_from_node
 
         return object_transform_from_node(cmds, "pSphere1")
 
@@ -230,10 +230,10 @@ class TestObjectTransformFromNode:
 
 
 class TestBoundingBoxFromNode:
-    """Tests for dcc_mcp_maya.api.bounding_box_from_node."""
+    """Tests for meshy_dcc_maya.api.bounding_box_from_node."""
 
     def _call(self, cmds):
-        from dcc_mcp_maya.api import bounding_box_from_node
+        from meshy_dcc_maya.api import bounding_box_from_node
 
         return bounding_box_from_node(cmds, "pSphere1")
 
@@ -383,7 +383,7 @@ class TestServerFindSkills:
     """server.MayaMcpServer.search_skills wraps DccServerBase.search_skills (v0.14.0+)."""
 
     def _make_server(self, skill_client=None):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = object.__new__(MayaMcpServer)
         server._dcc_name = "maya"
@@ -460,7 +460,7 @@ class TestServerBindAndRegister:
     """server.MayaMcpServer.bind_and_register wraps TransportManager.bind_and_register."""
 
     def _make_server(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = object.__new__(MayaMcpServer)
         server._dcc_name = "maya"
@@ -522,9 +522,9 @@ class TestServerBindAndRegister:
 class TestGatewayElectionAdapterMetadata:
     """Issue #137: McpHttpConfig must carry adapter dcc_type + adapter version.
 
-    The upstream three-tier election (dcc-mcp-core 0.14.19, PR #568) reads:
+    The upstream three-tier election (meshy-dcc-core 0.14.19, PR #568) reads:
 
-    1. dcc-mcp-http crate version (stamped by the core itself)
+    1. meshy-dcc-http crate version (stamped by the core itself)
     2. ``server_version`` (the adapter package version)
     3. ``dcc_type`` real-DCC tiebreaker
 
@@ -536,7 +536,7 @@ class TestGatewayElectionAdapterMetadata:
 
     def test_dcc_type_stamped_as_maya(self):
         """``MayaMcpServer`` must stamp ``dcc_type='maya'`` on the inner config."""
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = MayaMcpServer(port=0)
         try:
@@ -553,8 +553,8 @@ class TestGatewayElectionAdapterMetadata:
         That value flows into the gateway sentinel as ``adapter_version``
         (or the fallback equivalent) for the three-tier comparison.
         """
-        from dcc_mcp_maya import __version__ as adapter_version
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya import __version__ as adapter_version
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = MayaMcpServer(port=0)
         try:
@@ -567,7 +567,7 @@ class TestGatewayElectionAdapterMetadata:
 
     def test_explicit_server_version_override(self):
         """``server_version`` constructor kwarg must override the default."""
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         server = MayaMcpServer(port=0, server_version="9.9.9")
         try:
@@ -589,12 +589,12 @@ class TestServerFindBestService:
     """server.MayaMcpServer.find_best_service is a static method."""
 
     def test_method_exists(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "find_best_service")
 
     def test_delegates_to_transport_manager(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mgr = MagicMock()
         mock_service = MagicMock()
@@ -604,7 +604,7 @@ class TestServerFindBestService:
         assert result is mock_service
 
     def test_default_dcc_type_is_maya(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mgr = MagicMock()
         mgr.find_best_service.return_value = None
@@ -612,7 +612,7 @@ class TestServerFindBestService:
         mgr.find_best_service.assert_called_once_with("maya")
 
     def test_returns_none_on_exception(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mgr = MagicMock()
         mgr.find_best_service.side_effect = RuntimeError("no service")
@@ -629,12 +629,12 @@ class TestServerRankServices:
     """server.MayaMcpServer.rank_services is a static method."""
 
     def test_method_exists(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "rank_services")
 
     def test_delegates_to_transport_manager(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mgr = MagicMock()
         mgr.rank_services.return_value = ["svc1", "svc2"]
@@ -643,7 +643,7 @@ class TestServerRankServices:
         assert result == ["svc1", "svc2"]
 
     def test_default_dcc_type_is_maya(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mgr = MagicMock()
         mgr.rank_services.return_value = []
@@ -651,7 +651,7 @@ class TestServerRankServices:
         mgr.rank_services.assert_called_once_with("maya")
 
     def test_returns_empty_list_on_exception(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mgr = MagicMock()
         mgr.rank_services.side_effect = RuntimeError("registry error")
@@ -659,7 +659,7 @@ class TestServerRankServices:
         assert result == []
 
     def test_result_is_list(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mgr = MagicMock()
         mgr.rank_services.return_value = iter(["a", "b"])
@@ -673,31 +673,31 @@ class TestServerRankServices:
 
 
 class TestCrossDccModelReexports:
-    """The new helpers are accessible from the top-level dcc_mcp_maya package."""
+    """The new helpers are accessible from the top-level meshy_dcc_maya package."""
 
     def test_scene_object_from_node_importable(self):
-        from dcc_mcp_maya import scene_object_from_node
+        from meshy_dcc_maya import scene_object_from_node
 
         assert callable(scene_object_from_node)
 
     def test_object_transform_from_node_importable(self):
-        from dcc_mcp_maya import object_transform_from_node
+        from meshy_dcc_maya import object_transform_from_node
 
         assert callable(object_transform_from_node)
 
     def test_bounding_box_from_node_importable(self):
-        from dcc_mcp_maya import bounding_box_from_node
+        from meshy_dcc_maya import bounding_box_from_node
 
         assert callable(bounding_box_from_node)
 
     def test_in_package_all(self):
-        import dcc_mcp_maya
+        import meshy_dcc_maya
 
         for name in ("scene_object_from_node", "object_transform_from_node", "bounding_box_from_node"):
-            assert name in dcc_mcp_maya.__all__, "{} not in __all__".format(name)
+            assert name in meshy_dcc_maya.__all__, "{} not in __all__".format(name)
 
     def test_in_api_all(self):
-        from dcc_mcp_maya import api
+        from meshy_dcc_maya import api
 
         for name in ("scene_object_from_node", "object_transform_from_node", "bounding_box_from_node"):
             assert name in api.__all__, "{} not in api.__all__".format(name)

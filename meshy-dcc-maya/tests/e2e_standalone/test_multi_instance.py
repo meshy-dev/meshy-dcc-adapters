@@ -19,7 +19,7 @@ class TestMultiInstanceIsolation:
 
     def _make_server(self):
         """Create, populate and start a fresh MayaMcpServer on a random port."""
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         srv = MayaMcpServer(port=0)
         srv.register_builtin_actions()
@@ -140,7 +140,7 @@ class TestMultiInstanceIsolation:
             assert not srv_a.is_running
             assert srv_b.is_running
 
-            from dcc_mcp_maya.server import MayaMcpServer
+            from meshy_dcc_maya.server import MayaMcpServer
 
             srv_a2 = MayaMcpServer(port=0)
             srv_a2.register_builtin_actions()
@@ -171,7 +171,7 @@ class TestMultiInstanceConcurrentWorkflows:
     @pytest.fixture(autouse=True)
     def _setup(self):
         _new_scene()
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         self._srv_a = MayaMcpServer(port=0, server_name="maya-worker-a")
         self._srv_a.register_builtin_actions()
@@ -398,12 +398,12 @@ class TestMultiInstanceConcurrentWorkflows:
 class TestMcpSkillLifecycle:
     """search_skills -> load_skill -> activate_tool_group -> tools/call -> unload_skill over HTTP.
 
-    Uses the `DCC_MCP_ALLOW_AMBIENT_PYTHON=1` escape hatch (same as
+    Uses the `MESHY_DCC_ALLOW_AMBIENT_PYTHON=1` escape hatch (same as
     `TestScriptingHttpE2E`) because the in-process executor refuses to
     execute skill scripts unless it can prove `import maya.cmds` works
     under the ambient interpreter.  Inside mayapy that guarantee holds
     but core has no way to auto-detect it — the env flag is the
-    documented workaround (upstream dcc-mcp-core#231).
+    documented workaround (upstream meshy-dcc-core#231).
 
     Tool-naming note
     ----------------
@@ -424,9 +424,9 @@ class TestMcpSkillLifecycle:
     def _start_server(self, request):
         import os  # noqa: PLC0415
 
-        from dcc_mcp_maya.server import MayaMcpServer  # noqa: PLC0415
+        from meshy_dcc_maya.server import MayaMcpServer  # noqa: PLC0415
 
-        ambient_env = "DCC_MCP_ALLOW_AMBIENT_PYTHON"
+        ambient_env = "MESHY_DCC_ALLOW_AMBIENT_PYTHON"
         previous_env = os.environ.get(ambient_env)
         os.environ[ambient_env] = "1"
 
@@ -617,9 +617,9 @@ class TestMultiInstanceCapabilityDivergence:
     def _start_two_servers(self, request):
         import os  # noqa: PLC0415
 
-        from dcc_mcp_maya.server import MayaMcpServer  # noqa: PLC0415
+        from meshy_dcc_maya.server import MayaMcpServer  # noqa: PLC0415
 
-        ambient_env = "DCC_MCP_ALLOW_AMBIENT_PYTHON"
+        ambient_env = "MESHY_DCC_ALLOW_AMBIENT_PYTHON"
         previous_env = os.environ.get(ambient_env)
         os.environ[ambient_env] = "1"
 

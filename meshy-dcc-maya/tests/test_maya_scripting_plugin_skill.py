@@ -142,7 +142,7 @@ def test_unload_plugin_skips_when_not_loaded_ok():
 
 
 def test_plugin_lifecycle_tools_are_declared_in_core_group():
-    skill_dir = Path(__file__).parent.parent / "src" / "dcc_mcp_maya" / "skills" / "maya-scripting"
+    skill_dir = Path(__file__).parent.parent / "src" / "meshy_dcc_maya" / "skills" / "maya-scripting"
     tools = yaml.safe_load((skill_dir / "tools.yaml").read_text(encoding="utf-8"))["tools"]
     groups = yaml.safe_load((skill_dir / "groups.yaml").read_text(encoding="utf-8"))["groups"]
     tool_names = {tool["name"]: tool for tool in tools}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 
 def _make_fresh_server() -> MayaMcpServer:

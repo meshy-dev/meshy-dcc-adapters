@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 # Import local modules
-from dcc_mcp_maya import _recovery_dialog
+from meshy_dcc_maya import _recovery_dialog
 
 
 class _FakeButton:

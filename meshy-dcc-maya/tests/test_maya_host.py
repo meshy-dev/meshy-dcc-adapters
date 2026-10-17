@@ -34,7 +34,7 @@ class _Dispatcher:
 
 
 def test_is_background_uses_maya_batch_flag():
-    from dcc_mcp_maya.host import MayaHost
+    from meshy_dcc_maya.host import MayaHost
 
     cmds = MagicMock()
     cmds.about.return_value = False
@@ -44,7 +44,7 @@ def test_is_background_uses_maya_batch_flag():
 
 
 def test_attach_tick_registers_idle_script_job_and_invokes_tick():
-    from dcc_mcp_maya.host import MayaHost
+    from meshy_dcc_maya.host import MayaHost
 
     cmds = MagicMock()
     callbacks = []
@@ -65,7 +65,7 @@ def test_attach_tick_registers_idle_script_job_and_invokes_tick():
 
 
 def test_detach_tick_kills_existing_script_job_and_is_idempotent():
-    from dcc_mcp_maya.host import MayaHost
+    from meshy_dcc_maya.host import MayaHost
 
     cmds = MagicMock()
     cmds.scriptJob.side_effect = lambda **kwargs: True if kwargs.get("exists") == 42 else None
@@ -81,7 +81,7 @@ def test_detach_tick_kills_existing_script_job_and_is_idempotent():
 
 
 def test_callable_dispatcher_forwards_core_metadata():
-    from dcc_mcp_maya.host import MayaCallableDispatcher
+    from meshy_dcc_maya.host import MayaCallableDispatcher
 
     dispatcher = MagicMock()
     bridge = MayaCallableDispatcher(dispatcher)

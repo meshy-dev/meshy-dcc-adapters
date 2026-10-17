@@ -326,18 +326,18 @@ class TestCheckDependsExist:
         assert any(i.rule == "MISSING_DEPENDS" for i in issues)
 
 
-class TestCheckDccMcpMetadataKeys:
+class TestCheckMeshyDccMetadataKeys:
     def test_known_nested_keys(self, tmp_path):
         skill_dir = make_skill_dir(tmp_path, "maya-test", CLEAN_FRONTMATTER)
-        fm = {"metadata": {"dcc-mcp": {"dcc": "maya", "tools": "tools.yaml", "recipes": "references/RECIPES.md"}}}
-        issues = lint_skills.check_dcc_mcp_metadata_keys(skill_dir, "maya-test", fm)
+        fm = {"metadata": {"meshy-dcc": {"dcc": "maya", "tools": "tools.yaml", "recipes": "references/RECIPES.md"}}}
+        issues = lint_skills.check_meshy_dcc_metadata_keys(skill_dir, "maya-test", fm)
         assert issues == []
 
     def test_unknown_nested_key_warns(self, tmp_path):
         skill_dir = make_skill_dir(tmp_path, "maya-test", CLEAN_FRONTMATTER)
-        fm = {"metadata": {"dcc-mcp": {"aliases": ["maya-old-name"]}}}
-        issues = lint_skills.check_dcc_mcp_metadata_keys(skill_dir, "maya-test", fm)
-        assert any(i.rule == "UNKNOWN_DCC_MCP_METADATA" for i in issues)
+        fm = {"metadata": {"meshy-dcc": {"aliases": ["maya-old-name"]}}}
+        issues = lint_skills.check_meshy_dcc_metadata_keys(skill_dir, "maya-test", fm)
+        assert any(i.rule == "UNKNOWN_MESHY_DCC_METADATA" for i in issues)
 
 
 # ---------------------------------------------------------------------------
@@ -424,7 +424,7 @@ class TestCheckDuplicateActionNames:
 
 class TestBundledToolsYamlContract:
     def _bundled_tools(self):
-        skills_root = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills"
+        skills_root = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills"
         for tools_yaml in sorted(skills_root.glob("*/tools.yaml")):
             data = yaml.safe_load(tools_yaml.read_text(encoding="utf-8")) or {}
             for tool in data.get("tools", []):

@@ -4,7 +4,7 @@
 # dcc_type=maya). Sidecar processes expose /mcp only; this script reports their ports
 # for correlation but does not call sidecar /mcp (use gateway or per-DCC REST).
 #
-# Prerequisites: at least one live Maya with dcc-mcp-maya + sidecar supervisor running.
+# Prerequisites: at least one live Maya with meshy-dcc-maya + sidecar supervisor running.
 #
 # Usage:
 #   .\tools\maya-sidecar-dual-http-test-win.ps1
@@ -15,11 +15,11 @@
 #   .\tools\maya-sidecar-dual-http-test-win.ps1 -BaseUrl http://127.0.0.1:50968
 #
 # Environment:
-#   DCC_MCP_REGISTRY_DIR — override registry directory (default: %TEMP%\dcc-mcp-registry)
+#   MESHY_DCC_REGISTRY_DIR — override registry directory (default: %TEMP%\meshy-dcc-registry)
 
 param(
     [string]$RegistryDir = "",
-    [int]$GatewayPort = 9765,
+    [int]$GatewayPort = 19765,
     [string]$SearchQuery = "execute_python",
     [string]$BaseUrl = "",
     [switch]$IncludeGateway,
@@ -33,15 +33,15 @@ $ErrorActionPreference = "Stop"
 function Resolve-RegistryDir {
     param([string]$Override)
     if ($Override) { return $Override }
-    if ($env:DCC_MCP_REGISTRY_DIR) { return $env:DCC_MCP_REGISTRY_DIR }
-    return Join-Path $env:TEMP "dcc-mcp-registry"
+    if ($env:MESHY_DCC_REGISTRY_DIR) { return $env:MESHY_DCC_REGISTRY_DIR }
+    return Join-Path $env:TEMP "meshy-dcc-registry"
 }
 
 function Read-RegistryEntries {
     param([string]$Dir)
     $path = Join-Path $Dir "services.json"
     if (-not (Test-Path $path)) {
-        throw "Registry not found: $path (start Maya + dcc-mcp-maya first)"
+        throw "Registry not found: $path (start Maya + meshy-dcc-maya first)"
     }
     $raw = Get-Content -Path $path -Raw -Encoding UTF8
     $payload = $raw | ConvertFrom-Json
@@ -123,7 +123,7 @@ function Discover-MayaRestTargets {
     $entries = Read-RegistryEntries -Dir $Dir
     $sidecars = @{}
     foreach ($e in $entries) {
-        $role = Get-MetadataValue -Entry $e -Key "dcc_mcp_role"
+        $role = Get-MetadataValue -Entry $e -Key "meshy_dcc_role"
         if ($role -eq "per-dcc-sidecar" -and $e.pid) {
             $sidecars[[int]$e.pid] = $e
         }
@@ -378,7 +378,7 @@ if ($BaseUrl) {
 
 if ($targets.Count -eq 0) {
     Write-Host "No live Maya REST listeners found (dcc_type=maya with /v1/healthz)." -ForegroundColor Red
-    Write-Host "  - Confirm Maya is running with dcc-mcp-maya plugin loaded." -ForegroundColor Yellow
+    Write-Host "  - Confirm Maya is running with meshy-dcc-maya plugin loaded." -ForegroundColor Yellow
     Write-Host "  - Sidecar alone does not serve /v1/*; the in-process MCP port is required." -ForegroundColor Yellow
     exit 1
 }

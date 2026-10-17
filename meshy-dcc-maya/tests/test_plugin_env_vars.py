@@ -1,10 +1,10 @@
 """Tests for plugin env-var export (issue #63).
 
 Verifies that ``_export_worker_env()`` in the Maya plugin correctly exports
-``DCC_MCP_PYTHON_EXECUTABLE`` and ``DCC_MCP_PYTHON_INIT_SNIPPET`` so that
+``MESHY_DCC_PYTHON_EXECUTABLE`` and ``MESHY_DCC_PYTHON_INIT_SNIPPET`` so that
 skill worker subprocesses use the correct Maya Python interpreter.
 
-See: https://github.com/dcc-mcp/dcc-mcp-maya/issues/63
+See: https://github.com/meshy-dev/meshy-dcc-maya/issues/63
 """
 
 # Import future modules
@@ -28,7 +28,7 @@ from urllib.error import URLError
 import pytest
 
 # Path to the plugin file
-_PLUGIN_PATH = Path(__file__).parent.parent / "maya" / "plugin" / "dcc_mcp_maya_plugin.py"
+_PLUGIN_PATH = Path(__file__).parent.parent / "maya" / "plugin" / "meshy_dcc_maya_plugin.py"
 
 
 @pytest.fixture(autouse=True)
@@ -57,7 +57,7 @@ def mock_maya_modules():
 @pytest.fixture
 def plugin_module(mock_maya_modules):
     """Import the plugin script as a plain Python module."""
-    spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_plugin", _PLUGIN_PATH)
+    spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_plugin", _PLUGIN_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -89,7 +89,7 @@ class TestPluginStartupMode:
 
 class TestCrashReporterSuppression:
     def test_crash_reporter_suppression_is_opt_in(self, plugin_module, monkeypatch, mock_maya_modules):
-        monkeypatch.delenv("DCC_MCP_MAYA_SUPPRESS_CRASH_REPORTER", raising=False)
+        monkeypatch.delenv("MESHY_DCC_MAYA_SUPPRESS_CRASH_REPORTER", raising=False)
         for key in ("MAYA_DISABLE_CIP", "MAYA_DISABLE_CER", "MAYA_DISABLE_CLIC_IPM"):
             monkeypatch.delenv(key, raising=False)
 
@@ -101,7 +101,7 @@ class TestCrashReporterSuppression:
         assert "MAYA_DISABLE_CLIC_IPM" not in os.environ
 
     def test_crash_reporter_suppression_sets_option_var_and_env(self, plugin_module, monkeypatch, mock_maya_modules):
-        monkeypatch.setenv("DCC_MCP_MAYA_SUPPRESS_CRASH_REPORTER", "1")
+        monkeypatch.setenv("MESHY_DCC_MAYA_SUPPRESS_CRASH_REPORTER", "1")
         for key in ("MAYA_DISABLE_CIP", "MAYA_DISABLE_CER", "MAYA_DISABLE_CLIC_IPM"):
             monkeypatch.delenv(key, raising=False)
 
@@ -132,7 +132,7 @@ class TestCrashReporterSuppression:
         assert "MAYA_DISABLE_CLIC_IPM" not in os.environ
 
     def test_crash_reporter_restore_removes_missing_option_var(self, plugin_module, monkeypatch, mock_maya_modules):
-        monkeypatch.setenv("DCC_MCP_MAYA_SUPPRESS_CRASH_REPORTER", "1")
+        monkeypatch.setenv("MESHY_DCC_MAYA_SUPPRESS_CRASH_REPORTER", "1")
         calls = []
 
         def _option_var(**kwargs):
@@ -186,25 +186,25 @@ class TestStartAsyncSchedulesFinalisation:
     """
 
     def _install_core_stubs(self) -> dict:
-        """Inject minimal ``dcc_mcp_core.host`` + ``dcc_mcp_maya`` stubs into
+        """Inject minimal ``meshy_dcc_core.host`` + ``meshy_dcc_maya`` stubs into
         ``sys.modules`` so the plugin's lazy imports inside ``_start``
         resolve without pulling the real dependency graph."""
 
-        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod = types.ModuleType("meshy_dcc_core.host")
         host_mod.QueueDispatcher = MagicMock(name="QueueDispatcher")
         host_mod.BlockingDispatcher = MagicMock(name="BlockingDispatcher")
 
-        core_mod = types.ModuleType("dcc_mcp_core")
+        core_mod = types.ModuleType("meshy_dcc_core")
         core_mod.host = host_mod
 
-        dcc_mod = types.ModuleType("dcc_mcp_maya")
+        dcc_mod = types.ModuleType("meshy_dcc_maya")
         dcc_mod.start_server = MagicMock(name="start_server", return_value=MagicMock())
         dcc_mod.MayaHost = MagicMock(name="MayaHost")
 
         return {
-            "dcc_mcp_core": core_mod,
-            "dcc_mcp_core.host": host_mod,
-            "dcc_mcp_maya": dcc_mod,
+            "meshy_dcc_core": core_mod,
+            "meshy_dcc_core.host": host_mod,
+            "meshy_dcc_maya": dcc_mod,
         }
 
     def test_start_async_only_calls_evalDeferred_with_lowest_priority(self, plugin_module, mock_maya_modules):
@@ -291,17 +291,17 @@ class TestStartAsyncSchedulesFinalisation:
 class TestSidecarUsesCoreRegistryDefaults:
     """The plugin delegates FileRegistry path resolution to core/server.
 
-    dcc-mcp-server >= 0.17.16 aligns the sidecar default registry directory
-    with GatewayRunner and honours ``DCC_MCP_REGISTRY_DIR`` directly. Keeping
+    meshy-dcc-server >= 0.17.16 aligns the sidecar default registry directory
+    with GatewayRunner and honours ``MESHY_DCC_REGISTRY_DIR`` directly. Keeping
     another copy of that path logic in the Maya plugin risks future drift.
     """
 
     def _arm_plugin(self, plugin_module, monkeypatch):
-        """Stub ``dcc_mcp_maya.sidecar`` so ``_maybe_spawn_sidecar`` resolves
+        """Stub ``meshy_dcc_maya.sidecar`` so ``_maybe_spawn_sidecar`` resolves
         and calls our mock ``start_sidecar``."""
 
         plugin_module._sidecar_handle = None
-        import dcc_mcp_maya.sidecar as sidecar_pkg
+        import meshy_dcc_maya.sidecar as sidecar_pkg
 
         monkeypatch.setattr(sidecar_pkg, "is_sidecar_mode_enabled", lambda: True)
         monkeypatch.setattr(sidecar_pkg, "start_sidecar", MagicMock(name="start_sidecar", return_value=MagicMock()))
@@ -313,9 +313,9 @@ class TestSidecarUsesCoreRegistryDefaults:
         return sidecar_pkg
 
     def test_sidecar_does_not_reimplement_registry_env_resolution(self, plugin_module, monkeypatch, tmp_path):
-        """When ``DCC_MCP_REGISTRY_DIR`` is set, the sidecar binary reads it."""
+        """When ``MESHY_DCC_REGISTRY_DIR`` is set, the sidecar binary reads it."""
         custom_dir = tmp_path / "custom-registry"
-        monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(custom_dir))
+        monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(custom_dir))
 
         sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
         plugin_module._maybe_spawn_sidecar()
@@ -326,21 +326,21 @@ class TestSidecarUsesCoreRegistryDefaults:
 
     def test_sidecar_default_disables_in_process_gateway_port(self, plugin_module, monkeypatch):
         """Gateway election must run in the sidecar binary by default."""
-        monkeypatch.delenv("DCC_MCP_MAYA_SIDECAR", raising=False)
-        monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+        monkeypatch.delenv("MESHY_DCC_MAYA_SIDECAR", raising=False)
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
         cfg = plugin_module._resolve_config()
         assert cfg.get("gateway_port") == 0
 
     def test_sidecar_opt_out_preserves_in_process_gateway_port(self, plugin_module, monkeypatch):
         """Operators can return to the legacy in-process gateway with an explicit opt-out."""
-        monkeypatch.setenv("DCC_MCP_MAYA_SIDECAR", "0")
-        monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+        monkeypatch.setenv("MESHY_DCC_MAYA_SIDECAR", "0")
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
         cfg = plugin_module._resolve_config()
-        assert cfg.get("gateway_port") == 9765
+        assert cfg.get("gateway_port") == 19765
 
     def test_sidecar_uses_core_default_registry_path(self, plugin_module, monkeypatch):
-        """When unset, dcc-mcp-server >= 0.17.16 owns the default path."""
-        monkeypatch.delenv("DCC_MCP_REGISTRY_DIR", raising=False)
+        """When unset, meshy-dcc-server >= 0.17.16 owns the default path."""
+        monkeypatch.delenv("MESHY_DCC_REGISTRY_DIR", raising=False)
 
         sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
         plugin_module._maybe_spawn_sidecar()
@@ -349,20 +349,20 @@ class TestSidecarUsesCoreRegistryDefaults:
         assert "registry_dir" not in kwargs
 
     def test_sidecar_spawn_failure_log_names_clean_machine_remedies(self, plugin_module, monkeypatch, caplog, tmp_path):
-        """A missing dcc-mcp-server binary should point operators at the external runtime."""
+        """A missing meshy-dcc-server binary should point operators at the external runtime."""
         bootstrap_log = tmp_path / "bootstrap.jsonl"
-        monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(bootstrap_log))
+        monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_LOG", str(bootstrap_log))
         sidecar_pkg = self._arm_plugin(plugin_module, monkeypatch)
-        sidecar_pkg.start_sidecar.side_effect = sidecar_pkg.SidecarSpawnError("missing dcc-mcp-server")
+        sidecar_pkg.start_sidecar.side_effect = sidecar_pkg.SidecarSpawnError("missing meshy-dcc-server")
 
         with caplog.at_level(logging.ERROR, logger=plugin_module.logger.name):
             plugin_module._maybe_spawn_sidecar()
 
         assert plugin_module._sidecar_handle is None
-        assert "Default sidecar gateway startup requires the dcc-mcp-server binary" in caplog.text
-        assert "mayapy -m pip install dcc-mcp-server" in caplog.text
-        assert "DCC_MCP_SERVER_BIN" in caplog.text
-        assert "DCC_MCP_MAYA_SIDECAR=0" in caplog.text
+        assert "Default sidecar gateway startup requires the meshy-dcc-server binary" in caplog.text
+        assert "mayapy -m pip install meshy-dcc-server" in caplog.text
+        assert "MESHY_DCC_SERVER_BIN" in caplog.text
+        assert "MESHY_DCC_MAYA_SIDECAR=0" in caplog.text
         events = [json.loads(line) for line in bootstrap_log.read_text(encoding="utf-8").splitlines()]
         assert [(event["stage"], event["status"]) for event in events] == [
             ("sidecar_spawn", "started"),
@@ -374,7 +374,7 @@ class TestSidecarUsesCoreRegistryDefaults:
         """Maya should label both the per-DCC sidecar and standalone gateway."""
         monkeypatch.setattr(plugin_module, "_resolve_instance_id", lambda: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee")
         monkeypatch.setattr(plugin_module, "_resolve_sidecar_display_name", lambda: "Maya 2025 pid 1234")
-        monkeypatch.setattr(plugin_module, "_resolve_gateway_name", lambda: "dcc-mcp-gateway@workstation-01")
+        monkeypatch.setattr(plugin_module, "_resolve_gateway_name", lambda: "meshy-dcc-gateway@workstation-01")
         plugin_module._handle = MagicMock()
         plugin_module._handle.mcp_url.return_value = "http://127.0.0.1:8765/mcp"
 
@@ -386,7 +386,7 @@ class TestSidecarUsesCoreRegistryDefaults:
         assert kwargs["adapter_version"] == plugin_module.VERSION
         assert kwargs["display_name"] == "Maya 2025 pid 1234"
         assert kwargs["discovery_mcp_url"] == "http://127.0.0.1:8765/mcp"
-        assert kwargs["gateway_name"] == "dcc-mcp-gateway@workstation-01"
+        assert kwargs["gateway_name"] == "meshy-dcc-gateway@workstation-01"
         assert kwargs["instance_id"] == "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
         plugin_module._probe_gateway_health_deferred.assert_called_once_with(plugin_module._sidecar_handle)
 
@@ -403,7 +403,7 @@ class TestSidecarUsesCoreRegistryDefaults:
 
     def test_resolve_instance_id_ignores_invalid_server_value(self, plugin_module, monkeypatch):
         """Core-sidecar UUID validation should not turn a cosmetic fallback into a launch failure."""
-        import dcc_mcp_maya.server as server_module
+        import meshy_dcc_maya.server as server_module
 
         server = MagicMock()
         server.instance_id = "unknown"
@@ -413,11 +413,11 @@ class TestSidecarUsesCoreRegistryDefaults:
 
     def test_sidecar_banner_omits_internal_rfc_marker(self, plugin_module, monkeypatch, capsys):
         monkeypatch.setattr(plugin_module, "_is_interactive", lambda: False)
-        monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
-        monkeypatch.setenv("DCC_MCP_GATEWAY_REMOTE_PORT", "59765")
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_PORT", "59765")
         monkeypatch.setattr(plugin_module, "_gateway_remote_display_host", lambda _host: "192.168.1.20")
         handle = MagicMock(
-            binary_path="C:/tools/dcc-mcp-server.exe",
+            binary_path="C:/tools/meshy-dcc-server.exe",
             qt_port=53123,
             qt_binding="PySide6",
             host_rpc_uri="qtserver://127.0.0.1:53123",
@@ -430,20 +430,20 @@ class TestSidecarUsesCoreRegistryDefaults:
         output = capsys.readouterr().out
         assert "SIDECAR ACTIVE" not in output
         assert "RFC #998" not in output
-        assert f"dcc-mcp-maya v{plugin_module.VERSION}" in output
+        assert f"meshy-dcc-maya v{plugin_module.VERSION}" in output
         assert "PID          : 5678" in output
-        assert "Gateway      : http://127.0.0.1:9765/mcp  (sidecar-managed)" in output
+        assert "Gateway      : http://127.0.0.1:19765/mcp  (sidecar-managed)" in output
         assert "Gateway LAN  : http://192.168.1.20:59765/mcp  (sidecar-managed)" in output
 
     def test_sidecar_remote_gateway_options_default_and_disable(self, monkeypatch):
-        from dcc_mcp_maya.sidecar import resolve_gateway_remote_options
+        from meshy_dcc_maya.sidecar import resolve_gateway_remote_options
 
-        monkeypatch.delenv("DCC_MCP_GATEWAY_REMOTE_HOST", raising=False)
-        monkeypatch.delenv("DCC_MCP_GATEWAY_REMOTE_PORT", raising=False)
+        monkeypatch.delenv("MESHY_DCC_GATEWAY_REMOTE_HOST", raising=False)
+        monkeypatch.delenv("MESHY_DCC_GATEWAY_REMOTE_PORT", raising=False)
         assert resolve_gateway_remote_options() == ("0.0.0.0", 59765)
 
-        monkeypatch.setenv("DCC_MCP_GATEWAY_REMOTE_HOST", "192.168.2.10")
-        monkeypatch.setenv("DCC_MCP_GATEWAY_REMOTE_PORT", "0")
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_HOST", "192.168.2.10")
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_PORT", "0")
         assert resolve_gateway_remote_options() == ("192.168.2.10", 0)
 
 
@@ -469,7 +469,7 @@ class TestGatewayHealthProbe:
     def _run_probe_inline(self, plugin_module, monkeypatch):
         monkeypatch.setattr(plugin_module.threading, "Thread", self._ImmediateThread)
         monkeypatch.setattr("time.sleep", lambda _secs: None)
-        monkeypatch.setattr(plugin_module, "_resolve_gateway_port_for_display", lambda: 9765)
+        monkeypatch.setattr(plugin_module, "_resolve_gateway_port_for_display", lambda: 19765)
 
     def test_probe_retries_before_reporting_success(self, plugin_module, monkeypatch, capsys):
         self._run_probe_inline(plugin_module, monkeypatch)
@@ -554,9 +554,9 @@ class TestRestartStopsSidecar:
         if plugin_module._restart_lock.locked():
             plugin_module._restart_lock.release()
 
-        import dcc_mcp_maya
+        import meshy_dcc_maya
 
-        dcc_mcp_maya.stop_server = MagicMock()
+        meshy_dcc_maya.stop_server = MagicMock()
 
         def _run_thread_immediately(target, daemon=True, name=None):  # noqa: ARG001
             target()
@@ -582,21 +582,21 @@ class TestPluginDispatcherFallback:
         self, plugin_module, mock_maya_modules, monkeypatch, tmp_path
     ):
         log_path = tmp_path / "bootstrap.jsonl"
-        monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+        monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_LOG", str(log_path))
         mock_maya_modules.cmds.about.side_effect = lambda **kwargs: True if kwargs.get("batch") else "2025"
 
         startup = MagicMock()
         startup.dispatcher = MagicMock()
         startup.host = None
-        import dcc_mcp_maya
+        import meshy_dcc_maya
 
-        monkeypatch.setattr(dcc_mcp_maya, "start_server", MagicMock(return_value=MagicMock()))
+        monkeypatch.setattr(meshy_dcc_maya, "start_server", MagicMock(return_value=MagicMock()))
         monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
         monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
         monkeypatch.setattr(plugin_module, "_post_start", MagicMock())
 
-        with patch("dcc_mcp_maya._plugin_dispatcher.resolve_plugin_host_startup", return_value=startup), patch(
-            "dcc_mcp_maya._plugin_dispatcher.install_plugin_host_startup"
+        with patch("meshy_dcc_maya._plugin_dispatcher.resolve_plugin_host_startup", return_value=startup), patch(
+            "meshy_dcc_maya._plugin_dispatcher.install_plugin_host_startup"
         ):
             plugin_module._start()
 
@@ -613,20 +613,20 @@ class TestPluginDispatcherFallback:
         self, plugin_module, mock_maya_modules, monkeypatch, tmp_path
     ):
         log_path = tmp_path / "bootstrap.jsonl"
-        monkeypatch.setenv("DCC_MCP_MAYA_BOOTSTRAP_LOG", str(log_path))
+        monkeypatch.setenv("MESHY_DCC_MAYA_BOOTSTRAP_LOG", str(log_path))
         mock_maya_modules.cmds.about.side_effect = lambda **kwargs: True if kwargs.get("batch") else "2025"
 
         startup = MagicMock()
         startup.dispatcher = MagicMock()
         startup.host = None
-        import dcc_mcp_maya
+        import meshy_dcc_maya
 
-        monkeypatch.setattr(dcc_mcp_maya, "start_server", MagicMock(side_effect=RuntimeError("bind failed")))
+        monkeypatch.setattr(meshy_dcc_maya, "start_server", MagicMock(side_effect=RuntimeError("bind failed")))
         monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
         monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
 
-        with patch("dcc_mcp_maya._plugin_dispatcher.resolve_plugin_host_startup", return_value=startup), patch(
-            "dcc_mcp_maya._plugin_dispatcher.install_plugin_host_startup"
+        with patch("meshy_dcc_maya._plugin_dispatcher.resolve_plugin_host_startup", return_value=startup), patch(
+            "meshy_dcc_maya._plugin_dispatcher.install_plugin_host_startup"
         ):
             with pytest.raises(RuntimeError, match="bind failed"):
                 plugin_module._start()
@@ -639,7 +639,7 @@ class TestPluginDispatcherFallback:
     def test_start_falls_back_when_core_dispatchers_are_none(self, plugin_module, mock_maya_modules, monkeypatch):
         mock_maya_modules.cmds.about.side_effect = lambda **kwargs: False if kwargs.get("batch") else "2025"
 
-        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod = types.ModuleType("meshy_dcc_core.host")
         host_mod.BlockingDispatcher = MagicMock(name="BlockingDispatcher")
         host_mod.QueueDispatcher = None
 
@@ -647,15 +647,15 @@ class TestPluginDispatcherFallback:
         ui_pump = MagicMock(name="MayaUiPump")
         type(ui_dispatcher).__name__ = "MayaUiDispatcher"
 
-        import dcc_mcp_maya
+        import meshy_dcc_maya
 
-        monkeypatch.setattr(dcc_mcp_maya, "start_server", MagicMock(return_value=MagicMock()))
+        monkeypatch.setattr(meshy_dcc_maya, "start_server", MagicMock(return_value=MagicMock()))
         monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
         monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
         monkeypatch.setattr(plugin_module, "_post_start", MagicMock())
 
-        with patch.dict(sys.modules, {"dcc_mcp_core.host": host_mod}), patch(
-            "dcc_mcp_maya.dispatcher.create_dispatcher",
+        with patch.dict(sys.modules, {"meshy_dcc_core.host": host_mod}), patch(
+            "meshy_dcc_maya.dispatcher.create_dispatcher",
             return_value=(ui_dispatcher, ui_pump),
         ):
             plugin_module._start()
@@ -665,8 +665,8 @@ class TestPluginDispatcherFallback:
         assert plugin_module._host_startup is not None
         assert plugin_module._host_startup.backend == "python-fallback"
         ui_pump.install.assert_called_once_with()
-        dcc_mcp_maya.start_server.assert_called_once()
-        _, kwargs = dcc_mcp_maya.start_server.call_args
+        meshy_dcc_maya.start_server.assert_called_once()
+        _, kwargs = meshy_dcc_maya.start_server.call_args
         assert kwargs["host_dispatcher"] is ui_dispatcher
 
     def test_start_raises_structured_error_when_all_dispatchers_fail(
@@ -674,18 +674,18 @@ class TestPluginDispatcherFallback:
     ):
         mock_maya_modules.cmds.about.side_effect = lambda **kwargs: True if kwargs.get("batch") else "2025"
 
-        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod = types.ModuleType("meshy_dcc_core.host")
         host_mod.BlockingDispatcher = None
         host_mod.QueueDispatcher = None
 
         monkeypatch.setattr(plugin_module, "_export_worker_env", MagicMock())
         monkeypatch.setattr(plugin_module, "_enable_faulthandler_for_plugin", MagicMock())
 
-        with patch.dict(sys.modules, {"dcc_mcp_core.host": host_mod}), patch(
-            "dcc_mcp_maya.dispatcher.create_dispatcher",
+        with patch.dict(sys.modules, {"meshy_dcc_core.host": host_mod}), patch(
+            "meshy_dcc_maya.dispatcher.create_dispatcher",
             side_effect=RuntimeError("no maya"),
         ), patch(
-            "dcc_mcp_maya._plugin_dispatcher._resolve_core_version",
+            "meshy_dcc_maya._plugin_dispatcher._resolve_core_version",
             return_value="0.19.3",
         ):
             with pytest.raises(RuntimeError, match="Cannot start MCP server"):
@@ -696,24 +696,24 @@ class TestExportWorkerEnv:
     """Tests for ``_export_worker_env()``."""
 
     def test_sets_python_executable(self, plugin_module):
-        """Should set DCC_MCP_PYTHON_EXECUTABLE to sys.executable."""
+        """Should set MESHY_DCC_PYTHON_EXECUTABLE to sys.executable."""
         env = os.environ.copy()
-        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
-        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+        env.pop("MESHY_DCC_PYTHON_EXECUTABLE", None)
+        env.pop("MESHY_DCC_PYTHON_INIT_SNIPPET", None)
 
         with patch.dict(os.environ, env, clear=True):
             plugin_module._export_worker_env()
-            assert os.environ["DCC_MCP_PYTHON_EXECUTABLE"] == sys.executable
+            assert os.environ["MESHY_DCC_PYTHON_EXECUTABLE"] == sys.executable
 
     def test_sets_init_snippet(self, plugin_module):
-        """Should set DCC_MCP_PYTHON_INIT_SNIPPET for maya.standalone init."""
+        """Should set MESHY_DCC_PYTHON_INIT_SNIPPET for maya.standalone init."""
         env = os.environ.copy()
-        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
-        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+        env.pop("MESHY_DCC_PYTHON_EXECUTABLE", None)
+        env.pop("MESHY_DCC_PYTHON_INIT_SNIPPET", None)
 
         with patch.dict(os.environ, env, clear=True):
             plugin_module._export_worker_env()
-            snippet = os.environ["DCC_MCP_PYTHON_INIT_SNIPPET"]
+            snippet = os.environ["MESHY_DCC_PYTHON_INIT_SNIPPET"]
             assert "maya.standalone" in snippet
             assert "initialize" in snippet
 
@@ -721,34 +721,34 @@ class TestExportWorkerEnv:
         """Should NOT overwrite if user already set the env var."""
         custom_path = "/custom/mayapy"
         env = os.environ.copy()
-        env["DCC_MCP_PYTHON_EXECUTABLE"] = custom_path
-        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+        env["MESHY_DCC_PYTHON_EXECUTABLE"] = custom_path
+        env.pop("MESHY_DCC_PYTHON_INIT_SNIPPET", None)
 
         with patch.dict(os.environ, env, clear=True):
             plugin_module._export_worker_env()
-            assert os.environ["DCC_MCP_PYTHON_EXECUTABLE"] == custom_path
+            assert os.environ["MESHY_DCC_PYTHON_EXECUTABLE"] == custom_path
 
     def test_respects_existing_snippet_override(self, plugin_module):
         """Should NOT overwrite if user already set the init snippet."""
         custom_snippet = "print('custom init')"
         env = os.environ.copy()
-        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
-        env["DCC_MCP_PYTHON_INIT_SNIPPET"] = custom_snippet
+        env.pop("MESHY_DCC_PYTHON_EXECUTABLE", None)
+        env["MESHY_DCC_PYTHON_INIT_SNIPPET"] = custom_snippet
 
         with patch.dict(os.environ, env, clear=True):
             plugin_module._export_worker_env()
-            assert os.environ["DCC_MCP_PYTHON_INIT_SNIPPET"] == custom_snippet
+            assert os.environ["MESHY_DCC_PYTHON_INIT_SNIPPET"] == custom_snippet
 
     def test_both_vars_set_simultaneously(self, plugin_module):
         """Both env vars should be set after a single call."""
         env = os.environ.copy()
-        env.pop("DCC_MCP_PYTHON_EXECUTABLE", None)
-        env.pop("DCC_MCP_PYTHON_INIT_SNIPPET", None)
+        env.pop("MESHY_DCC_PYTHON_EXECUTABLE", None)
+        env.pop("MESHY_DCC_PYTHON_INIT_SNIPPET", None)
 
         with patch.dict(os.environ, env, clear=True):
             plugin_module._export_worker_env()
-            assert "DCC_MCP_PYTHON_EXECUTABLE" in os.environ
-            assert "DCC_MCP_PYTHON_INIT_SNIPPET" in os.environ
+            assert "MESHY_DCC_PYTHON_EXECUTABLE" in os.environ
+            assert "MESHY_DCC_PYTHON_INIT_SNIPPET" in os.environ
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -786,7 +786,7 @@ class TestStartupFailureIsVisible:
 
         mglobal = mock_maya_modules.api.OpenMaya.MGlobal
         assert mglobal.displayError.call_count == 1
-        assert "dcc-mcp-maya" in mglobal.displayError.call_args[0][0]
+        assert "meshy-dcc-maya" in mglobal.displayError.call_args[0][0]
 
     def test_menu_failure_does_not_cost_the_server(self, plugin_module, mock_maya_modules):
         """Issue #3929: menu creation must never block MCP server startup."""
@@ -809,7 +809,7 @@ class TestStartupFailureIsVisible:
         assert mglobal.displayError.call_count == 1
         message = mglobal.displayError.call_args[0][0]
         assert "server dead" in message
-        assert "dcc-mcp-maya" in message
+        assert "meshy-dcc-maya" in message
 
     def test_schedule_failure_is_reported(self, plugin_module, mock_maya_modules):
         mock_maya_modules.cmds.evalDeferred.side_effect = RuntimeError("queue gone")

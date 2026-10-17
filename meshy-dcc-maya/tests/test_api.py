@@ -1,4 +1,4 @@
-"""Unit tests for dcc_mcp_maya.api — skill authoring helpers."""
+"""Unit tests for meshy_dcc_maya.api — skill authoring helpers."""
 
 # Import future modules
 from __future__ import annotations
@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Import local modules
-from dcc_mcp_maya.api import (
+from meshy_dcc_maya.api import (
     MissingParamError,
     canonical_maya_exception_message,
     classify_maya_exception,
@@ -359,13 +359,13 @@ def test_with_maya_passes_kwargs():
 
 
 # ---------------------------------------------------------------------------
-# Public API re-export via dcc_mcp_maya
+# Public API re-export via meshy_dcc_maya
 # ---------------------------------------------------------------------------
 
 
 def test_public_api_reexport():
-    """All helpers must be importable directly from dcc_mcp_maya."""
-    import dcc_mcp_maya
+    """All helpers must be importable directly from meshy_dcc_maya."""
+    import meshy_dcc_maya
 
     for name in [
         "maya_success",
@@ -391,7 +391,7 @@ def test_public_api_reexport():
         "summarize_node",
         "created_object_context",
     ]:
-        assert hasattr(dcc_mcp_maya, name), "dcc_mcp_maya.{} missing".format(name)
+        assert hasattr(meshy_dcc_maya, name), "meshy_dcc_maya.{} missing".format(name)
 
 
 # ---------------------------------------------------------------------------

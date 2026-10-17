@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lint SKILL.md files in the dcc-mcp-maya skills directory.
+"""Lint SKILL.md files in the meshy-dcc-maya skills directory.
 
 Usage:
     python tools/lint_skills.py                    # lint all skills
@@ -49,7 +49,7 @@ VALID_DCC_VALUES: Set[str] = {
 PROJECT_DCC = "maya"
 
 # Keep this list in sync with the gateway/core parser version used by CI.
-VALID_DCC_MCP_KEYS: Set[str] = {
+VALID_MESHY_DCC_KEYS: Set[str] = {
     "dcc",
     "depends",
     "external-deps",
@@ -274,31 +274,31 @@ def check_name_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIss
     return issues
 
 
-def _extract_dcc_mcp_field(fm: dict, key: str, default=None):
-    """Read a ``metadata.dcc-mcp.*`` field from either the nested or flat form.
+def _extract_meshy_dcc_field(fm: dict, key: str, default=None):
+    """Read a ``metadata.meshy-dcc.*`` field from either the nested or flat form.
 
     Supports three SKILL.md layouts:
 
-    1. Top-level shorthand (pre-0.15 dcc-mcp-core):  ``dcc: maya``
-    2. Flat metadata form:  ``metadata: {"dcc-mcp.dcc": "maya"}``
+    1. Top-level shorthand (pre-0.15 meshy-dcc-core):  ``dcc: maya``
+    2. Flat metadata form:  ``metadata: {"meshy-dcc.dcc": "maya"}``
     3. Nested agentskills.io-compliant form (issue #356):
-       ``metadata: {dcc-mcp: {dcc: maya}}``
+       ``metadata: {meshy-dcc: {dcc: maya}}``
     """
     if key in fm:
         return fm[key]
     metadata = fm.get("metadata") or {}
     if not isinstance(metadata, dict):
         return default
-    flat = metadata.get(f"dcc-mcp.{key}")
+    flat = metadata.get(f"meshy-dcc.{key}")
     if flat is not None:
         return flat
-    nested = metadata.get("dcc-mcp")
+    nested = metadata.get("meshy-dcc")
     if isinstance(nested, dict) and key in nested:
         return nested[key]
     return default
 
 
-def check_dcc_mcp_metadata_keys(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssue]:
+def check_meshy_dcc_metadata_keys(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssue]:
     issues: List[LintIssue] = []
     file_path = str(skill_dir / "SKILL.md")
     metadata = fm.get("metadata") or {}
@@ -307,20 +307,20 @@ def check_dcc_mcp_metadata_keys(skill_dir: Path, skill_name: str, fm: dict) -> L
 
     keys: Set[str] = set()
     for key in metadata:
-        if isinstance(key, str) and key.startswith("dcc-mcp."):
-            keys.add(key[len("dcc-mcp.") :])
-    nested = metadata.get("dcc-mcp")
+        if isinstance(key, str) and key.startswith("meshy-dcc."):
+            keys.add(key[len("meshy-dcc.") :])
+    nested = metadata.get("meshy-dcc")
     if isinstance(nested, dict):
         keys.update(str(key) for key in nested)
 
-    for key in sorted(keys - VALID_DCC_MCP_KEYS):
+    for key in sorted(keys - VALID_MESHY_DCC_KEYS):
         issues.append(
             LintIssue(
                 skill=skill_name,
                 file=file_path,
                 severity="WARNING",
-                rule="UNKNOWN_DCC_MCP_METADATA",
-                message=f"metadata.dcc-mcp.{key} is not accepted by the CI gateway/core parser",
+                rule="UNKNOWN_MESHY_DCC_METADATA",
+                message=f"metadata.meshy-dcc.{key} is not accepted by the CI gateway/core parser",
             )
         )
     return issues
@@ -329,7 +329,7 @@ def check_dcc_mcp_metadata_keys(skill_dir: Path, skill_name: str, fm: dict) -> L
 def check_dcc_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssue]:
     issues: List[LintIssue] = []
     file_path = str(skill_dir / "SKILL.md")
-    dcc = _extract_dcc_mcp_field(fm, "dcc", default="python")
+    dcc = _extract_meshy_dcc_field(fm, "dcc", default="python")
 
     if dcc not in VALID_DCC_VALUES:
         issues.append(
@@ -358,7 +358,7 @@ def check_dcc_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssu
 
 def check_version_field(skill_dir: Path, skill_name: str, fm: dict) -> List[LintIssue]:
     issues: List[LintIssue] = []
-    version = _extract_dcc_mcp_field(fm, "version", default="1.0.0")
+    version = _extract_meshy_dcc_field(fm, "version", default="1.0.0")
     if version and not SEMVER_RE.match(str(version)):
         issues.append(
             LintIssue(
@@ -436,9 +436,9 @@ def _resolve_tools_list(skill_dir: Path, fm: dict) -> list:
 
     * Inline list (legacy):  ``tools: [{name: ...}, ...]``
     * Sibling filename:       ``tools: tools.yaml``
-    * Nested + sibling:       ``metadata.dcc-mcp.tools: tools.yaml``
+    * Nested + sibling:       ``metadata.meshy-dcc.tools: tools.yaml``
     """
-    raw = _extract_dcc_mcp_field(fm, "tools", default=None)
+    raw = _extract_meshy_dcc_field(fm, "tools", default=None)
     if raw is None:
         return []
     if isinstance(raw, list):
@@ -464,7 +464,7 @@ def _resolve_groups_list(skill_dir: Path, fm: dict) -> list:
     Falls back to the ``groups:`` key in the sibling ``tools.yaml`` when the
     dedicated groups file is not declared.
     """
-    raw_groups = _extract_dcc_mcp_field(fm, "groups", default=None)
+    raw_groups = _extract_meshy_dcc_field(fm, "groups", default=None)
     if isinstance(raw_groups, list):
         return raw_groups
     if isinstance(raw_groups, str):
@@ -480,7 +480,7 @@ def _resolve_groups_list(skill_dir: Path, fm: dict) -> list:
             except Exception:
                 pass
     # Fallback: groups defined inside tools.yaml alongside the tools list.
-    raw_tools = _extract_dcc_mcp_field(fm, "tools", default=None)
+    raw_tools = _extract_meshy_dcc_field(fm, "tools", default=None)
     if isinstance(raw_tools, str):
         candidate = skill_dir / raw_tools
         if candidate.exists():
@@ -532,7 +532,7 @@ def check_depends_exist(
 ) -> List[LintIssue]:
     """Warn if depends[] references skill names that don't exist."""
     issues: List[LintIssue] = []
-    depends = _extract_dcc_mcp_field(fm, "depends", default=[])
+    depends = _extract_meshy_dcc_field(fm, "depends", default=[])
     if not depends or not isinstance(depends, list):
         return issues
 
@@ -553,12 +553,12 @@ def check_depends_exist(
 
 def _references_metadata_ok(fm: dict) -> bool:
     """True when references/ content is wired for agent read tools."""
-    recipes = _extract_dcc_mcp_field(fm, "recipes")
+    recipes = _extract_meshy_dcc_field(fm, "recipes")
     if isinstance(recipes, str) and recipes.strip().startswith("references"):
         return True
     if isinstance(recipes, list) and any(isinstance(x, str) and x.strip().startswith("references") for x in recipes):
         return True
-    intro = _extract_dcc_mcp_field(fm, "introspection")
+    intro = _extract_meshy_dcc_field(fm, "introspection")
     if isinstance(intro, str) and intro.strip().startswith("references"):
         return True
     return False
@@ -578,9 +578,9 @@ def check_references_dir_wiring(skill_dir: Path, skill_name: str, fm: dict) -> L
             severity="WARNING",
             rule="REF_DIR_UNWIRED",
             message=(
-                "references/ exists — point metadata.dcc-mcp.recipes or "
-                "metadata.dcc-mcp.introspection under references/ "
-                "(see docs/guide/skill-maintenance.md in dcc-mcp-core)"
+                "references/ exists — point metadata.meshy-dcc.recipes or "
+                "metadata.meshy-dcc.introspection under references/ "
+                "(see docs/guide/skill-maintenance.md in meshy-dcc-core)"
             ),
         )
     ]
@@ -592,7 +592,7 @@ def check_io_tool_descriptions(skill_dir: Path, skill_name: str, fm: dict) -> Li
     tools = _resolve_tools_list(skill_dir, fm)
     if not tools:
         return issues
-    tools_yaml = _extract_dcc_mcp_field(fm, "tools", default=None)
+    tools_yaml = _extract_meshy_dcc_field(fm, "tools", default=None)
     yaml_label = str(tools_yaml) if tools_yaml else "tools.yaml"
 
     for tool_entry in tools:
@@ -613,7 +613,7 @@ def check_io_tool_descriptions(skill_dir: Path, skill_name: str, fm: dict) -> Li
                 message=(
                     f"tool '{name}': description is short ({len(desc)} chars) — expand with "
                     "absolute paths, plugins, prerequisites, and common failures "
-                    "(see docs/guide/skill-maintenance.md in dcc-mcp-core)"
+                    "(see docs/guide/skill-maintenance.md in meshy-dcc-core)"
                 ),
             )
         )
@@ -753,7 +753,7 @@ def lint_skill(
         return issues, info
 
     issues += check_name_field(skill_dir, skill_name, fm)
-    issues += check_dcc_mcp_metadata_keys(skill_dir, skill_name, fm)
+    issues += check_meshy_dcc_metadata_keys(skill_dir, skill_name, fm)
     issues += check_dcc_field(skill_dir, skill_name, fm)
     issues += check_version_field(skill_dir, skill_name, fm)
     issues += check_description_field(skill_dir, skill_name, fm)
@@ -762,7 +762,7 @@ def lint_skill(
     issues += check_depends_exist(skill_dir, skill_name, fm, all_skill_names)
     issues += check_references_dir_wiring(skill_dir, skill_name, fm)
     issues += check_io_tool_descriptions(skill_dir, skill_name, fm)
-    tools_yaml_ref = _extract_dcc_mcp_field(fm, "tools", default="tools.yaml")
+    tools_yaml_ref = _extract_meshy_dcc_field(fm, "tools", default="tools.yaml")
     tools_yaml = skill_dir / str(tools_yaml_ref) if isinstance(tools_yaml_ref, str) else skill_dir / "tools.yaml"
     info.tools = [
         (str(tool_entry.get("name")), tools_yaml, tool_entry)
@@ -874,7 +874,7 @@ def print_report(issues: List[LintIssue], skills_root: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Lint SKILL.md files in the dcc-mcp-maya skills directory.",
+        description="Lint SKILL.md files in the meshy-dcc-maya skills directory.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -885,8 +885,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--skills-root",
-        default="src/dcc_mcp_maya/skills",
-        help="Path to skills directory (default: src/dcc_mcp_maya/skills)",
+        default="src/meshy_dcc_maya/skills",
+        help="Path to skills directory (default: src/meshy_dcc_maya/skills)",
     )
     parser.add_argument(
         "--error-only",

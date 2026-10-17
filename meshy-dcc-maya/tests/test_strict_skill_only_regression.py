@@ -9,7 +9,7 @@ Coverage:
 
 Tests that require a real Maya gateway are guarded with
 ``@pytest.mark.skipif`` and check for the environment variable
-``DCC_MCP_GATEWAY_BASE_URL``.
+``MESHY_DCC_GATEWAY_BASE_URL``.
 """
 
 from __future__ import annotations
@@ -182,12 +182,12 @@ class TestResolveBaseUrl:
         assert _resolve_base_url("http://example.com:1234") == "http://example.com:1234"
 
     def test_env_var_fallback(self, monkeypatch):
-        monkeypatch.setenv("DCC_MCP_GATEWAY_BASE_URL", "http://env.example.com:9999")
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_BASE_URL", "http://env.example.com:9999")
         assert _resolve_base_url(None) == "http://env.example.com:9999"
 
     def test_default(self, monkeypatch):
-        monkeypatch.delenv("DCC_MCP_GATEWAY_BASE_URL", raising=False)
-        assert _resolve_base_url(None) == "http://127.0.0.1:9765"
+        monkeypatch.delenv("MESHY_DCC_GATEWAY_BASE_URL", raising=False)
+        assert _resolve_base_url(None) == "http://127.0.0.1:19765"
 
     def test_strips_trailing_slash(self):
         assert _resolve_base_url("http://example.com/") == "http://example.com"
@@ -264,9 +264,9 @@ def skill_server():
 
     Loads a minimal set of skills so search/describe/call have real targets.
     """
-    os.environ.setdefault("DCC_MCP_DISABLE_FILE_LOGGING", "1")
+    os.environ.setdefault("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
 
-    from dcc_mcp_maya.server import MayaMcpServer  # noqa: E402
+    from meshy_dcc_maya.server import MayaMcpServer  # noqa: E402
 
     server = MayaMcpServer(port=0, enable_gateway_failover=False, gateway_port=0)
     server.register_builtin_actions(minimal=True)
@@ -432,7 +432,7 @@ class TestReportSchema:
             "issue": "PIP-481",
             "suite": "maya_strict_skill_only_regression",
             "started_at": _utc_now(),
-            "gateway_base_url": "http://127.0.0.1:9765",
+            "gateway_base_url": "http://127.0.0.1:19765",
             "policy": "search -> load_skill/activate group -> describe -> call typed tools",
             "config": {
                 "soak_iterations": 500,
@@ -560,14 +560,14 @@ class TestRunFunction:
     """Test that run() raises a clear error when no Maya gateway is available.
 
     Required to NOT depend on a live Maya gateway. When one is available
-    (DCC_MCP_GATEWAY_BASE_URL set), the full integration path can be
+    (MESHY_DCC_GATEWAY_BASE_URL set), the full integration path can be
     exercised with ``test_run_full_integration``.
     """
 
     def test_run_fails_cleanly_with_no_gateway(self, tmp_path, monkeypatch):
         """Without a gateway, run() should raise a clear RuntimeError (connection refused
         or similar), not crash with an unexpected traceback."""
-        monkeypatch.delenv("DCC_MCP_GATEWAY_BASE_URL", raising=False)
+        monkeypatch.delenv("MESHY_DCC_GATEWAY_BASE_URL", raising=False)
 
         args = argparse.Namespace(
             base_url="http://127.0.0.1:1",  # non-existent port
@@ -580,17 +580,17 @@ class TestRunFunction:
             run(args)
 
     @pytest.mark.skipif(
-        not os.environ.get("DCC_MCP_GATEWAY_BASE_URL"),
-        reason="DCC_MCP_GATEWAY_BASE_URL not set — live gateway required",
+        not os.environ.get("MESHY_DCC_GATEWAY_BASE_URL"),
+        reason="MESHY_DCC_GATEWAY_BASE_URL not set — live gateway required",
     )
     def test_run_full_integration(self, tmp_path):
         """Full integration run against a live Maya gateway.
 
         This exercises the complete policy-guard → workload → soak pipeline.
-        Set ``DCC_MCP_GATEWAY_BASE_URL`` to a reachable gateway endpoint.
+        Set ``MESHY_DCC_GATEWAY_BASE_URL`` to a reachable gateway endpoint.
         """
         args = argparse.Namespace(
-            base_url=os.environ["DCC_MCP_GATEWAY_BASE_URL"],
+            base_url=os.environ["MESHY_DCC_GATEWAY_BASE_URL"],
             output_dir=str(tmp_path),
             soak_iterations=10,  # small soak for test speed
             timeout_secs=120,
@@ -620,7 +620,7 @@ class TestRunFunction:
 class TestMainCLI:
     def test_main_prints_json_on_failure(self, tmp_path, monkeypatch, capsys):
         """When gateway is unreachable, main() exits non-zero and prints JSON."""
-        monkeypatch.delenv("DCC_MCP_GATEWAY_BASE_URL", raising=False)
+        monkeypatch.delenv("MESHY_DCC_GATEWAY_BASE_URL", raising=False)
 
         exit_code = main(
             [
@@ -664,7 +664,7 @@ class TestMainCLI:
 
     def test_main_parses_report_flag(self, tmp_path, monkeypatch, capsys):
         """The --report flag is accepted by argparse (we test parsing, not running)."""
-        monkeypatch.delenv("DCC_MCP_GATEWAY_BASE_URL", raising=False)
+        monkeypatch.delenv("MESHY_DCC_GATEWAY_BASE_URL", raising=False)
 
         exit_code = main(
             [

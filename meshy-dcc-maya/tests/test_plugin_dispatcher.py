@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 # Import third-party modules
 import pytest
 
-from dcc_mcp_maya._plugin_dispatcher import (
+from meshy_dcc_maya._plugin_dispatcher import (
     PluginDispatcherError,
     resolve_plugin_host_startup,
 )
@@ -20,14 +20,14 @@ from dcc_mcp_maya._plugin_dispatcher import (
 class TestResolvePluginHostStartup:
     def test_uses_core_queue_dispatcher_when_callable(self):
         dispatcher_instance = MagicMock(name="queue-dispatcher")
-        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod = types.ModuleType("meshy_dcc_core.host")
         host_mod.BlockingDispatcher = MagicMock(name="BlockingDispatcher")
         host_mod.QueueDispatcher = MagicMock(return_value=dispatcher_instance)
 
         with patch.dict(
             sys.modules,
             {
-                "dcc_mcp_core.host": host_mod,
+                "meshy_dcc_core.host": host_mod,
             },
         ):
             startup = resolve_plugin_host_startup(is_batch=False)
@@ -39,15 +39,15 @@ class TestResolvePluginHostStartup:
         host_mod.QueueDispatcher.assert_called_once_with()
 
     def test_falls_back_when_core_dispatcher_is_none(self):
-        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod = types.ModuleType("meshy_dcc_core.host")
         host_mod.BlockingDispatcher = MagicMock(name="BlockingDispatcher")
         host_mod.QueueDispatcher = None
 
         ui_dispatcher = MagicMock(name="MayaUiDispatcher")
         ui_pump = MagicMock(name="MayaUiPump")
 
-        with patch.dict(sys.modules, {"dcc_mcp_core.host": host_mod}), patch(
-            "dcc_mcp_maya.dispatcher.create_dispatcher",
+        with patch.dict(sys.modules, {"meshy_dcc_core.host": host_mod}), patch(
+            "meshy_dcc_maya.dispatcher.create_dispatcher",
             return_value=(ui_dispatcher, ui_pump),
         ):
             type(ui_dispatcher).__name__ = "MayaUiDispatcher"
@@ -59,15 +59,15 @@ class TestResolvePluginHostStartup:
         assert startup.backend == "python-fallback"
 
     def test_falls_back_to_standalone_in_batch_mode(self):
-        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod = types.ModuleType("meshy_dcc_core.host")
         host_mod.BlockingDispatcher = None
         host_mod.QueueDispatcher = MagicMock(name="QueueDispatcher")
 
         standalone = MagicMock(name="MayaStandaloneDispatcher")
         type(standalone).__name__ = "MayaStandaloneDispatcher"
 
-        with patch.dict(sys.modules, {"dcc_mcp_core.host": host_mod}), patch(
-            "dcc_mcp_maya.dispatcher.create_dispatcher",
+        with patch.dict(sys.modules, {"meshy_dcc_core.host": host_mod}), patch(
+            "meshy_dcc_maya.dispatcher.create_dispatcher",
             return_value=(standalone, None),
         ):
             startup = resolve_plugin_host_startup(is_batch=True)
@@ -78,12 +78,12 @@ class TestResolvePluginHostStartup:
         assert startup.backend == "python-fallback"
 
     def test_fail_fast_when_core_and_fallback_unavailable(self):
-        host_mod = types.ModuleType("dcc_mcp_core.host")
+        host_mod = types.ModuleType("meshy_dcc_core.host")
         host_mod.BlockingDispatcher = None
         host_mod.QueueDispatcher = None
 
-        with patch.dict(sys.modules, {"dcc_mcp_core.host": host_mod}), patch(
-            "dcc_mcp_maya.dispatcher.create_dispatcher",
+        with patch.dict(sys.modules, {"meshy_dcc_core.host": host_mod}), patch(
+            "meshy_dcc_maya.dispatcher.create_dispatcher",
             side_effect=RuntimeError("maya.cmds missing"),
         ):
             with pytest.raises(PluginDispatcherError) as excinfo:

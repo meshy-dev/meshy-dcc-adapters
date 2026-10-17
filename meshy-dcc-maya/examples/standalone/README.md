@@ -8,7 +8,7 @@ opening the Maya GUI.
 Install into the target Maya Python first:
 
 ```bash
-mayapy -m pip install "dcc-mcp-maya[sidecar]"
+mayapy -m pip install "meshy-dcc-maya[sidecar]"
 ```
 
 Start the standalone service:
@@ -21,12 +21,12 @@ The instance port is assigned by the operating system. The script prints the
 exact MCP URL after startup, for example:
 
 ```text
-[dcc-mcp-maya] standalone MCP: http://127.0.0.1:<assigned-port>/mcp
+[meshy-dcc-maya] standalone MCP: http://127.0.0.1:<assigned-port>/mcp
 ```
 
 Point a direct Streamable HTTP MCP host at the printed URL. For normal plugin
-deployments, use the stable gateway at `http://127.0.0.1:9765/mcp` and inspect
-instances with `dcc-mcp-cli list` instead of hardcoding an instance port.
+deployments, use the stable gateway at `http://127.0.0.1:19765/mcp` and inspect
+instances with `meshy-dcc list` instead of hardcoding an instance port.
 
 ## Custom skill example
 
@@ -37,7 +37,7 @@ Run the service with that skill path enabled:
 
 ```bash
 # Windows PowerShell
-$env:DCC_MCP_MAYA_SKILL_PATHS = "$PWD\examples\standalone\custom-skills"
+$env:MESHY_DCC_MAYA_SKILL_PATHS = "$PWD\examples\standalone\custom-skills"
 mayapy examples/standalone/run_maya_mcp.py
 ```
 

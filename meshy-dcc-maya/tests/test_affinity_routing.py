@@ -2,10 +2,10 @@
 
 Covers three layers:
 
-1. :mod:`dcc_mcp_maya._affinity` — the pure ``tools.yaml`` loader
+1. :mod:`meshy_dcc_maya._affinity` — the pure ``tools.yaml`` loader
    (handles sibling-file layout, unknown values, missing files, cache
    invalidation, and injectable loaders for filesystem-free tests).
-2. :mod:`dcc_mcp_maya._executor.execute_in_process` — the routing
+2. :mod:`meshy_dcc_maya._executor.execute_in_process` — the routing
    decision.  ``affinity: main`` must go through the Maya UI dispatcher
    while ``affinity: any`` must execute inline on the calling thread.
 3. Bundled skills audit — confirms the production ``tools.yaml`` files
@@ -29,10 +29,10 @@ from typing import Any, Callable, Dict, List, Optional
 import pytest
 
 # Import project modules
-from dcc_mcp_maya import _affinity
-from dcc_mcp_maya._executor import execute_in_process, run_skill_script
+from meshy_dcc_maya import _affinity
+from meshy_dcc_maya._executor import execute_in_process, run_skill_script
 
-REPO_SRC = Path(__file__).resolve().parent.parent / "src" / "dcc_mcp_maya"
+REPO_SRC = Path(__file__).resolve().parent.parent / "src" / "meshy_dcc_maya"
 BUNDLED_SKILLS = REPO_SRC / "skills"
 
 # ---------------------------------------------------------------------------
@@ -261,7 +261,7 @@ def test_executor_routes_main_affinity_through_dispatcher(main_affinity_script: 
     would deadlock waiting for itself — guarded by the
     ``_on_main_thread()`` short-circuit in ``execute_in_process``.
     """
-    from dcc_mcp_maya import _executor as _executor_mod
+    from meshy_dcc_maya import _executor as _executor_mod
 
     monkeypatch.setattr(_executor_mod, "_on_main_thread", lambda: False)
 
@@ -290,7 +290,7 @@ def test_executor_surfaces_dispatcher_exceptions_as_envelope(main_affinity_scrip
     # consults the dispatcher; otherwise ``_on_main_thread()=True`` would
     # short-circuit to inline execution (the correct production guard
     # against deadlocking ``submit_callable`` against itself).
-    from dcc_mcp_maya import _executor as _executor_mod
+    from meshy_dcc_maya import _executor as _executor_mod
 
     monkeypatch.setattr(_executor_mod, "_on_main_thread", lambda: False)
 

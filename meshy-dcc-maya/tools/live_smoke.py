@@ -61,7 +61,7 @@ def _section(title: str) -> None:
 
 
 def main() -> int:
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     _section("1. Start gateway #1 (dcc_version=2024)")
     srv_a = MayaMcpServer(port=0, gateway_port=0, dcc_version="2024", enable_gateway_failover=False)

@@ -1,4 +1,4 @@
-"""Unit tests for ``dcc_mcp_maya._maya_commandport_hygiene`` (issue #148).
+"""Unit tests for ``meshy_dcc_maya._maya_commandport_hygiene`` (issue #148).
 
 Mocks ``maya.cmds`` / ``maya.mel`` because these are not importable
 in the standard CI matrix (no Maya install). The corresponding
@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Import local modules
-from dcc_mcp_maya import _maya_commandport_hygiene as _commandport
+from meshy_dcc_maya import _maya_commandport_hygiene as _commandport
 
 # ────────────────────────────────────────────────────────────────────────
 # _is_disabled_by_env

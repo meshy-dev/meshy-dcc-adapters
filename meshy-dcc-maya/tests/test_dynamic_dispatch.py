@@ -29,13 +29,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-os.environ.setdefault("DCC_MCP_DISABLE_FILE_LOGGING", "1")
+os.environ.setdefault("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
 
 _SRC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from dcc_mcp_maya.server import MayaMcpServer  # noqa: E402
+from meshy_dcc_maya.server import MayaMcpServer  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers (shared with test_rest_skill_api.py shape)
@@ -349,7 +349,7 @@ def test_attach_dispatcher_none_detaches():
 
 
 def test_executor_dispatcher_exception_surfaces_as_skill_error(monkeypatch):
-    from dcc_mcp_maya import _executor
+    from meshy_dcc_maya import _executor
 
     class _Boom:
         def submit_callable(self, *args, **kwargs):
@@ -358,7 +358,7 @@ def test_executor_dispatcher_exception_surfaces_as_skill_error(monkeypatch):
     # Simulate the production "MCP request on a tokio worker thread" path
     # so the executor actually consults the dispatcher (calling
     # ``submit_callable`` from Python's main thread would deadlock —
-    # see :func:`dcc_mcp_maya._executor.execute_in_process` doc).
+    # see :func:`meshy_dcc_maya._executor.execute_in_process` doc).
     monkeypatch.setattr(_executor, "_on_main_thread", lambda: False)
 
     fake_server = MagicMock()

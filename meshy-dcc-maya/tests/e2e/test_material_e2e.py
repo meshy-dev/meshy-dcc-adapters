@@ -32,7 +32,7 @@ from maya import cmds  # noqa: E402
 
 pytestmark = pytest.mark.e2e
 
-_SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "dcc_mcp_maya" / "skills"
+_SKILLS_ROOT = Path(__file__).parent.parent.parent / "src" / "meshy_dcc_maya" / "skills"
 
 _MOD_COUNTER = [0]
 

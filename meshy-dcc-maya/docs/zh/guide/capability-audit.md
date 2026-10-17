@@ -48,5 +48,5 @@
 
 - [Autodesk Maya 命令参考](https://help.autodesk.com/cloudhelp/2026/ENU/Maya-Tech-Docs/CommandsPython/index.html)
 - [Maya USD](https://github.com/Autodesk/maya-usd)
-- [Core 公共契约](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/llms.txt)
-- 开放工作：[#490](https://github.com/dcc-mcp/dcc-mcp-maya/issues/490)、[#491](https://github.com/dcc-mcp/dcc-mcp-maya/issues/491)、[#492](https://github.com/dcc-mcp/dcc-mcp-maya/issues/492)、[#493](https://github.com/dcc-mcp/dcc-mcp-maya/issues/493)、[#494](https://github.com/dcc-mcp/dcc-mcp-maya/issues/494)、[#495](https://github.com/dcc-mcp/dcc-mcp-maya/issues/495)。
+- [Core 公共契约](https://github.com/meshy-dev/meshy-dcc-core/blob/main/llms.txt)
+- 开放工作：[#490](https://github.com/meshy-dev/meshy-dcc-maya/issues/490)、[#491](https://github.com/meshy-dev/meshy-dcc-maya/issues/491)、[#492](https://github.com/meshy-dev/meshy-dcc-maya/issues/492)、[#493](https://github.com/meshy-dev/meshy-dcc-maya/issues/493)、[#494](https://github.com/meshy-dev/meshy-dcc-maya/issues/494)、[#495](https://github.com/meshy-dev/meshy-dcc-maya/issues/495)。

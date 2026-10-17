@@ -11,7 +11,7 @@ _ROOT = Path(__file__).parent.parent
 
 
 def _load_render_script(script_name: str):
-    path = _ROOT / "src" / "dcc_mcp_maya" / "skills" / "maya-render" / "scripts" / "{}.py".format(script_name)
+    path = _ROOT / "src" / "meshy_dcc_maya" / "skills" / "maya-render" / "scripts" / "{}.py".format(script_name)
     spec = importlib.util.spec_from_file_location("test_render_{}".format(script_name), str(path))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

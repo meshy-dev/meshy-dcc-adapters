@@ -128,10 +128,10 @@ def _ensure_call_success(resp: Dict[str, Any], op: str) -> Dict[str, Any]:
 def _resolve_base_url(cli_base_url: Optional[str]) -> str:
     if cli_base_url:
         return cli_base_url.rstrip("/")
-    env_base = os.environ.get("DCC_MCP_GATEWAY_BASE_URL", "").strip()
+    env_base = os.environ.get("MESHY_DCC_GATEWAY_BASE_URL", "").strip()
     if env_base:
         return env_base.rstrip("/")
-    return "http://127.0.0.1:9765"
+    return "http://127.0.0.1:19765"
 
 
 @dataclass
@@ -183,8 +183,8 @@ def _verify_arbitrary_script_blocked(client: GatewayClient, slug_cache: SlugCach
         if not blocked:
             raise RuntimeError(
                 "Strict skill-only policy check failed: arbitrary script tool was not blocked. "
-                "Set DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON=1 and DCC_MCP_MAYA_DISABLE_EXECUTE_MEL=1 "
-                "(or DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT=1)."
+                "Set MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON=1 and MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL=1 "
+                "(or MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1)."
             )
     return checks
 
@@ -392,7 +392,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--base-url",
         default=None,
-        help="Gateway REST base URL (default: env DCC_MCP_GATEWAY_BASE_URL or http://127.0.0.1:9765)",
+        help="Gateway REST base URL (default: env MESHY_DCC_GATEWAY_BASE_URL or http://127.0.0.1:19765)",
     )
     parser.add_argument("--output-dir", default="artifacts/perf", help="Directory for FBX + JSON report")
     parser.add_argument("--report", default="", help="Optional explicit report path")

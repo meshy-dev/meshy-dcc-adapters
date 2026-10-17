@@ -44,9 +44,9 @@ def _import_server():
     import importlib
 
     for mod in list(sys.modules):
-        if "dcc_mcp_maya" in mod:
+        if "meshy_dcc_maya" in mod:
             del sys.modules[mod]
-    srv = importlib.import_module("dcc_mcp_maya.server")
+    srv = importlib.import_module("meshy_dcc_maya.server")
     return srv
 
 
@@ -78,9 +78,9 @@ def _builtin_skills_dir():
     """Return the built-in skills directory, resolving it from the package."""
     from pathlib import Path
 
-    import dcc_mcp_maya
+    import meshy_dcc_maya
 
-    return str(Path(dcc_mcp_maya.__file__).parent / "skills")
+    return str(Path(meshy_dcc_maya.__file__).parent / "skills")
 
 
 def _mcp_post_json(url, body):
@@ -122,7 +122,7 @@ def _list_all_mcp_tools(url):
 def _capture_handed_off_port(srv_mod, monkeypatch, **options_kwargs) -> dict:
     """Build core options and capture the ``port`` the adapter hands to core.
 
-    This is the contract that actually broke: ``dcc-mcp-core>=0.19.45``
+    This is the contract that actually broke: ``meshy-dcc-core>=0.19.45``
     resolves ``port=None`` itself, so assertions on the *final* port pass with
     or without the adapter fix.  Only the hand-off value distinguishes them.
     """
@@ -156,7 +156,7 @@ class TestDefaultPortHandoff:
 
     def test_unspecified_port_hands_core_an_int(self, monkeypatch):
         srv_mod = _import_server()
-        monkeypatch.delenv("DCC_MCP_MAYA_PORT", raising=False)
+        monkeypatch.delenv("MESHY_DCC_MAYA_PORT", raising=False)
 
         captured = _capture_handed_off_port(srv_mod, monkeypatch)
 
@@ -165,7 +165,7 @@ class TestDefaultPortHandoff:
 
     def test_env_port_is_resolved_by_the_adapter(self, monkeypatch):
         srv_mod = _import_server()
-        monkeypatch.setenv("DCC_MCP_MAYA_PORT", "18765")
+        monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "18765")
 
         captured = _capture_handed_off_port(srv_mod, monkeypatch)
 
@@ -173,7 +173,7 @@ class TestDefaultPortHandoff:
 
     def test_explicit_port_is_handed_through_unchanged(self, monkeypatch):
         srv_mod = _import_server()
-        monkeypatch.setenv("DCC_MCP_MAYA_PORT", "18765")
+        monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "18765")
 
         captured = _capture_handed_off_port(srv_mod, monkeypatch, port=8791)
 
@@ -184,14 +184,14 @@ class TestDefaultPortResolution:
     """Observable end-state of ``port=None`` (issue #3531).
 
     These lock in *behaviour* — the server must start and bind an OS-assigned
-    port — but on ``dcc-mcp-core>=0.19.45`` they passed before the fix too,
+    port — but on ``meshy-dcc-core>=0.19.45`` they passed before the fix too,
     because core resolved ``None`` on its own.  The contract that broke is
     asserted in :class:`TestDefaultPortHandoff`.
     """
 
     def test_options_default_resolves_to_os_assigned_port(self, monkeypatch):
         srv_mod = _import_server()
-        monkeypatch.delenv("DCC_MCP_MAYA_PORT", raising=False)
+        monkeypatch.delenv("MESHY_DCC_MAYA_PORT", raising=False)
 
         port = srv_mod.MayaServerOptions().to_core_options().port
 
@@ -200,27 +200,27 @@ class TestDefaultPortResolution:
 
     def test_options_none_reads_env_var(self, monkeypatch):
         srv_mod = _import_server()
-        monkeypatch.setenv("DCC_MCP_MAYA_PORT", "18765")
+        monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "18765")
 
         assert srv_mod.MayaServerOptions(port=None).to_core_options().port == 18765
 
     def test_explicit_port_still_wins(self, monkeypatch):
         srv_mod = _import_server()
-        monkeypatch.setenv("DCC_MCP_MAYA_PORT", "18765")
+        monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "18765")
 
         assert srv_mod.MayaServerOptions(port=8791).to_core_options().port == 8791
 
     def test_invalid_env_var_raises_value_error(self, monkeypatch):
         srv_mod = _import_server()
-        monkeypatch.setenv("DCC_MCP_MAYA_PORT", "not-a-port")
+        monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "not-a-port")
 
-        with pytest.raises(ValueError, match="DCC_MCP_MAYA_PORT"):
+        with pytest.raises(ValueError, match="MESHY_DCC_MAYA_PORT"):
             srv_mod.MayaServerOptions().to_core_options()
 
     def test_server_constructs_with_default_port(self, monkeypatch):
         """``MayaMcpServer()`` with no arguments must not raise TypeError."""
         srv_mod = _import_server()
-        monkeypatch.delenv("DCC_MCP_MAYA_PORT", raising=False)
+        monkeypatch.delenv("MESHY_DCC_MAYA_PORT", raising=False)
 
         server = srv_mod.MayaMcpServer()
 
@@ -239,7 +239,7 @@ class TestDefaultPortResolution:
     def test_server_default_port_binds_os_assigned_port(self, monkeypatch):
         """``start_server()`` defaults produce a usable handle (issue #3531)."""
         srv_mod = _import_server()
-        monkeypatch.delenv("DCC_MCP_MAYA_PORT", raising=False)
+        monkeypatch.delenv("MESHY_DCC_MAYA_PORT", raising=False)
 
         server = srv_mod.MayaMcpServer()
         try:
@@ -433,7 +433,7 @@ class TestMayaMcpServerApi:
         real_import = builtins.__import__
 
         def blocked_import(name, globals=None, locals=None, fromlist=(), level=0):
-            if name == "dcc_mcp_maya.dispatcher":
+            if name == "meshy_dcc_maya.dispatcher":
                 raise ImportError("blocked for test")
             return real_import(name, globals, locals, fromlist, level)
 
@@ -444,7 +444,7 @@ class TestMayaMcpServerApi:
     def test_default_host_dispatcher_keeps_dispatcher_when_pump_install_raises(self):
         """A pump-install failure should not prevent dispatcher wiring."""
         srv_mod = _import_server()
-        import dcc_mcp_maya.dispatcher as dispatcher_mod
+        import meshy_dcc_maya.dispatcher as dispatcher_mod
 
         server = object.__new__(srv_mod.MayaMcpServer)
         server._dcc_name = "maya"
@@ -468,7 +468,7 @@ class TestMayaMcpServerApi:
 
     def test_core_builtin_registration_uses_normal_minimal_mode_path(self):
         """Core-owned minimal-mode loading should not require local skill manifest rewriting."""
-        from dcc_mcp_maya import _registration
+        from meshy_dcc_maya import _registration
 
         srv_mod = _import_server()
         server = srv_mod.MayaMcpServer(port=0, enable_gateway_failover=False, gateway_port=0)
@@ -562,22 +562,22 @@ class TestMayaMcpServerApi:
 
 
 class TestStrictSkillScan:
-    """Issue #138 — ``DCC_MCP_MAYA_STRICT_SKILL_SCAN=1`` surfaces skipped dirs."""
+    """Issue #138 — ``MESHY_DCC_MAYA_STRICT_SKILL_SCAN=1`` surfaces skipped dirs."""
 
     def test_env_var_default_off(self, monkeypatch):
-        from dcc_mcp_maya import _env
+        from meshy_dcc_maya import _env
 
         monkeypatch.delenv(_env.ENV_STRICT_SKILL_SCAN, raising=False)
         assert _env.resolve_strict_skill_scan() is False
 
     def test_env_var_set_to_one_enables_strict(self, monkeypatch):
-        from dcc_mcp_maya import _env
+        from meshy_dcc_maya import _env
 
         monkeypatch.setenv(_env.ENV_STRICT_SKILL_SCAN, "1")
         assert _env.resolve_strict_skill_scan() is True
 
     def test_explicit_arg_overrides_env(self, monkeypatch):
-        from dcc_mcp_maya import _env
+        from meshy_dcc_maya import _env
 
         monkeypatch.setenv(_env.ENV_STRICT_SKILL_SCAN, "0")
         assert _env.resolve_strict_skill_scan(True) is True
@@ -588,7 +588,7 @@ class TestStrictSkillScan:
         Builds a fake skills directory containing an unparseable
         ``SKILL.md`` and asserts that ``register_builtin_actions(strict_scan=True)``
         propagates the ``ValueError`` from
-        :func:`dcc_mcp_core.scan_and_load_strict`.
+        :func:`meshy_dcc_core.scan_and_load_strict`.
         """
         bad_skill = tmp_path / "bad-skill"
         bad_skill.mkdir()
@@ -642,7 +642,7 @@ class TestWorkflowEngineAndJobRecovery:
                 pass
 
     def test_workflows_enabled_via_env_var(self, monkeypatch):
-        from dcc_mcp_maya import _env
+        from meshy_dcc_maya import _env
 
         monkeypatch.setenv(_env.ENV_ENABLE_WORKFLOWS, "1")
         srv_mod = _import_server()
@@ -668,14 +668,14 @@ class TestWorkflowEngineAndJobRecovery:
                 pass
 
     def test_job_recovery_requeue_propagates_to_inner_config(self, monkeypatch):
-        """``DCC_MCP_MAYA_JOB_RECOVERY=requeue`` must reach ``_config.job_recovery``.
+        """``MESHY_DCC_MAYA_JOB_RECOVERY=requeue`` must reach ``_config.job_recovery``.
 
         Without the propagation added in this PR, the upstream Rust
-        :class:`JobRecoveryPolicy` (dcc-mcp-core#567) defaulted to
+        :class:`JobRecoveryPolicy` (meshy-dcc-core#567) defaulted to
         ``drop`` regardless of the env var, so interrupted idempotent
         jobs were never resumed on plugin restart (issue #139).
         """
-        from dcc_mcp_maya import _env
+        from meshy_dcc_maya import _env
 
         monkeypatch.setenv(_env.ENV_JOB_RECOVERY, "requeue")
         srv_mod = _import_server()
@@ -749,13 +749,13 @@ class TestMayaMcpServerHttp:
         # meta-tools — either as bare names, prefixed, or stub markers.
         skill_stubs = {n for n in names if n.startswith("__skill__maya-")}
         prefixed_tools = {n for n in names if n.startswith("maya-") and not n.startswith("__skill__")}
-        # After the sibling-file migration (dcc-mcp-core #356/#385), skill
+        # After the sibling-file migration (meshy-dcc-core #356/#385), skill
         # scripts are exposed with bare names when unique. We compute the
         # set of "skill-derived" tools by subtracting the known core
         # meta-tools and subsystem-prefixed tools (`jobs.*`, `diagnostics__*`).
         core_meta_tools = {
             "list_skills",
-            "search_skills",  # replaces find_skills (renamed in dcc-mcp-core >= 0.14)
+            "search_skills",  # replaces find_skills (renamed in meshy-dcc-core >= 0.14)
             "load_skill",
             "unload_skill",
             "search_tools",
@@ -799,7 +799,7 @@ class TestSkillSearchPaths:
     """collect_skill_search_paths respects all path sources."""
 
     def test_builtin_skills_always_included(self):
-        from dcc_mcp_maya.server import _BUILTIN_SKILLS_DIR, MayaMcpServer
+        from meshy_dcc_maya.server import _BUILTIN_SKILLS_DIR, MayaMcpServer
 
         srv = object.__new__(MayaMcpServer)
         srv._dcc_name = "maya"
@@ -808,7 +808,7 @@ class TestSkillSearchPaths:
         srv._enable_gateway_failover = False
         srv._hot_reloader = None
         srv._gateway_election = None
-        from dcc_mcp_core import McpHttpConfig
+        from meshy_dcc_core import McpHttpConfig
 
         srv._config = McpHttpConfig()
         srv._server = MagicMock()
@@ -818,18 +818,18 @@ class TestSkillSearchPaths:
     def test_extra_paths_take_highest_priority(self):
         import tempfile
 
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         srv = object.__new__(MayaMcpServer)
         srv._dcc_name = "maya"
-        from dcc_mcp_maya.server import _BUILTIN_SKILLS_DIR
+        from meshy_dcc_maya.server import _BUILTIN_SKILLS_DIR
 
         srv._builtin_skills_dir = _BUILTIN_SKILLS_DIR
         srv._handle = None
         srv._enable_gateway_failover = False
         srv._hot_reloader = None
         srv._gateway_election = None
-        from dcc_mcp_core import McpHttpConfig
+        from meshy_dcc_core import McpHttpConfig
 
         srv._config = McpHttpConfig()
         srv._server = MagicMock()
@@ -837,53 +837,53 @@ class TestSkillSearchPaths:
             paths = srv.collect_skill_search_paths(extra_paths=[tmp], include_bundled=False)
             assert paths[0] == tmp
 
-    def test_dcc_mcp_maya_skill_paths_env_var(self):
-        """DCC_MCP_MAYA_SKILL_PATHS (per-app) is honoured (v0.12.12+)."""
+    def test_meshy_dcc_maya_skill_paths_env_var(self):
+        """MESHY_DCC_MAYA_SKILL_PATHS (per-app) is honoured (v0.12.12+)."""
         import tempfile
 
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         srv = object.__new__(MayaMcpServer)
         srv._dcc_name = "maya"
-        from dcc_mcp_maya.server import _BUILTIN_SKILLS_DIR
+        from meshy_dcc_maya.server import _BUILTIN_SKILLS_DIR
 
         srv._builtin_skills_dir = _BUILTIN_SKILLS_DIR
         srv._handle = None
         srv._enable_gateway_failover = False
         srv._hot_reloader = None
         srv._gateway_election = None
-        from dcc_mcp_core import McpHttpConfig
+        from meshy_dcc_core import McpHttpConfig
 
         srv._config = McpHttpConfig()
         srv._server = MagicMock()
         with tempfile.TemporaryDirectory() as tmp:
-            with patch.dict("os.environ", {"DCC_MCP_MAYA_SKILL_PATHS": tmp}):
+            with patch.dict("os.environ", {"MESHY_DCC_MAYA_SKILL_PATHS": tmp}):
                 paths = srv.collect_skill_search_paths(include_bundled=False)
         assert tmp in paths
 
     def test_app_env_var_before_global_env_var(self):
-        """Per-app env var appears before DCC_MCP_SKILL_PATHS."""
+        """Per-app env var appears before MESHY_DCC_SKILL_PATHS."""
         import tempfile
 
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         srv = object.__new__(MayaMcpServer)
         srv._dcc_name = "maya"
-        from dcc_mcp_maya.server import _BUILTIN_SKILLS_DIR
+        from meshy_dcc_maya.server import _BUILTIN_SKILLS_DIR
 
         srv._builtin_skills_dir = _BUILTIN_SKILLS_DIR
         srv._handle = None
         srv._enable_gateway_failover = False
         srv._hot_reloader = None
         srv._gateway_election = None
-        from dcc_mcp_core import McpHttpConfig
+        from meshy_dcc_core import McpHttpConfig
 
         srv._config = McpHttpConfig()
         srv._server = MagicMock()
         with tempfile.TemporaryDirectory() as app_tmp, tempfile.TemporaryDirectory() as global_tmp:
             with patch.dict(
                 "os.environ",
-                {"DCC_MCP_MAYA_SKILL_PATHS": app_tmp, "DCC_MCP_SKILL_PATHS": global_tmp},
+                {"MESHY_DCC_MAYA_SKILL_PATHS": app_tmp, "MESHY_DCC_SKILL_PATHS": global_tmp},
             ):
                 paths = srv.collect_skill_search_paths(include_bundled=False)
         assert app_tmp in paths
@@ -961,9 +961,9 @@ class TestMinimalMode:
         server.stop()
 
     def test_minimal_env_override_disables_eager_loading(self):
-        """DCC_MCP_MINIMAL=0 disables core's declarative minimal-mode config."""
+        """MESHY_DCC_MINIMAL=0 disables core's declarative minimal-mode config."""
         srv_mod = _import_server()
-        with patch.dict("os.environ", {"DCC_MCP_MINIMAL": "0"}):
+        with patch.dict("os.environ", {"MESHY_DCC_MINIMAL": "0"}):
             server = srv_mod.MayaMcpServer(port=0)
             server.register_builtin_actions(
                 extra_skill_paths=[_builtin_skills_dir()],
@@ -1012,9 +1012,9 @@ class TestMinimalMode:
         server.stop()
 
     def test_custom_default_tools_env(self):
-        """DCC_MCP_DEFAULT_TOOLS customises which skills are loaded."""
+        """MESHY_DCC_DEFAULT_TOOLS customises which skills are loaded."""
         srv_mod = _import_server()
-        with patch.dict("os.environ", {"DCC_MCP_DEFAULT_TOOLS": "maya-scripting,maya-render"}):
+        with patch.dict("os.environ", {"MESHY_DCC_DEFAULT_TOOLS": "maya-scripting,maya-render"}):
             server = srv_mod.MayaMcpServer(port=0)
             server.register_builtin_actions(
                 extra_skill_paths=[_builtin_skills_dir()],

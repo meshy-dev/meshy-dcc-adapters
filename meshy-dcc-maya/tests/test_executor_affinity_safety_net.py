@@ -1,10 +1,10 @@
-"""Tests for the universal main-thread safety net in :mod:`dcc_mcp_maya._executor`.
+"""Tests for the universal main-thread safety net in :mod:`meshy_dcc_maya._executor`.
 
 What this guards
 ================
 
 Every skill action dispatched through the MCP HTTP server runs through
-:func:`dcc_mcp_maya._executor.execute_in_process`. The routing it does
+:func:`meshy_dcc_maya._executor.execute_in_process`. The routing it does
 combines the ``tools.yaml`` ``affinity`` field with the current thread
 context. The user-facing contract is:
 
@@ -37,7 +37,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # Import local modules
-from dcc_mcp_maya import _affinity, _executor, _main_thread_queue
+from meshy_dcc_maya import _affinity, _executor, _main_thread_queue
 
 
 @pytest.fixture(autouse=True)

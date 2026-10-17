@@ -1,4 +1,4 @@
-"""Unit tests for the Nucleus contract module (``dcc_mcp_maya.nucleus``).
+"""Unit tests for the Nucleus contract module (``meshy_dcc_maya.nucleus``).
 
 These cover the typed boundary that the ``maya-dynamics`` nCloth / nRigid /
 nConstraint / field / nCache tools are built on.  A fake ``cmds`` object keeps
@@ -14,8 +14,8 @@ from contextlib import contextmanager
 import pytest
 from conftest import load_and_call
 
-from dcc_mcp_maya import nucleus as nucleus_mod
-from dcc_mcp_maya.nucleus import (
+from meshy_dcc_maya import nucleus as nucleus_mod
+from meshy_dcc_maya.nucleus import (
     CACHEABLE_NODE_TYPES,
     COMPOUND_ATTR_TYPES,
     DEFAULT_DIRECTION_FLAGS,

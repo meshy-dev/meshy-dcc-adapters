@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from conftest import load_and_call
 
-from dcc_mcp_maya.bifrost import (
+from meshy_dcc_maya.bifrost import (
     BifrostContractError,
     add_node,
     compound_node_path,

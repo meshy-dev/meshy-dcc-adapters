@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
-import dcc_mcp_core.qt_dispatcher as core_qt_dispatcher
+import meshy_dcc_core.qt_dispatcher as core_qt_dispatcher
 
 
 class _Signal:

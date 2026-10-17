@@ -1,7 +1,7 @@
 # Maya MCP 资源
 
-Issue [#187](https://github.com/dcc-mcp/dcc-mcp-maya/issues/187) 把
-`dcc-mcp-maya` 接到 `dcc-mcp-core` 0.15.0 提供的 Rust
+Issue [#187](https://github.com/meshy-dev/meshy-dcc-maya/issues/187) 把
+`meshy-dcc-maya` 接到 `meshy-dcc-core` 0.15.0 提供的 Rust
 [`ResourceRegistry`][resource-handle]。开箱后，MCP 客户端会看到：
 
 * **`scene://current`** —— 当前 Maya 场景的 JSON 快照
@@ -18,11 +18,11 @@ Issue [#187](https://github.com/dcc-mcp/dcc-mcp-maya/issues/187) 把
 * **`maya-project://current`** —— 当前 Maya workspace 的根目录与
   `fileRule` 列表。
 
-[resource-handle]: https://github.com/dcc-mcp/dcc-mcp-core/blob/main/llms.txt
+[resource-handle]: https://github.com/meshy-dev/meshy-dcc-core/blob/main/llms.txt
 
 ## 快速验证
 
-启动 `dcc_mcp_maya.start_server()` 后，把 MCP 客户端
+启动 `meshy_dcc_maya.start_server()` 后，把 MCP 客户端
 （Claude Desktop、Cursor 等）指向打印出来的 URL，资源表面会自动出现：
 
 ```jsonc
@@ -84,7 +84,7 @@ Maya 适配器用 lead-edge + trail-edge 计时器把这种风暴折叠到
 
 | 变量                          | 默认 | 效果                                            |
 |-------------------------------|------|-------------------------------------------------|
-| `DCC_MCP_MAYA_RESOURCES`      | `1`  | 设为 `0` 完全关闭 Maya 资源发布功能。           |
+| `MESHY_DCC_MAYA_RESOURCES`      | `1`  | 设为 `0` 完全关闭 Maya 资源发布功能。           |
 
 关闭后 `scene://current` 维持 core 默认的
 `{"status": "no_scene_published"}`，三个 `maya-*://` scheme 也不会注册。
@@ -93,7 +93,7 @@ Maya 适配器用 lead-edge + trail-edge 计时器把这种风暴折叠到
 ## Python API
 
 ```python
-from dcc_mcp_maya import (
+from meshy_dcc_maya import (
     MayaResourceBinder,    # SOLID 组合根
     install_resources,     # 一行式辅助
     SCHEME_MAYA_CMDS,
@@ -156,7 +156,7 @@ core 0.15.0 已声明 `prompts: {listChanged: true}` 能力，
 
 ## 参考
 
-* [`AGENTS.md`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) —— SOLID binder 范式总览
+* [`AGENTS.md`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) —— SOLID binder 范式总览
   （`ReadinessBinder` / `ProjectToolsIntegration` / `MayaResourceBinder`）。
 * [`docs/zh/guide/scene.md`](./scene.md) —— 现有的场景信息工具表面，
   与 `scene://current` 同源。

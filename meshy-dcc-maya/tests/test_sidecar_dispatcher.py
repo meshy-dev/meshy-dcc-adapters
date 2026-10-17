@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 import pytest
-from dcc_mcp_core.feedback import clear_feedback, get_feedback_entries
-from dcc_mcp_core.sidecar import (
+from meshy_dcc_core.feedback import clear_feedback, get_feedback_entries
+from meshy_dcc_core.sidecar import (
     ERROR_DISPATCH_FAILED,
     ERROR_NO_SOURCE_FILE,
     ERROR_PAYLOAD_MALFORMED,
@@ -17,7 +17,7 @@ from dcc_mcp_core.sidecar import (
     ERROR_UNKNOWN_ACTION,
 )
 
-from dcc_mcp_maya.sidecar._dispatcher import dispatch_payload
+from meshy_dcc_maya.sidecar._dispatcher import dispatch_payload
 
 
 class _StubAction:
@@ -232,7 +232,7 @@ class TestDispatchExecution:
         def fail(*_args, **_kwargs):
             raise RuntimeError("host executor stopped")
 
-        monkeypatch.setattr("dcc_mcp_maya._executor.execute_in_process", fail)
+        monkeypatch.setattr("meshy_dcc_maya._executor.execute_in_process", fail)
 
         envelope = dispatch_payload(
             {"action": "noop", "args": {}, "request_id": "r-crash"},

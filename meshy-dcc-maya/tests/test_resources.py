@@ -29,7 +29,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dcc_mcp_maya import (
+from meshy_dcc_maya import (
     DEFAULT_SCENE_EVENTS,
     DEFAULT_SCENE_THROTTLE_SECS,
     ENV_RESOURCES,
@@ -39,8 +39,8 @@ from dcc_mcp_maya import (
     MayaResourceBinder,
     install_resources,
 )
-from dcc_mcp_maya import _resources as resources_mod
-from dcc_mcp_maya._resources import (
+from meshy_dcc_maya import _resources as resources_mod
+from meshy_dcc_maya._resources import (
     _maya_api_signatures_producer,
     _maya_cmds_help_producer,
     _maya_project_current_producer,
@@ -598,7 +598,7 @@ class TestMayaMcpServerResourcesIntegration:
     """Full server lifecycle — confirm the binder is wired and producers route."""
 
     def test_register_builtin_actions_creates_binder(self) -> None:
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         server = MayaMcpServer(port=0, enable_gateway_failover=False, gateway_port=0)
         try:
@@ -620,7 +620,7 @@ class TestMayaMcpServerResourcesIntegration:
                 pass
 
     def test_env_var_disables_binder(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         monkeypatch.setenv(ENV_RESOURCES, "0")
         server = MayaMcpServer(port=0, enable_gateway_failover=False, gateway_port=0)
@@ -634,7 +634,7 @@ class TestMayaMcpServerResourcesIntegration:
                 pass
 
     def test_stop_unbinds_resources(self) -> None:
-        from dcc_mcp_maya import MayaMcpServer
+        from meshy_dcc_maya import MayaMcpServer
 
         server = MayaMcpServer(port=0, enable_gateway_failover=False, gateway_port=0)
         server.register_builtin_actions(minimal=True)

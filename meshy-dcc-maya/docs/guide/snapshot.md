@@ -33,12 +33,12 @@ The `maya_render__playblast` tool captures the active viewport as a **base64-enc
 ### Direct Python (Maya Script Editor)
 
 ```python
-import dcc_mcp_maya
-handle = dcc_mcp_maya.start_server()
+import meshy_dcc_maya
+handle = meshy_dcc_maya.start_server()
 
 # The capture happens via MCP tool call — AI agent calls it automatically
 # To test manually from Python:
-from dcc_mcp_maya.skills.maya_render.scripts import playblast
+from meshy_dcc_maya.skills.maya_render.scripts import playblast
 
 result = playblast.main(width=1280, height=720, camera="persp")
 print(result["image"])   # base64-encoded PNG string

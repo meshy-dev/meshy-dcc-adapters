@@ -1,7 +1,7 @@
-"""Python 3.7 syntax pin for every ``src/dcc_mcp_maya/**.py`` file.
+"""Python 3.7 syntax pin for every ``src/meshy_dcc_maya/**.py`` file.
 
 Maya 2020 and Maya 2022 both ship Python 3.7. Maya's plug-in loader
-imports the ``dcc_mcp_maya`` package eagerly on plug-in load — if any
+imports the ``meshy_dcc_maya`` package eagerly on plug-in load — if any
 single module in the package tree contains 3.8+ syntax (walrus ``:=``,
 ``match/case``, positional-only ``/``, f-string ``=`` debug, …) or
 runs a 3.8+ ``import`` statement (e.g. ``from typing import Final``)
@@ -13,7 +13,7 @@ This guard rejects both classes of regression at pytest time:
 
 1. **Syntax-level drift** — ``ast.parse(src, feature_version=(3, 7))``
    raises ``SyntaxError`` for every grammar feature added after 3.7.
-   Parametrised over every ``.py`` file under ``src/dcc_mcp_maya/``
+   Parametrised over every ``.py`` file under ``src/meshy_dcc_maya/``
    so a new module joining the package automatically inherits the
    guarantee — no opt-in needed.
 
@@ -57,7 +57,7 @@ from typing import List, TextIO
 # Import third-party modules
 import pytest
 
-PACKAGE_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_maya"
+PACKAGE_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_maya"
 
 # Module-level imports that exist in ``typing`` only from Python 3.8+
 # (or later) and therefore raise ``ImportError`` when the plug-in is
@@ -85,7 +85,7 @@ _TYPING_FORBIDDEN_AT_RUNTIME = _TYPING_3_8_PLUS_NAMES + _TYPING_3_9_PLUS_NAMES +
 
 
 def _iter_package_sources() -> List[Path]:
-    """Return every ``.py`` file in the ``dcc_mcp_maya`` package tree.
+    """Return every ``.py`` file in the ``meshy_dcc_maya`` package tree.
 
     Sorted for deterministic test-id ordering across CI runs. Skipping
     ``__pycache__`` because pytest already filters those out — the
@@ -166,10 +166,10 @@ def test_package_root_is_non_empty() -> None:
 
 @pytest.mark.parametrize("path", _SOURCES, ids=_rel)
 def test_source_parses_under_python_3_7_feature_version(path: Path) -> None:
-    """Every ``src/dcc_mcp_maya/**.py`` must parse under Python 3.7 syntax.
+    """Every ``src/meshy_dcc_maya/**.py`` must parse under Python 3.7 syntax.
 
     Maya 2020 and 2022 ship Python 3.7. Maya's plug-in loader imports
-    the entire ``dcc_mcp_maya`` package on plug-in load, so any 3.8+
+    the entire ``meshy_dcc_maya`` package on plug-in load, so any 3.8+
     syntax in any file in the tree breaks the plug-in entirely
     (visible to the user as a Script Editor modal with a ``SyntaxError``
     on the offending line).

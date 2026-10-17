@@ -57,7 +57,7 @@ import importlib
 import sys
 
 # The script is importable from the skill's scripts directory
-from dcc_mcp_maya.skills.maya_render.scripts import playblast
+from meshy_dcc_maya.skills.maya_render.scripts import playblast
 
 result = playblast.main(
     width=1920,

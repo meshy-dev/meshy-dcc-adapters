@@ -7,7 +7,7 @@
 ### `start_server`
 
 ```python
-dcc_mcp_maya.start_server(
+meshy_dcc_maya.start_server(
     port: Optional[int] = None,
     server_name: str = "maya-mcp",
     register_builtins: bool = True,
@@ -41,7 +41,7 @@ dcc_mcp_maya.start_server(
 | `server_name` | `str` | `"maya-mcp"` | MCP `initialize` 响应中显示的名称。 |
 | `register_builtins` | `bool` | `True` | 启动时发现内置技能；具体工具集按需加载。 |
 | `extra_skill_paths` | `List[str]` | `None` | 额外扫描 `SKILL.md` 文件的目录列表。 |
-| `include_bundled` | `bool` | `True` | 发现技能时包含 `dcc-mcp-core` 自带技能。 |
+| `include_bundled` | `bool` | `True` | 发现技能时包含 `meshy-dcc-core` 自带技能。 |
 | `gateway_port` | `int \| None` | `None` | 多实例网关选举使用的端口。 |
 | `registry_dir` | `str \| None` | `None` | 用于服务发现元数据的共享注册目录。 |
 | `dcc_version` | `str \| None` | `None` | 上报到发现注册表中的 Maya 版本。 |
@@ -62,14 +62,14 @@ dcc_mcp_maya.start_server(
 
 **示例：**
 ```python
-import dcc_mcp_maya
+import meshy_dcc_maya
 
 # 基本启动
-handle = dcc_mcp_maya.start_server()
+handle = meshy_dcc_maya.start_server()
 print(handle.mcp_url())  # 操作系统分配的实例地址
 
 # 自定义端口 + 额外技能
-handle = dcc_mcp_maya.start_server(
+handle = meshy_dcc_maya.start_server(
     port=9000,
     extra_skill_paths=["C:/studio/maya-skills"],
     include_bundled=False,
@@ -81,7 +81,7 @@ handle = dcc_mcp_maya.start_server(
 ### `stop_server`
 
 ```python
-dcc_mcp_maya.stop_server() -> None
+meshy_dcc_maya.stop_server() -> None
 ```
 
 停止模块级单例服务器。
@@ -91,7 +91,7 @@ dcc_mcp_maya.stop_server() -> None
 ## 类：MayaMcpServer
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 ```
 
 ### 构造函数
@@ -160,7 +160,7 @@ server.stop() -> None
 ### 完整生命周期示例
 
 ```python
-from dcc_mcp_maya.server import MayaMcpServer
+from meshy_dcc_maya.server import MayaMcpServer
 
 server = MayaMcpServer(server_name="hero-maya")
 server.register_builtin_actions(
@@ -179,21 +179,21 @@ server.stop()
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DCC_MCP_MAYA_PORT` | 操作系统分配 | 直连实例的可选固定 TCP 端口 |
-| `DCC_MCP_MAYA_SERVER_NAME` | `maya-mcp` | 默认服务器名称 |
-| `DCC_MCP_MAYA_SKILL_PATHS` | — | Maya 专用 skill 搜索根目录（Windows 用 `;`，Unix 用 `:`）；每个根目录可以是单个 skill 包或多个子 skill 包的父目录 |
-| `DCC_MCP_SKILL_PATHS` | — | 全局回退 skill 搜索根目录 |
-| `DCC_MCP_MAYA_HOT_RELOAD` | `0` | 设为 `1` 时启用 Skill 热重载 |
-| `DCC_MCP_MAYA_METRICS` | `0` | 设为 `1` 时启用 Prometheus `/metrics` |
-| `DCC_MCP_MAYA_JOB_STORAGE` | `<data_dir>/jobs.db` | SQLite job 持久化数据库路径 |
-| `DCC_MCP_MAYA_JOB_RECOVERY` | `drop` | `requeue` 表示启动后恢复幂等的中断 job |
-| `DCC_MCP_MAYA_ENABLE_GATEWAY_FAILOVER` | `1` | 启用自动网关故障转移选举 |
-| `DCC_MCP_MAYA_ENABLE_WORKFLOWS` | `0` | 启用 core workflow tools |
-| `DCC_MCP_MAYA_READINESS_TIMEOUT_SECS` | — | readiness 消费方使用的建议超时时间 |
-| `DCC_MCP_MAYA_EXCLUDE_STUBS_FROM_TOOLS_LIST` | `0` | 从 `tools/list` 隐藏未加载 skill/group stub |
-| `DCC_MCP_MAYA_SIDECAR` | `1` | 设为 `0` 可禁用 Maya 插件默认启动的 `dcc-mcp-server sidecar` |
-| `DCC_MCP_GATEWAY_PORT` | 插件模式下为 `9765` | 网关竞争端口；设为 `0` 可禁用 |
-| `DCC_MCP_GATEWAY_NAME` | sidecar 模式下为 `dcc-mcp-gateway@<hostname>` | admin、health 和 CLI 诊断中展示的独立 gateway 名称 |
-| `DCC_MCP_GATEWAY_REMOTE_PORT` | sidecar 模式下为 `59765` | 由独立 gateway 打开的局域网入口；设为 `0` 可关闭远程访问 |
-| `DCC_MCP_GATEWAY_REMOTE_HOST` | `0.0.0.0` | 局域网 gateway listener 的绑定地址 |
-| `DCC_MCP_REGISTRY_DIR` | 操作系统临时目录 | 用于服务发现的共享注册目录 |
+| `MESHY_DCC_MAYA_PORT` | 操作系统分配 | 直连实例的可选固定 TCP 端口 |
+| `MESHY_DCC_MAYA_SERVER_NAME` | `maya-mcp` | 默认服务器名称 |
+| `MESHY_DCC_MAYA_SKILL_PATHS` | — | Maya 专用 skill 搜索根目录（Windows 用 `;`，Unix 用 `:`）；每个根目录可以是单个 skill 包或多个子 skill 包的父目录 |
+| `MESHY_DCC_SKILL_PATHS` | — | 全局回退 skill 搜索根目录 |
+| `MESHY_DCC_MAYA_HOT_RELOAD` | `0` | 设为 `1` 时启用 Skill 热重载 |
+| `MESHY_DCC_MAYA_METRICS` | `0` | 设为 `1` 时启用 Prometheus `/metrics` |
+| `MESHY_DCC_MAYA_JOB_STORAGE` | `<data_dir>/jobs.db` | SQLite job 持久化数据库路径 |
+| `MESHY_DCC_MAYA_JOB_RECOVERY` | `drop` | `requeue` 表示启动后恢复幂等的中断 job |
+| `MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER` | `1` | 启用自动网关故障转移选举 |
+| `MESHY_DCC_MAYA_ENABLE_WORKFLOWS` | `0` | 启用 core workflow tools |
+| `MESHY_DCC_MAYA_READINESS_TIMEOUT_SECS` | — | readiness 消费方使用的建议超时时间 |
+| `MESHY_DCC_MAYA_EXCLUDE_STUBS_FROM_TOOLS_LIST` | `0` | 从 `tools/list` 隐藏未加载 skill/group stub |
+| `MESHY_DCC_MAYA_SIDECAR` | `1` | 设为 `0` 可禁用 Maya 插件默认启动的 `meshy-dcc-server sidecar` |
+| `MESHY_DCC_GATEWAY_PORT` | 插件模式下为 `19765` | 网关竞争端口；设为 `0` 可禁用 |
+| `MESHY_DCC_GATEWAY_NAME` | sidecar 模式下为 `meshy-dcc-gateway@<hostname>` | admin、health 和 CLI 诊断中展示的独立 gateway 名称 |
+| `MESHY_DCC_GATEWAY_REMOTE_PORT` | sidecar 模式下为 `59765` | 由独立 gateway 打开的局域网入口；设为 `0` 可关闭远程访问 |
+| `MESHY_DCC_GATEWAY_REMOTE_HOST` | `0.0.0.0` | 局域网 gateway listener 的绑定地址 |
+| `MESHY_DCC_REGISTRY_DIR` | 操作系统临时目录 | 用于服务发现的共享注册目录 |

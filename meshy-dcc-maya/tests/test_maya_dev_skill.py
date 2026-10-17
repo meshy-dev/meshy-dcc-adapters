@@ -190,7 +190,7 @@ def _fake_ui_tree():
 
 
 def test_attach_project_adds_root_and_src_to_sys_path(tmp_path: Path, monkeypatch) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -212,7 +212,7 @@ def test_attach_project_adds_root_and_src_to_sys_path(tmp_path: Path, monkeypatc
 
 
 def test_attach_project_respects_allowed_roots(tmp_path: Path, monkeypatch) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     allowed = tmp_path / "allowed"
@@ -220,7 +220,7 @@ def test_attach_project_respects_allowed_roots(tmp_path: Path, monkeypatch) -> N
     allowed.mkdir()
     denied.mkdir()
 
-    with patch.dict("os.environ", {"DCC_MCP_MAYA_DEV_ROOTS": str(allowed)}):
+    with patch.dict("os.environ", {"MESHY_DCC_MAYA_DEV_ROOTS": str(allowed)}):
         out = _dev_session.attach_project(str(denied))
 
     assert out["success"] is False
@@ -229,7 +229,7 @@ def test_attach_project_respects_allowed_roots(tmp_path: Path, monkeypatch) -> N
 
 
 def test_reload_modules_purges_attached_project_modules(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -252,7 +252,7 @@ def test_reload_modules_purges_attached_project_modules(tmp_path: Path) -> None:
 
 
 def test_run_entrypoint_captures_stdout_and_json_return(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -275,7 +275,7 @@ def test_run_entrypoint_captures_stdout_and_json_return(tmp_path: Path) -> None:
 
 
 def test_run_entrypoint_returns_traceback_on_failure(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -297,7 +297,7 @@ def test_run_entrypoint_returns_traceback_on_failure(tmp_path: Path) -> None:
 
 
 def test_run_script_executes_project_local_file_and_blocks_escape(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -327,7 +327,7 @@ def test_run_script_executes_project_local_file_and_blocks_escape(tmp_path: Path
 
 
 def test_start_debugpy_uses_existing_listener_state(monkeypatch) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     fake = types.ModuleType("debugpy")
@@ -348,7 +348,7 @@ def test_start_debugpy_uses_existing_listener_state(monkeypatch) -> None:
 
 
 def test_start_debugpy_reports_optional_missing_debugpy(monkeypatch) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     real_import = builtins.__import__
@@ -368,7 +368,7 @@ def test_start_debugpy_reports_optional_missing_debugpy(monkeypatch) -> None:
 
 
 def test_start_debugpy_returns_core_metadata_and_logging(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     fake = types.ModuleType("debugpy")
@@ -400,7 +400,7 @@ def test_start_debugpy_returns_core_metadata_and_logging(tmp_path: Path) -> None
 
 
 def test_start_debugpy_classifies_port_in_use() -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     fake = types.ModuleType("debugpy")
@@ -420,7 +420,7 @@ def test_start_debugpy_classifies_port_in_use() -> None:
 
 
 def test_capture_ui_degrades_without_qt() -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     with patch.object(_dev_session, "_qt_modules", return_value=(None, None, None, None)):
         out = _dev_session.capture_ui()
@@ -429,7 +429,7 @@ def test_capture_ui_degrades_without_qt() -> None:
 
 
 def test_ui_snapshot_find_and_action_with_fake_qt() -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     root, save, name = _fake_ui_tree()
@@ -452,7 +452,7 @@ def test_ui_snapshot_find_and_action_with_fake_qt() -> None:
 
 
 def test_ui_action_select_option_validates_missing_options() -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     combo = _FakeComboBox("modeCombo", ["Draft", "Final"])
@@ -470,7 +470,7 @@ def test_ui_action_select_option_validates_missing_options() -> None:
 
 
 def test_ui_action_requires_unique_locator() -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     root = _FakeWidget(
@@ -486,11 +486,11 @@ def test_ui_action_requires_unique_locator() -> None:
 
 
 def test_ui_action_can_capture_artifact_evidence(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     root, _save, name = _fake_ui_tree()
-    with patch.dict("os.environ", {"DCC_MCP_MAYA_DEV_ARTIFACT_DIR": str(tmp_path / "artifacts")}):
+    with patch.dict("os.environ", {"MESHY_DCC_MAYA_DEV_ARTIFACT_DIR": str(tmp_path / "artifacts")}):
         with patch.object(_dev_session, "_maya_main_window", return_value=(root, _FakeWidget, None)):
             out = _dev_session.ui_action(
                 action="set_text",
@@ -510,7 +510,7 @@ def test_ui_action_can_capture_artifact_evidence(tmp_path: Path) -> None:
 
 
 def test_run_check_writes_artifact_refs_for_large_output(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -522,7 +522,7 @@ def test_run_check_writes_artifact_refs_for_large_output(tmp_path: Path) -> None
     )
 
     try:
-        with patch.dict("os.environ", {"DCC_MCP_MAYA_DEV_ARTIFACT_DIR": str(tmp_path / "artifacts")}):
+        with patch.dict("os.environ", {"MESHY_DCC_MAYA_DEV_ARTIFACT_DIR": str(tmp_path / "artifacts")}):
             _dev_session.attach_project(str(tmp_path), package_prefixes=["demo_tool"])
             out = _dev_session.run_check(target="demo_tool.runner:main", artifact_threshold=4)
     finally:
@@ -539,7 +539,7 @@ def test_run_check_writes_artifact_refs_for_large_output(tmp_path: Path) -> None
 
 
 def test_run_check_publishes_session_events_for_output(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -582,7 +582,7 @@ def test_run_check_publishes_session_events_for_output(tmp_path: Path) -> None:
 
 
 def test_run_check_keeps_inline_output_when_session_events_unavailable(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -605,7 +605,7 @@ def test_run_check_keeps_inline_output_when_session_events_unavailable(tmp_path:
 
 
 def test_maya_dev_scripts_delegate_to_shared_session(tmp_path: Path) -> None:
-    from dcc_mcp_maya import _dev_session
+    from meshy_dcc_maya import _dev_session
 
     _dev_session.reset_for_tests()
     old_sys_path = sys.path[:]
@@ -627,7 +627,7 @@ def test_maya_dev_scripts_delegate_to_shared_session(tmp_path: Path) -> None:
 
 
 def test_maya_dev_tools_yaml_contract() -> None:
-    path = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills" / "maya-dev" / "tools.yaml"
+    path = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-dev" / "tools.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     tools = {tool["name"]: tool for tool in data["tools"]}
 

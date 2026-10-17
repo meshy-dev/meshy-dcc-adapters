@@ -20,22 +20,22 @@ No arbitrary script path is used for the workload.
 
 ## Prerequisites
 
-1. Run Maya with `dcc_mcp_maya` plugin loaded.
-2. Gateway reachable (default `http://127.0.0.1:9765`).
+1. Run Maya with `meshy_dcc_maya` plugin loaded.
+2. Gateway reachable (default `http://127.0.0.1:19765`).
 3. Strict policy enabled on Maya side:
 
 ```powershell
-$env:DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON = "1"
-$env:DCC_MCP_MAYA_DISABLE_EXECUTE_MEL = "1"
+$env:MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON = "1"
+$env:MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL = "1"
 # or one switch:
-$env:DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT = "1"
+$env:MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT = "1"
 ```
 
 ## Run
 
 ```powershell
 python tools/strict_skill_only_regression.py \
-  --base-url http://127.0.0.1:9765 \
+  --base-url http://127.0.0.1:19765 \
   --output-dir artifacts/perf \
   --soak-iterations 500
 ```

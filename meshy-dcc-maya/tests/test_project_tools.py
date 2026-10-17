@@ -1,4 +1,4 @@
-"""Unit + HTTP round-trip coverage for ``dcc_mcp_maya._project_tools``.
+"""Unit + HTTP round-trip coverage for ``meshy_dcc_maya._project_tools``.
 
 These tests exercise three concentric rings:
 
@@ -34,15 +34,15 @@ from typing import Any, Dict, Optional, Tuple
 
 import pytest
 
-import dcc_mcp_maya
-from dcc_mcp_maya import (
+import meshy_dcc_maya
+from meshy_dcc_maya import (
     ENV_PROJECT_TOOLS,
     MayaMcpServer,
     MayaSceneResolver,
     ProjectToolsIntegration,
     attach_project_tools,
 )
-from dcc_mcp_maya._env import resolve_project_tools_enabled as resolve_enabled
+from meshy_dcc_maya._env import resolve_project_tools_enabled as resolve_enabled
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -149,7 +149,7 @@ def _running_server(*, scene_resolver: Optional[MayaSceneResolver] = None):
 
 
 class TestEnvResolution(unittest.TestCase):
-    """``DCC_MCP_MAYA_PROJECT_TOOLS`` precedence — explicit > env > default."""
+    """``MESHY_DCC_MAYA_PROJECT_TOOLS`` precedence — explicit > env > default."""
 
     def setUp(self) -> None:
         self._saved = os.environ.pop(ENV_PROJECT_TOOLS, None)
@@ -353,7 +353,7 @@ class TestProjectToolsListedAndCallableOverMcp:
         # The state file must actually exist on disk.
         state_path = Path(save_payload["context"]["state_path"])
         assert state_path.is_file(), state_path
-        assert state_path.parent.name == ".dcc-mcp"
+        assert state_path.parent.name == ".meshy-dcc"
 
         # ``project_status`` should report the same state file.
         _, status_body = _post_json(
@@ -632,7 +632,7 @@ class TestProjectToolsViaRestChannel:
 
 
 class TestProjectToolsOptOut:
-    """``DCC_MCP_MAYA_PROJECT_TOOLS=0`` skips registration end-to-end."""
+    """``MESHY_DCC_MAYA_PROJECT_TOOLS=0`` skips registration end-to-end."""
 
     def test_disabled_via_env_means_no_project_tools_in_tools_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(ENV_PROJECT_TOOLS, "0")
@@ -658,7 +658,7 @@ class TestPublicSurface(unittest.TestCase):
             "attach_project_tools",
         ):
             self.assertTrue(
-                hasattr(dcc_mcp_maya, name),
-                f"dcc_mcp_maya.{name} should be importable",
+                hasattr(meshy_dcc_maya, name),
+                f"meshy_dcc_maya.{name} should be importable",
             )
-            self.assertIn(name, dcc_mcp_maya.__all__, f"{name} missing from __all__")
+            self.assertIn(name, meshy_dcc_maya.__all__, f"{name} missing from __all__")

@@ -1,4 +1,4 @@
-# dcc-mcp-maya development justfile
+# meshy-dcc-maya development justfile
 # Unified dependency and task management
 
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
@@ -34,8 +34,8 @@ default:
 # Verify dependency installation
 @verify-deps:
     echo "🔍 Verifying dependency installation..."
-    python -c "from dcc_mcp_maya import start_server; print('✓ dcc_mcp_maya')"
-    python -c "from dcc_mcp_core import create_skill_server; print('✓ dcc_mcp_core')"
+    python -c "from meshy_dcc_maya import start_server; print('✓ meshy_dcc_maya')"
+    python -c "from meshy_dcc_core import create_skill_server; print('✓ meshy_dcc_core')"
     python -c "import pytest; print('✓ pytest')"
     python -c "import requests; print('✓ requests')"
     echo "✅ All core dependencies verified"
@@ -81,7 +81,7 @@ lint-all: lint lint-skills lint-docs
     echo "🎨 Formatting with ruff..."
     python -m ruff format src/ tests/
     echo "🏷️  Running skill affinity annotator (idempotency check)..."
-    python tools/annotate_skill_affinity.py --skills-root src/dcc_mcp_maya/skills
+    python tools/annotate_skill_affinity.py --skills-root src/meshy_dcc_maya/skills
     echo "🔍 Running all lint checks..."
     python -m ruff check src/ tests/
     python tools/lint_skills.py --error-only
@@ -125,7 +125,7 @@ lint-all: lint lint-skills lint-docs
 # Run tests with coverage
 @test-coverage:
     echo "🧪 Running tests with coverage..."
-    python -m pytest --cov=dcc_mcp_maya --cov-report=term-missing tests/
+    python -m pytest --cov=meshy_dcc_maya --cov-report=term-missing tests/
     echo "✅ Tests complete with coverage report"
 
 # Run specific test file
@@ -177,7 +177,7 @@ lint-all: lint lint-skills lint-docs
     python --version
     echo ""
     echo "Key Packages:"
-    python -m pip show dcc-mcp-core | grep Version
+    python -m pip show meshy-dcc-core | grep Version
     python -m pip show pytest | grep Version
     python -m pip show ruff | grep Version
     python -m pip show requests | grep Version
@@ -185,9 +185,9 @@ lint-all: lint lint-skills lint-docs
 # Show dependency tree
 @deps-tree:
     echo "📦 Dependency tree (core packages):"
-    python -m pip show dcc-mcp-maya -f | grep "Location\|Requires"
+    python -m pip show meshy-dcc-maya -f | grep "Location\|Requires"
     echo ""
-    python -m pip show dcc-mcp-core -f | grep "Location\|Requires"
+    python -m pip show meshy-dcc-core -f | grep "Location\|Requires"
 
 # ============================================================================
 # CI/CD Utilities  
@@ -216,11 +216,11 @@ lint-all: lint lint-skills lint-docs
     python -m pip --version
     echo ""
     echo "Installed packages (key ones):"
-    python -m pip list | grep -E "dcc-mcp|pytest|ruff|requests"
+    python -m pip list | grep -E "meshy-dcc|pytest|ruff|requests"
     echo ""
     echo "Trying imports:"
-    python -c "from dcc_mcp_maya import start_server; print('✓ dcc_mcp_maya imports OK')" 2>&1 || echo "✗ dcc_mcp_maya import failed"
-    python -c "from dcc_mcp_core import create_skill_server; print('✓ dcc_mcp_core imports OK')" 2>&1 || echo "✗ dcc_mcp_core import failed"
+    python -c "from meshy_dcc_maya import start_server; print('✓ meshy_dcc_maya imports OK')" 2>&1 || echo "✗ meshy_dcc_maya import failed"
+    python -c "from meshy_dcc_core import create_skill_server; print('✓ meshy_dcc_core imports OK')" 2>&1 || echo "✗ meshy_dcc_core import failed"
     echo ""
     echo "✅ Diagnostic complete"
 
@@ -271,7 +271,7 @@ _maya-modules-dir := if os() == "windows" {
     if [ -f "justfile" ]; then PROJECT_ROOT="$(pwd)"; fi
 
     MOD_DIR="{{ _maya-modules-dir }}"
-    TARGET="$MOD_DIR/dcc-mcp-maya"
+    TARGET="$MOD_DIR/meshy-dcc-maya"
 
     echo "🔗 Setting up Maya dev symlinks (Maya {{ maya-version }})..."
     echo "   Project  : $PROJECT_ROOT"
@@ -300,29 +300,29 @@ _maya-modules-dir := if os() == "windows" {
         # Windows (Git Bash): use mklink (requires admin or developer mode)
         cmd //c "mklink /D \"$(cygpath -w "$TARGET/python")\" \"$(cygpath -w "$PROJECT_ROOT/src")\"" 2>/dev/null || \
             { echo "   ⚠️  Symlink failed, copying instead..."; cp -r "$PROJECT_ROOT/src" "$TARGET/python"; }
-        cmd //c "mklink \"$(cygpath -w "$TARGET/plug-ins/dcc_mcp_maya_plugin.py")\" \"$(cygpath -w "$PROJECT_ROOT/maya/plugin/dcc_mcp_maya_plugin.py")\"" 2>/dev/null || \
-            cp "$PROJECT_ROOT/maya/plugin/dcc_mcp_maya_plugin.py" "$TARGET/plug-ins/"
+        cmd //c "mklink \"$(cygpath -w "$TARGET/plug-ins/meshy_dcc_maya_plugin.py")\" \"$(cygpath -w "$PROJECT_ROOT/maya/plugin/meshy_dcc_maya_plugin.py")\"" 2>/dev/null || \
+            cp "$PROJECT_ROOT/maya/plugin/meshy_dcc_maya_plugin.py" "$TARGET/plug-ins/"
         cmd //c "mklink \"$(cygpath -w "$TARGET/scripts/userSetup.py")\" \"$(cygpath -w "$PROJECT_ROOT/maya/userSetup.py")\"" 2>/dev/null || \
             cp "$PROJECT_ROOT/maya/userSetup.py" "$TARGET/scripts/"
     else
         # Unix: symlinks just work
         ln -sf "$PROJECT_ROOT/src" "$TARGET/python"
-        ln -sf "$PROJECT_ROOT/maya/plugin/dcc_mcp_maya_plugin.py" "$TARGET/plug-ins/dcc_mcp_maya_plugin.py"
+        ln -sf "$PROJECT_ROOT/maya/plugin/meshy_dcc_maya_plugin.py" "$TARGET/plug-ins/meshy_dcc_maya_plugin.py"
         ln -sf "$PROJECT_ROOT/maya/userSetup.py" "$TARGET/scripts/userSetup.py"
     fi
 
     # Generate .mod file
-    echo "+ dcc-mcp-maya 0.0.0-dev $TARGET" > "$MOD_DIR/dcc-mcp-maya.mod"
-    echo "PYTHONPATH+:=python" >> "$MOD_DIR/dcc-mcp-maya.mod"
-    echo "MAYA_PLUG_IN_PATH+:=plug-ins" >> "$MOD_DIR/dcc-mcp-maya.mod"
-    echo "MAYA_SCRIPT_PATH+:=scripts" >> "$MOD_DIR/dcc-mcp-maya.mod"
+    echo "+ meshy-dcc-maya 0.0.0-dev $TARGET" > "$MOD_DIR/meshy-dcc-maya.mod"
+    echo "PYTHONPATH+:=python" >> "$MOD_DIR/meshy-dcc-maya.mod"
+    echo "MAYA_PLUG_IN_PATH+:=plug-ins" >> "$MOD_DIR/meshy-dcc-maya.mod"
+    echo "MAYA_SCRIPT_PATH+:=scripts" >> "$MOD_DIR/meshy-dcc-maya.mod"
 
     echo ""
     echo "   ✅ Symlinks created:"
     echo "      python/     → src/ (live source)"
     echo "      plug-ins/   → maya/plugin/"
     echo "      scripts/    → maya/userSetup.py"
-    echo "      .mod file   → $MOD_DIR/dcc-mcp-maya.mod"
+    echo "      .mod file   → $MOD_DIR/meshy-dcc-maya.mod"
     echo ""
     echo "   Next: start Maya {{ maya-version }} — the plugin loads automatically."
     echo "   Edit source → restart Maya (or use hot-reload) to see changes."
@@ -331,12 +331,12 @@ _maya-modules-dir := if os() == "windows" {
 @maya-link-win:
     powershell -NoProfile -ExecutionPolicy Bypass -File tools/maya-link-win.ps1 -MayaVersion {{ maya-version }}
 
-# Windows: build dcc-mcp-core with **this Maya's mayapy**, then symlink both
-# `dcc_mcp_core` (from core's `python/dcc_mcp_core`) and `dcc_mcp_maya` (from `src/dcc_mcp_maya`)
-# into `%USERPROFILE%/Documents/maya/modules/dcc-mcp-maya/python/`. Then start Maya for debugging.
+# Windows: build meshy-dcc-core with **this Maya's mayapy**, then symlink both
+# `meshy_dcc_core` (from core's `python/meshy_dcc_core`) and `meshy_dcc_maya` (from `src/meshy_dcc_maya`)
+# into `%USERPROFILE%/Documents/maya/modules/meshy-dcc-maya/python/`. Then start Maya for debugging.
 #
 # After run, use MCP URL printed below; see `docs/guide/local-mcp-debug.md` for Cursor + debugpy.
-# Default core repo: sibling directory `../dcc-mcp-core` or env `DCC_MCP_CORE_REPO`.
+# Default core repo: sibling directory `../meshy-dcc-core` or env `MESHY_DCC_CORE_REPO`.
 # Requires: Git, Rust (cargo), Maya installed under `Program Files/Autodesk/Maya<ver>/`.
 #
 #   just maya-dev-build-link-core-win
@@ -352,13 +352,13 @@ _maya-modules-dir := if os() == "windows" {
 @maya-dev-relink-core-win:
     powershell -NoProfile -ExecutionPolicy Bypass -File tools/maya-dev-build-link-core-win.ps1 -MayaVersion {{ maya-version }} -SkipBuild
 
-# Windows: copy a **local** dcc-mcp-core wheel + dcc-mcp-maya sources into
+# Windows: copy a **local** meshy-dcc-core wheel + meshy-dcc-maya sources into
 # %USERPROFILE%/Documents/maya (no PyPI). Does not touch git remotes.
 #
 # 1) Build core wheel (same machine / same Python ABI as your Maya, e.g. cp311 for Maya 2025):
-#      cd ../dcc-mcp-core && vx just build
+#      cd ../meshy-dcc-core && vx just build
 # 2) From this repo:
-#      just maya-local-mod-win ABI3_WHEEL=G:/PycharmProjects/github/dcc-mcp-core/dist/dcc_mcp_core-0.17.19-cp311-cp311-win_amd64.whl
+#      just maya-local-mod-win ABI3_WHEEL=G:/PycharmProjects/github/meshy-dcc-core/dist/meshy_dcc_core-0.17.19-cp311-cp311-win_amd64.whl
 # Maya 2022 (cp37): also pass a cp37 wheel:
 #      just maya-local-mod-win2022 ABI3_WHEEL=...cp38-abi3...whl CP37_WHEEL=...cp37-cp37m...whl
 @maya-local-mod-win ABI3_WHEEL:
@@ -372,8 +372,8 @@ _maya-modules-dir := if os() == "windows" {
     #!/usr/bin/env bash
     set -euo pipefail
     MOD_DIR="{{ _maya-modules-dir }}"
-    TARGET="$MOD_DIR/dcc-mcp-maya"
-    MOD_FILE="$MOD_DIR/dcc-mcp-maya.mod"
+    TARGET="$MOD_DIR/meshy-dcc-maya"
+    MOD_FILE="$MOD_DIR/meshy-dcc-maya.mod"
 
     echo "🧹 Removing Maya dev symlinks..."
 
@@ -396,8 +396,8 @@ _maya-modules-dir := if os() == "windows" {
 @maya-status:
     #!/usr/bin/env bash
     MOD_DIR="{{ _maya-modules-dir }}"
-    TARGET="$MOD_DIR/dcc-mcp-maya"
-    MOD_FILE="$MOD_DIR/dcc-mcp-maya.mod"
+    TARGET="$MOD_DIR/meshy-dcc-maya"
+    MOD_FILE="$MOD_DIR/meshy-dcc-maya.mod"
 
     echo "📋 Maya dev link status:"
     echo "   Modules dir: $MOD_DIR"
@@ -412,9 +412,9 @@ _maya-modules-dir := if os() == "windows" {
         echo "   ❌ python/   not found"
     fi
 
-    if [ -L "$TARGET/plug-ins/dcc_mcp_maya_plugin.py" ]; then
+    if [ -L "$TARGET/plug-ins/meshy_dcc_maya_plugin.py" ]; then
         echo "   ✅ plug-ins/ → linked"
-    elif [ -f "$TARGET/plug-ins/dcc_mcp_maya_plugin.py" ]; then
+    elif [ -f "$TARGET/plug-ins/meshy_dcc_maya_plugin.py" ]; then
         echo "   ⚠️  plug-ins/ exists (copied)"
     else
         echo "   ❌ plug-ins/ not found"
@@ -430,21 +430,21 @@ _maya-modules-dir := if os() == "windows" {
 @maya-status-win:
     powershell -NoProfile -ExecutionPolicy Bypass -File tools/maya-status-win.ps1
 
-# Install dcc-mcp-core into Maya's Python (requires mayapy on PATH)
+# Install meshy-dcc-core into Maya's Python (requires mayapy on PATH)
 @maya-install-core maya-py="mayapy":
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "📦 Installing dcc-mcp-core into Maya Python..."
-    {{ maya-py }} -m pip install dcc-mcp-core --upgrade
-    echo "✅ dcc-mcp-core installed into Maya Python"
+    echo "📦 Installing meshy-dcc-core into Maya Python..."
+    {{ maya-py }} -m pip install meshy-dcc-core --upgrade
+    echo "✅ meshy-dcc-core installed into Maya Python"
 
-# Windows version: Install dcc-mcp-core into Maya's Python
+# Windows version: Install meshy-dcc-core into Maya's Python
 @maya-install-core-win maya-version="{{ maya-version }}":
     powershell -NoProfile -ExecutionPolicy Bypass -File tools/maya-install-core-win.ps1 -MayaVersion {{ maya-version }}
 # Full local dev setup: link + install core into Maya Python
 maya-dev: maya-link
     @echo ""
-    @echo "📋 Dev environment linked. Now install dcc-mcp-core into Maya:"
+    @echo "📋 Dev environment linked. Now install meshy-dcc-core into Maya:"
     @echo "   Unix/macOS:"
     @echo "     just maya-install-core maya-py=/path/to/mayapy"
     @echo "     or if mayapy is on PATH:"

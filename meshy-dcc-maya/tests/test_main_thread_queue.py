@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`dcc_mcp_maya._main_thread_queue`.
+"""Unit tests for :mod:`meshy_dcc_maya._main_thread_queue`.
 
 The queue is the **only** main-thread serialisation point under the
 new ``execute_python`` (post #248). These tests cover the contract:
@@ -34,7 +34,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # Import local modules
-from dcc_mcp_maya import _main_thread_queue
+from meshy_dcc_maya import _main_thread_queue
 
 
 @pytest.fixture(autouse=True)

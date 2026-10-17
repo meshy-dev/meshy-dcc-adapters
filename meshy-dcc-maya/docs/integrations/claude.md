@@ -1,17 +1,17 @@
 # Claude Desktop / Anthropic API Integration Guide
 
 
-> Vendor integration notes for `dcc-mcp-maya`. Moved here from the repo root so that
-> [`AGENTS.md`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) stays the **only** agent contract file at the root.
+> Vendor integration notes for `meshy-dcc-maya`. Moved here from the repo root so that
+> [`AGENTS.md`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) stays the **only** agent contract file at the root.
 > Anything not specific to this vendor belongs in `AGENTS.md`, not here.
-> Claude-specific integration notes for `dcc-mcp-maya`.
-> For the full project map, see [AGENTS.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md).
+> Claude-specific integration notes for `meshy-dcc-maya`.
+> For the full project map, see [AGENTS.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md).
 
 ---
 
 ## What This Project Does
 
-`dcc-mcp-maya` embeds an MCP Streamable HTTP server directly inside Autodesk Maya. Claude Desktop (or any Anthropic API client using MCP) can call 72+ Maya tools over HTTP without any external gateway process.
+`meshy-dcc-maya` embeds an MCP Streamable HTTP server directly inside Autodesk Maya. Claude Desktop (or any Anthropic API client using MCP) can call 72+ Maya tools over HTTP without any external gateway process.
 
 ---
 
@@ -23,7 +23,7 @@ Add to `claude_desktop_config.json`:
 {
   "mcpServers": {
     "maya": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -38,7 +38,7 @@ If running multi-instance mode with gateway, use the gateway port instead:
 {
   "mcpServers": {
     "maya": {
-      "url": "http://127.0.0.1:9765/mcp"
+      "url": "http://127.0.0.1:19765/mcp"
     }
   }
 }
@@ -50,7 +50,7 @@ Restart Claude Desktop after editing.
 
 ## Progressive Loading — Important for Claude
 
-By default, `dcc-mcp-maya` starts in **minimal mode** with only a few built-in tools active:
+By default, `meshy-dcc-maya` starts in **minimal mode** with only a few built-in tools active:
 - `execute_python`, `execute_mel`
 - `get_scene_info`, `get_selection`, `get_session_info`
 - `search_tools`, `list_skills`, `load_skill`
@@ -68,7 +68,7 @@ This keeps the initial `tools/list` small and fast for Claude to parse.
 
 - **Viewport feedback:** Ask Claude to call `capture_viewport` after geometry changes. The result is a base64-encoded PNG that Claude can "see" in the conversation.
 - **Cancellation:** Claude can send `notifications/cancelled` for long renders. Skill scripts that poll `check_maya_cancelled()` will exit cleanly.
-- **Code execution:** Prefer `search_skills` → `load_skill` → typed tools with `inputSchema`. Use `execute_python` only when no skill covers the task (bulk in-Maya loops, OpenMaya gaps, one-offs). Operators can refuse it with `DCC_MCP_MAYA_DISABLE_EXECUTE_PYTHON=1` or `DCC_MCP_MAYA_DISABLE_ARBITRARY_SCRIPT=1`.
+- **Code execution:** Prefer `search_skills` → `load_skill` → typed tools with `inputSchema`. Use `execute_python` only when no skill covers the task (bulk in-Maya loops, OpenMaya gaps, one-offs). Operators can refuse it with `MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON=1` or `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1`.
 
 ---
 
@@ -83,7 +83,7 @@ This keeps the initial `tools/list` small and fast for Claude to parse.
 
 ## See Also
 
-- [AGENTS.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) — Shared agent navigation map; keep common guidance single-sourced there
-- [llms.txt](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/llms.txt) — One-page core reference
-- [llms-full.txt](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/llms-full.txt) — Exhaustive API reference
-- [README.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/README.md) — Human-facing installation and overview
+- [AGENTS.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) — Shared agent navigation map; keep common guidance single-sourced there
+- [llms.txt](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/llms.txt) — One-page core reference
+- [llms-full.txt](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/llms-full.txt) — Exhaustive API reference
+- [README.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/README.md) — Human-facing installation and overview

@@ -3,7 +3,7 @@
 
 Background
 ----------
-dcc-mcp-core's skill loader reads each tool's group membership from the
+meshy-dcc-core's skill loader reads each tool's group membership from the
 ``group:`` attribute on the :class:`ToolDeclaration` itself, not by
 cross-referencing the skill's ``groups:`` list.  The "sibling-file"
 migration (#356) split tool and group declarations into separate files
@@ -12,7 +12,7 @@ progressive exposure (minimal mode no longer deactivates the
 ``extended`` / ``scene-management`` groups because every tool's
 ``group`` ends up empty).
 
-This script walks every skill directory under ``src/dcc_mcp_maya/skills``,
+This script walks every skill directory under ``src/meshy_dcc_maya/skills``,
 reads its ``groups.yaml`` (or the ``groups:`` key embedded in
 ``tools.yaml``) and writes the matching ``group:`` value back onto each
 entry in ``tools.yaml``.  The file is rewritten in-place with the same
@@ -132,8 +132,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--skills-root",
-        default="src/dcc_mcp_maya/skills",
-        help="Path to skills directory (default: src/dcc_mcp_maya/skills)",
+        default="src/meshy_dcc_maya/skills",
+        help="Path to skills directory (default: src/meshy_dcc_maya/skills)",
     )
     parser.add_argument(
         "--skill",

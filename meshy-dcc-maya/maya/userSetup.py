@@ -1,4 +1,4 @@
-"""Maya userSetup.py -- auto-load the receipted dcc-mcp-maya module."""
+"""Maya userSetup.py -- auto-load the receipted meshy-dcc-maya module."""
 
 from __future__ import annotations
 
@@ -15,10 +15,10 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-BOOTSTRAP_ERROR_DIR_ENV = "DCC_MCP_MAYA_BOOTSTRAP_ERROR_DIR"
+BOOTSTRAP_ERROR_DIR_ENV = "MESHY_DCC_MAYA_BOOTSTRAP_ERROR_DIR"
 
 #: DCC identifier stamped onto every record. Keep in sync with
-#: ``dcc_mcp_maya.install.DCC_TYPE``: core keys its own host-error log on the
+#: ``meshy_dcc_maya.install.DCC_TYPE``: core keys its own host-error log on the
 #: same value, so a cross-referencing operator sees one name for one host.
 DCC_TYPE = "maya"
 
@@ -26,9 +26,9 @@ DCC_TYPE = "maya"
 BOOTSTRAP_ERROR_SCHEMA_VERSION = 1
 #: Bytes a single day's JSONL may reach before it is rotated. Matches core's
 #: ``RotatingFileHandler(maxBytes=..., backupCount=4)`` in
-#: ``dcc_mcp_core.host_errors`` so both logs age out at the same rate.
+#: ``meshy_dcc_core.host_errors`` so both logs age out at the same rate.
 #:
-#: The file is shared with ``dcc_mcp_maya._bootstrap_watch``, which appends
+#: The file is shared with ``meshy_dcc_maya._bootstrap_watch``, which appends
 #: its ``finished`` / ``hang_detected`` terminal events to the same
 #: ``userSetup-<YYYYMMDD>.jsonl``. Rotation therefore only renames and never
 #: truncates in place, so a concurrent append lands in a rotated generation
@@ -41,7 +41,7 @@ BOOTSTRAP_ERROR_BACKUP_COUNT = 4
 #: Stages whose failure is *already* on disk in core's schema, so recording it
 #: here as well would leave two differently-shaped records for one failure.
 #:
-#: ``dcc_mcp_maya.install.bootstrap_user_setup`` wraps ``cmds.loadPlugin`` in
+#: ``meshy_dcc_maya.install.bootstrap_user_setup`` wraps ``cmds.loadPlugin`` in
 #: core's ``capture_bootstrap_errors``, which records and then re-raises. When
 #: core owns that capture path, a ``plugin_load`` failure it re-raises is
 #: already persisted -- it carries ``adapter_version`` / ``core_version`` /
@@ -49,16 +49,16 @@ BOOTSTRAP_ERROR_BACKUP_COUNT = 4
 #:
 #: Owning the stage is not the same as owning the record: core only captures
 #: when it actually has ``capture_bootstrap_errors``, which it does not below
-#: 0.19.90. ``dcc_mcp_maya.install.MIN_CORE_VERSION`` is above that line, so
+#: 0.19.90. ``meshy_dcc_maya.install.MIN_CORE_VERSION`` is above that line, so
 #: this is defence in depth rather than a live gap -- probe the symbol anyway.
-#: On such an older core the ``from dcc_mcp_core import
+#: On such an older core the ``from meshy_dcc_core import
 #: capture_bootstrap_errors`` inside ``bootstrap_user_setup`` raises before
 #: any capture runs, the ImportError surfaces as ``plugin_load``, and core has
 #: written nothing -- suppressing the local record there would drop the only
 #: trace of the failure. :func:`_report_failure` therefore pairs this set with
 #: :func:`_core_persists_bootstrap_errors` and never trusts the set alone.
 #:
-#: If ``dcc_mcp_core``'s module-level import in ``dcc_mcp_maya.install`` is
+#: If ``meshy_dcc_core``'s module-level import in ``meshy_dcc_maya.install`` is
 #: ever made lazy, ``plugin_load`` must come off this set with it: a lazy
 #: import failure would surface as ``plugin_load`` and be silenced here.
 #:
@@ -80,7 +80,7 @@ def _core_persists_bootstrap_errors() -> bool:
     ``bootstrap_user_setup`` only reaches this point after core imported
     successfully, so the module object is present whenever this matters.
     """
-    core = sys.modules.get("dcc_mcp_core")
+    core = sys.modules.get("meshy_dcc_core")
     return core is not None and hasattr(core, "capture_bootstrap_errors")
 
 
@@ -111,7 +111,7 @@ def _bootstrap_watch() -> Optional[ModuleType]:
     itself an error worth raising here.
     """
     try:
-        from dcc_mcp_maya import _bootstrap_watch
+        from meshy_dcc_maya import _bootstrap_watch
     except Exception:
         return None
     return _bootstrap_watch
@@ -126,7 +126,7 @@ def _mark_run_started() -> bool:
     visible proof that a load was attempted and never returned.
 
     It is written here, once per sourced ``userSetup.py``, rather than inside
-    :func:`_load_dcc_mcp_maya`: that function runs again on every watchdog
+    :func:`_load_meshy_dcc_maya`: that function runs again on every watchdog
     retry, and a marker per attempt would let one attempt's exit hide the
     next attempt's hang.
 
@@ -200,7 +200,7 @@ def _bootstrap_error_dir() -> Path:
     override = os.environ.get(BOOTSTRAP_ERROR_DIR_ENV)
     if override:
         return Path(override)
-    return Path.home() / ".dcc-mcp" / "receipts" / "bootstrap-errors"
+    return Path.home() / ".meshy-dcc" / "receipts" / "bootstrap-errors"
 
 
 def _package_version(module_name: str) -> Optional[str]:
@@ -266,8 +266,8 @@ def _write_failure_record(stage: str, error_type: str, message: str, formatted: 
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "pid": os.getpid(),
         "dcc_type": DCC_TYPE,
-        "adapter_version": _package_version("dcc_mcp_maya"),
-        "core_version": _package_version("dcc_mcp_core"),
+        "adapter_version": _package_version("meshy_dcc_maya"),
+        "core_version": _package_version("meshy_dcc_core"),
         "stage": stage,
         "status": "failed",
         "error_type": error_type,
@@ -289,7 +289,7 @@ def _write_failure_record(stage: str, error_type: str, message: str, formatted: 
         with log_path.open("a", encoding="utf-8", newline="") as stream:
             stream.write(payload + "\n")
     except Exception as write_error:
-        _echo_to_stderr("dcc-mcp-maya auto-load: could not write {} to {}: {}".format(stage, log_path, write_error))
+        _echo_to_stderr("meshy-dcc-maya auto-load: could not write {} to {}: {}".format(stage, log_path, write_error))
         _echo_to_stderr(payload)
 
 
@@ -303,7 +303,7 @@ def _report_failure(stage: str, exc: BaseException) -> None:
     a silent no-op can never masquerade as a successful load again.
     """
     error_type = type(exc).__name__
-    message = "dcc-mcp-maya auto-load failed ({}): {}: {}".format(stage, error_type, exc)
+    message = "meshy-dcc-maya auto-load failed ({}): {}: {}".format(stage, error_type, exc)
     # Format the exception's *own* traceback rather than the one currently
     # being handled: several callers (notably the watchdog give-up) build the
     # exception outside an ``except`` block, where ``traceback.format_exc()``
@@ -336,7 +336,7 @@ def _report_failure(stage: str, exc: BaseException) -> None:
 def _setup_module_paths() -> None:
     """Expose the installed module in GUI, standalone, and batch modes."""
     try:
-        import dcc_mcp_maya  # noqa: F401
+        import meshy_dcc_maya  # noqa: F401
 
         return
     except ImportError:
@@ -350,7 +350,7 @@ def _setup_module_paths() -> None:
         module_dirs = [Path.home() / "maya" / "modules"]
 
     for modules_dir in module_dirs:
-        module_root = modules_dir / "dcc-mcp-maya"
+        module_root = modules_dir / "meshy-dcc-maya"
         if not module_root.is_dir():
             continue
         plugins_dir = module_root / "plug-ins"
@@ -369,11 +369,11 @@ def _setup_module_paths() -> None:
 
 
 def _apply_default_env() -> None:
-    os.environ.setdefault("DCC_MCP_MAYA_PORT", "0")
-    os.environ.setdefault("DCC_MCP_GATEWAY_PORT", "9765")
+    os.environ.setdefault("MESHY_DCC_MAYA_PORT", "0")
+    os.environ.setdefault("MESHY_DCC_GATEWAY_PORT", "19765")
 
 
-def _load_dcc_mcp_maya() -> None:
+def _load_meshy_dcc_maya() -> None:
     """Run the fixed captured bootstrap after Maya's startup queue drains.
 
     Each phase is reported separately: "the plug-in did not load" is not
@@ -393,7 +393,7 @@ def _load_dcc_mcp_maya() -> None:
         return
 
     try:
-        from dcc_mcp_maya.install import bootstrap_user_setup
+        from meshy_dcc_maya.install import bootstrap_user_setup
     except Exception as exc:
         _report_failure("import", exc)
         _retire_if_terminal(finished=False)
@@ -416,13 +416,13 @@ def _load_dcc_mcp_maya() -> None:
         cmds = _maya_cmds()
         if cmds is None:  # nothing to verify outside a Maya session
             verified = True
-        elif cmds.pluginInfo("dcc_mcp_maya_plugin", query=True, loaded=True):
+        elif cmds.pluginInfo("meshy_dcc_maya_plugin", query=True, loaded=True):
             verified = True
         else:
             _report_failure(
                 "plugin_verify",
                 RuntimeError(
-                    "bootstrap_user_setup() returned but dcc_mcp_maya_plugin is not loaded; "
+                    "bootstrap_user_setup() returned but meshy_dcc_maya_plugin is not loaded; "
                     "check the Plug-in Manager and the bootstrap-error log"
                 ),
             )
@@ -485,7 +485,7 @@ def _plugin_loaded() -> bool:
     if cmds is None:
         return False
     try:
-        return bool(cmds.pluginInfo("dcc_mcp_maya_plugin", query=True, loaded=True))
+        return bool(cmds.pluginInfo("meshy_dcc_maya_plugin", query=True, loaded=True))
     except Exception:
         return False
 
@@ -552,13 +552,13 @@ def _arm_autoload_watchdog() -> None:
                 "watchdog_give_up",
                 RuntimeError(
                     "plug-in still not loaded after {} retries; load it manually with "
-                    "cmds.loadPlugin('dcc_mcp_maya_plugin')".format(WATCHDOG_MAX_ATTEMPTS)
+                    "cmds.loadPlugin('meshy_dcc_maya_plugin')".format(WATCHDOG_MAX_ATTEMPTS)
                 ),
             )
             return
         state["attempts"] += 1
         state["next_check"] = now + WATCHDOG_GRACE_SECS
-        _load_dcc_mcp_maya()
+        _load_meshy_dcc_maya()
 
     try:
         state["job"] = script_job(event=("idle", _on_idle))
@@ -573,7 +573,7 @@ if _maya_cmds() is not None:
     # session nothing would ever retire it. Written before the first schedule
     # so that it exists before any attempt -- including the watchdog's retries.
     _mark_run_started()
-scheduled = _schedule(_load_dcc_mcp_maya)
+scheduled = _schedule(_load_meshy_dcc_maya)
 _arm_autoload_watchdog()
 if not scheduled:
     # Nothing was queued. The watchdog may still own the run (it retries from

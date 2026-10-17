@@ -1,14 +1,14 @@
 """HTTP transport coverage for Maya MCP — in-process server and sidecar.
 
-* **In-process** — :class:`~dcc_mcp_maya.server.MayaMcpServer` exposes the full
+* **In-process** — :class:`~meshy_dcc_maya.server.MayaMcpServer` exposes the full
   Streamable HTTP MCP surface (``POST /mcp``) and the REST skill API
   (``GET/POST /v1/*``). Deeper scenarios live in
   :mod:`tests.test_http_dynamic_skill_api` and :mod:`tests.test_rest_skill_api`.
 
-* **Sidecar** — ``dcc-mcp-server sidecar`` publishes a minimal MCP listener
+* **Sidecar** — ``meshy-dcc-server sidecar`` publishes a minimal MCP listener
   (``initialize``, ``ping``, ``tools/call`` only) that forwards to the in-Maya
   Qt JSON-line dispatcher. These tests spin a stub ``qtserver://`` peer that
-  calls :func:`dcc_mcp_maya.sidecar.dispatch_payload` against a real
+  calls :func:`meshy_dcc_maya.sidecar.dispatch_payload` against a real
   :class:`MayaMcpServer` fixture.
 """
 
@@ -22,8 +22,8 @@ from typing import Any, Dict
 
 import pytest
 
-from dcc_mcp_maya.server import MayaMcpServer
-from dcc_mcp_maya.sidecar import start_sidecar, stop_sidecar
+from meshy_dcc_maya.server import MayaMcpServer
+from meshy_dcc_maya.sidecar import start_sidecar, stop_sidecar
 from tests._transport_support import (
     ParentSurrogate,
     QtJsonLineStubServer,
@@ -55,7 +55,7 @@ def test_sidecar_registry_wait_filters_by_host_rpc_uri(tmp_path):
                         "host": "127.0.0.1",
                         "port": 1,
                         "metadata": {
-                            "dcc_mcp_role": "per-dcc-sidecar",
+                            "meshy_dcc_role": "per-dcc-sidecar",
                             "host_rpc_uri": stale_uri,
                             "mcp_url": "http://127.0.0.1:1/mcp",
                         },
@@ -65,7 +65,7 @@ def test_sidecar_registry_wait_filters_by_host_rpc_uri(tmp_path):
                         "host": "127.0.0.1",
                         "port": 2,
                         "metadata": {
-                            "dcc_mcp_role": "per-dcc-sidecar",
+                            "meshy_dcc_role": "per-dcc-sidecar",
                             "host_rpc_uri": expected_uri,
                             "mcp_url": "http://0.0.0.0:2/mcp",
                         },
@@ -95,7 +95,7 @@ def test_sidecar_registry_wait_ignores_initial_port_zero_row(tmp_path):
                         "host": "127.0.0.1",
                         "port": 0,
                         "metadata": {
-                            "dcc_mcp_role": "per-dcc-sidecar",
+                            "meshy_dcc_role": "per-dcc-sidecar",
                             "host_rpc_uri": expected_uri,
                             "mcp_url": "http://127.0.0.1:0/mcp",
                         },
@@ -105,7 +105,7 @@ def test_sidecar_registry_wait_ignores_initial_port_zero_row(tmp_path):
                         "host": "127.0.0.1",
                         "port": 3,
                         "metadata": {
-                            "dcc_mcp_role": "per-dcc-sidecar",
+                            "meshy_dcc_role": "per-dcc-sidecar",
                             "host_rpc_uri": expected_uri,
                             "mcp_url": "http://127.0.0.1:3/mcp",
                         },
@@ -136,7 +136,7 @@ def _write_echo_skill(root: Path, name: str) -> Path:
             description: Transport test skill.
             license: MIT
             metadata:
-              dcc-mcp:
+              meshy-dcc:
                 dcc: maya
                 layer: domain
                 version: 1.0.0
@@ -191,7 +191,7 @@ def _write_render_smoke_skill(root: Path) -> Path:
             description: Render transport regression skill.
             license: MIT
             metadata:
-              dcc-mcp:
+              meshy-dcc:
                 dcc: maya
                 layer: domain
                 version: 1.0.0
@@ -421,7 +421,7 @@ def sidecar_mcp_url(echo_maya_server, tmp_path):
             registry_dir=registry_dir,
             start_qt_server_fn=qt_stub_factory(port),
             stop_qt_server_fn=qt_stub.stop,
-            extra_env={"DCC_MCP_GATEWAY_PORT": "0"},
+            extra_env={"MESHY_DCC_GATEWAY_PORT": "0"},
         )
         entry = wait_for_sidecar_registry_row(registry_dir, host_rpc_uri=handle.host_rpc_uri)
         url = mcp_url_from_registry_entry(entry)
@@ -436,7 +436,7 @@ def sidecar_mcp_url(echo_maya_server, tmp_path):
 
 @pytest.mark.skipif(
     not sidecar_binary_available(),
-    reason="dcc-mcp-server binary not available (pip install dcc-mcp-server)",
+    reason="meshy-dcc-server binary not available (pip install meshy-dcc-server)",
 )
 class TestSidecarHttpApi:
     """MCP HTTP on the out-of-process sidecar (dispatch-only surface)."""
@@ -458,7 +458,7 @@ class TestSidecarHttpApi:
                 },
             },
         )
-        assert init.get("result", {}).get("serverInfo", {}).get("name") == "dcc-mcp-sidecar"
+        assert init.get("result", {}).get("serverInfo", {}).get("name") == "meshy-dcc-sidecar"
 
     def test_sidecar_mcp_tools_call_via_qt_dispatch(self, sidecar_mcp_url):
         url, action, _, _, _ = sidecar_mcp_url

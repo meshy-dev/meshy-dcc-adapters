@@ -37,7 +37,7 @@ except Exception:
     pass
 
 # Import local modules
-from dcc_mcp_maya import _maya_commandport_hygiene as _commandport  # noqa: E402
+from meshy_dcc_maya import _maya_commandport_hygiene as _commandport  # noqa: E402
 from maya import cmds  # noqa: E402
 
 pytestmark = pytest.mark.e2e
@@ -65,7 +65,7 @@ class TestSuppressSecurityWarningsE2E:
         assert _commandport.suppress_security_warnings() >= 0
 
     def test_env_opt_out_short_circuits(self, monkeypatch):
-        """``DCC_MCP_MAYA_DISABLE_COMMANDPORT_WARNING=0`` ⇒ helper returns 0
+        """``MESHY_DCC_MAYA_DISABLE_COMMANDPORT_WARNING=0`` ⇒ helper returns 0
         without touching any port."""
         port_name = ":{}".format(_free_tcp_port())
         cmds.commandPort(name=port_name, sourceType="mel", securityWarning=True)

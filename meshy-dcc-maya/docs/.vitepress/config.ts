@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'dcc-mcp-maya',
+  title: 'meshy-dcc-maya',
   description: 'AI-Powered Maya Automation via MCP Protocol',
   base: '/',
 
@@ -22,7 +22,7 @@ export default defineConfig({
         nav: [
           { text: '指南', link: '/zh/guide/' },
           { text: 'API 参考', link: '/zh/api/server' },
-          { text: 'GitHub', link: 'https://github.com/loonghao/dcc-mcp-maya' },
+          { text: 'GitHub', link: 'https://github.com/loonghao/meshy-dcc-maya' },
         ],
         sidebar: {
           '/zh/guide/': [
@@ -77,7 +77,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/' },
       { text: 'API Reference', link: '/api/server' },
-      { text: 'GitHub', link: 'https://github.com/loonghao/dcc-mcp-maya' },
+      { text: 'GitHub', link: 'https://github.com/loonghao/meshy-dcc-maya' },
     ],
 
     sidebar: {
@@ -121,7 +121,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/loonghao/dcc-mcp-maya' },
+      { icon: 'github', link: 'https://github.com/loonghao/meshy-dcc-maya' },
     ],
 
     footer: {

@@ -6,7 +6,7 @@ state observable: a ``started`` marker that is never retired and outlives the
 threshold means the load was attempted and never returned.
 
 The marker is deliberately **run-scoped, not attempt-scoped**. After PR #550
-``_load_dcc_mcp_maya`` runs again on every idle-watchdog retry, so a marker per
+``_load_meshy_dcc_maya`` runs again on every idle-watchdog retry, so a marker per
 attempt would let attempt N's exit hide attempt N+1's hang.
 """
 
@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 from types import ModuleType
 
-from dcc_mcp_maya import _bootstrap_watch as watch
+from meshy_dcc_maya import _bootstrap_watch as watch
 
 USER_SETUP_PATH = Path(__file__).resolve().parents[1] / "maya" / "userSetup.py"
 
@@ -34,8 +34,8 @@ def _isolate(monkeypatch, tmp_path):
     ``tests/test_server.py``'s port-resolution assertions order-dependent.
     """
     monkeypatch.setenv(watch.ENV_BOOTSTRAP_ERROR_DIR, str(tmp_path))
-    monkeypatch.setenv("DCC_MCP_MAYA_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "9765")
+    monkeypatch.setenv("MESHY_DCC_MAYA_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
     return tmp_path
 
 
@@ -125,7 +125,7 @@ def test_finished_load_leaves_no_pending_marker(monkeypatch, tmp_path) -> None:
 
 
 def test_threshold_is_configurable(monkeypatch, tmp_path) -> None:
-    """Acceptance: the hang threshold follows DCC_MCP_MAYA_BOOTSTRAP_TIMEOUT."""
+    """Acceptance: the hang threshold follows MESHY_DCC_MAYA_BOOTSTRAP_TIMEOUT."""
     _isolate(monkeypatch, tmp_path)
     _write_marker(tmp_path, "run-slow", age_secs=10.0)
 
@@ -208,7 +208,7 @@ def _exec_user_setup(monkeypatch, cmds_module):
     monkeypatch.setitem(sys.modules, "maya", maya_module)
     monkeypatch.setitem(sys.modules, "maya.cmds", cmds_module)
 
-    spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_user_setup_hang", USER_SETUP_PATH)
+    spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_user_setup_hang", USER_SETUP_PATH)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -231,9 +231,9 @@ def _stub_cmds(*, with_eval_deferred=True, plugin_loaded=True):
 
 
 def _install_adapter_stub(monkeypatch, side_effect=None):
-    """Inject a fake ``dcc_mcp_maya.install`` so no plug-in is really loaded."""
+    """Inject a fake ``meshy_dcc_maya.install`` so no plug-in is really loaded."""
     calls = []
-    install_module = ModuleType("dcc_mcp_maya.install")
+    install_module = ModuleType("meshy_dcc_maya.install")
 
     def bootstrap_user_setup(defer=True):
         calls.append({"defer": defer})
@@ -241,7 +241,7 @@ def _install_adapter_stub(monkeypatch, side_effect=None):
             raise side_effect
 
     install_module.bootstrap_user_setup = bootstrap_user_setup
-    monkeypatch.setitem(sys.modules, "dcc_mcp_maya.install", install_module)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_maya.install", install_module)
     return calls
 
 
@@ -253,7 +253,7 @@ def _install_core_stub(monkeypatch):
     mayapy floor lane installs. Without this pin the dedupe assertion below
     would silently mean different things on different core versions.
     """
-    core_module = ModuleType("dcc_mcp_core")
+    core_module = ModuleType("meshy_dcc_core")
     core_module.__version__ = "0.19.90"
 
     @contextlib.contextmanager
@@ -262,14 +262,14 @@ def _install_core_stub(monkeypatch):
         yield
 
     core_module.capture_bootstrap_errors = capture_bootstrap_errors
-    monkeypatch.setitem(sys.modules, "dcc_mcp_core", core_module)
+    monkeypatch.setitem(sys.modules, "meshy_dcc_core", core_module)
     return core_module
 
 
 def test_marker_is_written_once_per_run_before_the_first_schedule(monkeypatch, tmp_path) -> None:
     """PM condition 1: one marker per run, written before the first schedule.
 
-    The idle watchdog calls ``_load_dcc_mcp_maya`` again on every retry, so a
+    The idle watchdog calls ``_load_meshy_dcc_maya`` again on every retry, so a
     marker per attempt would let attempt N's exit mask attempt N+1's hang.
     """
     _isolate(monkeypatch, tmp_path)
@@ -383,7 +383,7 @@ def test_no_marker_outside_a_maya_session(monkeypatch, tmp_path) -> None:
     _isolate(monkeypatch, tmp_path)
     monkeypatch.setitem(sys.modules, "maya", None)
 
-    spec = importlib.util.spec_from_file_location("_dcc_mcp_maya_user_setup_hang", USER_SETUP_PATH)
+    spec = importlib.util.spec_from_file_location("_meshy_dcc_maya_user_setup_hang", USER_SETUP_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 

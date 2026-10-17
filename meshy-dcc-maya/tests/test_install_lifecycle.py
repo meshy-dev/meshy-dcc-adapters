@@ -24,15 +24,15 @@ def _write_provenanced_module_zip(install, payload, *, mutate=None, python37_con
     # (``install.MIN_CORE_VERSION``); deriving it here keeps these fixtures valid when the
     # declared Core floor moves.
     core_version = install.MIN_CORE_VERSION
-    core_path = "python/dcc_mcp_core/__init__.py"
+    core_path = "python/meshy_dcc_core/__init__.py"
     core_content = ('__version__ = "%s"\n' % core_version).encode()
-    metadata_path = "python/dcc_mcp_core-%s.dist-info/METADATA" % core_version
-    metadata_content = ("Metadata-Version: 2.1\nName: dcc-mcp-core\nVersion: %s\n" % core_version).encode()
+    metadata_path = "python/meshy_dcc_core-%s.dist-info/METADATA" % core_version
+    metadata_content = ("Metadata-Version: 2.1\nName: meshy-dcc-core\nVersion: %s\n" % core_version).encode()
     provenance = {
         "schema_version": 1,
-        "name": "dcc-mcp-core",
+        "name": "meshy-dcc-core",
         "version": core_version,
-        "source_wheels": [{"filename": "dcc_mcp_core-%s-cp38-abi3-win_amd64.whl" % core_version, "sha256": "a" * 64}],
+        "source_wheels": [{"filename": "meshy_dcc_core-%s-cp38-abi3-win_amd64.whl" % core_version, "sha256": "a" * 64}],
         "roots": {
             "python": {
                 "metadata": _provenance_record(metadata_path, metadata_content),
@@ -41,15 +41,15 @@ def _write_provenanced_module_zip(install, payload, *, mutate=None, python37_con
         },
     }
     entries = {
-        "python/dcc_mcp_maya/__init__.py": b"",
+        "python/meshy_dcc_maya/__init__.py": b"",
         core_path: core_content,
         metadata_path: metadata_content,
-        "plug-ins/dcc_mcp_maya_plugin.py": b"",
+        "plug-ins/meshy_dcc_maya_plugin.py": b"",
         "scripts/userSetup.py": b"",
     }
     if python37_content is not None:
-        python37_path = "python37/dcc_mcp_core/_core.pyd"
-        python37_metadata_path = "python37/dcc_mcp_core-%s.dist-info/METADATA" % core_version
+        python37_path = "python37/meshy_dcc_core/_core.pyd"
+        python37_metadata_path = "python37/meshy_dcc_core-%s.dist-info/METADATA" % core_version
         entries[python37_path] = python37_content
         entries[python37_metadata_path] = metadata_content
         provenance["roots"]["python37"] = {
@@ -64,7 +64,7 @@ def _write_provenanced_module_zip(install, payload, *, mutate=None, python37_con
     entries["core-provenance.json"] = provenance_content
     entries["module-info.json"] = json.dumps(
         {
-            "name": "dcc_mcp_maya",
+            "name": "meshy_dcc_maya",
             "adapter_version": install.__version__,
             "embedded_core_version": install.MIN_CORE_VERSION,
             "min_core_version": install.MIN_CORE_VERSION,
@@ -78,7 +78,7 @@ def _write_provenanced_module_zip(install, payload, *, mutate=None, python37_con
     ).encode()
     with zipfile.ZipFile(str(payload), "w") as archive:
         for path, content in entries.items():
-            archive.writestr("dcc-mcp-maya/" + path, content)
+            archive.writestr("meshy-dcc-maya/" + path, content)
     return entries, provenance
 
 
@@ -88,9 +88,9 @@ def _configure_fake_maya(install, tmp_path, monkeypatch, version="2025"):
     modules_dir = tmp_path / "maya-profile" / "modules"
     scripts_dir = tmp_path / "maya-profile" / "scripts"
     receipt = tmp_path / "receipts" / "maya.json"
-    monkeypatch.setenv("DCC_MCP_MAYA_MODULES_DIR", str(modules_dir))
-    monkeypatch.setenv("DCC_MCP_MAYA_SCRIPTS_DIR", str(scripts_dir))
-    monkeypatch.setenv("DCC_MCP_MAYA_RECEIPT", str(receipt))
+    monkeypatch.setenv("MESHY_DCC_MAYA_MODULES_DIR", str(modules_dir))
+    monkeypatch.setenv("MESHY_DCC_MAYA_SCRIPTS_DIR", str(scripts_dir))
+    monkeypatch.setenv("MESHY_DCC_MAYA_RECEIPT", str(receipt))
     monkeypatch.setattr(
         install,
         "_probe_target",
@@ -106,16 +106,16 @@ def _configure_fake_maya(install, tmp_path, monkeypatch, version="2025"):
 
 def test_install_dry_run_emits_a_complete_non_mutating_plan(tmp_path, monkeypatch, capsys):
     """The public CLI plans the exact Maya target without writing it."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root = tmp_path / "Maya2025"
     maya_root.mkdir()
     mayapy = Path(sys.executable)
     maya_modules = tmp_path / "maya" / "modules"
     receipt = tmp_path / "receipts" / "maya.json"
-    monkeypatch.setenv("DCC_MCP_MAYA_VERSION", "2025")
-    monkeypatch.setenv("DCC_MCP_MAYA_MODULES_DIR", str(maya_modules))
-    monkeypatch.setenv("DCC_MCP_MAYA_RECEIPT", str(receipt))
+    monkeypatch.setenv("MESHY_DCC_MAYA_VERSION", "2025")
+    monkeypatch.setenv("MESHY_DCC_MAYA_MODULES_DIR", str(maya_modules))
+    monkeypatch.setenv("MESHY_DCC_MAYA_RECEIPT", str(receipt))
     monkeypatch.setattr(
         install,
         "_probe_target",
@@ -162,12 +162,12 @@ def test_package_exposes_the_standard_lifecycle_console_entrypoint():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
     assert "[project.scripts]" in pyproject
-    assert 'dcc-mcp-maya = "dcc_mcp_maya.install:main"' in pyproject
+    assert 'meshy-dcc-maya = "meshy_dcc_maya.install:main"' in pyproject
 
 
 def test_receipt_round_trip_owns_module_descriptor_and_usersetup(tmp_path, monkeypatch, capsys):
     """A no-host install remains recoverable and never claims live usability."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt_path = _configure_fake_maya(install, tmp_path, monkeypatch)
     user_setup = scripts_dir / "userSetup.py"
@@ -183,15 +183,15 @@ def test_receipt_round_trip_owns_module_descriptor_and_usersetup(tmp_path, monke
 
     assert install.main(["install", "--yes", *common]) == install.INSTALL_EXIT_VERIFY
     installed = json.loads(capsys.readouterr().out)
-    module_root = modules_dir / "dcc-mcp-maya"
-    descriptor = modules_dir / "dcc_mcp_maya.mod"
+    module_root = modules_dir / "meshy-dcc-maya"
+    descriptor = modules_dir / "meshy_dcc_maya.mod"
     assert installed["status"] == "partial"
     assert installed["verify"]["directly_usable"] is False
     assert installed["verify"]["failure_stage"] == "readiness"
     assert installed["verify"]["failure_reason"] == "sidecar_unavailable"
     assert installed["verify"]["probe_tool"] == "host.ping"
-    assert (module_root / "python" / "dcc_mcp_maya" / "__init__.py").is_file()
-    assert (module_root / "plug-ins" / "dcc_mcp_maya_plugin.py").is_file()
+    assert (module_root / "python" / "meshy_dcc_maya" / "__init__.py").is_file()
+    assert (module_root / "plug-ins" / "meshy_dcc_maya_plugin.py").is_file()
     assert (module_root / "scripts" / "userSetup.py").is_file()
     assert descriptor.is_file()
     assert install.USER_SETUP_BEGIN in user_setup.read_text(encoding="utf-8")
@@ -218,7 +218,7 @@ def test_receipt_round_trip_owns_module_descriptor_and_usersetup(tmp_path, monke
 
 
 def test_typed_host_ping_is_required_for_direct_usability(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, _modules, _scripts, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     probes = []
@@ -241,15 +241,15 @@ def test_typed_host_ping_is_required_for_direct_usability(tmp_path, monkeypatch,
 
 
 def test_receipt_commit_failure_rolls_back_all_previous_artifacts(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt_path = _configure_fake_maya(install, tmp_path, monkeypatch)
     monkeypatch.setattr(install, "wait_for_sidecar_ready", lambda *_args, **_kwargs: {"success": False})
     common = ["--json", "--dcc-path", str(maya_root), "--python", sys.executable]
     assert install.main(["install", "--yes", *common]) == install.INSTALL_EXIT_VERIFY
     capsys.readouterr()
-    module_root = modules_dir / "dcc-mcp-maya"
-    descriptor = modules_dir / "dcc_mcp_maya.mod"
+    module_root = modules_dir / "meshy-dcc-maya"
+    descriptor = modules_dir / "meshy_dcc_maya.mod"
     user_setup = scripts_dir / "userSetup.py"
     before = {
         "module": install._tree_sha256(module_root),
@@ -277,7 +277,7 @@ def test_receipt_commit_failure_rolls_back_all_previous_artifacts(tmp_path, monk
 
 
 def test_install_commit_boundary_positive_control_matches_receipt(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt_path = _configure_fake_maya(install, tmp_path, monkeypatch)
     monkeypatch.setattr(install, "wait_for_sidecar_ready", lambda *_args, **_kwargs: {"success": False})
@@ -287,8 +287,8 @@ def test_install_commit_boundary_positive_control_matches_receipt(tmp_path, monk
     capsys.readouterr()
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     actual = {
-        "tree": install._tree_sha256(modules_dir / "dcc-mcp-maya"),
-        "file": install._sha256(modules_dir / "dcc_mcp_maya.mod"),
+        "tree": install._tree_sha256(modules_dir / "meshy-dcc-maya"),
+        "file": install._sha256(modules_dir / "meshy_dcc_maya.mod"),
         "user_setup": install._sha256(scripts_dir / "userSetup.py"),
     }
     assert {entry["kind"]: entry["sha256"] for entry in receipt["artifacts"]} == actual
@@ -296,15 +296,15 @@ def test_install_commit_boundary_positive_control_matches_receipt(tmp_path, monk
 
 @pytest.mark.parametrize("drift", ["same_object_bytes", "same_path_new_object", "same_bytes_new_object"])
 def test_install_commit_boundary_drift_rolls_back_before_receipt_publish(drift, tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt_path = _configure_fake_maya(install, tmp_path, monkeypatch)
     monkeypatch.setattr(install, "wait_for_sidecar_ready", lambda *_args, **_kwargs: {"success": False})
     common = ["--json", "--dcc-path", str(maya_root), "--python", sys.executable]
     assert install.main(["install", "--yes", *common]) == install.INSTALL_EXIT_VERIFY
     capsys.readouterr()
-    module_root = modules_dir / "dcc-mcp-maya"
-    descriptor = modules_dir / "dcc_mcp_maya.mod"
+    module_root = modules_dir / "meshy-dcc-maya"
+    descriptor = modules_dir / "meshy_dcc_maya.mod"
     user_setup = scripts_dir / "userSetup.py"
     before = {
         "module": install._tree_sha256(module_root),
@@ -318,7 +318,7 @@ def test_install_commit_boundary_drift_rolls_back_before_receipt_publish(drift, 
     def drift_at_module_publish(source, destination, publication_contract=None):
         nonlocal drifted
         if not drifted and destination == module_root and ".stage-" in source.name:
-            target = source / "python" / "dcc_mcp_maya" / "__init__.py"
+            target = source / "python" / "meshy_dcc_maya" / "__init__.py"
             content = b"MALICIOUS_COMMIT_BOUNDARY_REPLACEMENT = True\n"
             if drift == "same_object_bytes":
                 target.write_bytes(content)
@@ -347,15 +347,15 @@ def test_install_commit_boundary_drift_rolls_back_before_receipt_publish(drift, 
 
 
 def test_install_adoption_seam_same_bytes_new_object_rolls_back(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt_path = _configure_fake_maya(install, tmp_path, monkeypatch)
     monkeypatch.setattr(install, "wait_for_sidecar_ready", lambda *_args, **_kwargs: {"success": False})
     common = ["--json", "--dcc-path", str(maya_root), "--python", sys.executable]
     assert install.main(["install", "--yes", *common]) == install.INSTALL_EXIT_VERIFY
     capsys.readouterr()
-    module_root = modules_dir / "dcc-mcp-maya"
-    descriptor = modules_dir / "dcc_mcp_maya.mod"
+    module_root = modules_dir / "meshy-dcc-maya"
+    descriptor = modules_dir / "meshy_dcc_maya.mod"
     user_setup = scripts_dir / "userSetup.py"
     before = {
         "module": install._tree_sha256(module_root),
@@ -371,7 +371,7 @@ def test_install_adoption_seam_same_bytes_new_object_rolls_back(tmp_path, monkey
         source_path = Path(source)
         destination_path = Path(destination)
         if not drifted and destination_path == module_root and ".stage-" in source_path.name:
-            target = source_path / "python" / "dcc_mcp_maya" / "__init__.py"
+            target = source_path / "python" / "meshy_dcc_maya" / "__init__.py"
             replacement = target.with_name("replacement.py")
             replacement.write_bytes(target.read_bytes())
             real_os_replace(str(replacement), str(target))
@@ -395,7 +395,7 @@ def test_install_adoption_seam_same_bytes_new_object_rolls_back(tmp_path, monkey
 @pytest.mark.parametrize("mutation", ["external_hardlink", "same_bytes_new_object", "unchanged"])
 def test_install_adoption_owns_each_published_artifact(artifact, mutation, tmp_path, monkeypatch, capsys):
     """Real adoption must reject aliases without losing prior state or foreign bytes."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt_path = _configure_fake_maya(install, tmp_path, monkeypatch)
     payload = tmp_path / "module.zip"
@@ -405,8 +405,8 @@ def test_install_adoption_owns_each_published_artifact(artifact, mutation, tmp_p
     assert install.main(["install", *common]) == install.INSTALL_EXIT_VERIFY
     capsys.readouterr()
     destinations = {
-        "module": modules_dir / "dcc-mcp-maya",
-        "descriptor": modules_dir / "dcc_mcp_maya.mod",
+        "module": modules_dir / "meshy-dcc-maya",
+        "descriptor": modules_dir / "meshy_dcc_maya.mod",
         "user_setup": scripts_dir / "userSetup.py",
         "receipt": receipt_path,
     }
@@ -424,7 +424,7 @@ def test_install_adoption_owns_each_published_artifact(artifact, mutation, tmp_p
     def inject_at_real_adoption(source, destination):
         source_path = Path(source)
         if not adopted_bytes and Path(destination) == destinations[artifact] and ".stage-" in source_path.name:
-            target = source_path / "python/dcc_mcp_core/__init__.py" if artifact == "module" else source_path
+            target = source_path / "python/meshy_dcc_core/__init__.py" if artifact == "module" else source_path
             adopted_bytes.append(target.read_bytes())
             if mutation == "external_hardlink":
                 os.link(str(target), str(alias))
@@ -460,7 +460,7 @@ def test_install_adoption_owns_each_published_artifact(artifact, mutation, tmp_p
 
 
 def test_windows_lock_is_reported_as_requires_restart(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, _modules, _scripts, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     monkeypatch.setattr(
@@ -480,11 +480,11 @@ def test_windows_lock_is_reported_as_requires_restart(tmp_path, monkeypatch, cap
 
 
 def test_preflight_rejects_unsupported_maya_and_core_before_writes(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root = tmp_path / "Maya"
     maya_root.mkdir()
-    monkeypatch.setenv("DCC_MCP_MAYA_MODULES_DIR", str(tmp_path / "modules"))
+    monkeypatch.setenv("MESHY_DCC_MAYA_MODULES_DIR", str(tmp_path / "modules"))
     monkeypatch.setattr(
         install,
         "_probe_target",
@@ -577,7 +577,7 @@ def test_preflight_rejects_unsupported_maya_and_core_before_writes(tmp_path, mon
 def test_operator_dry_run_strictly_validates_complete_core_version_before_writes(
     core_version, expected_exit, tmp_path, monkeypatch, capsys
 ):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     core_version = core_version.format(floor=install.MIN_CORE_VERSION)
 
@@ -586,9 +586,9 @@ def test_operator_dry_run_strictly_validates_complete_core_version_before_writes
     modules_dir = tmp_path / "profile" / "modules"
     scripts_dir = tmp_path / "profile" / "scripts"
     receipt = tmp_path / "receipts" / "maya.json"
-    monkeypatch.setenv("DCC_MCP_MAYA_MODULES_DIR", str(modules_dir))
-    monkeypatch.setenv("DCC_MCP_MAYA_SCRIPTS_DIR", str(scripts_dir))
-    monkeypatch.setenv("DCC_MCP_MAYA_RECEIPT", str(receipt))
+    monkeypatch.setenv("MESHY_DCC_MAYA_MODULES_DIR", str(modules_dir))
+    monkeypatch.setenv("MESHY_DCC_MAYA_SCRIPTS_DIR", str(scripts_dir))
+    monkeypatch.setenv("MESHY_DCC_MAYA_RECEIPT", str(receipt))
     monkeypatch.setattr(
         install,
         "_probe_target",
@@ -613,7 +613,7 @@ def test_operator_dry_run_strictly_validates_complete_core_version_before_writes
 
 
 def test_public_reports_use_shared_schema_and_stable_exit_codes():
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     schema = install.load_install_sop_schema()
     # Core names the artifact by revision (`adapter-install-sop-vN.schema.json`) and moved from
@@ -621,7 +621,7 @@ def test_public_reports_use_shared_schema_and_stable_exit_codes():
     # Pin the contract identity instead: the shared Install SOP schema, whatever revision
     # currently carries it.
     assert re.fullmatch(
-        r"https://dcc-mcp\.github\.io/schemas/adapter-install-sop-v[0-9]+\.schema\.json",
+        r"https://meshy-dcc\.github\.io/schemas/adapter-install-sop-v[0-9]+\.schema\.json",
         schema["$id"],
     ), schema["$id"]
     assert install.report_schema_version() == schema["properties"]["schema_version"]["const"]
@@ -652,7 +652,7 @@ def test_install_runbook_covers_the_complete_owning_repo_contract():
     for platform in ("Windows", "macOS", "Linux"):
         assert platform in guide
     for verb in ("install", "status", "verify", "uninstall", "upgrade"):
-        assert "dcc-mcp-maya %s" % verb in guide
+        assert "meshy-dcc-maya %s" % verb in guide
     for flag in ("--json", "--yes", "--dry-run", "--dcc-path", "--python"):
         assert flag in guide
     for term in (
@@ -660,7 +660,7 @@ def test_install_runbook_covers_the_complete_owning_repo_contract():
         "rollback",
         "capture_bootstrap_errors",
         "host.ping",
-        "https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-maya/main/install.md",
+        "https://raw.githubusercontent.com/meshy-dev/meshy-dcc-maya/main/install.md",
     ):
         assert term in guide
 
@@ -669,34 +669,34 @@ def test_released_wheel_contains_the_plugin_and_usersetup_install_assets():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
     assert (
-        '"maya/plugin/dcc_mcp_maya_plugin.py" = "dcc_mcp_maya/install_assets/maya/plugin/dcc_mcp_maya_plugin.py"'
+        '"maya/plugin/meshy_dcc_maya_plugin.py" = "meshy_dcc_maya/install_assets/maya/plugin/meshy_dcc_maya_plugin.py"'
         in pyproject
     )
-    assert '"maya/userSetup.py" = "dcc_mcp_maya/install_assets/maya/userSetup.py"' in pyproject
+    assert '"maya/userSetup.py" = "meshy_dcc_maya/install_assets/maya/userSetup.py"' in pyproject
 
 
 def test_packaged_usersetup_delegates_to_captured_bounded_bootstrap():
     source = (ROOT / "maya" / "userSetup.py").read_text(encoding="utf-8")
 
-    assert "from dcc_mcp_maya.install import bootstrap_user_setup" in source
-    assert "capture_bootstrap_errors" in (ROOT / "src" / "dcc_mcp_maya" / "install.py").read_text(encoding="utf-8")
+    assert "from meshy_dcc_maya.install import bootstrap_user_setup" in source
+    assert "capture_bootstrap_errors" in (ROOT / "src" / "meshy_dcc_maya" / "install.py").read_text(encoding="utf-8")
     assert "lowestPriority=True" in source
 
 
 def test_module_zip_payload_is_bounded_receipted_and_installed(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, _scripts, receipt_path = _configure_fake_maya(install, tmp_path, monkeypatch)
-    payload = tmp_path / "dcc-mcp-maya.zip"
+    payload = tmp_path / "meshy-dcc-maya.zip"
     _write_provenanced_module_zip(
         install,
         payload,
         python37_content=b"native-cp37",
         extra_entries={
-            "python/dcc_mcp_maya/__init__.py": b"ZIP_PAYLOAD = True\n",
-            "plug-ins/dcc_mcp_maya_plugin.py": b"# plugin\n",
+            "python/meshy_dcc_maya/__init__.py": b"ZIP_PAYLOAD = True\n",
+            "plug-ins/meshy_dcc_maya_plugin.py": b"# plugin\n",
             "scripts/userSetup.py": b"# setup\n",
-            "dcc_mcp_maya.mod": b"+ placeholder\n",
+            "meshy_dcc_maya.mod": b"+ placeholder\n",
         },
     )
     monkeypatch.setattr(install, "wait_for_sidecar_ready", lambda *_args, **_kwargs: {"success": False})
@@ -718,10 +718,10 @@ def test_module_zip_payload_is_bounded_receipted_and_installed(tmp_path, monkeyp
         == install.INSTALL_EXIT_VERIFY
     )
     capsys.readouterr()
-    assert "ZIP_PAYLOAD = True" in (modules_dir / "dcc-mcp-maya" / "python" / "dcc_mcp_maya" / "__init__.py").read_text(
+    assert "ZIP_PAYLOAD = True" in (modules_dir / "meshy-dcc-maya" / "python" / "meshy_dcc_maya" / "__init__.py").read_text(
         encoding="utf-8"
     )
-    descriptor_lines = (modules_dir / "dcc_mcp_maya.mod").read_text(encoding="utf-8").splitlines()
+    descriptor_lines = (modules_dir / "meshy_dcc_maya.mod").read_text(encoding="utf-8").splitlines()
     maya_2022 = next(index for index, line in enumerate(descriptor_lines) if "MAYAVERSION:2022" in line)
     maya_2023 = next(index for index, line in enumerate(descriptor_lines) if "MAYAVERSION:2023" in line)
     assert descriptor_lines[maya_2022 + 1] == "PYTHONPATH+:=python37"
@@ -735,7 +735,7 @@ def test_module_zip_payload_is_bounded_receipted_and_installed(tmp_path, monkeyp
 
 
 def test_module_zip_rejects_path_traversal_before_profile_writes(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, _scripts, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     payload = tmp_path / "unsafe.zip"
@@ -778,18 +778,18 @@ def test_module_zip_rejects_path_traversal_before_profile_writes(tmp_path, monke
 def test_module_zip_rejects_missing_or_mismatched_core_bounds_before_writes(
     metadata_patch, tmp_path, monkeypatch, capsys
 ):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     metadata_patch = {key: value.format(floor=install.MIN_CORE_VERSION) for key, value in metadata_patch.items()}
     maya_root, modules_dir, scripts_dir, receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     payload = tmp_path / "contract-drift.zip"
-    metadata = {"name": "dcc_mcp_maya", "adapter_version": install.__version__}
+    metadata = {"name": "meshy_dcc_maya", "adapter_version": install.__version__}
     metadata.update(metadata_patch)
     with zipfile.ZipFile(str(payload), "w") as archive:
-        archive.writestr("dcc-mcp-maya/python/dcc_mcp_maya/__init__.py", "")
-        archive.writestr("dcc-mcp-maya/plug-ins/dcc_mcp_maya_plugin.py", "")
-        archive.writestr("dcc-mcp-maya/scripts/userSetup.py", "")
-        archive.writestr("dcc-mcp-maya/module-info.json", json.dumps(metadata))
+        archive.writestr("meshy-dcc-maya/python/meshy_dcc_maya/__init__.py", "")
+        archive.writestr("meshy-dcc-maya/plug-ins/meshy_dcc_maya_plugin.py", "")
+        archive.writestr("meshy-dcc-maya/scripts/userSetup.py", "")
+        archive.writestr("meshy-dcc-maya/module-info.json", json.dumps(metadata))
 
     exit_code = install.main(
         [
@@ -818,12 +818,12 @@ def test_module_zip_rejects_missing_or_mismatched_core_bounds_before_writes(
 def test_module_zip_rejects_invalid_embedded_core_version_before_writes(
     embedded_core_version, tmp_path, monkeypatch, capsys
 ):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     payload = tmp_path / "embedded-core-drift.zip"
     metadata = {
-        "name": "dcc_mcp_maya",
+        "name": "meshy_dcc_maya",
         "adapter_version": install.__version__,
         "min_core_version": install.MIN_CORE_VERSION,
         "max_core_version_exclusive": install.MAX_CORE_VERSION,
@@ -832,13 +832,13 @@ def test_module_zip_rejects_invalid_embedded_core_version_before_writes(
         metadata["embedded_core_version"] = embedded_core_version
     payload_version = embedded_core_version or install.MIN_CORE_VERSION
     with zipfile.ZipFile(str(payload), "w") as archive:
-        archive.writestr("dcc-mcp-maya/python/dcc_mcp_maya/__init__.py", "")
-        archive.writestr("dcc-mcp-maya/plug-ins/dcc_mcp_maya_plugin.py", "")
-        archive.writestr("dcc-mcp-maya/scripts/userSetup.py", "")
-        archive.writestr("dcc-mcp-maya/module-info.json", json.dumps(metadata))
+        archive.writestr("meshy-dcc-maya/python/meshy_dcc_maya/__init__.py", "")
+        archive.writestr("meshy-dcc-maya/plug-ins/meshy_dcc_maya_plugin.py", "")
+        archive.writestr("meshy-dcc-maya/scripts/userSetup.py", "")
+        archive.writestr("meshy-dcc-maya/module-info.json", json.dumps(metadata))
         archive.writestr(
-            "dcc-mcp-maya/python/dcc_mcp_core-%s.dist-info/METADATA" % payload_version,
-            "Metadata-Version: 2.1\nName: dcc-mcp-core\nVersion: %s\n" % payload_version,
+            "meshy-dcc-maya/python/meshy_dcc_core-%s.dist-info/METADATA" % payload_version,
+            "Metadata-Version: 2.1\nName: meshy-dcc-core\nVersion: %s\n" % payload_version,
         )
 
     exit_code = install.main(
@@ -864,25 +864,25 @@ def test_module_zip_rejects_invalid_embedded_core_version_before_writes(
 
 
 def test_module_zip_rejects_embedded_core_payload_version_mismatch_before_writes(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, scripts_dir, receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     payload = tmp_path / "embedded-core-payload-mismatch.zip"
     metadata = {
-        "name": "dcc_mcp_maya",
+        "name": "meshy_dcc_maya",
         "adapter_version": install.__version__,
         "min_core_version": install.MIN_CORE_VERSION,
         "max_core_version_exclusive": install.MAX_CORE_VERSION,
         "embedded_core_version": install.MIN_CORE_VERSION,
     }
     with zipfile.ZipFile(str(payload), "w") as archive:
-        archive.writestr("dcc-mcp-maya/python/dcc_mcp_maya/__init__.py", "")
-        archive.writestr("dcc-mcp-maya/plug-ins/dcc_mcp_maya_plugin.py", "")
-        archive.writestr("dcc-mcp-maya/scripts/userSetup.py", "")
-        archive.writestr("dcc-mcp-maya/module-info.json", json.dumps(metadata))
+        archive.writestr("meshy-dcc-maya/python/meshy_dcc_maya/__init__.py", "")
+        archive.writestr("meshy-dcc-maya/plug-ins/meshy_dcc_maya_plugin.py", "")
+        archive.writestr("meshy-dcc-maya/scripts/userSetup.py", "")
+        archive.writestr("meshy-dcc-maya/module-info.json", json.dumps(metadata))
         archive.writestr(
-            "dcc-mcp-maya/python/dcc_mcp_core-0.19.46.dist-info/METADATA",
-            "Metadata-Version: 2.1\nName: dcc-mcp-core\nVersion: 0.19.46\n",
+            "meshy-dcc-maya/python/meshy_dcc_core-0.19.46.dist-info/METADATA",
+            "Metadata-Version: 2.1\nName: meshy-dcc-core\nVersion: 0.19.46\n",
         )
 
     exit_code = install.main(
@@ -908,13 +908,13 @@ def test_module_zip_rejects_embedded_core_payload_version_mismatch_before_writes
 
 
 def test_module_zip_rejects_duplicate_same_version_core_identity_before_writes(tmp_path):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     payload = tmp_path / "duplicate-core-identity.zip"
 
     def duplicate(entries, _provenance):
-        entries["vendor/dcc_mcp_core-copy.dist-info/METADATA"] = (
-            "Metadata-Version: 2.1\nName: dcc_mcp_core\nVersion: %s\n" % install.MIN_CORE_VERSION
+        entries["vendor/meshy_dcc_core-copy.dist-info/METADATA"] = (
+            "Metadata-Version: 2.1\nName: meshy_dcc_core\nVersion: %s\n" % install.MIN_CORE_VERSION
         ).encode()
 
     _write_provenanced_module_zip(install, payload, mutate=duplicate)
@@ -926,15 +926,15 @@ def test_module_zip_rejects_duplicate_same_version_core_identity_before_writes(t
 
 @pytest.mark.parametrize("root_name", ("python", "python37"))
 def test_module_zip_rejects_conflicting_core_metadata_headers_per_root(root_name, tmp_path):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     payload = tmp_path / ("conflicting-core-metadata-%s.zip" % root_name)
 
     def conflicting_headers(entries, provenance):
         core_version = install.MIN_CORE_VERSION
-        metadata_path = "%s/dcc_mcp_core-%s.dist-info/METADATA" % (root_name, core_version)
+        metadata_path = "%s/meshy_dcc_core-%s.dist-info/METADATA" % (root_name, core_version)
         metadata_content = (
-            "Metadata-Version: 2.1\nName: dcc-mcp-core\nName: attacker-core\nVersion: %s\nVersion: 9.9.9\n"
+            "Metadata-Version: 2.1\nName: meshy-dcc-core\nName: attacker-core\nVersion: %s\nVersion: 9.9.9\n"
             % core_version
         ).encode()
         entries[metadata_path] = metadata_content
@@ -954,7 +954,7 @@ def test_module_zip_rejects_conflicting_core_metadata_headers_per_root(root_name
 
 @pytest.mark.parametrize("drift", ("same_path_new_object", "same_object_bytes"))
 def test_module_zip_extraction_rejects_source_drift_after_validation(drift, tmp_path, monkeypatch):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     payload = tmp_path / "module.zip"
     replacement = tmp_path / "replacement.zip"
@@ -962,7 +962,7 @@ def test_module_zip_extraction_rejects_source_drift_after_validation(drift, tmp_
     _write_provenanced_module_zip(
         install,
         replacement,
-        extra_entries={"python/dcc_mcp_maya/__init__.py": b"MALICIOUS_REPLACEMENT = True\n"},
+        extra_entries={"python/meshy_dcc_maya/__init__.py": b"MALICIOUS_REPLACEMENT = True\n"},
     )
     replacement_bytes = replacement.read_bytes()
     original_validate = install._validate_module_zip
@@ -984,7 +984,7 @@ def test_module_zip_extraction_rejects_source_drift_after_validation(drift, tmp_
 
 
 def test_module_zip_rejects_hardlinked_source_before_validation(tmp_path):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     original = tmp_path / "original.zip"
     payload = tmp_path / "hardlinked.zip"
@@ -997,7 +997,7 @@ def test_module_zip_rejects_hardlinked_source_before_validation(tmp_path):
 
 
 def test_module_zip_rejects_reparse_source_before_validation(tmp_path, monkeypatch):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     payload = tmp_path / "reparse.zip"
     _write_provenanced_module_zip(install, payload)
@@ -1023,7 +1023,7 @@ def test_module_zip_rejects_reparse_source_before_validation(tmp_path, monkeypat
 
 
 def test_module_zip_extraction_revalidates_published_stage_readback(tmp_path, monkeypatch):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     payload = tmp_path / "module.zip"
     stage = tmp_path / "stage"
@@ -1033,7 +1033,7 @@ def test_module_zip_extraction_revalidates_published_stage_readback(tmp_path, mo
     def replace_then_tamper(source, destination):
         real_replace(source, destination)
         if destination == stage:
-            (stage / "python" / "dcc_mcp_maya" / "__init__.py").write_bytes(b"TAMPERED_AFTER_PUBLICATION = True\n")
+            (stage / "python" / "meshy_dcc_maya" / "__init__.py").write_bytes(b"TAMPERED_AFTER_PUBLICATION = True\n")
 
     monkeypatch.setattr(install, "_replace_path", replace_then_tamper)
 
@@ -1044,11 +1044,11 @@ def test_module_zip_extraction_revalidates_published_stage_readback(tmp_path, mo
 
 
 def test_module_zip_readback_rejects_same_bytes_new_object_race(tmp_path, monkeypatch):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     payload = tmp_path / "module.zip"
     stage = tmp_path / "stage"
-    target = stage / "python" / "dcc_mcp_maya" / "__init__.py"
+    target = stage / "python" / "meshy_dcc_maya" / "__init__.py"
     _write_provenanced_module_zip(install, payload)
     original_open = Path.open
     replaced = False
@@ -1077,7 +1077,7 @@ def test_module_zip_readback_rejects_same_bytes_new_object_race(tmp_path, monkey
     ("payload", "digest", "size", "path", "identity", "metadata_digest", "metadata_size", "metadata_path"),
 )
 def test_module_zip_rejects_core_provenance_drift_before_writes(drift, tmp_path):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     payload = tmp_path / ("core-provenance-%s.zip" % drift)
 
@@ -1090,9 +1090,9 @@ def test_module_zip_rejects_core_provenance_drift_before_writes(drift, tmp_path)
         elif drift == "size":
             record["size"] += 1
         elif drift == "path":
-            record["path"] = "python/dcc_mcp_core/replaced.py"
+            record["path"] = "python/meshy_dcc_core/replaced.py"
         elif drift == "identity":
-            provenance["name"] = "dcc_mcp_core"
+            provenance["name"] = "meshy_dcc_core"
         elif drift == "metadata_digest":
             provenance["roots"]["python"]["metadata"]["sha256"] = "0" * 64
         elif drift == "metadata_size":
@@ -1108,17 +1108,17 @@ def test_module_zip_rejects_core_provenance_drift_before_writes(drift, tmp_path)
 
 
 def test_module_zip_rejects_adapter_version_drift_before_writes(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, _scripts, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     payload = tmp_path / "stale.zip"
     with zipfile.ZipFile(str(payload), "w") as archive:
-        archive.writestr("dcc-mcp-maya/python/dcc_mcp_maya/__init__.py", "")
-        archive.writestr("dcc-mcp-maya/plug-ins/dcc_mcp_maya_plugin.py", "")
-        archive.writestr("dcc-mcp-maya/scripts/userSetup.py", "")
+        archive.writestr("meshy-dcc-maya/python/meshy_dcc_maya/__init__.py", "")
+        archive.writestr("meshy-dcc-maya/plug-ins/meshy_dcc_maya_plugin.py", "")
+        archive.writestr("meshy-dcc-maya/scripts/userSetup.py", "")
         archive.writestr(
-            "dcc-mcp-maya/module-info.json",
-            json.dumps({"name": "dcc_mcp_maya", "adapter_version": "0.0.1"}),
+            "meshy-dcc-maya/module-info.json",
+            json.dumps({"name": "meshy_dcc_maya", "adapter_version": "0.0.1"}),
         )
 
     assert (
@@ -1143,7 +1143,7 @@ def test_module_zip_rejects_adapter_version_drift_before_writes(tmp_path, monkey
 
 
 def test_uninstall_preserves_artist_edits_made_after_install(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, _modules, scripts_dir, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     monkeypatch.setattr(install, "wait_for_sidecar_ready", lambda *_args, **_kwargs: {"success": False})
@@ -1161,7 +1161,7 @@ def test_uninstall_preserves_artist_edits_made_after_install(tmp_path, monkeypat
 
 
 def test_uninstall_preserves_preexisting_and_later_usersetup_edits(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, _modules, scripts_dir, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     user_setup = scripts_dir / "userSetup.py"
@@ -1183,7 +1183,7 @@ def test_uninstall_preserves_preexisting_and_later_usersetup_edits(tmp_path, mon
 
 def test_upgrade_refreshes_usersetup_baseline_before_uninstall(tmp_path, monkeypatch, capsys):
     """An upgrade must not discard unmanaged edits made after the first install."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, _modules, scripts_dir, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     user_setup = scripts_dir / "userSetup.py"
@@ -1210,25 +1210,25 @@ def test_upgrade_refreshes_usersetup_baseline_before_uninstall(tmp_path, monkeyp
 @pytest.mark.parametrize(
     "collision_entry",
     [
-        "dcc-mcp-maya/python/dcc_mcp_maya/__init__.py",
-        "dcc-mcp-maya/PYTHON/dcc_mcp_maya/__init__.py",
-        "dcc-mcp-maya/python/dcc_mcp_maya",
+        "meshy-dcc-maya/python/meshy_dcc_maya/__init__.py",
+        "meshy-dcc-maya/PYTHON/meshy_dcc_maya/__init__.py",
+        "meshy-dcc-maya/python/meshy_dcc_maya",
     ],
     ids=["duplicate", "windows-casefold", "file-directory-prefix"],
 )
 def test_module_zip_rejects_canonical_path_collisions_before_writes(collision_entry, tmp_path, monkeypatch, capsys):
     """Every ZIP member must map to one unambiguous destination on Windows."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root, modules_dir, _scripts, _receipt = _configure_fake_maya(install, tmp_path, monkeypatch)
     payload = tmp_path / "colliding.zip"
     with zipfile.ZipFile(str(payload), "w") as archive:
-        archive.writestr("dcc-mcp-maya/python/dcc_mcp_maya/__init__.py", "TRUSTED = True\n")
-        archive.writestr("dcc-mcp-maya/plug-ins/dcc_mcp_maya_plugin.py", "# plugin\n")
-        archive.writestr("dcc-mcp-maya/scripts/userSetup.py", "# setup\n")
+        archive.writestr("meshy-dcc-maya/python/meshy_dcc_maya/__init__.py", "TRUSTED = True\n")
+        archive.writestr("meshy-dcc-maya/plug-ins/meshy_dcc_maya_plugin.py", "# plugin\n")
+        archive.writestr("meshy-dcc-maya/scripts/userSetup.py", "# setup\n")
         archive.writestr(
-            "dcc-mcp-maya/module-info.json",
-            json.dumps({"name": "dcc_mcp_maya", "adapter_version": install.__version__}),
+            "meshy-dcc-maya/module-info.json",
+            json.dumps({"name": "meshy_dcc_maya", "adapter_version": install.__version__}),
         )
         archive.writestr(collision_entry, "UNTRUSTED = True\n")
 
@@ -1261,7 +1261,7 @@ def test_ci_has_an_explicit_lifecycle_round_trip_smoke():
 
 
 def test_preflight_discovers_supported_host_and_embedded_mayapy(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root = tmp_path / "Autodesk" / "Maya2027"
     mayapy = maya_root / "bin" / ("mayapy.exe" if sys.platform == "win32" else "mayapy")
@@ -1279,8 +1279,8 @@ def test_preflight_discovers_supported_host_and_embedded_mayapy(tmp_path, monkey
             "selected": str(selected),
         },
     )
-    monkeypatch.setenv("DCC_MCP_MAYA_MODULES_DIR", str(tmp_path / "profile" / "modules"))
-    monkeypatch.setenv("DCC_MCP_MAYA_RECEIPT", str(tmp_path / "receipt.json"))
+    monkeypatch.setenv("MESHY_DCC_MAYA_MODULES_DIR", str(tmp_path / "profile" / "modules"))
+    monkeypatch.setenv("MESHY_DCC_MAYA_RECEIPT", str(tmp_path / "receipt.json"))
 
     assert install.main(["install", "--dry-run", "--json"]) == install.INSTALL_EXIT_OK
     report = json.loads(capsys.readouterr().out)
@@ -1296,7 +1296,7 @@ def _schema_document(const):
 
 def test_report_schema_version_follows_the_published_document(monkeypatch):
     """The report field comes from the ``const`` Core enforces, not a literal."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     monkeypatch.setattr(install, "_published_schema", lambda: _schema_document(7))
 
@@ -1311,7 +1311,7 @@ def test_report_schema_version_ignores_cores_artifact_revision(monkeypatch):
     optional ``catalog`` object. These are separate quantities that merely agreed while both
     were 1, so the constant must never reach the report.
     """
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     monkeypatch.setattr(install, "_published_schema", lambda: _schema_document(1))
 
@@ -1320,7 +1320,7 @@ def test_report_schema_version_ignores_cores_artifact_revision(monkeypatch):
 
 def test_report_schema_version_falls_back_when_the_document_is_missing(monkeypatch):
     """A Core with no readable schema document still yields a usable report."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     monkeypatch.setattr(install, "_published_schema", lambda: None)
 
@@ -1342,7 +1342,7 @@ def test_report_schema_version_survives_schema_read_failure(monkeypatch, error):
     or unparsable document. Broken installs are exactly the situation this CLI exists to
     report on, so the read failure has to degrade to the fallback instead of propagating.
     """
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     def _raise():
         raise error
@@ -1354,14 +1354,14 @@ def test_report_schema_version_survives_schema_read_failure(monkeypatch, error):
 
 def test_emitted_report_matches_the_version_core_validates(tmp_path, monkeypatch, capsys):
     """End-to-end: the emitted report's field equals what Core's published schema enforces."""
-    from dcc_mcp_maya import install
+    from meshy_dcc_maya import install
 
     maya_root = tmp_path / "Maya2025"
     maya_root.mkdir()
     mayapy = Path(sys.executable)
-    monkeypatch.setenv("DCC_MCP_MAYA_VERSION", "2025")
-    monkeypatch.setenv("DCC_MCP_MAYA_MODULES_DIR", str(tmp_path / "maya" / "modules"))
-    monkeypatch.setenv("DCC_MCP_MAYA_RECEIPT", str(tmp_path / "receipts" / "maya.json"))
+    monkeypatch.setenv("MESHY_DCC_MAYA_VERSION", "2025")
+    monkeypatch.setenv("MESHY_DCC_MAYA_MODULES_DIR", str(tmp_path / "maya" / "modules"))
+    monkeypatch.setenv("MESHY_DCC_MAYA_RECEIPT", str(tmp_path / "receipts" / "maya.json"))
     monkeypatch.setattr(
         install,
         "_probe_target",

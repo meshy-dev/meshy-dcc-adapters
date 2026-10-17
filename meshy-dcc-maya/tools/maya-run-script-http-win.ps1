@@ -27,8 +27,8 @@ $mayaPath = $scriptFull -replace '\\', '/'
 function Resolve-RegistryDir {
     param([string]$Override)
     if ($Override) { return $Override }
-    if ($env:DCC_MCP_REGISTRY_DIR) { return $env:DCC_MCP_REGISTRY_DIR }
-    return Join-Path $env:TEMP "dcc-mcp-registry"
+    if ($env:MESHY_DCC_REGISTRY_DIR) { return $env:MESHY_DCC_REGISTRY_DIR }
+    return Join-Path $env:TEMP "meshy-dcc-registry"
 }
 
 function Read-MayaRestBases {

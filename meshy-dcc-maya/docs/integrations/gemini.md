@@ -1,29 +1,29 @@
 # Google Gemini / Vertex AI Integration Guide
 
 
-> Vendor integration notes for `dcc-mcp-maya`. Moved here from the repo root so that
-> [`AGENTS.md`](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) stays the **only** agent contract file at the root.
+> Vendor integration notes for `meshy-dcc-maya`. Moved here from the repo root so that
+> [`AGENTS.md`](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) stays the **only** agent contract file at the root.
 > Anything not specific to this vendor belongs in `AGENTS.md`, not here.
-> Gemini-specific integration notes for `dcc-mcp-maya`.
-> For the full project map, see [AGENTS.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md).
+> Gemini-specific integration notes for `meshy-dcc-maya`.
+> For the full project map, see [AGENTS.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md).
 
 ---
 
 ## What This Project Does
 
-`dcc-mcp-maya` embeds an MCP Streamable HTTP server directly inside Autodesk Maya. Gemini (via an MCP-compatible client or custom integration) can discover and invoke 72+ Maya tools over HTTP.
+`meshy-dcc-maya` embeds an MCP Streamable HTTP server directly inside Autodesk Maya. Gemini (via an MCP-compatible client or custom integration) can discover and invoke 72+ Maya tools over HTTP.
 
 ---
 
 ## Gemini-Specific Strengths
 
-Gemini excels at **code generation** and **structured output parsing**. Leverage these when working with `dcc-mcp-maya`:
+Gemini excels at **code generation** and **structured output parsing**. Leverage these when working with `meshy-dcc-maya`:
 
 ### 1. Skill Script Generation
-Ask Gemini to generate new Maya skill scripts using the `dcc_mcp_maya.api` helpers:
+Ask Gemini to generate new Maya skill scripts using the `meshy_dcc_maya.api` helpers:
 
 ```python
-from dcc_mcp_maya.api import with_maya, maya_success
+from meshy_dcc_maya.api import with_maya, maya_success
 
 @with_maya
 def batch_rename(prefix: str, suffix: str = "") -> dict:
@@ -63,27 +63,27 @@ Use Gemini's search capability with the built-in discovery tools:
 If your Gemini client supports MCP over HTTP, configure:
 
 ```
-Endpoint: http://127.0.0.1:9765/mcp
+Endpoint: http://127.0.0.1:19765/mcp
 Protocol: MCP Streamable HTTP (2025-03-26 spec)
 ```
 
 For multi-instance gateway mode:
 ```
-Endpoint: http://127.0.0.1:9765/mcp
+Endpoint: http://127.0.0.1:19765/mcp
 ```
 
 ---
 
 ## Gemini-Specific Tips
 
-- **Code-first workflows:** Gemini can write complete skill packages. Generate `SKILL.md`, `tools.yaml`, and `scripts/*.py` in one shot, then place them in a directory listed in `DCC_MCP_MAYA_SKILL_PATHS`.
+- **Code-first workflows:** Gemini can write complete skill packages. Generate `SKILL.md`, `tools.yaml`, and `scripts/*.py` in one shot, then place them in a directory listed in `MESHY_DCC_MAYA_SKILL_PATHS`.
 - **Image understanding:** Feed `capture_viewport` base64 PNGs back to Gemini for visual state verification.
 
 ---
 
 ## See Also
 
-- [AGENTS.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/AGENTS.md) — Shared agent navigation map; keep common guidance single-sourced there
-- [llms.txt](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/llms.txt) — One-page core reference
-- [llms-full.txt](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/llms-full.txt) — Exhaustive API reference
-- [README.md](https://github.com/dcc-mcp/dcc-mcp-maya/blob/main/README.md) — Human-facing installation and overview
+- [AGENTS.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/AGENTS.md) — Shared agent navigation map; keep common guidance single-sourced there
+- [llms.txt](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/llms.txt) — One-page core reference
+- [llms-full.txt](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/llms-full.txt) — Exhaustive API reference
+- [README.md](https://github.com/meshy-dev/meshy-dcc-maya/blob/main/README.md) — Human-facing installation and overview

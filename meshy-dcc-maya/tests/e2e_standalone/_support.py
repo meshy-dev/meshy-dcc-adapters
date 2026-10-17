@@ -24,28 +24,28 @@ from maya import cmds  # noqa: E402
 
 def _resolve_skills_root() -> Path:
     try:
-        import dcc_mcp_maya  # noqa: PLC0415
+        import meshy_dcc_maya  # noqa: PLC0415
 
-        package_dir = Path(dcc_mcp_maya.__file__).resolve().parent
+        package_dir = Path(meshy_dcc_maya.__file__).resolve().parent
         skills_dir = package_dir / "skills"
         if skills_dir.is_dir():
             return skills_dir
     except ImportError:
         pass
 
-    src_skills = Path(__file__).resolve().parents[2] / "src" / "dcc_mcp_maya" / "skills"
+    src_skills = Path(__file__).resolve().parents[2] / "src" / "meshy_dcc_maya" / "skills"
     if src_skills.is_dir():
         return src_skills
 
     import os  # noqa: PLC0415
 
-    env_dir = os.environ.get("DCC_MCP_MAYA_SKILL_PATHS", "")
+    env_dir = os.environ.get("MESHY_DCC_MAYA_SKILL_PATHS", "")
     if env_dir:
         first = Path(env_dir.split(os.pathsep)[0])
         if first.is_dir():
             return first
 
-    raise RuntimeError("Cannot find dcc_mcp_maya skills/ directory — check installation")
+    raise RuntimeError("Cannot find meshy_dcc_maya skills/ directory — check installation")
 
 
 _SKILLS_ROOT = _resolve_skills_root()
@@ -55,7 +55,7 @@ def _ensure_package_importable() -> None:
     import sys  # noqa: PLC0415
 
     try:
-        import dcc_mcp_maya  # noqa: F401
+        import meshy_dcc_maya  # noqa: F401
 
         return
     except ImportError:
@@ -63,7 +63,7 @@ def _ensure_package_importable() -> None:
 
     import os  # noqa: PLC0415
 
-    mod_dir = os.environ.get("DCC_MCP_MAYA_MOD_DIR", "")
+    mod_dir = os.environ.get("MESHY_DCC_MAYA_MOD_DIR", "")
     if mod_dir:
         python_dir = Path(mod_dir) / "python"
         if python_dir.is_dir() and str(python_dir) not in sys.path:

@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Module under test
-from dcc_mcp_maya.dispatcher import (
+from meshy_dcc_maya.dispatcher import (
     DEFAULT_BUDGET_MS,
     OVERRUN_MULTIPLIER,
     MayaUiDispatcher,
@@ -35,8 +35,8 @@ def test_check_maya_cancelled_is_noop_outside_request():
 
 
 def test_check_maya_cancelled_honours_core_cancel_token():
-    """Layer 1 — ``dcc_mcp_core.cancellation`` request token trips the probe."""
-    from dcc_mcp_core.cancellation import (
+    """Layer 1 — ``meshy_dcc_core.cancellation`` request token trips the probe."""
+    from meshy_dcc_core.cancellation import (
         CancelledError,
         CancelToken,
         reset_cancel_token,
@@ -213,7 +213,7 @@ def test_shutdown_flags_running_job_for_cooperative_cancel():
     """A job that is already running observes the cancel flag via
     :func:`check_maya_cancelled` and exits with ``CancelledError``.
     """
-    from dcc_mcp_core.cancellation import CancelledError
+    from meshy_dcc_core.cancellation import CancelledError
 
     dispatcher = MayaUiDispatcher()
 
@@ -291,12 +291,12 @@ def test_server_stop_drains_attached_dispatcher(_mock_maya_modules):
     threads unblock without hanging the server teardown.
     """
     for mod in list(sys.modules):
-        if "dcc_mcp_maya" in mod:
+        if "meshy_dcc_maya" in mod:
             del sys.modules[mod]
     import importlib
 
-    srv_mod = importlib.import_module("dcc_mcp_maya.server")
-    dispatcher_mod = importlib.import_module("dcc_mcp_maya.dispatcher")
+    srv_mod = importlib.import_module("meshy_dcc_maya.server")
+    dispatcher_mod = importlib.import_module("meshy_dcc_maya.dispatcher")
 
     server = srv_mod.MayaMcpServer(port=0)
     dispatcher = dispatcher_mod.MayaUiDispatcher()

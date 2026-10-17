@@ -11,9 +11,9 @@ from conftest import load_and_call
 # Import third-party modules
 from jsonschema import Draft202012Validator
 
-from dcc_mcp_maya import _executor
+from meshy_dcc_maya import _executor
 
-SKILLS_ROOT = Path(__file__).parent.parent / "src" / "dcc_mcp_maya" / "skills"
+SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_maya" / "skills"
 
 
 def _tool(skill_name, tool_name):
@@ -356,7 +356,7 @@ def test_set_keyframes_batches_multiple_objects_and_reads_back_values():
     )
 
     assert result["success"] is True, result
-    assert result["context"]["schema"] == "dcc-mcp/anim-curves@1"
+    assert result["context"]["schema"] == "meshy-dcc/anim-curves@1"
     assert result["context"]["fps"] == 24.0
     assert [curve["target"] for curve in result["context"]["curves"]] == [
         "rotorA.rotateY",
@@ -471,7 +471,7 @@ def test_get_anim_curves_returns_values_tangents_and_infinity():
     )
 
     assert result["success"] is True, result
-    assert result["context"]["schema"] == "dcc-mcp/anim-curves@1"
+    assert result["context"]["schema"] == "meshy-dcc/anim-curves@1"
     assert result["context"]["fps"] == 24.0
     assert result["context"]["curves"] == [
         {
@@ -579,7 +579,7 @@ def test_get_skin_weights_returns_per_vertex_normalization_evidence():
     )
 
     assert result["success"] is True, result
-    assert result["context"]["schema"] == "dcc-mcp/skin-weights@1"
+    assert result["context"]["schema"] == "meshy-dcc/skin-weights@1"
     assert result["context"]["skin_cluster"] == "bodySkin"
     assert result["context"]["vertex_count"] == 2
     assert result["context"]["unnormalized_vertices"] == 0
@@ -663,7 +663,7 @@ def test_set_skin_weights_replaces_rows_and_verifies_native_readback():
     )
 
     assert result["success"] is True, result
-    assert result["context"]["schema"] == "dcc-mcp/skin-weights@1"
+    assert result["context"]["schema"] == "meshy-dcc/skin-weights@1"
     assert result["context"]["verified_vertex_count"] == 2
     assert result["context"]["unnormalized_vertices"] == 0
     assert cmds.skinPercent.call_count == 6
@@ -799,7 +799,7 @@ def test_export_rig_state_reports_hierarchy_constraints_controls_and_skin_health
 
     assert result["success"] is True, result
     state = result["context"]
-    assert state["schema"] == "dcc-mcp/rig-state@1"
+    assert state["schema"] == "meshy-dcc/rig-state@1"
     assert state["joints"]["count"] == 2
     assert state["joints"]["nodes"][1]["parent"] == "|rig|root_jnt"
     assert state["constraints"]["nodes"][0]["targets"] == ["|rig|root_jnt"]

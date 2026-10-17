@@ -1,5 +1,5 @@
-# Install dcc-mcp-core into Maya's Python (Windows)
-# This script finds mayapy.exe and installs dcc-mcp-core
+# Install meshy-dcc-core into Maya's Python (Windows)
+# This script finds mayapy.exe and installs meshy-dcc-core
 
 param(
     [string]$MayaVersion = "2025"
@@ -31,13 +31,13 @@ if (-not $MayapyPath) {
     }
 }
 
-Write-Host "📦 Installing dcc-mcp-core into Maya Python..." -ForegroundColor Cyan
+Write-Host "📦 Installing meshy-dcc-core into Maya Python..." -ForegroundColor Cyan
 Write-Host "   Using: $MayapyPath" -ForegroundColor Gray
 
-& $MayapyPath -m pip install dcc-mcp-core --upgrade
+& $MayapyPath -m pip install meshy-dcc-core --upgrade
 
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ dcc-mcp-core installed into Maya Python" -ForegroundColor Green
+    Write-Host "✅ meshy-dcc-core installed into Maya Python" -ForegroundColor Green
 } else {
     Write-Host "❌ Installation failed" -ForegroundColor Red
     exit 1

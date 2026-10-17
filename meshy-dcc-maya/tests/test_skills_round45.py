@@ -29,18 +29,18 @@ from unittest.mock import MagicMock
 
 def _make_server():
     """Create MayaMcpServer via object.__new__ to avoid Rust deps."""
-    from dcc_mcp_maya.server import MayaMcpServer
+    from meshy_dcc_maya.server import MayaMcpServer
 
     server = object.__new__(MayaMcpServer)
     server._dcc_name = "maya"
-    from dcc_mcp_maya.server import _BUILTIN_SKILLS_DIR
+    from meshy_dcc_maya.server import _BUILTIN_SKILLS_DIR
 
     server._builtin_skills_dir = _BUILTIN_SKILLS_DIR
     server._handle = None
     server._enable_gateway_failover = False
     server._hot_reloader = None
     server._gateway_election = None
-    from dcc_mcp_core import McpHttpConfig
+    from meshy_dcc_core import McpHttpConfig
 
     server._config = McpHttpConfig()
     # Mock the skill client (used by DccServerBase methods)
@@ -262,7 +262,7 @@ class TestGetSkillTags:
 
 class TestRankServices:
     def test_returns_list_from_transport_manager(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         mock_tm.rank_services.return_value = [MagicMock(), MagicMock()]
@@ -271,7 +271,7 @@ class TestRankServices:
         assert len(result) == 2
 
     def test_default_dcc_type_is_maya(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         mock_tm.rank_services.return_value = []
@@ -279,7 +279,7 @@ class TestRankServices:
         mock_tm.rank_services.assert_called_once_with("maya")
 
     def test_explicit_dcc_type_forwarded(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         mock_tm.rank_services.return_value = []
@@ -287,7 +287,7 @@ class TestRankServices:
         mock_tm.rank_services.assert_called_with("houdini")
 
     def test_returns_empty_on_exception(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         mock_tm.rank_services.side_effect = RuntimeError("unreachable")
@@ -302,7 +302,7 @@ class TestRankServices:
 
 class TestFindBestService:
     def test_returns_service_from_transport_manager(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         fake_service = MagicMock()
@@ -311,7 +311,7 @@ class TestFindBestService:
         assert result is fake_service
 
     def test_default_dcc_type_is_maya(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         mock_tm.find_best_service.return_value = None
@@ -319,7 +319,7 @@ class TestFindBestService:
         mock_tm.find_best_service.assert_called_once_with("maya")
 
     def test_explicit_dcc_type_forwarded(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         mock_tm.find_best_service.return_value = None
@@ -327,7 +327,7 @@ class TestFindBestService:
         mock_tm.find_best_service.assert_called_once_with("blender")
 
     def test_returns_none_on_exception(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         mock_tm = MagicMock()
         mock_tm.find_best_service.side_effect = ConnectionError("no service")
@@ -419,31 +419,31 @@ class TestGetSkillInfo:
 
 class TestServerStructural:
     def test_is_skill_loaded_in_server_class(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "is_skill_loaded")
 
     def test_get_skill_info_in_server_class(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "get_skill_info")
 
     def test_search_skills_in_server_class(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "search_skills")
 
     def test_search_actions_in_server_class(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert hasattr(MayaMcpServer, "search_actions")
 
     def test_rank_services_is_static(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert isinstance(MayaMcpServer.__dict__["rank_services"], staticmethod)
 
     def test_find_best_service_is_static(self):
-        from dcc_mcp_maya.server import MayaMcpServer
+        from meshy_dcc_maya.server import MayaMcpServer
 
         assert isinstance(MayaMcpServer.__dict__["find_best_service"], staticmethod)

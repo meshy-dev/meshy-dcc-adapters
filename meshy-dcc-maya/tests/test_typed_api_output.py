@@ -1,10 +1,10 @@
-"""Tests for :func:`dcc_mcp_maya.api.maya_typed_success`.
+"""Tests for :func:`meshy_dcc_maya.api.maya_typed_success`.
 
 Context
 -------
 ``maya_typed_success`` bridges the gap between typed Python skill
 handlers and MCP clients that validate responses against a JSON Schema.
-Until dcc-mcp-core propagates ``tools.yaml`` ``outputSchema`` at
+Until meshy-dcc-core propagates ``tools.yaml`` ``outputSchema`` at
 registration time (upstream gap filed separately), the helper embeds
 the derived schema directly in the envelope's ``context.output_schema``
 field so downstream agents can still validate.
@@ -20,7 +20,7 @@ The tests below focus on behaviour skill authors actually rely on:
 4. **Dependency-free fallback**: when ``derive_schema`` is unavailable
    or fails, the helper still returns a valid envelope (no schema,
    still-serialised data).
-5. **Real core parity**: against an installed ``dcc_mcp_core.schema``
+5. **Real core parity**: against an installed ``meshy_dcc_core.schema``
    0.14.22, the derived schema matches the standalone
    ``derive_schema`` call exactly.
 """
@@ -37,7 +37,7 @@ from typing import Any, Dict, Optional
 import pytest
 
 # Import local modules
-from dcc_mcp_maya.api import maya_typed_success
+from meshy_dcc_maya.api import maya_typed_success
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures / canonical test types
@@ -81,7 +81,7 @@ def test_envelope_has_same_top_level_shape_as_maya_success():
     ``maya_success`` — breaking the top-level shape is a silent wire
     incompatibility.
     """
-    from dcc_mcp_maya.api import maya_success
+    from meshy_dcc_maya.api import maya_success
 
     baseline = maya_success("ok", foo=1)
     typed = maya_typed_success("ok", SphereResult(name="s", radius=1.0), foo=1)
@@ -211,7 +211,7 @@ def test_deriver_raising_is_caller_responsibility():
 
 def test_default_deriver_swallows_upstream_crash(monkeypatch):
     """The default deriver must shield skills from a buggy upstream."""
-    import dcc_mcp_maya.api as api_mod
+    import meshy_dcc_maya.api as api_mod
 
     # Monkeypatch the default deriver's lookup to simulate a core
     # version where ``derive_schema`` raises unexpectedly.
@@ -228,10 +228,10 @@ def test_default_deriver_swallows_upstream_crash(monkeypatch):
 
 @pytest.mark.parametrize("exc_type", [TypeError, ValueError, AttributeError])
 def test_real_default_deriver_returns_none_when_core_schema_breaks(monkeypatch, exc_type):
-    # Simulate the ``from dcc_mcp_core.schema import derive_schema`` call
+    # Simulate the ``from meshy_dcc_core.schema import derive_schema`` call
     # raising inside ``_default_schema_deriver``.  The helper must NOT
     # propagate expected schema-derivation failures.
-    import dcc_mcp_maya.api as api_mod
+    import meshy_dcc_maya.api as api_mod
 
     def _broken(tp):
         raise exc_type("schema derivation broken")
@@ -249,7 +249,7 @@ def test_helper_schema_equals_derive_schema_standalone():
     """Regression lock: what the helper embeds MUST equal what a user
     would get from calling ``derive_schema`` themselves.
     """
-    from dcc_mcp_core.schema import derive_schema
+    from meshy_dcc_core.schema import derive_schema
 
     standalone = derive_schema(SphereResult)
     envelope = maya_typed_success("ok", SphereResult(name="a", radius=1.0))

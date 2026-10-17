@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import yaml
 from conftest import load_and_call
 
-SKILL_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_maya" / "skills" / "maya-mesh-ops"
+SKILL_ROOT = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-mesh-ops"
 
 
 def test_loft_sections_is_discoverable_and_verifies_a_polygon_mesh():

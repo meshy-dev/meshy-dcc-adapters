@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dcc_mcp_maya._mutation import MayaUndoChunk
+from meshy_dcc_maya._mutation import MayaUndoChunk
 
 
 def test_undo_chunk_refuses_mutation_when_maya_undo_is_disabled():

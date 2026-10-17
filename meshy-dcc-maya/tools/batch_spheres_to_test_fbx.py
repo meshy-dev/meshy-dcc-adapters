@@ -1,6 +1,6 @@
 """Minimal batch: 10 random spheres, group, export C:/test.fbx (main-thread safe).
 
-dcc-mcp HTTP ``execute_python`` may run off Maya's UI thread; ``cmds.file``
+meshy-dcc HTTP ``execute_python`` may run off Maya's UI thread; ``cmds.file``
 FBX export and ``loadPlugin`` must run on the main thread or Maya can crash.
 This matches the maya-mcp-server pattern: do real ``cmds`` work inside
 ``maya.utils.executeInMainThreadWithResult``.

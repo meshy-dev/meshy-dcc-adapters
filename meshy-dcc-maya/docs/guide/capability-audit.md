@@ -114,5 +114,5 @@ as local evidence, not committed source assets.
 - [Plugin queries](https://help.autodesk.com/cloudhelp/2026/ENU/Maya-Tech-Docs/CommandsPython/pluginInfo.html)
 - [UV query and uvSetName](https://help.autodesk.com/cloudhelp/2026/ENU/Maya-Tech-Docs/CommandsPython/polyEditUV.html)
 - [Maya USD](https://github.com/Autodesk/maya-usd)
-- [Core public contracts](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/llms.txt)
-- Open work: [#490](https://github.com/dcc-mcp/dcc-mcp-maya/issues/490), [#491](https://github.com/dcc-mcp/dcc-mcp-maya/issues/491), [#492](https://github.com/dcc-mcp/dcc-mcp-maya/issues/492), [#493](https://github.com/dcc-mcp/dcc-mcp-maya/issues/493), [#494](https://github.com/dcc-mcp/dcc-mcp-maya/issues/494), [#495](https://github.com/dcc-mcp/dcc-mcp-maya/issues/495).
+- [Core public contracts](https://github.com/meshy-dev/meshy-dcc-core/blob/main/llms.txt)
+- Open work: [#490](https://github.com/meshy-dev/meshy-dcc-maya/issues/490), [#491](https://github.com/meshy-dev/meshy-dcc-maya/issues/491), [#492](https://github.com/meshy-dev/meshy-dcc-maya/issues/492), [#493](https://github.com/meshy-dev/meshy-dcc-maya/issues/493), [#494](https://github.com/meshy-dev/meshy-dcc-maya/issues/494), [#495](https://github.com/meshy-dev/meshy-dcc-maya/issues/495).

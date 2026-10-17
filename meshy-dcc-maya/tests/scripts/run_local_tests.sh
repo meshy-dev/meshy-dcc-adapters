@@ -22,7 +22,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${YELLOW}  DCC-MCP-Maya Multi-Instance Test Suite${NC}"
+echo -e "${YELLOW}  Meshy DCC-Maya Multi-Instance Test Suite${NC}"
 echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
 
 # Check dependencies
@@ -73,10 +73,10 @@ fi
 echo -e "\n${YELLOW}Preparing test environment...${NC}"
 
 export PYTHONPATH="$PROJECT_ROOT/src:$PROJECT_ROOT/tests/fixtures:${PYTHONPATH:-}"
-export DCC_MCP_MAYA_SKILL_PATHS="$PROJECT_ROOT/skills"
+export MESHY_DCC_MAYA_SKILL_PATHS="$PROJECT_ROOT/skills"
 
 # Default gateway port
-GATEWAY_PORT=9765
+GATEWAY_PORT=19765
 
 echo -e "  Gateway port: $GATEWAY_PORT"
 echo -e "  Project root: $PROJECT_ROOT"

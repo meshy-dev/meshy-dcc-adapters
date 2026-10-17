@@ -32,7 +32,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dcc_mcp_maya import (
+from meshy_dcc_maya import (
     ENV_ATEXIT_HOOK,
     ENV_DEFENSIVE_DEL,
     ENV_KMAYA_EXITING_HOOK,
@@ -47,7 +47,7 @@ from dcc_mcp_maya import (
     unregister_kmaya_exiting_hook,
     write_process_sentinel,
 )
-from dcc_mcp_maya._shutdown_safety import _env_enabled
+from meshy_dcc_maya._shutdown_safety import _env_enabled
 
 # ---------------------------------------------------------------------------
 # _env_enabled — the tiny switch helper
@@ -215,7 +215,7 @@ class TestAtExitHook:
             f"""
             import sys
             sys.path.insert(0, {str(Path("src").resolve())!r})
-            from dcc_mcp_maya._shutdown_safety import register_atexit_hook
+            from meshy_dcc_maya._shutdown_safety import register_atexit_hook
             def _on_exit() -> None:
                 open({str(marker)!r}, "w").write("fired")
             register_atexit_hook(_on_exit)
@@ -287,7 +287,7 @@ class TestProcessSentinel:
     def test_orphan_sentinels_reports_dead_pids(self, tmp_path: Path) -> None:
         # Write a sentinel with a PID that is guaranteed not to exist.
         bogus = 2**31 - 1  # highest int32 — essentially never allocated.
-        subdir = tmp_path / "dcc-mcp-registry" / "sentinels"
+        subdir = tmp_path / "meshy-dcc-registry" / "sentinels"
         subdir.mkdir(parents=True)
         fake_sentinel = subdir / f"{bogus}-deadbeef.sentinel"
         fake_sentinel.write_text(f"{bogus}\n")
@@ -402,7 +402,7 @@ class TestShutdownCoordinator:
         )
         try:
             # No sentinel file should exist under the temp dir.
-            sentinels_dir = tmp_path / "dcc-mcp-registry" / "sentinels"
+            sentinels_dir = tmp_path / "meshy-dcc-registry" / "sentinels"
             if sentinels_dir.exists():
                 assert list(sentinels_dir.iterdir()) == []
         finally:
@@ -481,7 +481,7 @@ class TestCrashResilientSentinel:
             f"""
             import os, sys, time
             sys.path.insert(0, {str(Path("src").resolve())!r})
-            from dcc_mcp_maya._shutdown_safety import write_process_sentinel
+            from meshy_dcc_maya._shutdown_safety import write_process_sentinel
             sentinel = write_process_sentinel(
                 "crash-test",
                 registry_dir={str(tmp_path)!r},
@@ -506,7 +506,7 @@ class TestCrashResilientSentinel:
         assert result.returncode == 137
         dead_pid = int(result.stdout.strip().splitlines()[-1])
 
-        sentinels_dir = tmp_path / "dcc-mcp-registry" / "sentinels"
+        sentinels_dir = tmp_path / "meshy-dcc-registry" / "sentinels"
         if sys.platform == "win32":
             # ``FILE_FLAG_DELETE_ON_CLOSE`` should have dropped the file
             # the moment the process died.  The directory may still
