@@ -1,0 +1,176 @@
+# dcc-mcp-substance3d-painter
+
+<p align="center">
+  <img src="docs/assets/dcc-mcp-substance3d-painter.svg" alt="DCC-MCP · SUBSTANCE3D-PAINTER" width="600">
+</p>
+
+<!-- dcc-mcp-coverage-pointer:start -->
+<!-- Generated from dcc-mcp-catalog.yml by scripts/generate_adapter_pointer.py in dcc-mcp/dcc-mcp-core. Do not edit by hand. -->
+## Part of the DCC-MCP host matrix
+
+**dcc-mcp-substance3d-painter** — Substance 3D Painter adapter for DCC-MCP.
+
+It is one of **47 host adapters** in the DCC-MCP catalog. Every adapter speaks the same
+MCP protocol and builds on the same core runtime contract; each one exposes the tools
+its own host needs on top of that.
+
+- [All host adapters and install metadata](https://dcc-mcp.github.io/ecosystem)
+- [Host matrix on the core README](https://github.com/dcc-mcp/dcc-mcp-core#readme)
+- [Showcase](https://dcc-mcp.github.io/showcase)
+
+This block is generated from the catalog entry in
+[`dcc-mcp-catalog.yml`](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/dcc-mcp-catalog.yml).
+Re-run the generator after changing the catalog.
+<!-- dcc-mcp-coverage-pointer:end -->
+
+## Agent workflow
+
+AI agents should use the shared gateway through `dcc-mcp-cli`; IDE users may
+continue to use the MCP endpoint. Prefer typed skills and tools over raw scripts.
+
+### Install or update the CLI
+
+`dcc-mcp-cli` is the preferred control path for every shell-capable agent. If
+it is missing, ask the user before installing the latest official release:
+
+```bash
+# Linux/macOS
+curl -fsSL https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.sh | sh
+
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.ps1 | iex"
+```
+
+Keep an official build current through the release manifest:
+
+```bash
+dcc-mcp-cli update check
+dcc-mcp-cli update apply
+```
+
+`update apply` downloads and stages the latest CLI for the next launch. It
+does not update a running `dcc-mcp-server`; update that server in its own
+environment.
+
+```bash
+dcc-mcp-cli dcc-types
+dcc-mcp-cli list
+dcc-mcp-cli search --query "<task>" --dcc-type substance3d_painter
+dcc-mcp-cli describe <tool-slug>
+dcc-mcp-cli call <tool-slug> --json '{"key":"value"}'
+```
+
+`dcc-types` reports release-catalog support; `list` reports live sessions. If a
+tool belongs to an inactive progressive skill, call `dcc-mcp-cli load-skill <skill-name> --dcc-type substance3d_painter` before retrying. For post-task improvement,
+attach a stable session id with `--meta-json`, query `dcc-mcp-cli stats --range 24h --session-id <task-id>`, then pass the bounded evidence to the
+`review_skill_improvement` prompt from `dcc-mcp-skills-creator`.
+
+
+Substance 3D Painter adapter for the DCC Model Context Protocol (MCP).
+
+It embeds a Streamable HTTP MCP server in Painter and routes host API calls
+through Painter's Qt main thread. Painter uses an OS-assigned port by default
+and advertises the endpoint through DCC-MCP discovery.
+
+## Install and load
+
+Use the agent-first lifecycle for preflight, a non-mutating plan, receipted
+installation, live verification, upgrades, and uninstall. See
+[install.md](install.md) for exact Windows, macOS, and Linux commands and the
+manual environment path.
+
+The lifecycle uses the released Core 0.20.15 Install SOP contract. Readiness is
+fail-closed unless the registry, independently observed process identity, and
+in-host diagnostics all bind the same Painter executable, start identity,
+process-owned loopback listener, adapter payload, and receipt. CI uses hermetic
+identity/probe fixtures; it does not claim to validate a real Adobe Painter
+launch.
+
+Set `DCC_MCP_SUBSTANCE3D_PAINTER_PORT` before launching Painter only when a
+fixed port is required; `0` keeps automatic allocation. Standard
+`DCC_MCP_GATEWAY_PORT` and `DCC_MCP_REGISTRY_DIR` settings are also honoured.
+
+## Bundled skills
+
+`painter-project` provides typed tools for a complete material-authoring pass,
+plus `execute_materialized_script` for an unchanged Python FileRef returned by
+Core `materialize_script`:
+
+- inspect the project and texture sets;
+- create PBR fill layers;
+- search Painter resources and apply smart materials;
+- list export presets, save the `.spp`, and export textures.
+
+The tools use Painter resource and preset URLs supplied by Painter itself. They
+do not expose raw JavaScript, inline source, caller-selected paths, execution
+modes, or UI automation. A materialized FileRef is an integrity envelope, not a
+trust decision or a Python security sandbox: only materialize source that is
+trusted to run with the current Painter process privileges. Reflective code or
+background work intended to outlive the fixed request lifecycle is outside the
+supported contract. The materialized-script executor validates Core's
+scoped sidecar, file identity, digest, size, encoding, and expiry before the
+fixed `main()` entry point reaches Painter's main thread. It repeats the full
+FileRef check immediately before dispatch, clones and invokes the validated
+function with its prefix globals through a host callable captured before source
+entry, snapshots its strict JSON result when valid, and executes suffix source
+exactly once after every source-entered `main()` attempt in a quarantined
+side-effect phase. Direct `json` imports and executor-module imports resolve to
+request-private JSON state. The executor import is a minimal facade with no
+executor callables or canonical module state, so a retained facade cannot regain
+host globals after return. Prefix or suffix rebinding cannot change the captured
+entrypoint behavior or result, and suffix failures do not clobber the main
+outcome (including a stable rejection for invalid results).
+The suffix is side-effect-only: a `main()` that requires a helper, import, or
+mutable initialization introduced only by the suffix is rejected with the
+stable `script_suffix_dependency` error, so valid scripts must define those
+dependencies before `main()`.
+Cancellation remains bound to the exact host token and job captured before
+source entry; the executor restores the captured host ContextVar state,
+cancellation module bindings, validator alias, and canonical JSON serializer
+after both source phases. These guarantees cover the fixed executor contract;
+they must not be interpreted as isolation from arbitrary untrusted Python in
+the same process.
+Results accept only strict portable JSON: string-keyed plain objects, plain
+arrays, JSON scalars, and finite numbers, with maximum depth 64, 10,000 nodes,
+and 256 KiB of compact UTF-8 JSON. The byte limit covers the complete public
+response, including host-owned context and postcondition fields. Validation and
+normalization capabilities remain outside script-writable state. Source-entered
+failures never carry retry or rematerialization guidance.
+
+### Domain skills
+
+Alongside `painter-project`, the adapter bundles focused skills that map
+Painter's real native primitives onto their pipeline domains:
+
+- **`painter-material`** — channel-level material authoring: read a stack's
+  channel inventory, choose which channels a layer contributes, and write
+  uniform channel values.
+- **`painter-compositing`** — how a layer combines with the layers below it:
+  visibility, opacity, blending mode, and mask state.
+- **`painter-lighting`** — scene lighting. Painter has no light objects, so
+  lighting is the image-based environment: environment map, exposure, and
+  rotation.
+
+Every mutation is confirmed by reading the value back from Painter before the
+tool reports success. Where Painter exposes no readback for a value, the tool
+says so explicitly instead of implying verification it did not perform.
+
+Painter has no particle, dynamics, or animation system, so those domains have no
+native equivalent to expose. The closest real primitives are Painter's brush
+parameters and generators, and camera turntable plus texture-sequence export,
+which `painter-project` already covers.
+
+## Development
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest
+ruff check src tests tools
+uv lock --check
+python -m build
+```
+
+Releases use release-please. The `release.yml` workflow builds one verified
+wheel/sdist bundle, publishes those exact files through the `pypi` environment
+using Trusted Publishing, and attaches the same checksummed files to the GitHub
+Release.
