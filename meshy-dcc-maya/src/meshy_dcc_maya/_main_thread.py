@@ -21,7 +21,7 @@ been shut down.
 on Maya's main thread, and :func:`is_main_thread` lets callers decide
 whether to do the work now or hand it to Maya's deferred queue.
 
-See https://github.com/meshy-dev/meshy-dcc-maya/issues/552
+See upstream maya issue 552
 """
 
 from __future__ import annotations

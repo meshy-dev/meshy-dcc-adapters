@@ -56,7 +56,7 @@ The script:
 2. Installs this checkout into Maya with the sidecar extra:
    `mayapy -m pip install -e ".[sidecar]"`.
 3. Verifies adapter imports and requires the installed Core version to satisfy
-   `meshy-dcc-core>=0.20.0,<0.21.0`.
+   `meshy-dcc-core>=0.2.0,<0.3.0`.
 4. Writes reusable MCP JSON snippets under `.meshy-dcc/agent-setup/`.
 
 Use PyPI instead of the local checkout when setting up an end-user machine:

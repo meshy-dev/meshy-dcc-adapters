@@ -4,7 +4,7 @@ Verifies that ``_export_worker_env()`` in the Maya plugin correctly exports
 ``MESHY_DCC_PYTHON_EXECUTABLE`` and ``MESHY_DCC_PYTHON_INIT_SNIPPET`` so that
 skill worker subprocesses use the correct Maya Python interpreter.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/63
+See: upstream maya issue 63
 """
 
 # Import future modules

@@ -38,7 +38,7 @@ treated as main-thread-only. Mis-declaring a Maya-touching action as
 ``any`` would crash Maya; mis-declaring a pure action as ``main`` only
 costs a main-thread tick. ``main`` is the Hippocratic default.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/127
+See: upstream maya issue 127
 """
 
 # Import future modules

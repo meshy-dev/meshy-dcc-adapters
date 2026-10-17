@@ -59,7 +59,6 @@ def stack(monkeypatch, headless):
     monkeypatch.setattr(headless, "BlockingDispatcher", lambda: dispatcher)
     monkeypatch.setattr(headless, "MayaHost", Host)
     monkeypatch.setattr(headless, "MayaMcpServer", Server)
-    monkeypatch.setattr(headless, "core_version", "0.19.64")
     return events, Host, Server
 
 
@@ -123,13 +122,6 @@ def test_off_main_thread_is_rejected(stack, headless):
     thread.start()
     thread.join(timeout=2)
     assert errors == ["serve_headless() must run on Mayapy's main thread"]
-    assert stack[0] == []
-
-
-def test_old_core_is_rejected_before_server_start(stack, monkeypatch, headless):
-    monkeypatch.setattr(headless, "core_version", "0.19.45")
-    with pytest.raises(RuntimeError, match="meshy-dcc-core>=0.19.64"):
-        headless.serve_headless()
     assert stack[0] == []
 
 

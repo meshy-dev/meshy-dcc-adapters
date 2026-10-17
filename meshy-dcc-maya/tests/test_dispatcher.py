@@ -1,6 +1,6 @@
 """Tests for MayaUiDispatcher, MayaStandaloneDispatcher, and MayaUiPump.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/66
+See: upstream maya issue 66
 """
 
 # Import future modules

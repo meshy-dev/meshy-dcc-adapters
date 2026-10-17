@@ -4,19 +4,18 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meshy-dcc-maya"
-version = "0.9.35"
-description = "Maya plugin for the DCC Model Context Protocol (MCP) ecosystem — embeds a Streamable HTTP MCP server directly inside Maya"
-authors = [{ name = "Long Hao", email = "hal.long@outlook.com" }]
+version = "0.1.0"
+description = "Meshy DCC Core adapter for Autodesk Maya: a Maya module that serves scene, import, material and render tools to the meshy-dcc CLI"
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 keywords = ["maya", "mcp", "dcc", "ai", "llm", "model-context-protocol"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -27,30 +26,7 @@ classifiers = [
 ]
 
 dependencies = [
-    # Historical note (no longer a constraint on the floor): 0.19.45 was the
-    # release that defaulted instance listeners to OS-assigned ports.
-    #
-    # The floor is 0.20.0 because Core's adapter requirement policy caps a declared
-    # range at one minor line (MAX_MINOR_LINES = 1): since the upper bound must admit
-    # the current Core series, the lower bound has to sit on that same 0.20.x line.
-    # A floor on 0.19.x with an upper bound of <0.21.0 spans two minor lines and is
-    # rejected by Core's own checker.
-    #
-    # Raising the floor also closes two older gaps: the standalone Mayapy entrypoint
-    # (meshy_dcc_maya.headless.serve_headless) gates on >=0.19.64, and
-    # meshy_dcc_core.capture_bootstrap_errors only exists from 0.19.90 -- both are now
-    # strictly below the declared floor, so no supported version lacks them.
-    #
-    # Python 3.7 support is unaffected: 0.20.0 still publishes a cp37 wheel carrying
-    # the native meshy_dcc_core/_core extension and the meshy_dcc_core.host package.
-    #
-    # The upper bound is pinned to the 0.20.x series: ``<1.0.0`` admitted any future minor, so a
-    # Core minor release could silently break this adapter (0.20.34 changed the Install SOP
-    # schema version). Failing at dependency resolution is louder and cheaper than failing the
-    # Install SOP contract tests. Runtime installs into a user's Maya stay permissive via
-    # MAX_CORE_VERSION in install.py.
-    "meshy-dcc-core>=0.20.0,<0.21.0",
-    "meshy-dcc-server>=0.18.21,<0.21.0",
+    "meshy-dcc-core>=0.2.0,<0.3.0",
     "packaging>=21.3",
 ]
 
@@ -62,7 +38,6 @@ dev = [
     "pytest-timeout>=2.1.0",
     "pytest-xdist>=3.0",
     "requests>=2.28.0",
-    "meshy-dcc-server>=0.18.21,<1.0.0",
     "ruff>=0.8.0",
     "hatchling",
     "build",
@@ -72,10 +47,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/meshy-dev/meshy-dcc-maya"
-Repository = "https://github.com/meshy-dev/meshy-dcc-maya"
-Issues = "https://github.com/meshy-dev/meshy-dcc-maya/issues"
-Changelog = "https://github.com/meshy-dev/meshy-dcc-maya/releases"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-maya"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
 
 [project.entry-points."meshy_dcc.adapters"]
 maya = "meshy_dcc_maya:MayaMcpServer"

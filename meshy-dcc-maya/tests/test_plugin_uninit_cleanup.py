@@ -4,7 +4,7 @@ Verifies that ``_stop_blocking()`` is always invoked from the ``finally``
 block — even when an earlier cleanup step raises — so the FileRegistry
 entry is never leaked on partial shutdowns.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/126
+See: upstream maya issue 126
 """
 
 # Import future modules

@@ -23,12 +23,10 @@ reproduce, and compatibility matrices get read off the wrong number.
 Policy implemented here
 -----------------------
 1. **Single source at packaging time.**  ``pyproject.toml`` carries
-   ``project.version``; release-please bumps it *and*
-   ``src/meshy_dcc_maya/__version__.py`` *and* every other file marked with
-   ``x-release-please-version`` in the same release commit.  The wheel
+   ``project.version``; a release bumps it and
+   ``src/meshy_dcc_maya/__version__.py`` in the same commit.  The wheel
    metadata is generated from ``project.version``, so a correct build has
-   exactly one version.  ``tests/test_version_single_source.py`` fails CI
-   when those files ever drift apart.
+   exactly one version.
 2. **The running module wins at runtime.**  ``meshy_dcc_maya.__version__`` is
    the code that executes, so it is what the server advertises in the MCP
    ``initialize`` response and what a bug report should quote.

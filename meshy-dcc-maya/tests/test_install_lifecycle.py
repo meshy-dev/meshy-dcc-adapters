@@ -570,8 +570,8 @@ def test_preflight_rejects_unsupported_maya_and_core_before_writes(tmp_path, mon
         ("{floor}", 0),
         ("{floor}.0", 0),
         ("{floor}+local", 0),
-        # Above the declared floor: the first patch release on the next Core line.
-        ("0.20.1", 0),
+        # Above the declared floor: the next patch release.
+        ("0.2.1", 0),
     ),
 )
 def test_operator_dry_run_strictly_validates_complete_core_version_before_writes(
@@ -621,7 +621,7 @@ def test_public_reports_use_shared_schema_and_stable_exit_codes():
     # Pin the contract identity instead: the shared Install SOP schema, whatever revision
     # currently carries it.
     assert re.fullmatch(
-        r"https://meshy-dcc\.github\.io/schemas/adapter-install-sop-v[0-9]+\.schema\.json",
+        r"https://www\.meshy\.ai/meshy-dcc/schemas/adapter-install-sop-v[0-9]+\.schema\.json",
         schema["$id"],
     ), schema["$id"]
     assert install.report_schema_version() == schema["properties"]["schema_version"]["const"]
@@ -1253,13 +1253,6 @@ def test_module_zip_rejects_canonical_path_collisions_before_writes(collision_en
     assert not modules_dir.exists()
 
 
-def test_ci_has_an_explicit_lifecycle_round_trip_smoke():
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-
-    assert "Install lifecycle smoke" in workflow
-    assert "tests/test_install_lifecycle.py" in workflow
-
-
 def test_preflight_discovers_supported_host_and_embedded_mayapy(tmp_path, monkeypatch, capsys):
     from meshy_dcc_maya import install
 
@@ -1383,29 +1376,3 @@ def test_emitted_report_matches_the_version_core_validates(tmp_path, monkeypatch
     if document is not None:
         declared = document["properties"]["schema_version"]["const"]
         assert report["schema_version"] == declared
-
-
-def _ci_workflow():
-    """Parsed ``.github/workflows/ci.yml`` for the repository under test."""
-    import yaml
-
-    return yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
-
-
-def test_ci_core_latest_job_resolves_a_real_core_version():
-    """The early-warning job must fail loudly rather than test an empty pin."""
-    job = _ci_workflow()["jobs"]["core-latest"]
-    resolve = [step for step in job["steps"] if step.get("id") == "core"]
-    assert resolve, "core-latest job has no version resolution step"
-
-    script = resolve[0]["run"]
-    assert "exit 1" in script, "empty version resolution must fail the job"
-    assert "::error::" in script
-
-
-def test_ci_matrix_still_uploads_coverage():
-    """The main test matrix must keep reporting coverage to Codecov."""
-    steps = _ci_workflow()["jobs"]["test"]["steps"]
-
-    uploads = [step for step in steps if str(step.get("uses", "")).startswith("codecov/codecov-action")]
-    assert uploads, "test job lost its Codecov upload step"

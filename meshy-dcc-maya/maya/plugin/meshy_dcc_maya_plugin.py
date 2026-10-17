@@ -122,7 +122,7 @@ import maya.cmds as cmds
 
 logger = logging.getLogger(__name__)
 
-VENDOR = "meshy-dcc"
+VENDOR = "Meshy"
 
 # Default gateway port — same as meshy-dcc-server binary default
 _DEFAULT_GATEWAY_PORT = 19765
@@ -540,7 +540,7 @@ def _export_worker_env() -> None:
         Initialises Maya standalone in the worker process.
 
     Uses ``setdefault`` so advanced users can still override.
-    See: https://github.com/meshy-dev/meshy-dcc-maya/issues/63, #108
+    See: upstream maya issue 63, #108
     """
     os.environ.setdefault("MESHY_DCC_PYTHON_EXECUTABLE", sys.executable)
     os.environ.setdefault(
@@ -1736,6 +1736,6 @@ def _show_about() -> None:
         f"Maya {dcc_version}\n"
         f"Python {sys.version.split()[0]}\n\n"
         "Meshy DCC — AI-driven DCC automation.\n"
-        "https://github.com/meshy-dev/meshy-dcc-maya"
+        "https://www.meshy.ai"
     )
     cmds.confirmDialog(title="About Meshy DCC", message=msg, button=["OK"])

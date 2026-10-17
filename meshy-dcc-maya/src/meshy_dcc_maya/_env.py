@@ -6,7 +6,7 @@ composition root in :mod:`meshy_dcc_maya.server` stays a thin orchestrator.
 All helpers are pure functions: they read :data:`os.environ` and return
 plain Python values; they never mutate global state.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/127
+See: upstream maya issue 127
 """
 
 # Import future modules

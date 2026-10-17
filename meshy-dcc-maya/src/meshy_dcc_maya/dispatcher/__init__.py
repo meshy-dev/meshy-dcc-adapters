@@ -19,7 +19,7 @@ This re-export layer is **zero-overhead**: every name binds to the same
 object as the originating submodule.  External callers do not need to
 update their imports.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/128
+See: upstream maya issue 128
 """
 
 # Import future modules

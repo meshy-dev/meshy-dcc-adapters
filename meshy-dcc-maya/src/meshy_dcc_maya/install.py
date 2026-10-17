@@ -73,12 +73,12 @@ FALLBACK_REPORT_SCHEMA_VERSION = 1
 
 DCC_TYPE = "maya"
 COMMAND = "meshy-dcc-maya"
-MIN_CORE_VERSION = "0.20.0"
+MIN_CORE_VERSION = "0.2.0"
 # Pinned to the 0.20.x series rather than the next major: ``<1.0.0`` admitted any future Core
 # minor, so a Core minor could silently break the Install SOP contract (0.20.34 changed the
 # Install SOP schema version). This adapter declares one canonical Core range across PyPI
 # metadata, docs, and the runtime requirement, so the bound is tightened here too.
-MAX_CORE_VERSION = "0.21.0"
+MAX_CORE_VERSION = "0.3.0"
 CORE_VERSION_REQUIREMENT = "meshy-dcc-core>=%s,<%s" % (MIN_CORE_VERSION, MAX_CORE_VERSION)
 MIN_MAYA_VERSION = 2020
 MAX_MAYA_VERSION = 2027

@@ -2,7 +2,7 @@
 
 Validates the host-side stale FileRegistry detection and warning helper.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/126
+See: upstream maya issue 126
 """
 
 # Import future modules

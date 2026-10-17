@@ -22,7 +22,7 @@ whatever :class:`MayaContextSnapshotProvider`-shaped callable is installed
 on the server, so the code is safe in headless / test contexts.
 
 See:
-  * https://github.com/meshy-dev/meshy-dcc-maya/issues/163
+  * upstream maya issue 163
   * core llms.txt §2 Capability Index (`tool_slug` schema)
 """
 

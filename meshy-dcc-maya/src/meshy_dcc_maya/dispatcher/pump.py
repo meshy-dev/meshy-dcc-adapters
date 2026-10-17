@@ -11,8 +11,8 @@ The :func:`create_dispatcher` / :func:`create_pumped_dispatcher` factory
 helpers also live here because they return ``(dispatcher, pump)`` pairs
 and need direct access to both pump constructors.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/85,
-https://github.com/meshy-dev/meshy-dcc-maya/issues/128
+See: upstream maya issue 85,
+upstream maya issue 128
 """
 
 # Import future modules

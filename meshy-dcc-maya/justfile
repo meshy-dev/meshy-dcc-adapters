@@ -62,14 +62,8 @@ default:
     python tools/lint_skills.py --error-only
     echo "✅ SKILL.md lint passed"
 
-# Build VitePress docs and fail on dead links
-@lint-docs:
-    echo "🔍 Building docs and checking links..."
-    npm --prefix docs run build
-    echo "✅ Docs build passed"
-
 # Run all lint checks
-lint-all: lint lint-skills lint-docs
+lint-all: lint lint-skills
     echo "✅ All lint checks passed"
 
 # Pre-commit gate: auto-fix, format, annotate, lint, quick tests.
@@ -85,7 +79,6 @@ lint-all: lint lint-skills lint-docs
     echo "🔍 Running all lint checks..."
     python -m ruff check src/ tests/
     python tools/lint_skills.py --error-only
-    npm --prefix docs run build
     echo "🧪 Running quick tests..."
     python -m pytest tests/ -x -q --ignore=tests/test_e2e_maya_standalone.py
     echo "✅ prek passed — safe to commit"
@@ -335,7 +328,7 @@ _maya-modules-dir := if os() == "windows" {
 # `meshy_dcc_core` (from core's `python/meshy_dcc_core`) and `meshy_dcc_maya` (from `src/meshy_dcc_maya`)
 # into `%USERPROFILE%/Documents/maya/modules/meshy-dcc-maya/python/`. Then start Maya for debugging.
 #
-# After run, use MCP URL printed below; see `docs/guide/local-mcp-debug.md` for Cursor + debugpy.
+# After run, use the MCP URL printed below.
 # Default core repo: sibling directory `../meshy-dcc-core` or env `MESHY_DCC_CORE_REPO`.
 # Requires: Git, Rust (cargo), Maya installed under `Program Files/Autodesk/Maya<ver>/`.
 #
@@ -352,20 +345,10 @@ _maya-modules-dir := if os() == "windows" {
 @maya-dev-relink-core-win:
     powershell -NoProfile -ExecutionPolicy Bypass -File tools/maya-dev-build-link-core-win.ps1 -MayaVersion {{ maya-version }} -SkipBuild
 
-# Windows: copy a **local** meshy-dcc-core wheel + meshy-dcc-maya sources into
-# %USERPROFILE%/Documents/maya (no PyPI). Does not touch git remotes.
-#
-# 1) Build core wheel (same machine / same Python ABI as your Maya, e.g. cp311 for Maya 2025):
-#      cd ../meshy-dcc-core && vx just build
-# 2) From this repo:
-#      just maya-local-mod-win ABI3_WHEEL=G:/PycharmProjects/github/meshy-dcc-core/dist/meshy_dcc_core-0.17.19-cp311-cp311-win_amd64.whl
-# Maya 2022 (cp37): also pass a cp37 wheel:
-#      just maya-local-mod-win2022 ABI3_WHEEL=...cp38-abi3...whl CP37_WHEEL=...cp37-cp37m...whl
-@maya-local-mod-win ABI3_WHEEL:
-    python packaging/assemble_mod_local.py --abi3-wheel "{{ABI3_WHEEL}}"
-
-@maya-local-mod-win2022 ABI3_WHEEL CP37_WHEEL:
-    python packaging/assemble_mod_local.py --abi3-wheel "{{ABI3_WHEEL}}" --cp37-wheel "{{CP37_WHEEL}}"
+# Build the Meshy DCC package (meshy-dcc-maya-<platform>.zip) from a local core wheel.
+#   just package macos-arm64 ../meshy-dcc-core/dist/meshy_dcc_core-...-macosx_11_0_arm64.whl
+@package PLATFORM CORE_WHEEL:
+    uv run --python 3.11 --no-project python packaging/build_package.py --platform {{PLATFORM}} --core-wheel "{{CORE_WHEEL}}" --output-dir dist
 
 # Remove dev symlinks and .mod file
 @maya-unlink:

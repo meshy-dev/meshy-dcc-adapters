@@ -3,7 +3,7 @@
 Validates that ``MESHY_DCC_PYTHON_EXECUTABLE`` is auto-corrected when the user
 sets it to a DCC GUI binary instead of the headless Python sibling.
 
-See: https://github.com/meshy-dev/meshy-dcc-maya/issues/125
+See: upstream maya issue 125
 """
 
 # Import future modules

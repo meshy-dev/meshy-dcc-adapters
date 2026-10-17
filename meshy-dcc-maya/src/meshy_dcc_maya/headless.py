@@ -5,9 +5,7 @@ from __future__ import annotations
 import threading
 from typing import Callable, List, Optional
 
-from meshy_dcc_core import __version__ as core_version
 from meshy_dcc_core.host import BlockingDispatcher
-from packaging.version import Version
 
 from meshy_dcc_maya.host import MayaHost
 from meshy_dcc_maya.server import MayaMcpServer
@@ -29,8 +27,6 @@ def serve_headless(
     """
     if threading.current_thread() is not threading.main_thread():
         raise RuntimeError("serve_headless() must run on Mayapy's main thread")
-    if Version(core_version) < Version("0.19.64"):
-        raise RuntimeError("serve_headless() requires meshy-dcc-core>=0.19.64 for standalone instance registration")
     dispatcher = BlockingDispatcher()
     host = MayaHost(dispatcher)
     if not host.is_background():
