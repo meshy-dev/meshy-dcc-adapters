@@ -579,6 +579,46 @@ class TestContextSnapshot:
 
 
 class TestServerWiring:
+    def test_gateway_scene_follows_the_open_file(self, monkeypatch):
+        """The gateway lists the open .blend as the scene: after start, open and save."""
+        import sys
+        from types import SimpleNamespace
+
+        from meshy_dcc_blender.server import BlenderMcpServer
+
+        def persistent(func):
+            func._bpy_persistent = True
+            return func
+
+        handlers = SimpleNamespace(load_post=[], save_post=[], persistent=persistent)
+        bpy = SimpleNamespace(
+            app=SimpleNamespace(handlers=handlers, version_string="5.1.0", background=True),
+            data=SimpleNamespace(filepath="", is_dirty=False),
+            context=SimpleNamespace(scene=None, selected_objects=[]),
+        )
+        monkeypatch.setitem(sys.modules, "bpy", bpy)
+        server = BlenderMcpServer(port=0, gateway_port=0)
+        published: List[dict] = []
+        monkeypatch.setattr(server, "update_gateway_metadata", lambda **meta: published.append(meta) or True)
+
+        server.start()
+        try:
+            assert published[-1]["scene"] == ""  # unsaved: the UI shows "Untitled"
+            bpy.data.filepath = "/shots/a.blend"
+            for handler in handlers.load_post:
+                handler(None)
+            assert published[-1]["scene"] == "/shots/a.blend"
+            assert published[-1]["documents"] == ["/shots/a.blend"]
+            bpy.data.filepath = "/shots/b.blend"  # Save As
+            for handler in handlers.save_post:
+                handler(None)
+            assert published[-1]["scene"] == "/shots/b.blend"
+            # Blender drops non-persistent handlers on file load, before load_post.
+            assert all(h._bpy_persistent for h in handlers.load_post + handlers.save_post)
+        finally:
+            server.stop()
+        assert handlers.load_post == [] and handlers.save_post == []
+
     def test_server_exposes_readiness_and_manifest(self):
         from meshy_dcc_blender.server import BlenderMcpServer
 

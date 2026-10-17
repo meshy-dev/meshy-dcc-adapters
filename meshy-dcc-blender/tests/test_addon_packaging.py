@@ -210,7 +210,10 @@ def test_assembled_addon_zip_uses_flat_importable_package_layout(tmp_path, monke
         names = set(zf.namelist())
         addon_init = zf.read("__init__.py").decode("utf-8")
         manifest = zf.read("blender_manifest.toml").decode("utf-8")
+        infos = zf.infolist()
 
+    # Reproducible: no entry carries the time it was staged.
+    assert {info.date_time for info in infos} == {(1980, 1, 1, 0, 0, 0)}
     assert "__init__.py" in names
     assert "server.py" in names
     assert "host.py" in names

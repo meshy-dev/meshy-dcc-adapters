@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -31,21 +32,32 @@ PLATFORMS = ("macos-arm64", "windows-x64")
 ONLY = {"3dsmax": ("windows-x64",)}
 WHEEL_GLOB = {"macos-arm64": "meshy_dcc_core-*-macosx_*_arm64.whl", "windows-x64": "meshy_dcc_core-*-win_amd64.whl"}
 
-# The Unity build takes a Windows CPython root rather than downloading one;
-# same build as the Godot and Unreal packages pin.
-WINDOWS_PYTHON_URL = (
-    "https://github.com/astral-sh/python-build-standalone/releases/download/20260504/"
-    "cpython-3.11.15%2B20260504-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
-)
-WINDOWS_PYTHON_SHA256 = "3faa1bec91efb6c3d98dd9a1dfae6ec4a40a855a8bb793ac2a2f2b1689816cfe"
+# Unity on both platforms, and Godot and Unreal on macOS, default to uv's
+# CPython, which varies with the uv version; hand them the build the other
+# packages pin.
+PYTHON_URL = "https://github.com/astral-sh/python-build-standalone/releases/download/20260504/"
+PYTHONS = {
+    "macos-arm64": (
+        "cpython-3.11.15%2B20260504-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "505975e41e03ecc92ec5c666420481a20e7d4ade2d004b0f0a15fa08343910e3",
+    ),
+    "windows-x64": (
+        "cpython-3.11.15%2B20260504-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+        "3faa1bec91efb6c3d98dd9a1dfae6ec4a40a855a8bb793ac2a2f2b1689816cfe",
+    ),
+}
+# Packages resolved from PyPI (build backends, websockets) as of this date, so
+# a tag rebuilds byte for byte; move it forward to take newer releases.
+EXCLUDE_NEWER = "2026-10-17T00:00:00Z"
 
 
-def windows_python(tmp: Path) -> Path:
-    archive = tmp / "cpython-windows.tar.gz"
-    urllib.request.urlretrieve(WINDOWS_PYTHON_URL, archive)
+def pinned_python(platform: str, tmp: Path) -> Path:
+    name, sha256 = PYTHONS[platform]
+    archive = tmp / "cpython.tar.gz"
+    urllib.request.urlretrieve(PYTHON_URL + name, archive)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    if digest != WINDOWS_PYTHON_SHA256:
-        sys.exit(f"{archive}: sha256 {digest}, expected {WINDOWS_PYTHON_SHA256}")
+    if digest != sha256:
+        sys.exit(f"{archive}: sha256 {digest}, expected {sha256}")
     with tarfile.open(archive) as bundle:
         bundle.extractall(tmp, filter="data")
     return tmp / "python"
@@ -57,11 +69,13 @@ def build_args(host: str, platform: str, wheel: Path, out: Path, tmp: Path) -> l
     if host == "blender":
         return ["packaging/assemble_zip.py", "--platform", "win64" if windows else "macos", *common]
     if host == "unity":
-        return ["packaging/build_package.py", *common, *(["--python-home", str(windows_python(tmp))] if windows else [])]
+        return ["packaging/build_package.py", *common, "--python-home", str(pinned_python(platform, tmp))]
     if host == "godot":
-        return ["packaging/build_package.py", *common, *(["--target", "windows-x86_64"] if windows else [])]
+        target = ["--target", "windows-x86_64"] if windows else ["--python-home", str(pinned_python(platform, tmp))]
+        return ["packaging/build_package.py", *common, *target]
     if host == "unreal":
-        return ["packaging/build_package.py", *common, *(["--platform", "windows-x86_64"] if windows else [])]
+        target = ["--platform", "windows-x86_64"] if windows else ["--python-home", str(pinned_python(platform, tmp))]
+        return ["packaging/build_package.py", *common, *target]
     return ["packaging/build_package.py", *common, "--platform", platform]
 
 
@@ -93,7 +107,12 @@ def main() -> None:
             staged = tmp / "out"
             staged.mkdir()
             command = build_args(args.host, platform, wheels[0].resolve(), staged, tmp)
-            subprocess.run(["uv", "run", "--python", "3.11", "--no-project", "python", *command], cwd=adapter, check=True)
+            subprocess.run(
+                ["uv", "run", "--python", "3.11", "--no-project", "python", *command],
+                cwd=adapter,
+                env={**os.environ, "UV_EXCLUDE_NEWER": EXCLUDE_NEWER},
+                check=True,
+            )
             built = list(staged.glob("*.zip"))
             if len(built) != 1:
                 sys.exit(f"{args.host} {platform}: expected one zip, got {[p.name for p in built]}")
