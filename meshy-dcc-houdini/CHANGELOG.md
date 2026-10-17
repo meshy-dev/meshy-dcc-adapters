@@ -1,0 +1,994 @@
+# Changelog
+
+## Unreleased
+
+### Features
+
+* share owned isolated ROP jobs across renders, simulation caches, and ROP chains
+* derive bounded output progress and ETA during job polling
+* make `build_node_chain` an atomic prevalidated transaction with dry-run, one-step undo, explicit rollback, and scene readback
+* report created, connected, and parameter summaries for structured node recipes
+* replace HIP targets atomically after a successful temporary save
+
+### Bug Fixes
+
+* reject dirty GUI background launches and persist explicit headless background launches before rendering
+* avoid false failures for successful ROP chains without discoverable output paths
+* preserve `ignore_inputs` for isolated Solaris ROP chains
+
+## [0.44.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.44.1...v0.44.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* suppress nested Husk renderer consoles ([173305e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/173305e63a792f4eaadba8a3ca059c20e5cce8d2))
+
+
+### Documentation
+
+* refresh the generated DCC-MCP host matrix pointer ([d66a6af](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d66a6afb86cd6a76894e6c271148f5325c200b28))
+
+## [0.44.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.44.0...v0.44.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **import:** honor material_mode instead of dropping materials silently ([#336](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/336)) ([e66d373](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e66d3734e571e444e722eb1a887aaeb1bfa78be0))
+
+## [0.44.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.43.1...v0.44.0) (2026-10-01)
+
+
+### Features
+
+* add official EXR denoising ([#331](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/331)) ([36a5295](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/36a5295750ceadf9596edde5f76aa346073316c8))
+* denoise EXRs with the official Houdini utility ([f1fbe04](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f1fbe04c642047119810854cf207f8f78371a40f))
+
+
+### Bug Fixes
+
+* apply and verify Mantra resolution overrides ([c23fded](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c23fdedc5314eebec1f8a573543782fc318e9172))
+* bootstrap Houdini through official UI-ready hooks ([#329](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/329)) ([81bdf86](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/81bdf8616a74e5bd80608e9f07182e90c8f314ec))
+
+
+### Documentation
+
+* correct bundled tool total to 296 after denoise_image ([5e470a7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/5e470a7afa13c2e6bbb2df143aec4edf3cfbf20c))
+* **integrations:** label the Claude Desktop endpoint as the gateway ([d67e30c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d67e30c46815d66fb2cc7b66e9a0b071f036d188))
+* **render:** list denoise_image in public tool catalogs ([b516333](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b516333aefdb2616761a6f947bf7930e4ef08303))
+* state verified Houdini range for uiready startup hook ([b9ed9dc](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b9ed9dc14be8014ae69dd834d375d5a29006a684))
+
+## [0.43.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.43.0...v0.43.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* pin the Core Install SOP schema per Core release ([#322](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/322)) ([55a279c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/55a279c233481a5f7cadb5f415002c7b315b93ac))
+
+
+### Documentation
+
+* **release:** document the batch window contract and its tag latency ([8800d11](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8800d1176daf145f8df6c0943495d29f77e1723b))
+* **release:** tighten the batch window wording and the cron contract ([#320](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/320)) ([e643f5b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e643f5bd1bd36626e80d9eb6a4283f206a613ab8))
+
+## [0.43.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.42.0...v0.43.0) (2026-09-19)
+
+
+### Features
+
+* **skills:** light bank and IES configuration, USD write cleanup and shared-helper cleanup ([#316](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/316)) ([44c29b1](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/44c29b17c0edebabe3f7d1711f7a4fa599c4fa58))
+
+## [0.42.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.41.2...v0.42.0) (2026-09-19)
+
+
+### Features
+
+* **skills:** add crowd package, USD attribute writes and single grooming steps ([49f7fae](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/49f7faebe3d99e04863cb05a172cb9cec47c7f6a))
+
+## [0.41.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.41.1...v0.41.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* **windows:** validate the claimed ancestry and trust a pid only once its handle is open ([7bfa7f7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/7bfa7f7b29dd8cfa63541bc6721c2d8b51e32c23))
+
+## [0.41.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.41.0...v0.41.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **bake:** use one UV convention and make UDIM bake config atomic ([#312](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/312)) ([0b9ab16](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0b9ab167e83d00daee0befc79704624be91519da))
+* **windows:** skip recycled pids when terminating a render process tree ([#309](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/309)) ([b3fcd21](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b3fcd2133f2ba194c50b867887c4a1d68e066a94))
+
+## [0.41.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.40.0...v0.41.0) (2026-09-19)
+
+
+### Features
+
+* **skills:** author MaterialX graphs, configure per-light shadows, apply review cleanups ([fe26571](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fe26571751b5f04abf1278ae385dfab20436bab0))
+* **skills:** make texture baking UDIM-aware ([1b772a9](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1b772a93eac9cdb149307f052623706951991348))
+
+## [0.40.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.39.0...v0.40.0) (2026-09-19)
+
+
+### Features
+
+* **skills:** add composite chain, cook and output verification to Copernicus ([8457b9b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8457b9b463136bc13bce95f1f8336ae04d17d524))
+* **skills:** add UV package, expand frame tokens in Cop output check, tighten contracts ([c9ed383](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c9ed3837e71e46e382319358cebf9eb9953b415e))
+
+
+### Bug Fixes
+
+* **skills:** drop dead skipped_parameters fields and tighten volume name readback ([7579ef8](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/7579ef8e36147353639d2d4924844e2bbfbf62e1))
+
+## [0.39.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.38.0...v0.39.0) (2026-09-19)
+
+
+### Features
+
+* **skills:** add POP particle package and rigid-body simulation building blocks ([467a359](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/467a359eaa17800f3c4c3db539adb6dfa7c94b47))
+* **skills:** add VDB volume and heightfield terrain packages with pyro building blocks ([e1818b5](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e1818b568ffd0c1292de247fde6308f713e3e41d))
+
+## [0.38.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.37.0...v0.38.0) (2026-09-10)
+
+
+### Features
+
+* add bounded primitive topology inspection ([dc6bd44](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/dc6bd441d3c90e1ac96c1d644be8e5e2b5919f78))
+
+
+### Documentation
+
+* add canonical agent quickstart ([#295](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/295)) ([0736436](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0736436893ae81b4f1e2f650c801ad9bfe84a324))
+
+## [0.37.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.36.0...v0.37.0) (2026-09-07)
+
+
+### Features
+
+* expand Houdini domain skills ([1cc3baf](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1cc3baf96ec78f22bd2d9364969a800bdc07f20f))
+* validate Houdini domain graphs and inspect geometry data ([8fe28ea](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8fe28ea8b4f8c4aedf21bc4b387033ef5fa925fa))
+
+
+### Bug Fixes
+
+* compare Houdini loft parents by node equality ([f11a3ed](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f11a3ed75b9e3ddb8c2bbea121589499c3d9c90c))
+* paginate tools in live Houdini E2E ([49810c2](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/49810c252343572fb53bbf578967e6664c9765ac))
+* preserve physical scale in typed FBX exports ([dd349a7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/dd349a769b4232db843ceee7da7078a652b23b75))
+* scan complete husk logs for render failures ([9293d93](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/9293d93d1de8fd3c98190f9c83018f0ef8e6ca38))
+
+
+### Documentation
+
+* record live Husk procedural failure acceptance ([d7127bc](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d7127bccdee54b3ec21a2d5aca8abfdd6c074a24))
+
+## [0.36.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.35.1...v0.36.0) (2026-08-31)
+
+
+### Features
+
+* bound Houdini script output ([ef96617](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ef96617467bbe2df0f131c5f1564f8101505ea2e))
+
+
+### Bug Fixes
+
+* harden Houdini light and save readback ([42fc1db](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/42fc1db15198d447faad73a2f8b6e8f39d3bfd54)), closes [#264](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/264)
+
+## [0.35.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.35.0...v0.35.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* bind texture payload during assignment ([6beb255](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6beb255df0dbbe3381a40d88383a23625a3892f9))
+* converge texture assignments safely ([7a83791](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/7a83791274e19cad3ca60f200bfddeaab2d85c25))
+* harden texture assignment transactions ([4f9d2e1](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4f9d2e1f9f0f706cd895acf3215dd034a2770186))
+* harden texture rollback boundaries ([54b438a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/54b438ae6540cb02f569a0a3d465338799de0f17))
+* make texture assignment fail closed ([85751b4](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/85751b47b799b28e0834580f3a047badc26ee1e7))
+* preserve texture transaction integrity ([f40cd5e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f40cd5e4adf0f9a087f2d4ce4ab9663715068105))
+
+## [0.35.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.34.0...v0.35.0) (2026-08-26)
+
+
+### Features
+
+* add verified Houdini modeling verbs ([2e8671e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2e8671e802d501b8900ce3dd56afbd6b69824f2c))
+
+
+### Bug Fixes
+
+* align release asset collision checks ([6118ec5](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6118ec5c376aae8b29a5ed07cd2de4b5b3e6fee9))
+* clean up unreturned Houdini nodes ([b00078a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b00078a93a7d6e2db05eed9a652e1494e75da46b))
+* own downstream SOP transactions ([09d9d78](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/09d9d78babef321f59df7bcc2150ef33b64a4537))
+* prevent release asset overwrites ([c5090d2](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c5090d287c8c09b363ed8908e7eccd48cde62395))
+* verify Houdini loft and array topology ([c9fab8e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c9fab8e36deefb41bfecd6bfd6db1f2b629c1371))
+
+## [0.34.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.33.2...v0.34.0) (2026-08-25)
+
+
+### Features
+
+* add anatomy-aware honeybee KineFX rig ([#261](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/261)) ([ec25dfe](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ec25dfe740b8ee286f465544a96db13d7815daab))
+* add anatomy-region groom profiles ([#262](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/262)) ([2dd1b1f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2dd1b1f6fa6240fcc48a741e7c4aece254f20ce8))
+* add Houdini install lifecycle ([96c8716](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/96c87168775d1028e7a4195a1cc9566dfd6a8276))
+* add revisioned usd asset sync ([f0a6420](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f0a6420d21654e6f868a818cc1f9de4c01f2e6bd))
+* gate GSplat showcase quality ([#260](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/260)) ([50dac71](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/50dac719c62d2878d63f1450dfbe811602379310))
+* validate KineFX ground contacts ([e832c6e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e832c6eafa4f5d1a7337f40a9c0ce0f871839808))
+
+
+### Bug Fixes
+
+* avoid headless shutdown drain race ([f6c60c7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f6c60c7d938ce1291617689daee7b4aff996e077))
+* bind release assets to immutable tag ([93f9fe5](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/93f9fe52a769ad691d7bd54827efcabe6e4bc538))
+* guard heavy viewport framing ([ea79b13](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ea79b133441e0c3e63089e47084dbde7c74a9501))
+* harden bundled wheel selection ([081209f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/081209f289c982351ca84302d0dd364fd1df51fb))
+* harden Houdini install lifecycle ([84a5526](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/84a5526602011118fbfd413087a3422bf19d6059))
+* harden Houdini install lifecycle compatibility ([f84b835](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f84b835ba9468bd33874d341959faa53a96590db))
+* harden Houdini runtime ownership ([c8c21c9](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c8c21c9d2d8ada6761586d727fd7bb90bf7d9105))
+* harden quickinstall wheel extraction ([e90e00e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e90e00e29f958b4f8fec332bb06a55de1569d027))
+* harden quickinstall wheel metadata validation ([40c21bd](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/40c21bddb0bc7c4077febc1186da4c0b11ea94c6))
+* preserve install schema fixture bytes ([4d9527e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4d9527e00d8054e58d9ed5f879532add36e84680))
+* query existing flipbook jobs synchronously ([2180ec8](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2180ec8fd89e7254cd5b0adb220b8398bae62503))
+* reject empty viewport captures ([85e1e0d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/85e1e0d93981a658a7278fcf4052d23751f4009f))
+* route Solaris LOP renders explicitly ([eafa4fa](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/eafa4fada81f49521bf76270fc115d69def7da42))
+* support bounded detail VEX analysis ([9b20a69](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/9b20a692eeb2ba12c3106082a42e8b784c6e3607))
+* support expanded HDA libraries ([3bdb5ce](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/3bdb5ced94b0b38bd6a42bdd4b1be4290e1a3abb))
+* support KineFX GSplat animation validation ([7381b43](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/7381b434dee699fa088699e9c89f334696e60d3d))
+* surface Husk procedural render errors ([6e15ed8](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6e15ed8f5a53233c3a4c323a069304b19840ea79))
+* use released install SOP contract ([f94be60](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f94be6014df642e3ac9499c47b6d4a8fe272276d))
+* validate quickinstall wheel platform tags ([b1fee4f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b1fee4f93b15fc456160a93ac90fa489ff8d75cc))
+
+
+### Documentation
+
+* add honeybee scan quality gate ([0be6f6c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0be6f6c0c041c1b172d0f7ffe7552bfa8881350b))
+* add verified Houdini GSplat capture ([9d116d5](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/9d116d58c79b3f5d62f51c57920261209234783c))
+* publish captured honeybee GSplat validation ([686b0e9](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/686b0e9179997cf955613583c73b39ab78db3d65))
+
+## [0.33.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.33.1...v0.33.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* preserve Copernicus refinement connections ([#249](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/249)) ([b472d78](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b472d78ea51a7b2fc96644ce8ecddae50b4cd261))
+
+## [0.33.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.33.0...v0.33.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* report headless Houdini instances correctly ([6ec9f76](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6ec9f76417b88aa0b1411b66c306958c4cbf2643))
+* support Houdini 22 VEX bindings ([c6b2b5f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c6b2b5f85b7237c975e0e055c4016cfc8a4edee6))
+* validate Houdini groom deformation output ([d645bbf](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d645bbfec65be9b4b93f30285560da5ff7e27992))
+
+## [0.33.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.32.0...v0.33.0) (2026-08-13)
+
+
+### Features
+
+* **groom:** add GSplat rig deformation and short fur ([#242](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/242)) ([d5fd239](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d5fd2393320c4c53f770e209f4dea06eb1ac58df))
+* **gsplat:** enforce provenance for public showcases ([#240](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/240)) ([2c3901b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2c3901b96c335f3e11ae7e36d7fa818aacb60045))
+
+
+### Bug Fixes
+
+* **render:** guard headless OpenGL ROP crashes ([#243](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/243)) ([d0eed10](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d0eed10a093f6f14782afd3a8bb5d031db48d077))
+
+
+### Documentation
+
+* clarify honeybee prototype showcase ([#246](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/246)) ([833f530](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/833f530cd2c574bca80e76e3170f82769d09880f))
+* **showcase:** publish honest Houdini honeybee workflow ([#244](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/244)) ([80b7e58](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/80b7e5858ea5276a21fdcd722d7afaf81a828650))
+
+## [0.32.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.31.6...v0.32.0) (2026-08-12)
+
+
+### Features
+
+* add Houdini 22 retarget Motion Mixer workflow ([#239](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/239)) ([606e85d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/606e85d3212ad8df21f72ee0619bc1f381a37e64))
+
+
+### Bug Fixes
+
+* declare flipbook poll transition ([#234](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/234)) ([ec7dd34](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ec7dd347f9feb4dffe00ff016c9d62726683f2ca))
+
+## [0.31.6](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.31.5...v0.31.6) (2026-08-12)
+
+
+### Bug Fixes
+
+* complete Houdini authoring contracts ([1aeef80](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1aeef80e029570cc01c38e6843be0cc04558953d))
+
+## [0.31.5](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.31.4...v0.31.5) (2026-08-11)
+
+
+### Bug Fixes
+
+* keep Husk renders off the Houdini UI thread ([#226](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/226)) ([9b1faef](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/9b1faef2e02de0e835486006ee2141d85bdac990))
+
+## [0.31.4](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.31.3...v0.31.4) (2026-08-11)
+
+
+### Bug Fixes
+
+* harden Houdini UI debug workflow ([#224](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/224)) ([865387a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/865387af9e6fb02516bd407e99435c4d4beca749))
+
+## [0.31.3](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.31.2...v0.31.3) (2026-08-11)
+
+
+### Bug Fixes
+
+* track husk frame outputs ([#222](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/222)) ([3fd03f7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/3fd03f7ae0a36c916e6f764bbb41afaf939fb5d3))
+
+## [0.31.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.31.1...v0.31.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* require abi3 core wheels in quickinstall ([#220](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/220)) ([890302c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/890302cc2f128e1a4ddba51d6de1ba44dbdfc4a0))
+
+## [0.31.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.31.0...v0.31.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* honor husk frame selection ([#218](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/218)) ([e13774d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e13774d0c0f88f2939788b44532cd37cb648d659))
+
+
+### Documentation
+
+* add cross-DCC honeybee showcase ([#217](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/217)) ([b211a82](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b211a82a70df55f301313df209fe35b46c6b9626))
+* add honeybee lookdev showcase ([#219](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/219)) ([a31be6a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a31be6a68d1dcf335918c52bf2a673b87f09af8e))
+* replace honeybee showcase with high-poly render ([#216](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/216)) ([f8d7c59](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f8d7c5957719fc462fbcf099081316f46d147aba))
+* replace showcase with real honeybee render ([#214](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/214)) ([09f7920](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/09f79201f89defae66bf29b80b9d2a1f1021affc))
+
+## [0.31.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.30.0...v0.31.0) (2026-08-10)
+
+
+### Features
+
+* add Houdini 22 GSplat relighting workflow ([#212](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/212)) ([84b9ae0](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/84b9ae02e00650753d7a3e886d0411ce68001db5))
+
+## [0.30.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.29.0...v0.30.0) (2026-08-02)
+
+
+### Features
+
+* add ocio lookdev controls ([4db46fd](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4db46fd97406644284e6a6a8f04dda6356a58dad))
+
+
+### Bug Fixes
+
+* support Houdini 21 render APIs ([a116e8e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a116e8e5996649594b0737b4d401580c4de633aa))
+
+## [0.29.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.28.0...v0.29.0) (2026-07-28)
+
+
+### Features
+
+* arrange selected Houdini nodes ([4a63b11](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4a63b11efe7484d4d5e15cd3a4dddb3d269eb69b))
+
+
+### Bug Fixes
+
+* harden live Houdini authoring and flipbooks ([c0698e1](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c0698e1daee308a4c81c1758288ed346b8c582fc))
+* preserve topology context on VEX updates ([65fbbbd](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/65fbbbd796b28481f301f7e2667fad4c4d6ee6ec))
+
+## [0.28.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.27.0...v0.28.0) (2026-07-27)
+
+
+### Features
+
+* add fast Houdini inspection path ([2b1721b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2b1721b3649f9755c1687c7cf0c290dd3edabdc5))
+
+
+### Bug Fixes
+
+* unify isolated ROP job polling ([8351eb8](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8351eb8bd45f4c65841ddeea14ac3a6fe0c6e548))
+
+## [0.27.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.26.0...v0.27.0) (2026-07-26)
+
+
+### Features
+
+* PIP-2930 H21 live probe results + API corrections ([f191ced](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f191cedb9531cfc8bddefdd387532a25fd209501))
+* PIP-2930 stage-1 HOM probe scripts for COP/OpenCL/MaterialX tech verification ([fb37e79](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fb37e79ff527ee848e8b0286d07e919d595011e7))
+* **PIP-2930:** H21 Windows matrix filled via gateway execution ([c53f965](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c53f9653a5dad2720c0ea6e9722608a9820fb757))
+* semantic node graph inspection and controllable auto-layout ([941595c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/941595c9033c490393a3f71d6e1b5cf192030f4a))
+* **vex:** add typed VEX workflow module for Houdini adapter ([eefd809](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/eefd8098765117cbd59b803ae1a1e8f282b06646))
+
+
+### Bug Fixes
+
+* **ci:** resolve 15 ruff lint errors and macOS throttling test flakiness ([733b90a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/733b90adf97308461db17c3ba364f94ebe275291))
+* **kinefx:** preserve rest pose and affine transforms ([a77991c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a77991c91720d89b8aa20a30a4738dea242e1018))
+* **kinefx:** preserve rest pose and affine transforms ([0e5205f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0e5205f5d219a8c64436e9f1762d5b8af15f1990))
+* preserve VEX context on snippet updates ([aeebefe](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/aeebefe13e0e9a71a9e4f7253b60e963126adbb3))
+
+
+### Documentation
+
+* rewrite probes/README.md with audience, contract, and gateway path ([6e81698](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6e81698ab3c66d3a801939c8fe335a850a863600))
+
+## [0.26.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.25.0...v0.26.0) (2026-07-24)
+
+
+### Features
+
+* **houdini:** add unified shelf menu with Copy Instance ID ([fad33db](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fad33db7fdebc2a10ac46124eeb6bc9e72105e86))
+* **render:** wire multi-frame ROP render into core ChunkedRunner ([8e99d73](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8e99d7355d86e406c1d5cf741354ce8f0f87846f))
+* report durable cook elapsed time ([bc724c6](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/bc724c6b7b77e9c4f4f4f1ee6695e39b669bc920))
+
+
+### Bug Fixes
+
+* guard parm.eval() against SIGSEGV on deleted Houdini nodes ([8eae3ea](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8eae3ead3bfc8cd7df6ee6fd0327b46cd5daeb7b))
+* include import skill in interchange stage ([#184](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/184)) ([a8dec55](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a8dec558e1d994380aa23d5763a4d9bf68bec8a3))
+* make long cook jobs recoverable ([3d65ce8](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/3d65ce8a2f6d534fe2de36a15c8e5d53baa63a20))
+* prevent pump wedge when pre_drain_check fails or raises ([e55c5bb](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e55c5bbe67c563dbb8f24637c400396781ab2096))
+* **render:** preserve Solaris fallback fields ([#186](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/186)) ([e7ac9a4](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e7ac9a4bd67f3a7de79f21fd7bf2fd013eea7d96))
+* **render:** resolve effective Solaris settings ([2ab9860](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2ab9860d4d45dfd2552ba510d12b73ef514d6418))
+* report isolated worker liveness honestly ([f82b7fc](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f82b7fc06f39cf21c2686018a695917af6304a91))
+* require recoverable core release ([8c72b2c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8c72b2cc1456506cbb76ca757e263b22e079e750))
+* ruff check --fix import sorting and unused imports ([edba5d3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/edba5d383d5f5e6eabb305fe25e65a8f91d24693))
+
+## [0.25.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.24.1...v0.25.0) (2026-07-20)
+
+
+### Features
+
+* **render:** add staged no-clobber publication for isolated ROP jobs ([#177](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/177)) ([1692501](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1692501d19dc4b89cd95af3a2d756291ea06c8e2))
+* **render:** expose raw output path pattern ([#175](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/175)) ([463f898](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/463f89857836c944874017e9ae1c358395c115ae))
+
+
+### Bug Fixes
+
+* **render:** shorten atomic status temp paths ([#178](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/178)) ([780ff57](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/780ff5719680fa03fb733eab1f4194602ec9a8e5))
+
+## [0.24.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.24.0...v0.24.1) (2026-07-19)
+
+
+### Bug Fixes
+
+* handle unknown HIP dirty state safely in hython ([#172](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/172)) ([b487d07](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b487d0788a20d8125e1d00166c56aaa97adb966a))
+* preserve animated parms in set_parms ([#173](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/173)) ([fb5bf51](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fb5bf51f3b03071f2e6c653bc8ffbde781bbdde5))
+* refresh scene metadata after hip changes ([#170](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/170)) ([ad5037e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ad5037e736a862904d56f0c72691fcace4d5ce2a))
+* **scene:** report object visibility and renderability ([#174](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/174)) ([84c0949](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/84c09493ba3e802a468ae8e11cad9cffe84bf063))
+* use runtime-scoped skill imports ([2689d13](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2689d132301fd8f82a273c155b402ad11727969e))
+
+
+### Documentation
+
+* document CLI install and updates ([6693862](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6693862e170ae31b932a87b8b5772e3c529ae893))
+
+## [0.24.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.23.1...v0.24.0) (2026-07-18)
+
+
+### Features
+
+* allow setting take override values ([#165](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/165)) ([1ffcf82](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1ffcf820737520b70050ed7452ef619c63ff7b6a))
+* support keyframe interpolation modes ([#167](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/167)) ([4d643f9](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4d643f937fa030a4dc447d347d1c203be085ac43))
+
+
+### Bug Fixes
+
+* adjust _OUTPUT_PARMS order - outputimage before lopoutput for Solaris ([6bfef55](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6bfef55d1612b26daddb165e97be8a185dfcf135))
+* forward explicit frame ranges to ROP renders ([b0f9892](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b0f989240a27589a8ca1dd5d64c91599618d5e88))
+* **render:** verify background output completeness ([#169](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/169)) ([61a203d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/61a203d54343d8738196ba4f99217d4fb320d076))
+* resolve merge conflict - use render_node with _OUTPUT_PARMS reorder ([25ffdcb](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/25ffdcbdd7082e07536539fc17e494949eb4019f))
+
+## [0.23.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.23.0...v0.23.1) (2026-07-18)
+
+
+### Bug Fixes
+
+* **render:** reject outputs from failed background jobs ([b875267](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b875267673f061dbc9531ce77d7d8124088f4322))
+
+## [0.23.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.22.0...v0.23.0) (2026-07-18)
+
+
+### Features
+
+* **render:** support production Mantra pass authoring ([#159](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/159)) ([b1f596c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b1f596c6c5cc76be0374ef14bd662ecf2ae82273))
+
+
+### Bug Fixes
+
+* **render:** isolate headless background HIP snapshots ([#161](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/161)) ([bc0aca7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/bc0aca73ed907161d76b6a9513bfd11b08e43f6d))
+* **render:** preserve background job identity and progress ([#162](https://github.com/dcc-mcp/dcc-mcp-houdini/pull/162)) ([ac28cb4](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ac28cb4a8257755c9b79de2d22ab23c5a2b62468))
+
+## [0.22.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.21.2...v0.22.0) (2026-07-18)
+
+
+### Features
+
+* add typed MaterialX PBR authoring ([#157](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/157)) ([66bafd1](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/66bafd1e29818b5636cabbdadd5e8f696e80ea71))
+
+## [0.21.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.21.1...v0.21.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **hda:** require explicit library overwrite ([#155](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/155)) ([99efd34](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/99efd348914d2529e0cfafe221102e82594ef6e6))
+
+## [0.21.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.21.0...v0.21.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* restore headless main-thread pump ([#153](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/153)) ([0c6f1d6](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0c6f1d6101fd0faae347cd6d94c327f264202c10))
+
+## [0.21.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.20.1...v0.21.0) (2026-07-17)
+
+
+### Features
+
+* **animation:** add bounded loop contract validation ([#151](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/151)) ([95a6760](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/95a6760b2cb2f59da95924379329160238060f99))
+
+## [0.20.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.20.0...v0.20.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **installer:** support isolated Houdini package directory ([#149](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/149)) ([626997c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/626997c193d80fa4ebd6a81f53feb5f301de357a))
+
+## [0.20.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.19.0...v0.20.0) (2026-07-17)
+
+
+### Features
+
+* validate known Karma stage diagnostics ([#147](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/147)) ([da4c17a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/da4c17a8b55c43ba07765cd595d519be4c16afc6))
+
+## [0.19.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.18.3...v0.19.0) (2026-07-17)
+
+
+### Features
+
+* add reusable HDA authoring contracts ([#145](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/145)) ([2a2b60c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2a2b60c003c4471cc3aff6fe2662308cee13d2a2))
+
+## [0.18.3](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.18.2...v0.18.3) (2026-07-17)
+
+
+### Bug Fixes
+
+* **render:** separate ROP errors and warnings ([eb83a36](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/eb83a366a0239713c681f1945c9bf94c1369bc33))
+
+## [0.18.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.18.1...v0.18.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* preserve promoted HDA interfaces ([#140](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/140)) ([a89a3d4](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a89a3d49c7586424076a0631a00fcc4f8b848196))
+* wait through Windows termination races ([#141](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/141)) ([fb94523](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fb94523764f3e897e0210aca78e02d4f4bd35de1))
+
+## [0.18.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.18.0...v0.18.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* terminate Windows render jobs without taskkill ([#138](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/138)) ([fa8474e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fa8474ea9e92b3d6578e230567b26786d811402e))
+
+## [0.18.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.17.5...v0.18.0) (2026-07-17)
+
+
+### Features
+
+* complete reusable HDA lifecycle ([e17f5b9](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e17f5b9582e38d5a1774e410b4ff7a6d5e65ffad))
+
+## [0.17.5](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.17.4...v0.17.5) (2026-07-17)
+
+
+### Bug Fixes
+
+* **packaging:** preserve Houdini autostart override ([#134](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/134)) ([deefcb1](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/deefcb11558dfe61f0b56cc55bc08b3dc790da78))
+
+## [0.17.4](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.17.3...v0.17.4) (2026-07-16)
+
+
+### Bug Fixes
+
+* honor Houdini flipbook increments and camera selection ([#130](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/130)) ([ce40084](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ce4008423aa653d57f9c374efd695472351609d0))
+
+## [0.17.3](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.17.2...v0.17.3) (2026-07-16)
+
+
+### Bug Fixes
+
+* use OS-assigned MCP instance ports ([#128](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/128)) ([9230341](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/923034138df39d692fd694bb1b4b8ea9b9b2697e))
+
+## [0.17.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.17.1...v0.17.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* budget Houdini UI host dispatch ([#126](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/126)) ([1128ef4](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1128ef4986d552309b61ab294d31769047b8460e))
+
+## [0.17.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.17.0...v0.17.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* report live render outputs and diagnostics ([#124](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/124)) ([c9749aa](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c9749aae537f081a8bb2a595b700760d5f5b48b2))
+
+## [0.17.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.16.3...v0.17.0) (2026-07-16)
+
+
+### Features
+
+* **skills:** add read-only Solaris USD inspection ([#122](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/122)) ([eefab7c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/eefab7ccc27b1ced452574d9be8edfe2157f056e))
+
+## [0.16.3](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.16.2...v0.16.3) (2026-07-16)
+
+
+### Bug Fixes
+
+* refresh quickinstall vendor import caches ([b22ce5d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b22ce5d7acecf0f2ddba329ffd8374140f66e947))
+* refresh quickinstall vendor import caches ([2cc8b3b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2cc8b3b09a64f3700a5e512fa736c953b14d74a1))
+* report partial render outputs accurately ([#121](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/121)) ([10b7b86](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/10b7b866c3c9cee87765df5a632cd1a0beada9df))
+
+## [0.16.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.16.1...v0.16.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* write Houdini package JSON without UTF-8 BOM ([#117](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/117)) ([8a622a7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8a622a7903850ace45c70cc7daac760cb37545c0))
+
+## [0.16.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.16.0...v0.16.1) (2026-07-16)
+
+
+### Bug Fixes
+
+* autostart when opening Houdini scenes ([#115](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/115)) ([b958a47](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b958a47b9410492dd3b3e9218e12d5228eee5abf))
+
+## [0.16.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.15.0...v0.16.0) (2026-07-16)
+
+
+### Features
+
+* report atomic node recipe outcomes ([#113](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/113)) ([afd45af](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/afd45af25a2f318dd8b35621f78da1475d0bf986))
+
+## [0.15.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.14.0...v0.15.0) (2026-07-16)
+
+
+### Features
+
+* make node-chain builds atomic ([#111](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/111)) ([f94d9d3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f94d9d3953f6da2b48c9fb5745202964fe564c62))
+
+## [0.14.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.13.0...v0.14.0) (2026-07-16)
+
+
+### Features
+
+* isolate long-running ROP jobs ([#109](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/109)) ([08f7ab3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/08f7ab30eb8bb593deab09586e4d36ae62a04dfb))
+## [0.13.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.12.0...v0.13.0) (2026-07-16)
+
+
+### Features
+
+* add cancellable background render jobs ([#107](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/107)) ([0bd0ca3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0bd0ca39ecfa0eb5e0771a05f2cd3e7ae21ec8fb))
+
+## [0.12.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.11.5...v0.12.0) (2026-07-16)
+
+
+### Features
+
+* add non-blocking ROP render jobs ([13d6fcf](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/13d6fcff94714af7bf8ad867e37db05662257824))
+
+
+### Bug Fixes
+
+* keep interactive ROP renders off the UI thread ([#106](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/106)) ([4a6d244](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4a6d244bba821d32018fb219d0d858f7db2d1915))
+* recover mixed-version render jobs ([0bc0213](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0bc0213345bd6455f08c35ee93a435bd955088bc))
+* reject stale background render outputs ([c951caf](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c951caf227c1624f61f4a073f23ee532d7d3b638))
+* suppress adapter startup in render workers ([94631f8](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/94631f8c1ff42f459dc690cd7e206472a290c09d))
+
+## [0.11.5](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.11.4...v0.11.5) (2026-07-14)
+
+
+### Bug Fixes
+
+* enforce Husk render contracts ([b14df92](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b14df925eee180cd1cbf2eec16dfe899387dd44a))
+* silence Houdini HTTP logs ([fe95fdb](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fe95fdbb72a2e62afbb2098954daf2940ce3e23e))
+
+## [0.11.4](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.11.3...v0.11.4) (2026-07-12)
+
+
+### Documentation
+
+* add six dcc particle showcase ([#97](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/97)) ([70e89ac](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/70e89acb134c2a3388429f18bfac87e8e809217e))
+
+## [0.11.3](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.11.2...v0.11.3) (2026-07-11)
+
+
+### Bug Fixes
+
+* support standalone main-thread execution ([481ecda](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/481ecda7dbffce07aa0bd9b72a218c35de90b83d))
+
+## [0.11.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.11.1...v0.11.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* keep Houdini registry registration enabled ([d672351](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d672351e9f1b501e3fd9f05ead0074022c7d1e29))
+
+## [0.11.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.11.0...v0.11.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* allow validated core pin for Houdini quickinstall ([17398a5](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/17398a5d805de260f00f11b35f7bf819bda1106e))
+
+## [0.11.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.10.1...v0.11.0) (2026-07-08)
+
+
+### Features
+
+* add Houdini quickinstall shelf controls ([718a687](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/718a6879c9639c8633f6141a51db1fffb35d84b3))
+
+## [0.10.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.10.0...v0.10.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* recover main from v0.10.0 ([bce408b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/bce408b7ed9af338de6238f992c32bc0f4d112df))
+
+
+### Documentation
+
+* **AGENTS.md:** rename Tools to Key tools in Bundled Skills tables ([#81](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/81)) ([ef15bea](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ef15bea0227d99abb817ff04bee9affbb2d199b9))
+* correct gateway port and bundled skill/tool counts ([#86](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/86)) ([d9756b5](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d9756b5d6b74a316869a9847d4fad612eea171f2))
+* update example wheel URL from v0.1.0 to v0.9.1 ([78b022f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/78b022f4ac7e3362d70be3245b44c0c248716362))
+
+## [0.10.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.9.0...v0.10.0) (2026-06-24)
+
+
+### Features
+
+* add dcc-mcp-houdini project with dev workflow ([fe752d3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fe752d3318683e54100a20c10360522d9d591a5e))
+* add Houdini animation, channel, and timeline skills ([b69fdab](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b69fdabd336670dc75e4f0ca9d9107288fa49315))
+* add Houdini interchange skill for USD/Alembic/FBX/OBJ/native caches ([f265310](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f2653101e687757a65860bce6ddcaedce6a47fec))
+* add Houdini lookdev and shader-network skill ([8f28dad](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8f28dad71d8f217bbf8e58e08357b1da5f552cc9))
+* add Houdini render, camera, light, and viewport capture skills ([36027ff](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/36027ff46d5ab9cc1a38c0bb2ebac65b1aa13562))
+* add Houdini SOP geometry inspection and mesh operation skills ([620a116](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/620a116850c9a54925f9410c9fd72eb7eb90586b))
+* add houdini-chops, houdini-constraints, and houdini-kinefx skills (PIP-1297) ([8b20120](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8b201202b639e0970cc1b78e8e2c19437ad592c7))
+* add houdini-dev skill (dev diagnostics + UI interaction) ([e2e3bd6](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e2e3bd6e42a7ed9355ba3eb8c7299e8815fa1f53))
+* add houdini-export-preset skill with 4 typed tools ([f4e50e3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/f4e50e313ad386d6b18f9de4fada8ee4a2294655))
+* add houdini-hda-automation skill (HDA library/validation + PDG/ROP) ([54b783e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/54b783eaac4e45a908997248454088052e70a508))
+* add houdini-import-to-scene skill for cross-DCC asset import ([#71](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/71)) ([d8a3d60](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d8a3d60d7a5a5546924b7b917262bb0dfdbc4449))
+* add houdini-karma and houdini-husk skill packages (PIP-1298) ([e0ded64](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e0ded64837730294c6de3c9f5ecb05c98e233294))
+* add houdini-light-rig skill (3-point lighting, HDRI, area softbox) ([a44a621](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a44a621df5f14073bcf2a2553a2c71bc4f2792b1))
+* add houdini-material-library skill with 12 tools ([ed909eb](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ed909eb97fd799f9e71b7604bfeac23e2c3f37eb))
+* add houdini-pipeline skill (project + shot/package automation) ([d8aefcb](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d8aefcb359a37efe6c7dda38123a6aa0a53272a4))
+* add houdini-texture-bake skill with 5 typed bake tools ([b1b9988](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b1b9988e3b93741718288e19d72993a056e8819a))
+* add latest dcc-mcp-core integrations and agent install skill ([000e800](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/000e800e9c34cff2f617ce197973e3d976f227e0))
+* add PyPI backfill and Houdini material skills ([7ed343f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/7ed343f2b9ca87ef081ce008db463e803835f03d))
+* complete Houdini adapter release foundation ([5ecd37b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/5ecd37b8adde742bb11a5a1836833e6f5670db6f))
+* **lint:** validate bundled skills with the dcc-mcp-cli runtime validator ([29ecb4a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/29ecb4a67c8ca164846dd5870d6e25e7d254d1cc))
+* **lint:** validate bundled skills with the dcc-mcp-cli runtime validator ([ed3a814](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ed3a8144a06bc3e766443a2619ebc4fbe7818e18))
+* **skills:** add Houdini parameters and node-graph skills ([#12](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/12)) ([237ba7d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/237ba7df230215d897b82399eac9b65e0acd6c73))
+* **skills:** add Houdini scene-edit and object-ops skills ([#11](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/11)) ([d08022d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d08022d814eb2cc7a5b56b752504de368a867212))
+
+
+### Bug Fixes
+
+* auto-format with ruff format in houdini-light-rig scripts ([b066326](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b0663261fe93dbddbcfd798c26df7e29613c3814))
+* **ci:** apply ruff formatting to install_dcc_mcp_cli.py ([ee032a7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ee032a725222f1780a73eb3837d35a342240f0f2))
+* **ci:** fallback through recent releases when latest lacks CLI binary ([bba8420](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/bba8420344da534bf91498a4308c5c7391ec82c6))
+* **ci:** fix import sorting in test_agent_instruction_files.py ([da12590](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/da125908d18ee9887ac5bf3863a61a2a51400deb))
+* **ci:** isolate workflow_dispatch from push concurrency in release workflow ([3c19bc2](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/3c19bc2498de51981429c008d6eafb6293d97ebf))
+* **ci:** isolate workflow_dispatch from push concurrency in release workflow ([aa24e8c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/aa24e8cd8b1d95505983d7b89bbba5c19660837d))
+* **ci:** remove github.token fallback from release-please token ([77d2789](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/77d2789898d6ee299d2831e475a8f91503b9792a))
+* correct 3 skill tool tables in docs (NACK follow-up) ([a55dea3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a55dea34f7f9908b184654b64c4e9979a56de9c1))
+* keep release runtime version managed ([00ba740](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/00ba74022201da2ab74730b59bef20a18744a2a9))
+* lint errors in houdini-texture-bake skill scripts ([7420186](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/74201865cc1a40d3bb219d0c1c59b4f8387055c1))
+* remove unused imports in _qt_inspector module and tests ([059dd61](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/059dd61a33088e854865c2f3478e1d29f5b7b373))
+* remove unused imports in _qt_inspector module and tests ([83c4531](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/83c45315282cbccbd5d9be8cd1173fa4a84c58c9))
+* remove unused imports in _qt_inspector module and tests ([6855c43](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6855c430c9674b19a136cb07016993c49e6601fc))
+* remove unused imports in _qt_inspector module and tests ([ecefebd](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/ecefebd930641bb916a6a0790945f0dec44c50fc))
+* resolve Ruff lint errors and SKILL.md compatibility in houdini-light-rig ([adfb359](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/adfb3590d7589045ebfda281f4ba8ab6cb6cb69d))
+* review feedback — rebase, remove redundant baker_available, add tests ([1d4a60f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1d4a60fef771b5095ed4b22aee0b4c3df1f4d6a3))
+* ruff format and dcc-mcp-core compatibility version for material-library skill ([4b6de74](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4b6de74915eb6e10d7322a8e22d0ff3a6ead2401))
+* ruff format and dcc-mcp-core compatibility version in export-preset SKILL.md ([da52e70](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/da52e70478b516f7aa2ce3ad35d4c4db30693402))
+* sort imports in setup_dcc_mcp_houdini.py (I001 ruff) ([b61a760](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b61a76041904a12819726513a2980223a2f796ed))
+* sync STAGE_SKILLS with 4 newly added skills ([438aec8](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/438aec8f60c1425f1e0053ae2d2150535e94e05b))
+* update dcc-mcp-core repo reference from loonghao to dcc-mcp org ([b36d1fa](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b36d1fa0cb0af5a3e9a9ba8c135d9ddc66ddd635))
+* update README and skill compatibility to core &gt;=0.18.7, add version consistency test ([4927e22](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4927e225957d53cdc1e88a4e080ff213cf938bf4))
+* update README and skill compatibility to core &gt;=0.18.7, add version consistency test ([c172482](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/c17248287b1c83a65247567694e38169883d2bd2))
+* update version references to dcc-mcp-core 0.18.9 ([35db543](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/35db543c9b8261353b2fe641c1cc725fa184c94a))
+
+
+### Documentation
+
+* clarify release artifact install ([41cc439](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/41cc439bc2b959d77da2d166bd3319fe836b34e4))
+* fix houdini-scene-edit load mode in AGENTS.md/README.md ([0814ef7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/0814ef7221a54e5f4ca222ea5894cad391eebca3))
+* sync bundled skills table with v0.8.0 ([6814fe3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6814fe32d36b6261ac61bd0e7a927b8a741b9249))
+* sync bundled skills table with v0.8.0 ([38e7655](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/38e7655503cf51726580f41a8a199cc4bb091e2c))
+* sync bundled skills table with v0.8.0 ([#69](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/69)) ([6814fe3](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6814fe32d36b6261ac61bd0e7a927b8a741b9249))
+* sync skill counts, add missing houdini-import-to-scene, fix stage categorization ([13ac952](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/13ac9528b0ba8a1741a6d965b108fbaca13b89eb))
+* update AGENTS.md/README.md/llms.txt with all 20 skills, add CLAUDE.md and GEMINI.md ([e436aef](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e436aefb4fe9c5bbef1e2258f0d814284d1c3a19))
+* update AGENTS.md/README.md/llms.txt with all 20 skills, add CLAUDE.md and GEMINI.md ([e8e4613](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e8e4613c2e3c86f0b63f246c435923cc257dead9))
+* update AGENTS.md/README.md/llms.txt with all 20 skills, add CLAUDE.md/GEMINI.md ([#37](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/37)) ([e436aef](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/e436aefb4fe9c5bbef1e2258f0d814284d1c3a19))
+* update example wheel URL from v0.1.0 to v0.9.1 ([8b82b51](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8b82b51b05a30ebc2c4300bbee91adbad9cea613))
+* update example wheel URL from v0.1.0 to v0.9.1 ([8b82b51](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/8b82b51b05a30ebc2c4300bbee91adbad9cea613))
+* update example wheel URL from v0.1.0 to v0.9.1 ([7bde6af](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/7bde6afee4701388a3f5543443e3c868a947c782))
+
+## [0.9.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.8.1...v0.9.0) (2026-06-20)
+
+
+### Features
+
+* add houdini-import-to-scene skill for cross-DCC asset import ([#71](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/71)) ([4b3360d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/4b3360d9569479047f22cddd1c52ffafffc9e60a))
+
+
+### Documentation
+
+* sync skill counts, add missing houdini-import-to-scene, fix stage categorization ([948fcaf](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/948fcafbcd8edb9ad7afcc0b59aef38a4c62269c))
+
+## [0.8.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.8.0...v0.8.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* correct 3 skill tool tables in docs (NACK follow-up) ([25ba260](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/25ba2601796de6fd70ada9dc21bff2ce66d76e4b))
+
+
+### Documentation
+
+* sync bundled skills table with v0.8.0 ([aa5ef6b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/aa5ef6befeb72aee49eef465ecd41bfe373affe5))
+* sync bundled skills table with v0.8.0 ([5b0824e](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/5b0824e1ec603abb8a076a3f37bc13c1d9e47bd8))
+* sync bundled skills table with v0.8.0 ([#69](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/69)) ([aa5ef6b](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/aa5ef6befeb72aee49eef465ecd41bfe373affe5))
+
+## [0.8.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.7.0...v0.8.0) (2026-06-17)
+
+
+### Features
+
+* add houdini-karma and houdini-husk skill packages ([2d52dba](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2d52dba7466d0d154b1bafc736d1d96012e9495b))
+
+## [0.7.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.6.2...v0.7.0) (2026-06-14)
+
+
+### Features
+
+* add houdini-chops, houdini-constraints, and houdini-kinefx skills ([3e35afe](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/3e35afeed9f8299505cef802cca7b7734fa4fa1f))
+
+## [0.6.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.6.1...v0.6.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* sync STAGE_SKILLS with 4 newly added skills ([2cae258](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/2cae258875f881f443da292120d6606639421b7e))
+
+## [0.6.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.6.0...v0.6.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* sort imports in setup_dcc_mcp_houdini.py (I001 ruff) ([d92372a](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/d92372a2bcfe627b08b6ec600df9fbb0beb6bf7f))
+
+## [0.6.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.5.0...v0.6.0) (2026-06-08)
+
+
+### Features
+
+* add houdini-material-library skill with 12 tools ([332df88](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/332df8838f68a85b0debe84d4426c07edfe88e87))
+
+
+### Bug Fixes
+
+* ruff format and dcc-mcp-core compatibility version for material-library skill ([81df931](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/81df9312cdd3b98f7d01637133fb92019dbf5b88))
+
+## [0.5.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.4.1...v0.5.0) (2026-06-07)
+
+
+### Features
+
+* add houdini-texture-bake skill with 5 typed bake tools ([78c1fc0](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/78c1fc0ca239fedcd383fc31abb499e5858ebb86))
+
+
+### Bug Fixes
+
+* **ci:** apply ruff formatting to install_dcc_mcp_cli.py ([9817d70](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/9817d704910d2075def7f7572373bc09d60876f3))
+* **ci:** fallback through recent releases when latest lacks CLI binary ([66c09d6](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/66c09d68ead7950656e9ef04dfca15e1c4ed2bf8))
+* **ci:** fix import sorting in test_agent_instruction_files.py ([279360d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/279360d4e20aef92d47ac146dc1ba1f05961f492))
+* lint errors in houdini-texture-bake skill scripts ([bb5d646](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/bb5d64677a812d6d69aeacd5f7751ad0e2dda0b2))
+* review feedback — rebase, remove redundant baker_available, add tests ([38ac832](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/38ac8323e63dd2316406cb90c645aa8224949811))
+
+## [0.4.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.4.0...v0.4.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* update version references to dcc-mcp-core 0.18.9 ([170bf4d](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/170bf4d698864183ede6f95e58e05c61e386f439))
+
+## [0.4.0](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.3.3...v0.4.0) (2026-06-07)
+
+
+### Features
+
+* add houdini-export-preset skill with 4 typed tools ([1ff5c0f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1ff5c0fe805079592feb0a18b83208215ef4bbf4))
+* add houdini-light-rig skill (3-point lighting, HDRI, area softbox) ([53b5104](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/53b5104c36f0d4bcf4543bea9644c8862bbc5dfd))
+
+
+### Bug Fixes
+
+* auto-format with ruff format in houdini-light-rig scripts ([74c1cbc](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/74c1cbc3ade72106c3b2b676e5d5f57190d1486f))
+* resolve Ruff lint errors and SKILL.md compatibility in houdini-light-rig ([6570d70](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/6570d70275bb9295aeefa25ec34fec609a13d52a))
+* ruff format and dcc-mcp-core compatibility version in export-preset SKILL.md ([a13b92c](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/a13b92c61be2e822467f1ba0b81b4727b2abd4c1))
+
+## [0.3.3](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.3.2...v0.3.3) (2026-06-07)
+
+
+### Documentation
+
+* fix houdini-scene-edit load mode in AGENTS.md/README.md ([9f237d7](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/9f237d72248ff06b07d85236ce42e8fdbdd323e5))
+* update AGENTS.md/README.md/llms.txt with all 20 skills, add CLAUDE.md and GEMINI.md ([b11ba26](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b11ba2631050d550339306009e903832ebe4d6c5))
+* update AGENTS.md/README.md/llms.txt with all 20 skills, add CLAUDE.md/GEMINI.md ([#37](https://github.com/dcc-mcp/dcc-mcp-houdini/issues/37)) ([b11ba26](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b11ba2631050d550339306009e903832ebe4d6c5))
+
+## [0.3.2](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.3.1...v0.3.2) (2026-06-07)
+
+
+### Bug Fixes
+
+* **ci:** remove github.token fallback from release-please token ([96b82a1](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/96b82a13fd4e812cd98ccefc36da85b10871ad63))
+
+## [0.3.1](https://github.com/dcc-mcp/dcc-mcp-houdini/compare/v0.3.0...v0.3.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **ci:** isolate workflow_dispatch from push concurrency in release workflow ([962b44f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/962b44fbf6d40b6620c76e980f9c6547878cd1d0))
+* **ci:** isolate workflow_dispatch from push concurrency in release workflow ([3ff2b6f](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/3ff2b6fd541cdfd6dfbb51e592a43b91bb7a2d5f))
+* update dcc-mcp-core repo reference from loonghao to dcc-mcp org ([fdc21ee](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/fdc21eea5f11f90ea97fdbc8badb82777a5a095b))
+* update README and skill compatibility to core &gt;=0.18.7, add version consistency test ([b4604de](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/b4604de68ce034efa644a9307b4515d9cc8191cb))
+* update README and skill compatibility to core &gt;=0.18.7, add version consistency test ([1be87fa](https://github.com/dcc-mcp/dcc-mcp-houdini/commit/1be87faa0aea9fc30ff302ed89772f3ef9bc10c4))
+
+## [0.3.0](https://github.com/loonghao/dcc-mcp-houdini/compare/v0.2.0...v0.3.0) (2026-05-30)
+
+
+### Features
+
+* add Houdini animation, channel, and timeline skills ([6a9afb5](https://github.com/loonghao/dcc-mcp-houdini/commit/6a9afb5c19f91fc12440810d63385a248a2cdff1))
+* add Houdini interchange skill for USD/Alembic/FBX/OBJ/native caches ([1e448b7](https://github.com/loonghao/dcc-mcp-houdini/commit/1e448b7a9c734f1f86cc3e06cacd750919addc3f))
+* add Houdini lookdev and shader-network skill ([a5a5ec4](https://github.com/loonghao/dcc-mcp-houdini/commit/a5a5ec4421cf1e1695bd6355cd8a5771f5052831))
+* add Houdini render, camera, light, and viewport capture skills ([a9b61be](https://github.com/loonghao/dcc-mcp-houdini/commit/a9b61be9f1160e6549e5e1d347d50b9be46c10a3))
+* add Houdini SOP geometry inspection and mesh operation skills ([154d917](https://github.com/loonghao/dcc-mcp-houdini/commit/154d917d4c32a94a0105b16f2d338a88864aa5ae))
+* add houdini-dev skill (dev diagnostics + UI interaction) ([5ecb178](https://github.com/loonghao/dcc-mcp-houdini/commit/5ecb1782daee24da980da002b5f57b13f556ba8c))
+* add houdini-hda-automation skill (HDA library/validation + PDG/ROP) ([d13aa51](https://github.com/loonghao/dcc-mcp-houdini/commit/d13aa51fdd3cd90e29fe39cac298557be53b4b03))
+* add houdini-pipeline skill (project + shot/package automation) ([8bcaecc](https://github.com/loonghao/dcc-mcp-houdini/commit/8bcaeccd7c3d76f45a8f89c87dad983e8838a03e))
+* add latest dcc-mcp-core integrations and agent install skill ([b25f28b](https://github.com/loonghao/dcc-mcp-houdini/commit/b25f28b1ae9219417fab2aed3a4337c47ee30e6a))
+* **lint:** validate bundled skills with the dcc-mcp-cli runtime validator ([8aa9711](https://github.com/loonghao/dcc-mcp-houdini/commit/8aa9711a377ce2cca2088c090d7393617925be5c))
+* **lint:** validate bundled skills with the dcc-mcp-cli runtime validator ([ea38f4b](https://github.com/loonghao/dcc-mcp-houdini/commit/ea38f4ba7b1f15ba2c8f7f5daf2f165af165a1b9))
+* **skills:** add Houdini parameters and node-graph skills ([#12](https://github.com/loonghao/dcc-mcp-houdini/issues/12)) ([8ef2695](https://github.com/loonghao/dcc-mcp-houdini/commit/8ef2695a5b1d03f7e415743ad4bd673654611988))
+* **skills:** add Houdini scene-edit and object-ops skills ([#11](https://github.com/loonghao/dcc-mcp-houdini/issues/11)) ([042d261](https://github.com/loonghao/dcc-mcp-houdini/commit/042d2619fa536120c7658d71c8fcf3cb3135b564))
+
+
+### Bug Fixes
+
+* remove unused imports in _qt_inspector module and tests ([5b2368d](https://github.com/loonghao/dcc-mcp-houdini/commit/5b2368d493f526cb84bd13586edaeea124744129))
+* remove unused imports in _qt_inspector module and tests ([c70b04a](https://github.com/loonghao/dcc-mcp-houdini/commit/c70b04a3375976740e92310b0ca5a91bda8d0708))
+* remove unused imports in _qt_inspector module and tests ([6abfe81](https://github.com/loonghao/dcc-mcp-houdini/commit/6abfe81953dffb8ef00ea790224e3ab0be7480ec))
+* remove unused imports in _qt_inspector module and tests ([8053afd](https://github.com/loonghao/dcc-mcp-houdini/commit/8053afd52fcf99f3dd289f6b8688a9b4761a20d6))
+
+## [0.2.0](https://github.com/loonghao/dcc-mcp-houdini/compare/v0.1.0...v0.2.0) (2026-05-25)
+
+
+### Features
+
+* add PyPI backfill and Houdini material skills ([9842c8b](https://github.com/loonghao/dcc-mcp-houdini/commit/9842c8b16d4bedd6c19ffd909fc8ebda17cddeb2))
+
+
+### Bug Fixes
+
+* keep release runtime version managed ([6ca6a39](https://github.com/loonghao/dcc-mcp-houdini/commit/6ca6a39291b3b668ae0674df370083f6fe8b518e))
+
+
+### Documentation
+
+* clarify release artifact install ([41cc439](https://github.com/loonghao/dcc-mcp-houdini/commit/41cc439bc2b959d77da2d166bd3319fe836b34e4))
+
+## 0.1.0
+
+- Initial Houdini MCP adapter foundation.
+- Embedded MCP Streamable HTTP server with progressive bundled skills.
+- Houdini scripting, scene inspection, node authoring, HDA, and automation skills.
+- Wheel, sdist, and Houdini quickinstall package assembly.
+- CI, release, and optional licensed Houdini Docker E2E workflows.

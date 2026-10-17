@@ -1,0 +1,639 @@
+tools:
+  - name: denoise_image
+    description: >-
+      Denoise one existing flat single-part EXR through the official HFS/bin/idenoise
+      utility using OIDN or OptiX, with optional albedo and normal AOV names.
+      Preserves the source and publishes a fresh output without replacing files.
+      Returns source/output hashes and matching EXR header dimensions; pixel decoding
+      remains an external verification step. Limited to 512 MiB and 16 megapixels.
+    source_file: scripts/denoise_image.py
+    execution: async
+    affinity: any
+    timeout_hint_secs: 330
+    group: render
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [input_path, output_path]
+      properties:
+        input_path:
+          type: string
+          description: "Absolute path to an existing EXR. Source bytes are preserved."
+        output_path:
+          type: string
+          description: "Absolute new EXR path in an existing directory; replacement is refused."
+        denoiser:
+          type: string
+          enum: [oidn, optix]
+          default: oidn
+        albedo_plane:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9_.:-]{0,63}$"
+          description: "Optional albedo image-plane name already present in the source EXR."
+        normal_plane:
+          type: string
+          pattern: "^[A-Za-z][A-Za-z0-9_.:-]{0,63}$"
+          description: "Optional normal image-plane name already present in the source EXR."
+        aovs:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items:
+            type: string
+            pattern: "^[A-Za-z][A-Za-z0-9_.:-]{0,63}$"
+          description: "Planes to denoise; omitted uses official defaults C, Cf, color."
+        force_cpu:
+          type: boolean
+          default: false
+          description: "Force OIDN CPU execution. Invalid with OptiX."
+        timeout_secs:
+          type: integer
+          minimum: 1
+          maximum: 300
+          default: 120
+  - name: capture_viewport
+    description: >-
+      Capture the current Scene Viewer to an image file for a single frame via
+      flipbook, with clamped resolution. Decodes the written image and rejects
+      wrong-size, all-black, or single-color captures. UI-aware (headless
+      returns a warning).
+    source_file: scripts/capture_viewport.py
+    execution: async
+    affinity: main
+    timeout_hint_secs: 120
+    group: viewport
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [output_path]
+      properties:
+        output_path:
+          type: string
+        resolution:
+          type: array
+          items: {type: integer}
+          minItems: 2
+          maxItems: 2
+          description: "[width, height], clamped to 4096."
+        frame:
+          type: number
+  - name: flipbook
+    description: >-
+      Launch a chunked flipbook job that renders one frame per host event-loop
+      tick. Returns a job_id for polling via get_flipbook_job. Cooperative
+      cancellation is available via cancel_flipbook_job. UI-aware.
+    source_file: scripts/flipbook.py
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 30
+    group: viewport
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    next-tools:
+      on-success:
+        - houdini_render__get_flipbook_job
+    input_schema:
+      type: object
+      required: [output_path, frame_range]
+      properties:
+        output_path:
+          type: string
+          description: "Image path, ideally with a frame token e.g. /tmp/fb.$F4.jpg."
+        frame_range:
+          type: array
+          items: {type: number}
+          minItems: 2
+          maxItems: 3
+          description: "[start, end, optional positive increment]."
+        resolution:
+          type: array
+          items: {type: integer}
+          minItems: 2
+          maxItems: 2
+        camera_path:
+          type: string
+          description: "Optional camera node to activate before capture."
+  - name: get_flipbook_job
+    description: >-
+      Read bounded status, output progress, and written files for a chunked
+      flipbook job. Terminal states (completed/cancelled/failed) report
+      written_files and skipped_frames.
+    source_file: scripts/get_flipbook_job.py
+    execution: sync
+    affinity: any
+    group: viewport
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          description: "Job identifier returned by the flipbook launch."
+  - name: cancel_flipbook_job
+    description: Cancel a running chunked flipbook job. Repeated calls are safe.
+    source_file: scripts/cancel_flipbook_job.py
+    execution: sync
+    affinity: any
+    timeout_hint_secs: 10
+    group: viewport
+    read_only: false
+    destructive: true
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          description: "Job identifier returned by the flipbook launch."
+  - name: get_render_settings
+    description: >-
+      Read renderer, camera, resolution, frame range, output path, and image
+      format from a ROP node. For Mantra, follows the active camera resolution,
+      scale, or user override and reports unresolved controls explicitly.
+      Preserves the existing resolved output_path and
+      also reports its raw tokenized pattern plus the frame-to-path resolution
+      used for that value. For a Solaris USD Render ROP, resolves the composed
+      RenderSettings, RenderProducts, samples, and AOVs without treating the
+      intermediate USD export as the rendered image. Read-only.
+    source_file: scripts/get_render_settings.py
+    execution: sync
+    affinity: main
+    group: render
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [rop_path]
+      properties:
+        rop_path:
+          type: string
+  - name: set_render_settings
+    description: >-
+      Set camera, resolution (clamped), frame range, output path, and image
+      format on a ROP node. Mantra resolution enables camera override and user
+      specified resolution without editing the camera. Reports resolution in
+      applied only when complete controls read back as requested; readback
+      includes its current source and unresolved fields. Missing or ineffective
+      controls are reported in unsupported for the ROP type.
+    source_file: scripts/set_render_settings.py
+    execution: sync
+    affinity: main
+    group: render
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [rop_path]
+      properties:
+        rop_path:
+          type: string
+        camera:
+          type: string
+        resolution:
+          type: array
+          items: {type: integer}
+          minItems: 2
+          maxItems: 2
+        frame_range:
+          type: array
+          items: {type: number}
+          minItems: 2
+          maxItems: 3
+        output_path:
+          type: string
+        image_format:
+          type: string
+  - name: validate_karma_stage
+    description: >-
+      Read-only preflight of a composed Solaris USD Stage for known Karma
+      instance-property and RenderVar pixel-filter diagnostics. Reports the
+      Houdini host build and actionable fixes without changing the scene.
+    source_file: scripts/validate_karma_stage.py
+    execution: sync
+    affinity: main
+    group: render
+    read_only: true
+    destructive: false
+    idempotent: true
+    tool_role: read_only
+    risk: low
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [lop_path]
+      properties:
+        lop_path:
+          type: string
+          description: Absolute path of the LOP node whose composed USD Stage is validated.
+        renderer:
+          type: string
+          enum: [karma_xpu, karma_cpu]
+          default: karma_xpu
+  - name: render_rop
+    description: >-
+      Render a ROP/output driver and report written files, elapsed time,
+      warnings/errors. Houdini defaults to an isolated job so UI and headless
+      calls stay responsive. Plain calls return that render job_id directly;
+      explicit MCP async metadata still returns a core job that must be resolved
+      first. Pass background=false only for intentional foreground execution.
+      Solaris LOP nodes return a typed redirect to USD export and Husk instead
+      of being misclassified as ROPs.
+    source_file: scripts/render_rop.py
+    execution: sync
+    affinity: main
+    group: render
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [rop_path]
+      properties:
+        rop_path:
+          type: string
+        frame_range:
+          type: array
+          items: {type: number}
+          minItems: 2
+          maxItems: 3
+        background:
+          type: boolean
+          description: >-
+            Explicitly select isolated hython (true) or foreground (false)
+            execution. When omitted, both interactive and headless Houdini use
+            an isolated job. Headless isolation uses a job-owned temporary HIP
+            snapshot without saving the source scene.
+        artifact_transaction:
+          type: object
+          additionalProperties: false
+          required: [mode]
+          description: >-
+            Optional staged publication contract for background renders with one
+            primary multilayer EXR per integral frame. The worker discovers the
+            exact ROP output parameter and creates same-directory staging names;
+            the source HIP and final paths are never changed or overwritten.
+          properties:
+            mode:
+              type: string
+              enum: [staged_no_clobber]
+  - name: render_rop_chunked
+    description: >-
+      Render a ROP/output driver using per-frame chunked execution via the core
+      ChunkedRunner. Each frame is a bounded step — UI stays interactive,
+      cancellation is observable at checkpoints, and only partial outputs are
+      reported on cancel. Supports launch/poll/cancel via the ``action`` param.
+    source_file: scripts/render_rop.py
+    entry_point: render_rop_chunked
+    execution: async
+    affinity: main
+    timeout_hint_secs: 7200
+    group: render
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [launch, poll, cancel]
+        rop_path:
+          type: string
+          description: "Required for launch action."
+        frame_range:
+          type: array
+          items: {type: number}
+          minItems: 2
+          maxItems: 3
+          description: "Required for launch action. [start, end] or [start, end, increment]."
+        job_id:
+          type: string
+          description: "Required for poll and cancel actions."
+  - name: get_render_job
+    description: >-
+      Read bounded status, output progress, elapsed time, and ETA for a background
+      ROP render/cache/chain job. Set include_details only when full internal
+      output and warning lists plus traceback data are required. The bounded
+      summary includes warning_count and at most ten individually truncated
+      recent_warnings. Accepts the returned 32-character hex job ID or its
+      canonical dashed UUID spelling.
+    source_file: scripts/get_render_job.py
+    execution: sync
+    affinity: any
+    group: render
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          description: "Adapter job ID in 32-character hex or canonical dashed UUID form."
+        include_details:
+          type: boolean
+          default: false
+          description: Include full expected/output snapshots, written-file and warning lists, errors, and traceback data. The default response is bounded.
+  - name: finalize_render_outputs
+    description: >-
+      Publish one or more staged EXRs from a completed isolated render job. Each
+      external validator receipt is bound to the job, frame, staging/final paths,
+      byte count, mtime, SHA-256, and validator identity. Publication never
+      replaces an existing final: Windows uses rename and POSIX uses hard-link
+      plus unlink. Poll get_render_job for the transaction aggregate and set
+      include_details=true for per-frame evidence.
+    source_file: scripts/finalize_render_outputs.py
+    execution: sync
+    affinity: any
+    group: render
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [job_id, validator_receipts]
+      properties:
+        job_id:
+          type: string
+        validator_receipts:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [accepted, job_id, frame, staging_path, final_path, bytes, mtime_ns, sha256, validator]
+            properties:
+              accepted:
+                type: boolean
+                const: true
+              job_id:
+                type: string
+              frame:
+                type: integer
+              staging_path:
+                type: string
+              final_path:
+                type: string
+              bytes:
+                type: integer
+                minimum: 1
+              mtime_ns:
+                type: integer
+                minimum: 0
+              sha256:
+                type: string
+                pattern: "^[0-9A-Fa-f]{64}$"
+              validator:
+                type: object
+                additionalProperties: false
+                required: [id, version, implementation_sha256]
+                properties:
+                  id:
+                    type: string
+                  version:
+                    type: string
+                  implementation_sha256:
+                    type: string
+                    pattern: "^[0-9A-Fa-f]{64}$"
+  - name: cancel_render_job
+    description: >-
+      Cancel a background ROP render/cache/chain job owned by the current
+      adapter process. Accepts 32-character hex or canonical dashed UUID form.
+      Repeated calls are safe.
+    source_file: scripts/cancel_render_job.py
+    execution: sync
+    affinity: any
+    timeout_hint_secs: 10
+    group: render
+    read_only: false
+    destructive: true
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          description: "Adapter job ID in 32-character hex or canonical dashed UUID form."
+  - name: create_render_layer
+    description: >-
+      Create a Solaris Render Product, or clone a Mantra ifd ROP into a real
+      render layer with a required dedicated output, optional object masks,
+      and AOV planes. The source Mantra ROP remains unchanged.
+    source_file: scripts/create_render_layer.py
+    execution: sync
+    affinity: main
+    group: render_layer
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        parent_path:
+          type: string
+          default: /stage
+          description: >-
+            Parent network for the new layer. Paths under /stage create a
+            Solaris Render Product; other paths require a Mantra source ROP.
+        aovs:
+          type: array
+          items: {type: string}
+          description: >-
+            Optional RenderVars for Solaris or deduplicated Mantra auxiliary
+            planes on the cloned ROP.
+        purpose:
+          type: string
+          default: beauty
+          description: Solaris Render Product purpose; returned as layer metadata for Mantra.
+        source_rop_path:
+          type: string
+          description: >-
+            Required outside /stage. Absolute path of the Mantra ifd ROP to
+            clone; the source node is not modified.
+        output_path:
+          type: string
+          description: >-
+            Required outside /stage. Dedicated vm_picture path for the cloned
+            ROP; choose a path distinct from the source layer output.
+        candidate_objects:
+          type: string
+          description: Optional Mantra candidate-object mask written to vobject.
+        force_objects:
+          type: string
+          description: Optional Mantra forced-object mask written to forceobject.
+        matte_objects:
+          type: string
+          description: Optional Mantra matte-object mask written to matte_objects.
+        exclude_objects:
+          type: string
+          description: Optional Mantra exclusion mask written to excludeobject.
+        phantom_objects:
+          type: string
+          description: Optional Mantra phantom-object mask written to phantom_objects.
+  - name: configure_aovs
+    description: >-
+      Add or remove AOVs on a Solaris Render Product or Mantra ROP. Mantra
+      edits the native auxiliary-plane multiparm, deduplicates requested and
+      existing planes on add, writes native quantization and filter settings,
+      and compacts the multiparm on remove.
+    source_file: scripts/configure_aovs.py
+    execution: sync
+    affinity: main
+    group: render
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [rop_path, aovs]
+      properties:
+        rop_path:
+          type: string
+          description: Absolute path of the Solaris Render Product or Mantra ROP.
+        aovs:
+          type: array
+          items: {type: string}
+          description: >-
+            AOV preset names or Solaris RenderVar names. Unsupported Mantra
+            names are returned without changing the existing planes.
+        action:
+          type: string
+          enum: [add, remove]
+          default: add
+          description: Add missing planes or remove matching planes by preset/source/channel.
+  - name: manage_takes
+    description: >-
+      Create, switch, delete, or list takes, and add or remove a parameter
+      tuple override on a child take. add_override can set the take-local
+      parameter value in the same call. Override actions restore the
+      previously current take even when the update fails.
+    source_file: scripts/manage_takes.py
+    execution: sync
+    affinity: main
+    group: render_layer
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [list, create, switch, delete, add_override, remove_override]
+        take_name:
+          type: string
+          description: Required for every action except list.
+        node_path:
+          type: string
+          description: Absolute Houdini node path required for override actions.
+        parm_name:
+          type: string
+          description: Parameter or parameter-tuple name required for override actions.
+        value:
+          description: >-
+            Optional scalar or list written inside the target take by
+            add_override. Scalars target one-component tuples; lists target
+            multi-component tuples.
+  - name: get_render_stats
+    description: >-
+      Read render statistics (resolution, samples, renderer, output, frame
+      range) from a ROP node or the current Houdini session.
+    source_file: scripts/get_render_stats.py
+    execution: sync
+    affinity: main
+    group: render
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      properties:
+        rop_path:
+          type: string
