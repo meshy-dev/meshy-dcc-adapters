@@ -72,8 +72,8 @@ renderer-native property and verify every write by readback:
 | roughness | `reflectionRoughness` (needs `brdf_useRoughness = true`), else `reflection_glossiness` inverted | `specular_roughness` | `base_roughness` |
 | metalness | `metalness` | `metalness` | `base_metalness` |
 | diffuse map | `texmap_diffuse` | `baseColorMap` | `base_color_map` |
-| roughness map | `texmap_roughness` / `texmap_reflectionRoughness` | `specularRoughnessMap` | `base_roughness_map` |
-| metalness map | `texmap_metalness` | `metalnessMap` | `base_metalness_map` |
+| roughness map | `texmap_roughness` / `texmap_reflectionRoughness` | `specularRoughnessMap` | `base_roughness_map`, else `roughness_map` |
+| metalness map | `texmap_metalness` | `metalnessMap` | `base_metalness_map`, else `metalness_map` |
 | normal map | `texmap_bump` (Normal Bump wrapper) | `normalMap` | `bump_map` |
 | bump map | `texmap_bump` | `bumpMap` | `bump_map` |
 | displacement map | `texmap_displacement` | `displacementMap` | `displacement_map` |

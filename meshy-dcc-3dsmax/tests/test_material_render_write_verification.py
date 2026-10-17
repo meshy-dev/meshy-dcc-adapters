@@ -582,3 +582,11 @@ def test_hdr_render_reports_an_unverifiable_bit_depth_without_claiming_it(monkey
     assert result["data"]["format_settings"]["unverified"] == ["bit_depth"]
     assert any("outputBitDepth" in warning for warning in result["data"]["format_settings"]["warnings"])
     assert output_path.exists()
+
+
+def test_physical_map_candidates_include_the_send_to_plugin_names():
+    from meshy_dcc_3dsmax._renderer_materials import map_slot_candidates
+
+    assert "roughness_map" in map_slot_candidates("physical", "roughness")
+    assert "metalness_map" in map_slot_candidates("physical", "metalness")
+    assert map_slot_candidates("physical", "emission")[0] == "emit_color_map"

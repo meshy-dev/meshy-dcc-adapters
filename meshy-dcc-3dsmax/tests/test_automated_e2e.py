@@ -517,8 +517,11 @@ class TestBootstrapModes:
         from meshy_dcc_3dsmax import max_bootstrap
 
         monkeypatch.delenv("MESHY_DCC_3DSMAX_BOOT_MODE", raising=False)
+        monkeypatch.setattr(max_bootstrap, "_register_process_cleanup", lambda: None)
+        monkeypatch.setattr(max_bootstrap, "_install_max_integration", lambda: None)
+        monkeypatch.setattr(max_bootstrap, "start_embedded_server", lambda **kw: {"mode": "server"})
         monkeypatch.setattr(max_bootstrap, "start_sidecar_bridge", lambda: {"mode": "sidecar"})
-        assert max_bootstrap.main() == {"mode": "sidecar"}
+        assert max_bootstrap.main() == {"mode": "server"}
 
     def test_sidecar(self, monkeypatch):
         from meshy_dcc_3dsmax import max_bootstrap

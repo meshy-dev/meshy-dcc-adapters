@@ -492,6 +492,7 @@ class TestSidecar:
 
     def test_sidecar_server_uses_core_lifecycle_launcher(self, tmp_path, monkeypatch, capsys):
         """External sidecar mode delegates launch details to meshy-dcc-core."""
+        monkeypatch.delenv("MESHY_DCC_GATEWAY_PORT", raising=False)
         import meshy_dcc_core.install_lifecycle as lifecycle
 
         from meshy_dcc_3dsmax import max_bootstrap
@@ -566,8 +567,8 @@ class TestSidecar:
         assert captured["discovery_mcp_url"] == "http://127.0.0.1:8765/mcp"
         assert captured["gateway_name"] == "meshy-dcc-gateway@workstation-01"
         assert captured["gateway_port"] == 19765
-        assert captured["gateway_remote_host"] == "0.0.0.0"
-        assert captured["gateway_remote_port"] == 59765
+        assert captured["gateway_remote_host"] == "127.0.0.1"
+        assert captured["gateway_remote_port"] == 0
         assert captured["detached"] is True
         assert captured["liveness_check_secs"] == 0.75
         assert captured["return_process"] is True
@@ -613,14 +614,36 @@ class TestSidecar:
         assert captured["env"]["MESHY_DCC_GATEWAY_PORT"] == "0"
         assert "gateway auto-launch disabled" in capsys.readouterr().out
 
-    def test_main_defaults_to_qt_sidecar_runtime(self, monkeypatch):
-        """Startup scripts use the Maya-style sidecar plus Qt bridge by default."""
+    def test_main_defaults_to_the_in_process_server(self, monkeypatch):
+        """Startup runs the MCP server inside 3ds Max; the external sidecar is opt-in."""
         from meshy_dcc_3dsmax import max_bootstrap
 
         monkeypatch.delenv("MESHY_DCC_3DSMAX_BOOT_MODE", raising=False)
+        monkeypatch.setattr(max_bootstrap, "_register_process_cleanup", lambda: None)
+        monkeypatch.setattr(max_bootstrap, "_install_max_integration", lambda: None)
+        monkeypatch.setattr(max_bootstrap, "start_embedded_server", lambda **kw: {"mode": "server"})
         monkeypatch.setattr(max_bootstrap, "start_sidecar_bridge", lambda: {"mode": "sidecar"})
 
-        assert max_bootstrap.main() == {"mode": "sidecar"}
+        assert max_bootstrap.main() == {"mode": "server"}
+
+    def test_embedded_server_takes_gateway_port_and_registry_from_the_environment(self, monkeypatch):
+        import meshy_dcc_3dsmax.server as server_module
+        from meshy_dcc_3dsmax import max_bootstrap
+
+        captured = {}
+        monkeypatch.setattr(server_module, "start_server", lambda **kw: captured.update(kw) or "server")
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "23765")
+        monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", "/isolated/registry")
+        monkeypatch.delenv("MESHY_DCC_3DSMAX_PORT", raising=False)
+
+        assert max_bootstrap.start_embedded_server() == "server"
+        assert captured == {"port": 0, "gateway_port": 23765, "registry_dir": "/isolated/registry"}
+
+    def test_lan_gateway_stays_off_unless_a_port_is_set(self):
+        from meshy_dcc_3dsmax import max_bootstrap
+
+        assert max_bootstrap._gateway_remote_options({}) == ("127.0.0.1", 0)
+        assert max_bootstrap._gateway_remote_options({"MESHY_DCC_GATEWAY_REMOTE_PORT": "40000"}) == ("127.0.0.1", 40000)
 
     def test_sidecar_bridge_publishes_discovery_url(self, monkeypatch):
         """Default sidecar startup wires direct discovery calls to the UI dispatcher."""

@@ -27,7 +27,8 @@ def start_embedded_server(port: Optional[int] = None, **kwargs: Any) -> Any:
     from meshy_dcc_3dsmax.server import start_server  # noqa: PLC0415
 
     resolved_port = int(port if port is not None else os.environ.get("MESHY_DCC_3DSMAX_PORT", "0"))
-    kwargs.setdefault("gateway_port", DEFAULT_GATEWAY_PORT)
+    kwargs.setdefault("gateway_port", _gateway_port(os.environ))
+    kwargs.setdefault("registry_dir", os.environ.get("MESHY_DCC_REGISTRY_DIR") or None)
     return start_server(port=resolved_port, **kwargs)
 
 
@@ -288,14 +289,15 @@ def _gateway_port(env: dict) -> int:
 
 
 def _gateway_remote_options(env: dict) -> tuple[str, int]:
-    host = str(env.get("MESHY_DCC_GATEWAY_REMOTE_HOST", "0.0.0.0")).strip() or "0.0.0.0"
-    raw_port = str(env.get("MESHY_DCC_GATEWAY_REMOTE_PORT", "59765")).strip()
+    """The LAN gateway has no authentication: off (port 0) unless the operator sets a port."""
+    host = str(env.get("MESHY_DCC_GATEWAY_REMOTE_HOST", "127.0.0.1")).strip() or "127.0.0.1"
+    raw_port = str(env.get("MESHY_DCC_GATEWAY_REMOTE_PORT", "0")).strip()
     try:
         port = int(raw_port)
     except ValueError:
-        port = 59765
+        port = 0
     if port < 0 or port > 65535:
-        port = 59765
+        port = 0
     return host, port
 
 
@@ -395,8 +397,14 @@ def _sanitize_max_version_label(value: str) -> str:
 
 
 def main() -> Any:
-    """Default entry point used by 3ds Max startup scripts."""
-    mode = os.environ.get("MESHY_DCC_3DSMAX_BOOT_MODE", "sidecar").strip().lower()
+    """Start the adapter in the mode ``MESHY_DCC_3DSMAX_BOOT_MODE`` names.
+
+    The default, ``server``, runs the MCP server inside 3ds Max and registers it
+    with the gateway, as the Blender adapter does; it needs nothing but this
+    package and ``meshy_dcc_core``. ``sidecar`` starts an external
+    ``meshy-dcc-server`` and needs that binary (``MESHY_DCC_SERVER_BIN``).
+    """
+    mode = os.environ.get("MESHY_DCC_3DSMAX_BOOT_MODE", "server").strip().lower()
     if mode in {"runtime", "sidecar"}:
         return start_sidecar_bridge()
 
@@ -407,6 +415,28 @@ def main() -> Any:
     if mode in {"embedded", "embedded-sidecar", "bridge"}:
         return start_embedded_sidecar_bridge()
     raise ValueError("unsupported MESHY_DCC_3DSMAX_BOOT_MODE={!r}; expected runtime, sidecar, or server".format(mode))
+
+
+def startup() -> Any:
+    """Entry point of the startup script that ``host_install`` writes.
+
+    Never raises: a failure is printed to the MAXScript Listener and recorded
+    as a bootstrap error, and 3ds Max keeps starting.
+    """
+    try:
+        from meshy_dcc_core import capture_bootstrap_errors  # noqa: PLC0415
+
+        with capture_bootstrap_errors("3dsmax", adapter_version=__version__, min_core_version="0.2.0", phase="startup"):
+            started = main()
+            from meshy_dcc_3dsmax._safe_stop import attach_safe_stop  # noqa: PLC0415
+            from meshy_dcc_3dsmax.server import get_server  # noqa: PLC0415
+
+            attach_safe_stop(get_server())
+            print("meshy-dcc-3dsmax {} started".format(__version__))
+            return started
+    except Exception as exc:  # noqa: BLE001 - a startup script must not break 3ds Max
+        print("meshy-dcc-3dsmax did not start: {}: {}".format(type(exc).__name__, exc))
+        return None
 
 
 if __name__ == "__main__":

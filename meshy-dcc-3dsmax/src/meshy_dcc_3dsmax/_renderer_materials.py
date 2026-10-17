@@ -112,13 +112,17 @@ MAP_SLOT_PLANS: Dict[str, Dict[str, Tuple[str, ...]]] = {
     "physical": {
         "diffuse": ("base_color_map", "baseColorMap", "diffuseMap"),
         "base_color": ("base_color_map", "baseColorMap", "diffuseMap"),
-        "roughness": ("base_roughness_map", "roughnessMap"),
-        "metalness": ("base_metalness_map", "metalnessMap"),
+        # roughness_map / metalness_map / emit_color_map are the names the Meshy
+        # Send To plugin wires on Physical Material; candidates the host does not
+        # expose are skipped by the isProperty probe.
+        "roughness": ("base_roughness_map", "roughness_map", "roughnessMap"),
+        "metalness": ("base_metalness_map", "metalness_map", "metalnessMap"),
         "bump": ("bump_map", "bumpMap"),
         "normal": ("bump_map", "normal_map"),
         "displacement": ("displacement_map", "displacementMap"),
         "opacity": ("cutout_map", "opacityMap"),
-        "emission": ("emission_map", "emissionMap"),
+        # emission_map is Physical's emission weight; a colour texture belongs in emit_color_map.
+        "emission": ("emit_color_map", "emission_map", "emissionMap"),
     },
     "standard": {
         "diffuse": ("diffuseMap",),

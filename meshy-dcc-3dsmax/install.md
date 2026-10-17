@@ -1,5 +1,10 @@
 # Install meshy-dcc-3dsmax
 
+> **Meshy package:** install with `meshy-dcc install --dcc-type 3dsmax --execute`;
+> see [README.md](README.md). This runbook covers the pip lifecycle CLI and the
+> MZP carried over from the original project. Both fetch `meshy-dcc-core` and
+> `meshy-dcc-server` from PyPI, which Meshy does not publish.
+
 This is the authoritative install runbook for the 3ds Max adapter. The
 agent-first CLI emits the shared Meshy DCC Install SOP v1 report and owns only
 the adapter package, startup hook, and receipt. It does not change the shared
