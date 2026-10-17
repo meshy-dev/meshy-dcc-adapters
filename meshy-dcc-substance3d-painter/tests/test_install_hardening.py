@@ -19,8 +19,8 @@ from types import SimpleNamespace
 import pytest
 from jsonschema import Draft202012Validator
 
-from dcc_mcp_substance3d_painter import _installer, _probe_supervisor
-from dcc_mcp_substance3d_painter.install_cli import main
+from meshy_dcc_substance3d_painter import _installer, _probe_supervisor
+from meshy_dcc_substance3d_painter.install_cli import main
 
 
 def _context(tmp_path: Path, *, state: str = "current") -> _installer.InstallContext:
@@ -29,8 +29,8 @@ def _context(tmp_path: Path, *, state: str = "current") -> _installer.InstallCon
     host.parent.mkdir(parents=True, exist_ok=True)
     host.write_bytes(b"synthetic-painter-host")
     profile = tmp_path / "profile"
-    loader = profile / "python" / "startup" / "dcc_mcp_substance3d_painter_plugin.py"
-    bootstrap_root = profile / "python" / "modules" / "dcc_mcp_substance3d_painter_bootstrap"
+    loader = profile / "python" / "startup" / "meshy_dcc_substance3d_painter_plugin.py"
+    bootstrap_root = profile / "python" / "modules" / "meshy_dcc_substance3d_painter_bootstrap"
     return _installer.InstallContext(
         host_path=host.resolve(),
         host_version="12.0.1",
@@ -42,11 +42,11 @@ def _context(tmp_path: Path, *, state: str = "current") -> _installer.InstallCon
         python_root=(tmp_path / "site-packages").resolve(),
         core_version=_installer.MIN_CORE_VERSION,
         state=state,
-        receipt_path=profile / ".dcc-mcp" / "receipts" / "substance3d_painter.json",
+        receipt_path=profile / ".meshy-dcc" / "receipts" / "substance3d_painter.json",
         loader_path=loader,
         bootstrap_root=bootstrap_root,
         bootstrap_path=bootstrap_root / "__init__.py",
-        bootstrap_log_dir=profile / ".dcc-mcp" / "logs",
+        bootstrap_log_dir=profile / ".meshy-dcc" / "logs",
     )
 
 
@@ -119,11 +119,11 @@ def test_uses_released_core_02015_contract_and_official_schema() -> None:
     runbook = (root / "install.md").read_text(encoding="utf-8")
 
     assert _installer.MIN_CORE_VERSION == "0.20.15"
-    assert "dcc-mcp-core>=0.20.15,<1.0.0" in pyproject
-    assert "dcc-mcp-core>=0.20.15" in runbook
-    assert not (root / "src" / "dcc_mcp_substance3d_painter" / "_install_contract.py").exists()
+    assert "meshy-dcc-core>=0.20.15,<1.0.0" in pyproject
+    assert "meshy-dcc-core>=0.20.15" in runbook
+    assert not (root / "src" / "meshy_dcc_substance3d_painter" / "_install_contract.py").exists()
 
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator.check_schema(load_install_sop_schema())
 
@@ -136,7 +136,7 @@ def test_report_schema_version_matches_the_published_schema_const() -> None:
     # only add optional members, so the report field stays at 1. Stamping the
     # artifact revision here is the defect this guards -- it passes on an old
     # core and fails the moment the resolved core advances past 0.20.36.
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     assert _installer.SCHEMA_VERSION == load_install_sop_schema()["properties"]["schema_version"]["const"]
     assert _installer.SCHEMA_VERSION == 1
@@ -146,7 +146,7 @@ def test_report_schema_version_matches_the_published_schema_const() -> None:
     # value: core owns it, and a local copy is a second source of truth that
     # only drifts (this is why the adapter no longer references the name core
     # deprecated in 0.20.40).
-    deployment = importlib.import_module("dcc_mcp_core.deployment")
+    deployment = importlib.import_module("meshy_dcc_core.deployment")
     artifact_revision = getattr(deployment, "INSTALL_SOP_SCHEMA_REVISION", None)
     if artifact_revision is not None:
         assert _installer.SCHEMA_VERSION != artifact_revision
@@ -159,12 +159,12 @@ def test_every_lifecycle_report_satisfies_the_published_schema(
     # Both report builders and both exit paths, validated against the schema the
     # report itself claims to follow. Emitting the artifact revision here is the
     # defect this guards: it passes on the CI-pinned core and fails in the field.
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     host = tmp_path / "Adobe Substance 3D Painter.exe"
     host.write_bytes(b"synthetic-painter-host")
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
     # Same synthetic host identity tests/test_install_lifecycle.py installs via an
     # autouse fixture: this module deliberately does not fake it globally.
     monkeypatch.setattr(_installer, "_windows_file_version", lambda _path: "12.0.1")
@@ -215,7 +215,7 @@ def test_environment_version_cannot_attest_a_synthetic_exact_named_host(
     host.write_bytes(b"synthetic")
     monkeypatch.setattr(_installer, "_windows_file_version", lambda _path: None)
 
-    version, source = _installer._detect_host_version(host, {"DCC_MCP_SUBSTANCE3D_PAINTER_VERSION": "12.0.1"})
+    version, source = _installer._detect_host_version(host, {"MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION": "12.0.1"})
 
     assert version == ""
     assert source == "unavailable"
@@ -224,8 +224,8 @@ def test_environment_version_cannot_attest_a_synthetic_exact_named_host(
 def test_python_probe_rejects_shadow_modules_not_owned_by_distributions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    shadow_adapter = tmp_path / "shadow" / "dcc_mcp_substance3d_painter" / "__init__.py"
-    real_core = tmp_path / "site-packages" / "dcc_mcp_core" / "__init__.py"
+    shadow_adapter = tmp_path / "shadow" / "meshy_dcc_substance3d_painter" / "__init__.py"
+    real_core = tmp_path / "site-packages" / "meshy_dcc_core" / "__init__.py"
     for path in (shadow_adapter, real_core):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# synthetic\n", encoding="utf-8")
@@ -241,7 +241,7 @@ def test_python_probe_rejects_shadow_modules_not_owned_by_distributions(
         "adapter_dist_root": str((tmp_path / "site-packages").resolve()),
         "core_dist_root": str((tmp_path / "site-packages").resolve()),
         "adapter_record": None,
-        "core_record": "dcc_mcp_core/__init__.py",
+        "core_record": "meshy_dcc_core/__init__.py",
         "adapter_direct_url": None,
         "core_direct_url": None,
     }
@@ -264,8 +264,8 @@ def test_python_probe_rejects_self_consistent_distributions_outside_trusted_sche
     trusted = tmp_path / "venv" / "site-packages"
     trusted.mkdir(parents=True)
     hostile = tmp_path / "hostile-pythonpath"
-    adapter_file = hostile / "dcc_mcp_substance3d_painter" / "__init__.py"
-    core_file = hostile / "dcc_mcp_core" / "__init__.py"
+    adapter_file = hostile / "meshy_dcc_substance3d_painter" / "__init__.py"
+    core_file = hostile / "meshy_dcc_core" / "__init__.py"
     for path in (adapter_file, core_file):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# self-consistent hostile package\n", encoding="utf-8")
@@ -282,8 +282,8 @@ def test_python_probe_rejects_self_consistent_distributions_outside_trusted_sche
         "core_file": str(core_file),
         "adapter_dist_root": str(hostile),
         "core_dist_root": str(hostile),
-        "adapter_record": "dcc_mcp_substance3d_painter/__init__.py",
-        "core_record": "dcc_mcp_core/__init__.py",
+        "adapter_record": "meshy_dcc_substance3d_painter/__init__.py",
+        "core_record": "meshy_dcc_core/__init__.py",
         "adapter_record_hash": None,
         "core_record_hash": None,
         "adapter_record_size": adapter_file.stat().st_size,
@@ -325,11 +325,11 @@ def test_interpreter_probe_ignores_hostile_cwd_pythonpath_and_sitecustomize(
         )
 
     fake_distribution(
-        "dcc-mcp-substance3d-painter",
-        "dcc_mcp_substance3d_painter",
+        "meshy-dcc-substance3d-painter",
+        "meshy_dcc_substance3d_painter",
         _installer.__version__,
     )
-    fake_distribution("dcc-mcp-core", "dcc_mcp_core", _installer.MIN_CORE_VERSION)
+    fake_distribution("meshy-dcc-core", "meshy_dcc_core", _installer.MIN_CORE_VERSION)
     (hostile / "sitecustomize.py").write_text(
         f"import sysconfig\nsysconfig.get_paths=lambda:{{'purelib':{str(hostile)!r},'platlib':{str(hostile)!r}}}\n",
         encoding="utf-8",
@@ -401,7 +401,7 @@ def test_owned_process_cleanup_requires_proven_empty_tree(failure: str) -> None:
 
 def test_distribution_record_digest_must_match_the_imported_module(tmp_path: Path) -> None:
     trusted = tmp_path / "site-packages"
-    module = trusted / "dcc_mcp_core" / "__init__.py"
+    module = trusted / "meshy_dcc_core" / "__init__.py"
     module.parent.mkdir(parents=True)
     module.write_text("__version__ = '0.20.15'\n", encoding="utf-8")
     original = module.read_bytes()
@@ -412,13 +412,13 @@ def test_distribution_record_digest_must_match_the_imported_module(tmp_path: Pat
         _installer._require_distribution_origin(
             module,
             trusted,
-            "dcc_mcp_core/__init__.py",
+            "meshy_dcc_core/__init__.py",
             f"sha256={digest}",
             len(original),
             None,
             trusted_roots=[trusted],
             distribution="Core",
-            package="dcc_mcp_core",
+            package="meshy_dcc_core",
         )
 
 
@@ -628,7 +628,7 @@ def test_staging_failure_cleans_transaction_without_moving_previous_install(
 
     assert outcome.exit_code == 30
     assert {path: path.read_bytes() for path in before} == before
-    staging = ctx.profile / ".dcc-mcp" / "staging"
+    staging = ctx.profile / ".meshy-dcc" / "staging"
     assert not staging.exists() or not any(staging.iterdir())
 
 
@@ -653,7 +653,7 @@ def test_fresh_install_commit_failure_removes_every_unreceipted_artifact(
     assert not ctx.bootstrap_root.exists()
     assert not ctx.loader_path.exists()
     assert not ctx.receipt_path.exists()
-    staging = ctx.profile / ".dcc-mcp" / "staging"
+    staging = ctx.profile / ".meshy-dcc" / "staging"
     assert not staging.exists() or not any(staging.iterdir())
 
 
@@ -879,8 +879,8 @@ def test_verify_rejects_probe_plugin_origin_not_owned_by_receipt(
     ctx = _context(tmp_path)
     ctx = replace(
         ctx,
-        adapter_module_path=(tmp_path / "site-packages" / "dcc_mcp_substance3d_painter" / "__init__.py"),
-        core_module_path=(tmp_path / "site-packages" / "dcc_mcp_core" / "__init__.py"),
+        adapter_module_path=(tmp_path / "site-packages" / "meshy_dcc_substance3d_painter" / "__init__.py"),
+        core_module_path=(tmp_path / "site-packages" / "meshy_dcc_core" / "__init__.py"),
     )
     for path in (ctx.adapter_module_path, ctx.core_module_path):
         assert path is not None
@@ -890,7 +890,7 @@ def test_verify_rejects_probe_plugin_origin_not_owned_by_receipt(
     probe = _runtime_probe_context(ctx)
     probe["context"].update(
         {
-            "adapter_module_path": str(tmp_path / "shadow" / "dcc_mcp_substance3d_painter" / "__init__.py"),
+            "adapter_module_path": str(tmp_path / "shadow" / "meshy_dcc_substance3d_painter" / "__init__.py"),
             "core_module_path": str(ctx.core_module_path),
             "bootstrap_module_path": str(ctx.bootstrap_path),
         }
@@ -920,7 +920,7 @@ def test_invalid_json_cli_arguments_return_schema_valid_json_without_raw_stderr(
     assert result["verify"]["failure_stage"] == "arguments"
     assert "secret-token" not in json.dumps(result)
 
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator(load_install_sop_schema()).validate(result)
 

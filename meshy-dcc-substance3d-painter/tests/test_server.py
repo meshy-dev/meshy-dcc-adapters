@@ -5,19 +5,19 @@ import time
 from urllib.parse import urlparse
 
 import pytest
-from dcc_mcp_core.install_lifecycle import query_runtime_state
+from meshy_dcc_core.install_lifecycle import query_runtime_state
 
-import dcc_mcp_substance3d_painter.server as server
+import meshy_dcc_substance3d_painter.server as server
 
 
 def _isolate_runtime(monkeypatch, tmp_path):
     registry_dir = tmp_path / "registry"
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "0")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(registry_dir))
-    monkeypatch.setenv("DCC_MCP_LOG_DIR", str(tmp_path / "logs"))
-    monkeypatch.setenv("DCC_MCP_DISABLE_FILE_LOGGING", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_JOB_PERSISTENCE", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_TELEMETRY", "1")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(registry_dir))
+    monkeypatch.setenv("MESHY_DCC_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setenv("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_JOB_PERSISTENCE", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_TELEMETRY", "1")
     server._server = None
     return registry_dir
 
@@ -68,16 +68,16 @@ def test_start_server_resolves_ephemeral_env_and_explicit_ports(monkeypatch):
     for env_port, explicit_port in ((None, None), ("9123", None), ("9123", 0)):
         server._server = None
         if env_port is None:
-            monkeypatch.delenv("DCC_MCP_SUBSTANCE3D_PAINTER_PORT", raising=False)
+            monkeypatch.delenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PORT", raising=False)
         else:
-            monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PORT", env_port)
+            monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PORT", env_port)
         server.start_server(object(), explicit_port)
 
     assert ports == [0, 9123, 0]
 
 
 def test_default_server_starts_when_legacy_port_is_occupied(monkeypatch, tmp_path):
-    monkeypatch.delenv("DCC_MCP_SUBSTANCE3D_PAINTER_PORT", raising=False)
+    monkeypatch.delenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PORT", raising=False)
     registry_dir = _isolate_runtime(monkeypatch, tmp_path)
 
     with socket.create_server(("127.0.0.1", 8765)):
@@ -99,7 +99,7 @@ def test_explicit_free_port_is_exact_and_reusable_after_repeated_stop(monkeypatc
     registry_dir = _isolate_runtime(monkeypatch, tmp_path)
     with socket.create_server(("127.0.0.1", 0)) as reservation:
         explicit_port = reservation.getsockname()[1]
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PORT", str(explicit_port))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PORT", str(explicit_port))
 
     for _ in range(2):
         instance = server.start_server(object())
@@ -117,7 +117,7 @@ def test_explicit_occupied_port_fails_without_fallback_or_registry_leak(monkeypa
     registry_dir = _isolate_runtime(monkeypatch, tmp_path)
     with socket.create_server(("127.0.0.1", 0)) as occupied:
         explicit_port = occupied.getsockname()[1]
-        monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PORT", str(explicit_port))
+        monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PORT", str(explicit_port))
         try:
             with pytest.raises(RuntimeError):
                 server.start_server(object())

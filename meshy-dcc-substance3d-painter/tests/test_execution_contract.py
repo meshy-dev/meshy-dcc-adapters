@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 
 PROJECT_SKILL = (
-    Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_substance3d_painter" / "skills" / "painter-project"
+    Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_substance3d_painter" / "skills" / "painter-project"
 )
 
 

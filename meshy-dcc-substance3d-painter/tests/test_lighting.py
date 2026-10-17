@@ -7,7 +7,7 @@ from types import ModuleType, SimpleNamespace
 
 import pytest
 
-SKILLS = Path(__file__).parent.parent / "src" / "dcc_mcp_substance3d_painter" / "skills"
+SKILLS = Path(__file__).parent.parent / "src" / "meshy_dcc_substance3d_painter" / "skills"
 
 
 def _load(skill: str, script: str) -> ModuleType:

@@ -1,14 +1,14 @@
-# Install DCC-MCP for Substance 3D Painter
+# Install Meshy DCC for Substance 3D Painter
 
 This adapter installs a small startup loader into Painter's user resource
 profile. The loader adds one exact wheel environment to Python's module search
-path and starts the embedded DCC-MCP server on Painter's main thread.
+path and starts the embedded Meshy DCC server on Painter's main thread.
 
 ## Requirements
 
 - Substance 3D Painter 7.2 or newer.
 - Python 3.9 or newer for the wheel environment.
-- `dcc-mcp-core>=0.20.15,<1.0.0` in that same environment.
+- `meshy-dcc-core>=0.20.15,<1.0.0` in that same environment.
 - Write access to the current user's Painter resource profile.
 
 Install or update the wheel in the exact interpreter that the lifecycle
@@ -17,7 +17,7 @@ marker is present, preflight also requires that interpreter's major/minor
 version to match Painter's embedded Python:
 
 ```bash
-python -m pip install --upgrade dcc-mcp-substance3d-painter
+python -m pip install --upgrade meshy-dcc-substance3d-painter
 ```
 
 ## Supported versions
@@ -36,7 +36,7 @@ Default user resource profile on all three platforms:
 - Linux: `~/Documents/Adobe/Adobe Substance 3D Painter`
 
 Override only when Painter uses a different profile with
-`DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE`.
+`MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE`.
 
 ## Agent quick path
 
@@ -44,9 +44,9 @@ Use the same absolute Python path for wheel installation and `--python`.
 Omit `--dcc-path` only when exactly one standard Painter installation exists.
 
 ```bash
-dcc-mcp-substance3d-painter install --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --dry-run
-dcc-mcp-substance3d-painter install --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --yes
-dcc-mcp-substance3d-painter status --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json
+meshy-dcc-substance3d-painter install --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --dry-run
+meshy-dcc-substance3d-painter install --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --yes
+meshy-dcc-substance3d-painter status --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json
 ```
 
 Without `--yes`, `install`, `upgrade`, and `uninstall` only return a plan.
@@ -65,13 +65,13 @@ The standard lifecycle writes these receipt-owned files without editing a
 shared startup file:
 
 ```text
-<profile>/python/startup/dcc_mcp_substance3d_painter_plugin.py
-<profile>/python/modules/dcc_mcp_substance3d_painter_bootstrap/__init__.py
-<profile>/.dcc-mcp/receipts/substance3d_painter.json
+<profile>/python/startup/meshy_dcc_substance3d_painter_plugin.py
+<profile>/python/modules/meshy_dcc_substance3d_painter_bootstrap/__init__.py
+<profile>/.meshy-dcc/receipts/substance3d_painter.json
 ```
 
 For a manually managed environment, point `SUBSTANCE_PAINTER_PLUGINS_PATH` at
-the installed package's `dcc_mcp_substance3d_painter/painter` directory (the
+the installed package's `meshy_dcc_substance3d_painter/painter` directory (the
 directory containing `startup`) and add that environment's site-packages to
 `PYTHONPATH`. The lifecycle command is preferred because it records ownership,
 stages replacements, checks versions, and supports rollback.
@@ -81,7 +81,7 @@ stages replacements, checks versions, and supports rollback.
 Launch Painter normally, then run:
 
 ```bash
-dcc-mcp-substance3d-painter verify --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json
+meshy-dcc-substance3d-painter verify --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json
 ```
 
 Verification checks the receipt and SHA-256 digests, imports the adapter and
@@ -101,9 +101,9 @@ First update the wheel in the recorded interpreter. Close Painter on Windows
 so loaded files cannot block replacement, then plan and execute the upgrade:
 
 ```bash
-python -m pip install --upgrade dcc-mcp-substance3d-painter
-dcc-mcp-substance3d-painter upgrade --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --dry-run
-dcc-mcp-substance3d-painter upgrade --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --yes
+python -m pip install --upgrade meshy-dcc-substance3d-painter
+meshy-dcc-substance3d-painter upgrade --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --dry-run
+meshy-dcc-substance3d-painter upgrade --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --yes
 ```
 
 The new payload is staged on the profile filesystem. A failed upgrade restores
@@ -114,9 +114,9 @@ the previous loader, bootstrap package, and receipt.
 Plan first, then remove only the files named and hashed by the receipt:
 
 ```bash
-dcc-mcp-substance3d-painter uninstall --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --dry-run
-dcc-mcp-substance3d-painter uninstall --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --yes
-python -m pip uninstall dcc-mcp-substance3d-painter
+meshy-dcc-substance3d-painter uninstall --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --dry-run
+meshy-dcc-substance3d-painter uninstall --dcc-path "/absolute/path/to/Painter" --python "/absolute/path/to/python" --json --yes
+python -m pip uninstall meshy-dcc-substance3d-painter
 ```
 
 Close Painter before uninstalling. Unreceipted or locally modified files are
@@ -128,11 +128,11 @@ preserved and reported instead of being deleted.
   `--dcc-path`. The installer fails closed when trusted executable or bundle
   version metadata is unavailable.
 - **Python/Core import (exit 10):** reinstall the wheel and
-  `dcc-mcp-core>=0.20.15` using the exact `--python` interpreter. Do not use
+  `meshy-dcc-core>=0.20.15` using the exact `--python` interpreter. Do not use
   credentials or a different shell's Python implicitly.
 - **Partial or repair state (exit 10):** keep the reported files in place and
   rerun `install --yes`; unreceipted files are never overwritten.
-- **Bootstrap failure (exit 40):** inspect `.dcc-mcp/logs` below the Painter
+- **Bootstrap failure (exit 40):** inspect `.meshy-dcc/logs` below the Painter
   profile. Import, startup, and shutdown failures are captured and re-raised so
   Painter does not silently appear ready.
 - **Readiness failure (exit 40):** launch Painter, wait for its startup plugins,

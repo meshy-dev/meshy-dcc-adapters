@@ -1,76 +1,76 @@
-# dcc-mcp-substance3d-painter
+# meshy-dcc-substance3d-painter
 
 <p align="center">
-  <img src="docs/assets/dcc-mcp-substance3d-painter.svg" alt="DCC-MCP · SUBSTANCE3D-PAINTER" width="600">
+  <img src="docs/assets/meshy-dcc-substance3d-painter.svg" alt="Meshy DCC · SUBSTANCE3D-PAINTER" width="600">
 </p>
 
-<!-- dcc-mcp-coverage-pointer:start -->
-<!-- Generated from dcc-mcp-catalog.yml by scripts/generate_adapter_pointer.py in dcc-mcp/dcc-mcp-core. Do not edit by hand. -->
-## Part of the DCC-MCP host matrix
+<!-- meshy-dcc-coverage-pointer:start -->
+<!-- Generated from meshy-dcc-catalog.yml by scripts/generate_adapter_pointer.py in meshy-dcc/meshy-dcc-core. Do not edit by hand. -->
+## Part of the Meshy DCC host matrix
 
-**dcc-mcp-substance3d-painter** — Substance 3D Painter adapter for DCC-MCP.
+**meshy-dcc-substance3d-painter** — Substance 3D Painter adapter for Meshy DCC.
 
-It is one of **47 host adapters** in the DCC-MCP catalog. Every adapter speaks the same
+It is one of **47 host adapters** in the Meshy DCC catalog. Every adapter speaks the same
 MCP protocol and builds on the same core runtime contract; each one exposes the tools
 its own host needs on top of that.
 
-- [All host adapters and install metadata](https://dcc-mcp.github.io/ecosystem)
-- [Host matrix on the core README](https://github.com/dcc-mcp/dcc-mcp-core#readme)
-- [Showcase](https://dcc-mcp.github.io/showcase)
+- [All host adapters and install metadata](https://www.meshy.ai/meshy-dcc/ecosystem)
+- [Host matrix on the core README](https://github.com/meshy-dev/meshy-dcc-core#readme)
+- [Showcase](https://www.meshy.ai/meshy-dcc/showcase)
 
 This block is generated from the catalog entry in
-[`dcc-mcp-catalog.yml`](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/dcc-mcp-catalog.yml).
+[`meshy-dcc-catalog.yml`](https://github.com/meshy-dev/meshy-dcc-core/blob/main/meshy-dcc-catalog.yml).
 Re-run the generator after changing the catalog.
-<!-- dcc-mcp-coverage-pointer:end -->
+<!-- meshy-dcc-coverage-pointer:end -->
 
 ## Agent workflow
 
-AI agents should use the shared gateway through `dcc-mcp-cli`; IDE users may
+AI agents should use the shared gateway through `meshy-dcc`; IDE users may
 continue to use the MCP endpoint. Prefer typed skills and tools over raw scripts.
 
 ### Install or update the CLI
 
-`dcc-mcp-cli` is the preferred control path for every shell-capable agent. If
+`meshy-dcc` is the preferred control path for every shell-capable agent. If
 it is missing, ask the user before installing the latest official release:
 
 ```bash
 # Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.sh | sh
+curl -fsSL https://raw.githubusercontent.com/meshy-dev/meshy-dcc-core/main/scripts/install-cli.sh | sh
 
 # Windows PowerShell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-core/main/scripts/install-cli.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/meshy-dev/meshy-dcc-core/main/scripts/install-cli.ps1 | iex"
 ```
 
 Keep an official build current through the release manifest:
 
 ```bash
-dcc-mcp-cli update check
-dcc-mcp-cli update apply
+meshy-dcc update check
+meshy-dcc update apply
 ```
 
 `update apply` downloads and stages the latest CLI for the next launch. It
-does not update a running `dcc-mcp-server`; update that server in its own
+does not update a running `meshy-dcc-server`; update that server in its own
 environment.
 
 ```bash
-dcc-mcp-cli dcc-types
-dcc-mcp-cli list
-dcc-mcp-cli search --query "<task>" --dcc-type substance3d_painter
-dcc-mcp-cli describe <tool-slug>
-dcc-mcp-cli call <tool-slug> --json '{"key":"value"}'
+meshy-dcc dcc-types
+meshy-dcc list
+meshy-dcc search --query "<task>" --dcc-type substance3d_painter
+meshy-dcc describe <tool-slug>
+meshy-dcc call <tool-slug> --json '{"key":"value"}'
 ```
 
 `dcc-types` reports release-catalog support; `list` reports live sessions. If a
-tool belongs to an inactive progressive skill, call `dcc-mcp-cli load-skill <skill-name> --dcc-type substance3d_painter` before retrying. For post-task improvement,
-attach a stable session id with `--meta-json`, query `dcc-mcp-cli stats --range 24h --session-id <task-id>`, then pass the bounded evidence to the
-`review_skill_improvement` prompt from `dcc-mcp-skills-creator`.
+tool belongs to an inactive progressive skill, call `meshy-dcc load-skill <skill-name> --dcc-type substance3d_painter` before retrying. For post-task improvement,
+attach a stable session id with `--meta-json`, query `meshy-dcc stats --range 24h --session-id <task-id>`, then pass the bounded evidence to the
+`review_skill_improvement` prompt from `meshy-dcc-skills-creator`.
 
 
 Substance 3D Painter adapter for the DCC Model Context Protocol (MCP).
 
 It embeds a Streamable HTTP MCP server in Painter and routes host API calls
 through Painter's Qt main thread. Painter uses an OS-assigned port by default
-and advertises the endpoint through DCC-MCP discovery.
+and advertises the endpoint through Meshy DCC discovery.
 
 ## Install and load
 
@@ -86,9 +86,9 @@ process-owned loopback listener, adapter payload, and receipt. CI uses hermetic
 identity/probe fixtures; it does not claim to validate a real Adobe Painter
 launch.
 
-Set `DCC_MCP_SUBSTANCE3D_PAINTER_PORT` before launching Painter only when a
+Set `MESHY_DCC_SUBSTANCE3D_PAINTER_PORT` before launching Painter only when a
 fixed port is required; `0` keeps automatic allocation. Standard
-`DCC_MCP_GATEWAY_PORT` and `DCC_MCP_REGISTRY_DIR` settings are also honoured.
+`MESHY_DCC_GATEWAY_PORT` and `MESHY_DCC_REGISTRY_DIR` settings are also honoured.
 
 ## Bundled skills
 

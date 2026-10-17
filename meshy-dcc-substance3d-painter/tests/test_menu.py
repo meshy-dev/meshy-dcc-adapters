@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from types import ModuleType, SimpleNamespace
 
-from dcc_mcp_substance3d_painter import _menu
+from meshy_dcc_substance3d_painter import _menu
 
 
 def test_qaction_uses_qtgui_with_pyside6(monkeypatch):

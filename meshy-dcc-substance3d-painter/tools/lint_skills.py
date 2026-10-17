@@ -1,4 +1,4 @@
-"""Validate bundled DCC-MCP skill metadata."""
+"""Validate bundled Meshy DCC skill metadata."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from pathlib import Path
 
 
 def main() -> int:
-    from dcc_mcp_core import validate_skill
+    from meshy_dcc_core import validate_skill
 
-    skills_dir = Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_substance3d_painter" / "skills"
+    skills_dir = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_substance3d_painter" / "skills"
     directories = [path for path in skills_dir.iterdir() if path.is_dir()]
     reports = [(path, validate_skill(str(path))) for path in directories]
     failures = [(path, report) for path, report in reports if not report.is_clean]

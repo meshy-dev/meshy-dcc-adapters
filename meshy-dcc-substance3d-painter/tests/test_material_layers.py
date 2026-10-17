@@ -11,7 +11,7 @@ def _load_script() -> ModuleType:
     path = (
         Path(__file__).parent.parent
         / "src"
-        / "dcc_mcp_substance3d_painter"
+        / "meshy_dcc_substance3d_painter"
         / "skills"
         / "painter-project"
         / "scripts"

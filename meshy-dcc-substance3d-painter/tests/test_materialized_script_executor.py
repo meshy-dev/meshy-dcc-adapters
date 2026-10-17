@@ -8,21 +8,21 @@ from pathlib import Path
 
 import pytest
 import yaml
-from dcc_mcp_core import materialize_script
-from dcc_mcp_core.cancellation import (
+from meshy_dcc_core import materialize_script
+from meshy_dcc_core.cancellation import (
     CancelToken,
-    DccMcpCancelledError,
+    MeshyDccCancelledError,
     current_cancel_token,
     reset_cancel_token,
     set_cancel_token,
 )
-from dcc_mcp_core.script_materialization import SCRIPT_MATERIALIZATION_ROOT_ENV
+from meshy_dcc_core.script_materialization import SCRIPT_MATERIALIZATION_ROOT_ENV
 from jsonschema import Draft202012Validator, ValidationError
 from test_mesh_map_baking import McpClient, _job, _structured
 
-import dcc_mcp_substance3d_painter.materialized_script_executor as executor
-from dcc_mcp_substance3d_painter.dispatcher import PainterQtDispatcher
-from dcc_mcp_substance3d_painter.materialized_script_executor import (
+import meshy_dcc_substance3d_painter.materialized_script_executor as executor
+from meshy_dcc_substance3d_painter.dispatcher import PainterQtDispatcher
+from meshy_dcc_substance3d_painter.materialized_script_executor import (
     MAX_MATERIALIZED_SCRIPT_BYTES,
     MAX_SCRIPT_RESULT_DEPTH,
     MAX_SCRIPT_RESULT_JSON_BYTES,
@@ -30,10 +30,10 @@ from dcc_mcp_substance3d_painter.materialized_script_executor import (
     MaterializedScriptRejected,
     execute_materialized_file_ref,
 )
-from dcc_mcp_substance3d_painter.server import SubstancePainterMcpServer
+from meshy_dcc_substance3d_painter.server import SubstancePainterMcpServer
 
 PROJECT_SKILL = (
-    Path(__file__).resolve().parents[1] / "src" / "dcc_mcp_substance3d_painter" / "skills" / "painter-project"
+    Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_substance3d_painter" / "skills" / "painter-project"
 )
 
 
@@ -42,7 +42,7 @@ def _materialized(monkeypatch, tmp_path, content=None, *, ttl_secs=None):
     monkeypatch.setenv(SCRIPT_MATERIALIZATION_ROOT_ENV, str(root))
     descriptor = materialize_script(
         content
-        or ("from dcc_mcp_core.skill import skill_success\ndef main():\n    return skill_success('ok', value=42)\n"),
+        or ("from meshy_dcc_core.skill import skill_success\ndef main():\n    return skill_success('ok', value=42)\n"),
         dcc_type="substance3d_painter",
         instance_id="painter-fixture",
         session_id="contract-session",
@@ -67,12 +67,12 @@ def _executor_schema():
 
 def _execute_through_mcp(monkeypatch, tmp_path, content):
     monkeypatch.setenv(SCRIPT_MATERIALIZATION_ROOT_ENV, str(tmp_path / "materialized"))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    monkeypatch.setenv("DCC_MCP_LOG_DIR", str(tmp_path / "logs"))
-    monkeypatch.setenv("DCC_MCP_DISABLE_FILE_LOGGING", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_JOB_PERSISTENCE", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_TELEMETRY", "1")
-    monkeypatch.setenv("DCC_MCP_GATEWAY_PORT", "0")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setenv("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_JOB_PERSISTENCE", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_TELEMETRY", "1")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "0")
 
     dispatcher = PainterQtDispatcher()
     server = SubstancePainterMcpServer(dispatcher, port=0)
@@ -109,11 +109,11 @@ def _execute_through_mcp(monkeypatch, tmp_path, content):
 
 def test_materialize_script_executes_through_the_typed_main_thread_tool(monkeypatch, tmp_path):
     monkeypatch.setenv(SCRIPT_MATERIALIZATION_ROOT_ENV, str(tmp_path / "materialized"))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    monkeypatch.setenv("DCC_MCP_LOG_DIR", str(tmp_path / "logs"))
-    monkeypatch.setenv("DCC_MCP_DISABLE_FILE_LOGGING", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_JOB_PERSISTENCE", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_TELEMETRY", "1")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setenv("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_JOB_PERSISTENCE", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_TELEMETRY", "1")
 
     dispatcher = PainterQtDispatcher()
     server = SubstancePainterMcpServer(dispatcher, port=0)
@@ -130,7 +130,7 @@ def test_materialize_script_executes_through_the_typed_main_thread_tool(monkeypa
                 {
                     "content": (
                         "import threading\n"
-                        "from dcc_mcp_core.skill import skill_success\n"
+                        "from meshy_dcc_core.skill import skill_success\n"
                         "def main():\n"
                         "    return skill_success('Materialized script executed', "
                         "value=42, thread_id=threading.get_ident())\n"
@@ -277,10 +277,10 @@ def test_executor_rejects_identity_drift_during_validation(monkeypatch, tmp_path
 
 @pytest.mark.parametrize("mutation", ["replacement", "hardlink"])
 def test_executor_revalidates_file_identity_immediately_before_source(monkeypatch, tmp_path, mutation):
-    marker = f"_dcc_mcp_pre_dispatch_{mutation}_marker"
+    marker = f"_meshy_dcc_pre_dispatch_{mutation}_marker"
     content = (
         f"import builtins\nbuiltins.{marker} = True\n"
-        "from dcc_mcp_core.skill import skill_success\n"
+        "from meshy_dcc_core.skill import skill_success\n"
         "def main():\n    return skill_success('must not run')\n"
     )
     descriptor, _ = _materialized(monkeypatch, tmp_path, content)
@@ -313,10 +313,10 @@ def test_executor_revalidates_file_identity_immediately_before_source(monkeypatc
 
 
 def test_executor_rechecks_expiry_immediately_before_source(monkeypatch, tmp_path):
-    marker = "_dcc_mcp_pre_dispatch_expiry_marker"
+    marker = "_meshy_dcc_pre_dispatch_expiry_marker"
     content = (
         f"import builtins\nbuiltins.{marker} = True\n"
-        "from dcc_mcp_core.skill import skill_success\n"
+        "from meshy_dcc_core.skill import skill_success\n"
         "def main():\n    return skill_success('must not run')\n"
     )
     descriptor, _ = _materialized(monkeypatch, tmp_path, content, ttl_secs=1)
@@ -393,13 +393,13 @@ def test_fixed_entrypoint_decision_table_returns_stable_redacted_errors(monkeypa
 
 
 def test_materialize_script_rejects_main_rebinding_through_the_real_mcp_route(monkeypatch, tmp_path):
-    marker = "_dcc_mcp_rebound_main_marker"
+    marker = "_meshy_dcc_rebound_main_marker"
     monkeypatch.setenv(SCRIPT_MATERIALIZATION_ROOT_ENV, str(tmp_path / "materialized"))
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    monkeypatch.setenv("DCC_MCP_LOG_DIR", str(tmp_path / "logs"))
-    monkeypatch.setenv("DCC_MCP_DISABLE_FILE_LOGGING", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_JOB_PERSISTENCE", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_TELEMETRY", "1")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setenv("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_JOB_PERSISTENCE", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_TELEMETRY", "1")
 
     dispatcher = PainterQtDispatcher()
     server = SubstancePainterMcpServer(dispatcher, port=0)
@@ -416,7 +416,7 @@ def test_materialize_script_rejects_main_rebinding_through_the_real_mcp_route(mo
                 {
                     "content": (
                         "import builtins\n"
-                        "from dcc_mcp_core.skill import skill_success\n"
+                        "from meshy_dcc_core.skill import skill_success\n"
                         "def alternate():\n"
                         f"    builtins.{marker} = True\n"
                         "    return skill_success('alternate ran')\n"
@@ -456,7 +456,7 @@ def test_executor_uses_host_entrypoint_boundary_captured_before_prefix(monkeypat
     assert original_function_type is type(lambda: None)
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_FUNCTION_TYPE' in host.__dict__\n"
         "assert host._FUNCTION_TYPE is type(lambda: None)\n"
         "assert host._FUNCTION_TYPE.__call__ is type(lambda: None).__call__\n"
@@ -479,7 +479,7 @@ def test_real_mcp_route_uses_host_entrypoint_boundary_captured_before_prefix(mon
     assert original_function_type is type(lambda: None)
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_FUNCTION_TYPE' in host.__dict__\n"
         "assert host._FUNCTION_TYPE is type(lambda: None)\n"
         "assert host._FUNCTION_TYPE.__call__ is type(lambda: None).__call__\n"
@@ -504,17 +504,17 @@ def test_real_mcp_route_uses_host_entrypoint_boundary_captured_before_prefix(mon
     ],
 )
 def test_real_mcp_route_keeps_validated_main_outside_script_writable_globals(monkeypatch, tmp_path, attack):
-    marker = "_dcc_mcp_synthetic_entrypoint_attack_marker"
+    marker = "_meshy_dcc_synthetic_entrypoint_attack_marker"
     content = (
         "import builtins\n"
-        "from dcc_mcp_core.skill import skill_success\n"
+        "from meshy_dcc_core.skill import skill_success\n"
         "def alternate():\n"
         f"    builtins.{marker} = True\n"
         "    return skill_success('alternate ran')\n"
         "def main():\n"
         "    return skill_success('validated main')\n"
         "for name in tuple(globals()):\n"
-        "    if name.startswith('_dcc_mcp_'):\n"
+        "    if name.startswith('_meshy_dcc_'):\n"
         f"        {attack}\n"
         "main = alternate\n"
     )
@@ -539,12 +539,12 @@ def test_real_mcp_route_keeps_validated_main_outside_script_writable_globals(mon
 def test_real_mcp_route_sanitizes_source_forged_adapter_errors_without_retry_prompt(
     monkeypatch, tmp_path, forged_exception
 ):
-    marker = "_dcc_mcp_forged_error_side_effect_marker"
+    marker = "_meshy_dcc_forged_error_side_effect_marker"
     content = (
         "import builtins\n"
         "import sys\n"
         "MaterializedScriptRejected = "
-        "sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor'].MaterializedScriptRejected\n"
+        "sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor'].MaterializedScriptRejected\n"
         "def main():\n"
         f"    builtins.{marker} = True\n"
         f"    raise {forged_exception}\n"
@@ -565,7 +565,7 @@ def test_executor_preserves_verified_core_cancellation(monkeypatch, tmp_path):
         monkeypatch,
         tmp_path,
         (
-            "from dcc_mcp_core import check_cancelled\n"
+            "from meshy_dcc_core import check_cancelled\n"
             "def main():\n"
             "    check_cancelled()\n"
             "    return {'success': True, 'message': 'unreachable', 'context': {}}\n"
@@ -575,7 +575,7 @@ def test_executor_preserves_verified_core_cancellation(monkeypatch, tmp_path):
     token.cancel()
     reset = set_cancel_token(token)
     try:
-        with pytest.raises(DccMcpCancelledError):
+        with pytest.raises(MeshyDccCancelledError):
             execute_materialized_file_ref(descriptor.file_ref)
     finally:
         reset_cancel_token(reset)
@@ -621,7 +621,7 @@ def test_executor_rejects_non_json_object_keys_and_container_types(monkeypatch, 
 
 
 def test_invalid_entrypoint_is_rejected_before_top_level_source_runs(monkeypatch, tmp_path):
-    marker = "_dcc_mcp_invalid_entrypoint_marker"
+    marker = "_meshy_dcc_invalid_entrypoint_marker"
     content = f"import builtins\nbuiltins.{marker} = True\nvalue = 42\n"
     descriptor, _ = _materialized(monkeypatch, tmp_path, content)
     assert _rejection(descriptor.file_ref) == "script_entrypoint_invalid"
@@ -650,10 +650,10 @@ def test_executor_rejects_expired_file_ref_before_source_execution(monkeypatch, 
 
 
 def test_real_mcp_route_keeps_captured_main_immune_to_function_object_mutation(monkeypatch, tmp_path):
-    marker = "_dcc_mcp_entrypoint_code_mutation_marker"
+    marker = "_meshy_dcc_entrypoint_code_mutation_marker"
     content = (
         "import builtins\n"
-        "from dcc_mcp_core.skill import skill_success\n"
+        "from meshy_dcc_core.skill import skill_success\n"
         "def alternate():\n"
         f"    builtins.{marker} = True\n"
         "    return skill_success('DIVERTED')\n"
@@ -761,7 +761,7 @@ def test_real_mcp_route_rejects_main_frame_validator_mutation(monkeypatch, tmp_p
     ids=["exception", "invalid-result"],
 )
 def test_executor_runs_suffix_once_after_main_failure(monkeypatch, tmp_path, main_body):
-    marker = "_dcc_mcp_suffix_after_main_failure_count"
+    marker = "_meshy_dcc_suffix_after_main_failure_count"
     content = (
         f"import builtins\ndef main():\n    {main_body}\nbuiltins.{marker} = getattr(builtins, '{marker}', 0) + 1\n"
     )
@@ -788,7 +788,7 @@ def test_executor_runs_suffix_once_after_main_failure(monkeypatch, tmp_path, mai
     ids=["exception", "invalid-result"],
 )
 def test_real_mcp_route_runs_suffix_once_after_main_failure(monkeypatch, tmp_path, main_body):
-    marker = "_dcc_mcp_route_suffix_after_main_failure_count"
+    marker = "_meshy_dcc_route_suffix_after_main_failure_count"
     content = (
         f"import builtins\ndef main():\n    {main_body}\nbuiltins.{marker} = getattr(builtins, '{marker}', 0) + 1\n"
     )
@@ -866,8 +866,8 @@ def test_real_mcp_route_isolates_captured_main_from_all_suffix_mutable_alias_sha
 
 
 def test_real_mcp_route_preserves_prefix_helpers_and_executes_each_source_phase_once(monkeypatch, tmp_path):
-    prefix_marker = "_dcc_mcp_materialized_prefix_execution_count"
-    suffix_marker = "_dcc_mcp_materialized_suffix_execution_count"
+    prefix_marker = "_meshy_dcc_materialized_prefix_execution_count"
+    suffix_marker = "_meshy_dcc_materialized_suffix_execution_count"
     content = (
         "import builtins\n"
         "import json\n"
@@ -921,12 +921,12 @@ def test_real_mcp_route_snapshots_main_result_before_suffix_mutates_a_returned_a
 
 def test_real_mcp_route_rejects_source_installed_cancel_token_as_forged(monkeypatch, tmp_path):
     content = (
-        "from dcc_mcp_core.cancellation import CancelToken, DccMcpCancelledError, set_cancel_token\n"
+        "from meshy_dcc_core.cancellation import CancelToken, MeshyDccCancelledError, set_cancel_token\n"
         "def main():\n"
         "    forged = CancelToken(job_id='source-forged')\n"
         "    forged.cancel()\n"
         "    set_cancel_token(forged)\n"
-        "    raise DccMcpCancelledError('source-forged')\n"
+        "    raise MeshyDccCancelledError('source-forged')\n"
     )
     result = _execute_through_mcp(monkeypatch, tmp_path, content)
     assert result["success"] is False
@@ -983,8 +983,8 @@ def test_executor_restores_host_cancel_state_after_source_rebind(monkeypatch, tm
     original_setter = executor.set_cancel_token
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
-        "from dcc_mcp_core.cancellation import CancelToken, set_cancel_token\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
+        "from meshy_dcc_core.cancellation import CancelToken, set_cancel_token\n"
         "def main():\n"
         "    forged = CancelToken(job_id='source-forged')\n"
         "    set_cancel_token(forged)\n"
@@ -1007,8 +1007,8 @@ def test_real_mcp_route_restores_host_cancel_api_after_source_rebind(monkeypatch
     original_setter = executor.set_cancel_token
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
-        "from dcc_mcp_core.cancellation import CancelToken, set_cancel_token\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
+        "from meshy_dcc_core.cancellation import CancelToken, set_cancel_token\n"
         "def main():\n"
         "    forged = CancelToken(job_id='source-forged')\n"
         "    set_cancel_token(forged)\n"
@@ -1030,8 +1030,8 @@ def test_executor_restores_host_cancel_state_after_suffix_rebind(monkeypatch, tm
     original_setter = executor.set_cancel_token
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
-        "from dcc_mcp_core.cancellation import CancelToken, set_cancel_token\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
+        "from meshy_dcc_core.cancellation import CancelToken, set_cancel_token\n"
         "def main():\n"
         "    return {'success': True, 'message': 'ok', 'context': {}}\n"
         "forged = CancelToken(job_id='suffix-forged')\n"
@@ -1055,7 +1055,7 @@ def test_real_mcp_route_keeps_result_validator_outside_source_writable_state(mon
         "_reject",
         "FunctionType",
         "MaterializedScriptRejected",
-        "DccMcpCancelledError",
+        "MeshyDccCancelledError",
         "json",
         "MAX_SCRIPT_RESULT_DEPTH",
         "MAX_SCRIPT_RESULT_NODES",
@@ -1065,13 +1065,13 @@ def test_real_mcp_route_keeps_result_validator_outside_source_writable_state(mon
     originals = {name: getattr(executor, name, sentinel) for name in attacked_names}
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "def main():\n"
         "    host._require_strict_json = lambda value: None\n"
         "    host._reject = lambda *args, **kwargs: None\n"
         "    host.FunctionType = lambda *args, **kwargs: None\n"
         "    host.MaterializedScriptRejected = RuntimeError\n"
-        "    host.DccMcpCancelledError = RuntimeError\n"
+        "    host.MeshyDccCancelledError = RuntimeError\n"
         "    host.MAX_SCRIPT_RESULT_DEPTH = 10**9\n"
         "    host.MAX_SCRIPT_RESULT_NODES = 10**9\n"
         "    host.MAX_SCRIPT_RESULT_JSON_BYTES = 10**9\n"
@@ -1134,7 +1134,7 @@ def test_executor_rejects_cross_request_host_validator_alias_poisoning(monkeypat
     original_alias = getattr(executor, "_HOST_RESULT_NORMALIZER", missing)
     poison = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "def main():\n"
         "    host._HOST_RESULT_NORMALIZER = lambda value, **kwargs: (value, 0)\n"
         "    return {'success': True, 'message': 'poisoned', 'context': {}}\n"
@@ -1158,7 +1158,7 @@ def test_executor_ignores_source_json_serializer_mutation(monkeypatch, tmp_path)
     """A source-owned json.dumps cannot forge a post-validation snapshot."""
     original_json = executor.json
     content = (
-        "import dcc_mcp_substance3d_painter.materialized_script_executor as host\n"
+        "import meshy_dcc_substance3d_painter.materialized_script_executor as host\n"
         "def forged_dump(*args, **kwargs):\n"
         '    return \'{"success":true,"message":"forged","context":{"items":[\' + \',\'.join([\'0\'] * 20000) + \']}}\'\n'
         "def main():\n"
@@ -1178,12 +1178,12 @@ def test_executor_ignores_source_json_serializer_mutation(monkeypatch, tmp_path)
 
 def test_executor_restores_core_cancellation_module_after_source_rebind(monkeypatch, tmp_path):
     """A materialized request cannot replace Core's process-global ContextVar."""
-    import dcc_mcp_core.cancellation as cancellation
+    import meshy_dcc_core.cancellation as cancellation
 
     original_context = cancellation.__dict__["_current_token"]
     content = (
         "import contextvars\n"
-        "import dcc_mcp_core.cancellation as cancellation\n"
+        "import meshy_dcc_core.cancellation as cancellation\n"
         "def main():\n"
         "    cancellation._current_token = contextvars.ContextVar('forged-token', default='FORGED')\n"
         "    return {'success': True, 'message': 'ok', 'context': {}}\n"
@@ -1201,7 +1201,7 @@ def test_real_mcp_route_rejects_cross_request_host_validator_alias_poisoning(mon
     """The public MCP route restores the validator alias between requests."""
     poison = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "def main():\n"
         "    host._HOST_RESULT_NORMALIZER = lambda value, **kwargs: (value, 0)\n"
         "    return {'success': True, 'message': 'poisoned', 'context': {}}\n"
@@ -1219,12 +1219,12 @@ def test_real_mcp_route_rejects_cross_request_host_validator_alias_poisoning(mon
 
 def test_real_mcp_route_restores_core_cancellation_module_after_source_rebind(monkeypatch, tmp_path):
     """The public MCP route cannot leave a forged cancellation ContextVar behind."""
-    import dcc_mcp_core.cancellation as cancellation
+    import meshy_dcc_core.cancellation as cancellation
 
     original_context = cancellation.__dict__["_current_token"]
     content = (
         "import contextvars\n"
-        "import dcc_mcp_core.cancellation as cancellation\n"
+        "import meshy_dcc_core.cancellation as cancellation\n"
         "def main():\n"
         "    cancellation._current_token = contextvars.ContextVar('forged-token', default='FORGED')\n"
         "    return {'success': True, 'message': 'ok', 'context': {}}\n"
@@ -1241,7 +1241,7 @@ def test_real_mcp_route_restores_core_cancellation_module_after_source_rebind(mo
 def test_real_mcp_route_ignores_source_json_serializer_mutation(monkeypatch, tmp_path):
     """The MCP route serializes from the host-owned json callable."""
     content = (
-        "import dcc_mcp_substance3d_painter.materialized_script_executor as host\n"
+        "import meshy_dcc_substance3d_painter.materialized_script_executor as host\n"
         "def forged_dump(*args, **kwargs):\n"
         '    return \'{"success":true,"message":"forged","context":{"items":[\' + \',\'.join([\'0\'] * 20000) + \']}}\'\n'
         "def main():\n"
@@ -1308,7 +1308,7 @@ def test_executor_rejects_over_budget_result_when_source_rebinds_module_validato
     assert callable(original_alias)
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert callable(host._HOST_RESULT_NORMALIZER)\n"
         "def main():\n"
@@ -1327,7 +1327,7 @@ def test_real_mcp_route_rejects_over_budget_result_when_source_rebinds_module_va
     assert callable(original_alias)
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert callable(host._HOST_RESULT_NORMALIZER)\n"
         "def main():\n"
@@ -1348,7 +1348,7 @@ def test_executor_keeps_postprocessed_result_when_suffix_rebinds_module_validato
     assert callable(original_alias)
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert callable(host._HOST_RESULT_NORMALIZER)\n"
         "def main():\n"
@@ -1375,7 +1375,7 @@ def test_real_mcp_route_keeps_postprocessed_result_when_suffix_rebinds_module_va
     assert callable(original_alias)
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert callable(host._HOST_RESULT_NORMALIZER)\n"
         "def main():\n"
@@ -1405,7 +1405,7 @@ def test_executor_rejects_over_budget_result_when_source_mutates_validator_defau
     assert original_defaults.get("enforce_shape_budget") is True
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert host._HOST_RESULT_NORMALIZER.__kwdefaults__['enforce_shape_budget'] is True\n"
         "def main():\n"
@@ -1427,7 +1427,7 @@ def test_real_mcp_route_rejects_over_budget_result_when_source_mutates_validator
     assert original_defaults.get("enforce_shape_budget") is True
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert host._HOST_RESULT_NORMALIZER.__kwdefaults__['enforce_shape_budget'] is True\n"
         "def main():\n"
@@ -1451,7 +1451,7 @@ def test_executor_keeps_postprocessed_result_when_suffix_mutates_validator_defau
     assert original_defaults.get("enforce_shape_budget") is True
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert host._HOST_RESULT_NORMALIZER.__kwdefaults__['enforce_shape_budget'] is True\n"
         "def main():\n"
@@ -1481,7 +1481,7 @@ def test_real_mcp_route_keeps_postprocessed_result_when_suffix_mutates_validator
     assert original_defaults.get("enforce_shape_budget") is True
     content = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "assert '_HOST_RESULT_NORMALIZER' in host.__dict__\n"
         "assert host._HOST_RESULT_NORMALIZER.__kwdefaults__['enforce_shape_budget'] is True\n"
         "def main():\n"
@@ -1703,7 +1703,7 @@ def test_executor_prevents_delayed_source_thread_from_poisoning_json_serializer_
 def test_executor_keeps_delayed_host_alias_on_request_private_json(monkeypatch, tmp_path):
     """A retained executor alias must never regain the canonical JSON package."""
     content = (
-        "import dcc_mcp_substance3d_painter.materialized_script_executor as host\n"
+        "import meshy_dcc_substance3d_painter.materialized_script_executor as host\n"
         "import threading\n"
         "import time\n"
         "class EvilEncoder:\n"
@@ -1729,7 +1729,7 @@ def test_executor_keeps_delayed_host_alias_on_request_private_json(monkeypatch, 
 def test_executor_facade_does_not_leak_canonical_globals_to_delayed_source(monkeypatch, tmp_path):
     """A copied facade callable must not reopen canonical executor globals."""
     content = (
-        "import dcc_mcp_substance3d_painter.materialized_script_executor as host\n"
+        "import meshy_dcc_substance3d_painter.materialized_script_executor as host\n"
         "import threading\n"
         "import time\n"
         "leaked_callable = getattr(host, 'execute_materialized_file_ref', None)\n"
@@ -1786,7 +1786,7 @@ def test_real_mcp_route_prevents_delayed_source_thread_from_poisoning_json_seria
 def test_real_mcp_route_keeps_delayed_host_alias_on_request_private_json(monkeypatch, tmp_path):
     """The async Painter route must not return a retained alias to host JSON."""
     content = (
-        "import dcc_mcp_substance3d_painter.materialized_script_executor as host\n"
+        "import meshy_dcc_substance3d_painter.materialized_script_executor as host\n"
         "import threading\n"
         "import time\n"
         "class EvilEncoder:\n"
@@ -1812,7 +1812,7 @@ def test_real_mcp_route_keeps_delayed_host_alias_on_request_private_json(monkeyp
 def test_real_mcp_route_facade_does_not_leak_canonical_globals_to_delayed_source(monkeypatch, tmp_path):
     """The async Painter route must not expose a canonical-globals callable."""
     content = (
-        "import dcc_mcp_substance3d_painter.materialized_script_executor as host\n"
+        "import meshy_dcc_substance3d_painter.materialized_script_executor as host\n"
         "import threading\n"
         "import time\n"
         "leaked_callable = getattr(host, 'execute_materialized_file_ref', None)\n"
@@ -1931,7 +1931,7 @@ def test_executor_restores_fresh_json_decoder_state_between_requests(monkeypatch
     original_scan_once = original_decoder.scan_once
     first = (
         "import sys\n"
-        "host = sys.modules['dcc_mcp_substance3d_painter.materialized_script_executor']\n"
+        "host = sys.modules['meshy_dcc_substance3d_painter.materialized_script_executor']\n"
         "def main():\n"
         "    host.json._default_decoder.scan_once = lambda value, index: ({}, len(value))\n"
         "    return {'success': True, 'message': 'first', 'context': {}}\n"

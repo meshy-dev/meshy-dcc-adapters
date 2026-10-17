@@ -13,12 +13,12 @@ from urllib.parse import urlsplit
 from uuid import UUID
 
 import yaml
-from dcc_mcp_core.cancellation import CancelToken, reset_cancel_token, set_cancel_token
+from meshy_dcc_core.cancellation import CancelToken, reset_cancel_token, set_cancel_token
 
-from dcc_mcp_substance3d_painter.dispatcher import PainterQtDispatcher
-from dcc_mcp_substance3d_painter.server import SubstancePainterMcpServer
+from meshy_dcc_substance3d_painter.dispatcher import PainterQtDispatcher
+from meshy_dcc_substance3d_painter.server import SubstancePainterMcpServer
 
-SKILL = Path(__file__).parent.parent / "src" / "dcc_mcp_substance3d_painter" / "skills" / "painter-project"
+SKILL = Path(__file__).parent.parent / "src" / "meshy_dcc_substance3d_painter" / "skills" / "painter-project"
 
 
 class McpClient:
@@ -174,11 +174,11 @@ def test_bake_mesh_maps_is_a_pollable_core_job_that_preserves_the_host(monkeypat
     ):
         monkeypatch.setitem(sys.modules, name, module)
 
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    monkeypatch.setenv("DCC_MCP_LOG_DIR", str(tmp_path / "logs"))
-    monkeypatch.setenv("DCC_MCP_DISABLE_FILE_LOGGING", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_JOB_PERSISTENCE", "1")
-    monkeypatch.setenv("DCC_MCP_DISABLE_TELEMETRY", "1")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setenv("MESHY_DCC_DISABLE_FILE_LOGGING", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_JOB_PERSISTENCE", "1")
+    monkeypatch.setenv("MESHY_DCC_DISABLE_TELEMETRY", "1")
     dispatcher = PainterQtDispatcher()
     server = SubstancePainterMcpServer(dispatcher, port=0)
     server.register_builtin_actions()

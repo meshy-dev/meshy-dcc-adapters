@@ -10,7 +10,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _synthetic_painter_file_metadata(monkeypatch):
-    from dcc_mcp_substance3d_painter import _installer
+    from meshy_dcc_substance3d_painter import _installer
 
     monkeypatch.setattr(_installer, "_windows_file_version", lambda _path: "12.0.1")
     monkeypatch.setattr(_installer, "_host_product_identity", lambda _path: True)
@@ -19,7 +19,7 @@ def _synthetic_painter_file_metadata(monkeypatch):
 
 def _published_schema_const() -> int:
     """The ``schema_version`` value the published Install SOP schema pins."""
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     return load_install_sop_schema()["properties"]["schema_version"]["const"]
 
@@ -28,10 +28,10 @@ def test_install_defaults_to_a_non_mutating_json_plan(tmp_path, monkeypatch, cap
     host = tmp_path / "Adobe Substance 3D Painter.exe"
     host.write_bytes(b"synthetic host")
     profile = tmp_path / "profile"
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
 
-    from dcc_mcp_substance3d_painter.install_cli import main
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     exit_code = main(
         [
@@ -74,7 +74,7 @@ def test_install_defaults_to_a_non_mutating_json_plan(tmp_path, monkeypatch, cap
             "id": "execute_install",
             "description": "Execute the validated Painter install plan.",
             "command": [
-                "dcc-mcp-substance3d-painter",
+                "meshy-dcc-substance3d-painter",
                 "install",
                 "--dcc-path",
                 str(host),
@@ -93,12 +93,12 @@ def test_install_writes_a_receipt_and_uninstall_consumes_only_that_receipt(tmp_p
     host = tmp_path / "Adobe Substance 3D Painter.exe"
     host.write_bytes(b"synthetic host")
     profile = tmp_path / "profile"
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    monkeypatch.setenv("DCC_MCP_INSTALL_VERIFY_TIMEOUT", "0.01")
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_INSTALL_VERIFY_TIMEOUT", "0.01")
 
-    from dcc_mcp_substance3d_painter.install_cli import main
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     common = ["--dcc-path", str(host), "--python", sys.executable, "--json"]
     install_exit = main(["install", *common, "--yes"])
@@ -112,8 +112,8 @@ def test_install_writes_a_receipt_and_uninstall_consumes_only_that_receipt(tmp_p
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     owned_paths = {Path(item["path"]) for item in receipt["files"]}
     assert owned_paths == {
-        profile / "python" / "startup" / "dcc_mcp_substance3d_painter_plugin.py",
-        profile / "python" / "modules" / "dcc_mcp_substance3d_painter_bootstrap" / "__init__.py",
+        profile / "python" / "startup" / "meshy_dcc_substance3d_painter_plugin.py",
+        profile / "python" / "modules" / "meshy_dcc_substance3d_painter_bootstrap" / "__init__.py",
     }
     assert all(path.exists() for path in owned_paths)
     assert all(len(item["sha256"]) == 64 for item in receipt["files"])
@@ -142,14 +142,14 @@ def test_verify_proves_direct_usability_with_host_ping(tmp_path, monkeypatch, ca
     host = tmp_path / "Adobe Substance 3D Painter.exe"
     host.write_bytes(b"synthetic host")
     profile = tmp_path / "profile"
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
-    import dcc_mcp_core
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
+    import meshy_dcc_core
 
-    import dcc_mcp_substance3d_painter as adapter
-    from dcc_mcp_substance3d_painter import _installer
-    from dcc_mcp_substance3d_painter.install_cli import main
+    import meshy_dcc_substance3d_painter as adapter
+    from meshy_dcc_substance3d_painter import _installer
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     pid = 4242
     start_identity = "synthetic-start-4242"
@@ -181,11 +181,11 @@ def test_verify_proves_direct_usability_with_host_ping(tmp_path, monkeypatch, ca
                         "host_executable": str(host.resolve()),
                         "process_start_identity": start_identity,
                         "adapter_version": adapter.__version__,
-                        "core_version": dcc_mcp_core.__version__,
+                        "core_version": meshy_dcc_core.__version__,
                         "adapter_module_path": str(Path(adapter.__file__).resolve()),
-                        "core_module_path": str(Path(dcc_mcp_core.__file__).resolve()),
+                        "core_module_path": str(Path(meshy_dcc_core.__file__).resolve()),
                         "bootstrap_module_path": str(
-                            profile / "python" / "modules" / "dcc_mcp_substance3d_painter_bootstrap" / "__init__.py"
+                            profile / "python" / "modules" / "meshy_dcc_substance3d_painter_bootstrap" / "__init__.py"
                         ),
                     },
                 }
@@ -209,10 +209,10 @@ def test_packaged_startup_hook_captures_bootstrap_errors():
     startup = (
         Path(__file__).resolve().parents[1]
         / "src"
-        / "dcc_mcp_substance3d_painter"
+        / "meshy_dcc_substance3d_painter"
         / "painter"
         / "startup"
-        / "dcc_mcp_substance3d_painter_plugin.py"
+        / "meshy_dcc_substance3d_painter_plugin.py"
     ).read_text(encoding="utf-8")
 
     assert "capture_bootstrap_errors" in startup
@@ -225,11 +225,11 @@ def test_status_detects_a_receipted_install_that_needs_repair(tmp_path, monkeypa
     host = tmp_path / "Adobe Substance 3D Painter.exe"
     host.write_bytes(b"synthetic host")
     profile = tmp_path / "profile"
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
 
-    from dcc_mcp_substance3d_painter.install_cli import main
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     common = ["--dcc-path", str(host), "--python", sys.executable, "--json"]
     assert main(["install", *common, "--yes"]) == 40
@@ -255,8 +255,8 @@ def test_distribution_exposes_the_standard_lifecycle_entry_point():
     pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
 
     assert "[project.scripts]" in pyproject
-    assert 'dcc-mcp-substance3d-painter = "dcc_mcp_substance3d_painter.install_cli:main"' in pyproject
-    assert "dcc-mcp-core>=0.20.15,<1.0.0" in pyproject
+    assert 'meshy-dcc-substance3d-painter = "meshy_dcc_substance3d_painter.install_cli:main"' in pyproject
+    assert "meshy-dcc-core>=0.20.15,<1.0.0" in pyproject
 
 
 def test_install_runbook_covers_the_standard_lifecycle_and_all_platforms():
@@ -277,7 +277,7 @@ def test_install_runbook_covers_the_standard_lifecycle_and_all_platforms():
     for platform_name in ("Windows", "macOS", "Linux"):
         assert platform_name in runbook
     for verb in ("install", "status", "verify", "upgrade", "uninstall"):
-        assert f"dcc-mcp-substance3d-painter {verb}" in runbook
+        assert f"meshy-dcc-substance3d-painter {verb}" in runbook
 
 
 def test_preflight_detects_a_versioned_painter_executable_without_an_environment_override(
@@ -287,13 +287,13 @@ def test_preflight_detects_a_versioned_painter_executable_without_an_environment
     host.parent.mkdir()
     host.write_bytes(b"synthetic host")
     monkeypatch.setattr(
-        "dcc_mcp_substance3d_painter._installer._windows_file_version",
+        "meshy_dcc_substance3d_painter._installer._windows_file_version",
         lambda _path: None,
     )
-    monkeypatch.delenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", raising=False)
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
+    monkeypatch.delenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", raising=False)
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
 
-    from dcc_mcp_substance3d_painter.install_cli import main
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     exit_code = main(["install", "--dcc-path", str(host), "--python", sys.executable, "--json", "--dry-run"])
     planned = json.loads(capsys.readouterr().out)
@@ -308,10 +308,10 @@ def test_preflight_discovers_a_single_standard_painter_install(tmp_path, monkeyp
     host.parent.mkdir(parents=True)
     host.write_bytes(b"synthetic host")
     monkeypatch.setenv("ProgramFiles", str(tmp_path))
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
 
-    from dcc_mcp_substance3d_painter.install_cli import main
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     exit_code = main(["install", "--python", sys.executable, "--json", "--dry-run"])
     planned = json.loads(capsys.readouterr().out)
@@ -331,12 +331,12 @@ def test_failed_upgrade_restores_the_previous_payload_and_receipt(tmp_path, monk
     host = tmp_path / "Adobe Substance 3D Painter.exe"
     host.write_bytes(b"synthetic host")
     profile = tmp_path / "profile"
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
-    monkeypatch.setenv("DCC_MCP_REGISTRY_DIR", str(tmp_path / "registry"))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(profile))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", str(tmp_path / "registry"))
 
-    from dcc_mcp_substance3d_painter import _installer
-    from dcc_mcp_substance3d_painter.install_cli import main
+    from meshy_dcc_substance3d_painter import _installer
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     common = ["--dcc-path", str(host), "--python", sys.executable, "--json"]
     assert main(["install", *common, "--yes"]) == 40
@@ -356,7 +356,7 @@ def test_failed_upgrade_restores_the_previous_payload_and_receipt(tmp_path, monk
     assert failed["verify"]["failure_stage"] == "install"
     assert receipt_path.read_bytes() == receipt_before
     assert {path: path.read_bytes() for path in owned_before} == owned_before
-    assert not any((profile / ".dcc-mcp" / "staging").iterdir())
+    assert not any((profile / ".meshy-dcc" / "staging").iterdir())
 
 
 def test_preflight_rejects_a_wheel_interpreter_that_does_not_match_painters_embedded_python(
@@ -368,10 +368,10 @@ def test_preflight_rejects_a_wheel_interpreter_that_does_not_match_painters_embe
     sdk.mkdir(parents=True)
     host.write_bytes(b"synthetic host")
     (sdk / "python310.zip").write_bytes(b"synthetic sdk marker")
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
-    monkeypatch.setenv("DCC_MCP_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_VERSION", "12.0.1")
+    monkeypatch.setenv("MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE", str(tmp_path / "profile"))
 
-    from dcc_mcp_substance3d_painter.install_cli import main
+    from meshy_dcc_substance3d_painter.install_cli import main
 
     exit_code = main(["install", "--dcc-path", str(host), "--python", sys.executable, "--json"])
     failed = json.loads(capsys.readouterr().out)
@@ -382,7 +382,7 @@ def test_preflight_rejects_a_wheel_interpreter_that_does_not_match_painters_embe
 
 
 def test_readiness_probe_rejects_a_non_loopback_registry_url(monkeypatch):
-    from dcc_mcp_substance3d_painter import _installer
+    from meshy_dcc_substance3d_painter import _installer
 
     def must_not_probe(*_args, **_kwargs):
         raise AssertionError("external URL must be rejected before transport")

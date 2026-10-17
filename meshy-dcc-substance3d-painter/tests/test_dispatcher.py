@@ -6,7 +6,7 @@ import time
 from types import ModuleType
 from unittest.mock import MagicMock
 
-from dcc_mcp_substance3d_painter.dispatcher import PainterQtDispatcher
+from meshy_dcc_substance3d_painter.dispatcher import PainterQtDispatcher
 
 
 def test_install_supports_pyside6(monkeypatch):

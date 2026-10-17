@@ -12,8 +12,8 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).parent.parent
-SCRIPTS = ROOT / "src" / "dcc_mcp_substance3d_painter" / "skills" / "painter-project" / "scripts"
-TOOLS = ROOT / "src" / "dcc_mcp_substance3d_painter" / "skills" / "painter-project" / "tools.yaml"
+SCRIPTS = ROOT / "src" / "meshy_dcc_substance3d_painter" / "skills" / "painter-project" / "scripts"
+TOOLS = ROOT / "src" / "meshy_dcc_substance3d_painter" / "skills" / "painter-project" / "tools.yaml"
 
 
 class _Stack:
@@ -456,14 +456,14 @@ def test_import_resource_is_bounded_and_requires_resource_catalog_readback(monke
     resource.Resource = SimpleNamespace(retrieve=MagicMock(return_value=[imported]))
     _install(monkeypatch, project=project, resource=resource)
 
-    result = _load("import_resource").main(file_path=str(source), usage="texture", name="grunge", group="dcc-mcp")
+    result = _load("import_resource").main(file_path=str(source), usage="texture", name="grunge", group="meshy-dcc")
 
     assert result["success"] is True
     assert result["context"]["resource"] == {
         "name": "grunge",
         "url": "resource://project/grunge",
         "usage": "TEXTURE",
-        "group": "dcc-mcp",
+        "group": "meshy-dcc",
     }
     resource.Resource.retrieve.assert_called_once_with(identifier)
 
