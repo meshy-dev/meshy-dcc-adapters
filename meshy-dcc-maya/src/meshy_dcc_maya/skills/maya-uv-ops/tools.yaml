@@ -1,0 +1,205 @@
+tools:
+- name: auto_uv
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Generate an automatic polygon UV projection and verify a positive UV count.
+  input_schema:
+    type: object
+    additionalProperties: false
+    properties:
+      object_name:
+        type: string
+        minLength: 1
+      planes:
+        type: integer
+        enum:
+        - 4
+        - 5
+        - 6
+        - 8
+        - 12
+        default: 6
+      percentage_space:
+        type: number
+        minimum: 0
+        maximum: 5
+        default: 0.2
+    required:
+    - object_name
+  output_schema:
+    type: object
+    required:
+    - object_name
+    - uv_set
+    - uv_count
+    - uv_digest
+    - changed
+    - planes
+    properties:
+      object_name:
+        type: string
+      uv_set:
+        type: string
+      uv_count:
+        type: integer
+        minimum: 1
+      uv_digest:
+        type: string
+        pattern: ^[0-9a-f]{64}$
+      changed:
+        type: boolean
+        const: true
+      planes:
+        type: integer
+        enum:
+        - 4
+        - 5
+        - 6
+        - 8
+        - 12
+- name: copy_uvs
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Copy UVs in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      source:
+        type: string
+      target:
+        type: string
+      source_uv_set:
+        type: string
+      target_uv_set:
+        type: string
+    required:
+    - source
+    - target
+- name: create_uv_set
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Create a UV set in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      uv_set_name:
+        type: string
+      copy_from:
+        type: string
+    required:
+    - object_name
+    - uv_set_name
+- name: delete_uv_set
+  execution: sync
+  affinity: main
+  annotations:
+    destructive_hint: true
+    idempotent_hint: true
+  group: modeling
+  description: Delete a UV set in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      uv_set_name:
+        type: string
+    required:
+    - object_name
+    - uv_set_name
+- name: get_uv_info
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: modeling
+  description: Get UV information without modifying the Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      uv_set:
+        type: string
+    required:
+    - object_name
+- name: get_uv_shell_info
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: modeling
+  description: Get UV shell information without modifying the Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      uv_set:
+        type: string
+    required:
+    - object_name
+- name: normalize_uvs
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Normalize UVs in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      layout_u:
+        type: number
+        default: 1.0
+      layout_v:
+        type: number
+        default: 1.0
+      preserve_aspect:
+        type: boolean
+        default: true
+    required:
+    - object_name
+- name: project_uvs
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Project UVs in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      projection_type:
+        type: string
+        default: planar
+      axis:
+        type: string
+        default: y
+    required:
+    - object_name
+- name: unfold_uvs
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Unfold UVs in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      iterations:
+        type: integer
+        default: 1
+      optimize_scale:
+        type: boolean
+        default: true
+    required:
+    - object_name

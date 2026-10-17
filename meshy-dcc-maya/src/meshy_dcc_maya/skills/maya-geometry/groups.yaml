@@ -1,0 +1,15 @@
+groups:
+- name: core
+  description: Pure filesystem geometry helpers — never touches maya.cmds.
+  default_active: true
+  tools:
+  - file_exists
+- name: geometry
+  description: FBX / OBJ interchange tools (main-thread).
+  default_active: true
+  tools:
+  - export_fbx
+  - import_file
+  - import_fbx
+  - export_obj
+  - export_alembic

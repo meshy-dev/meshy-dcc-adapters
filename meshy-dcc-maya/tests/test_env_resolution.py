@@ -1,0 +1,145 @@
+"""Tests for ``meshy_dcc_maya._env`` env-var resolution helpers (issue #127)."""
+
+# Import future modules
+from __future__ import annotations
+
+# Import built-in modules
+import os
+from unittest.mock import patch
+
+# Import third-party modules
+import pytest
+
+# Import local modules
+from meshy_dcc_maya import _env
+
+
+class TestResolveMetricsEnabled:
+    def test_explicit_true(self):
+        with patch.dict(os.environ, {_env.ENV_METRICS: "0"}):
+            assert _env.resolve_metrics_enabled(True) is True
+
+    def test_explicit_false(self):
+        with patch.dict(os.environ, {_env.ENV_METRICS: "1"}):
+            assert _env.resolve_metrics_enabled(False) is False
+
+    def test_env_one(self):
+        with patch.dict(os.environ, {_env.ENV_METRICS: "1"}):
+            assert _env.resolve_metrics_enabled(None) is True
+
+    def test_env_zero_or_unset(self):
+        env = os.environ.copy()
+        env.pop(_env.ENV_METRICS, None)
+        with patch.dict(os.environ, env, clear=True):
+            assert _env.resolve_metrics_enabled(None) is False
+        with patch.dict(os.environ, {_env.ENV_METRICS: "0"}):
+            assert _env.resolve_metrics_enabled(None) is False
+
+
+class TestResolveJobStorage:
+    def test_explicit_path_wins(self, tmp_path):
+        path = str(tmp_path / "jobs.db")
+        assert _env.resolve_job_storage(path) == path
+
+    def test_explicit_empty_disables_persistence(self):
+        assert _env.resolve_job_storage("") == ""
+
+    def test_env_var_used(self, tmp_path):
+        path = str(tmp_path / "from-env.db")
+        with patch.dict(os.environ, {_env.ENV_JOB_STORAGE: path}):
+            assert _env.resolve_job_storage(None) == path
+
+    def test_default_is_core_per_process_database(self):
+        env = os.environ.copy()
+        env.pop(_env.ENV_JOB_STORAGE, None)
+        with patch.dict(os.environ, env, clear=True):
+            assert _env.resolve_job_storage(None) is None
+
+
+class TestResolveJobRecovery:
+    @pytest.mark.parametrize("explicit", ["drop", "DROP", " drop "])
+    def test_explicit_drop_normalised(self, explicit):
+        assert _env.resolve_job_recovery(explicit) == "drop"
+
+    @pytest.mark.parametrize("explicit", ["requeue", "REQUEUE", " requeue "])
+    def test_explicit_requeue_normalised(self, explicit):
+        assert _env.resolve_job_recovery(explicit) == "requeue"
+
+    def test_unknown_collapses_to_drop(self):
+        assert _env.resolve_job_recovery("garbage") == "drop"
+
+    def test_env_used_when_none(self):
+        with patch.dict(os.environ, {_env.ENV_JOB_RECOVERY: "requeue"}):
+            assert _env.resolve_job_recovery(None) == "requeue"
+
+    def test_default_when_unset(self):
+        env = os.environ.copy()
+        env.pop(_env.ENV_JOB_RECOVERY, None)
+        with patch.dict(os.environ, env, clear=True):
+            assert _env.resolve_job_recovery(None) == "drop"
+
+
+class TestResolvePort:
+    """``port=None`` must never reach the Rust ``McpHttpConfig`` (issue #3531)."""
+
+    def test_none_without_env_is_os_assigned(self):
+        env = os.environ.copy()
+        env.pop(_env.ENV_PORT, None)
+        with patch.dict(os.environ, env, clear=True):
+            assert _env.resolve_port(None) == _env.DEFAULT_PORT == 0
+
+    def test_none_reads_env_var(self):
+        with patch.dict(os.environ, {_env.ENV_PORT: "18765"}):
+            assert _env.resolve_port(None) == 18765
+
+    def test_blank_env_falls_back_to_default(self):
+        with patch.dict(os.environ, {_env.ENV_PORT: "   "}):
+            assert _env.resolve_port(None) == 0
+
+    def test_env_zero_is_os_assigned(self):
+        with patch.dict(os.environ, {_env.ENV_PORT: "0"}):
+            assert _env.resolve_port(None) == 0
+
+    def test_explicit_port_wins_over_env(self):
+        with patch.dict(os.environ, {_env.ENV_PORT: "18765"}):
+            assert _env.resolve_port(8791) == 8791
+
+    def test_explicit_zero_wins_over_env(self):
+        with patch.dict(os.environ, {_env.ENV_PORT: "18765"}):
+            assert _env.resolve_port(0) == 0
+
+    def test_explicit_default_override(self):
+        env = os.environ.copy()
+        env.pop(_env.ENV_PORT, None)
+        with patch.dict(os.environ, env, clear=True):
+            assert _env.resolve_port(None, default=8765) == 8765
+
+    @pytest.mark.parametrize("raw", ["abc", "87.5", "-1", "65536"])
+    def test_invalid_env_raises_readable_error(self, raw):
+        with patch.dict(os.environ, {_env.ENV_PORT: raw}):
+            with pytest.raises(ValueError, match=_env.ENV_PORT):
+                _env.resolve_port(None)
+
+    @pytest.mark.parametrize("bad", [-1, 65536, 70000])
+    def test_out_of_range_raises(self, bad):
+        with pytest.raises(ValueError, match="between 0 and 65535"):
+            _env.resolve_port(bad)
+
+    def test_numeric_string_is_coerced(self):
+        assert _env.resolve_port("8791") == 8791
+
+
+class TestResolveWindowTitle:
+    def test_explicit_wins(self):
+        with patch.dict(os.environ, {_env.ENV_WINDOW_TITLE: "Other"}):
+            assert _env.resolve_window_title("Custom") == "Custom"
+
+    def test_env_used_when_none(self):
+        with patch.dict(os.environ, {_env.ENV_WINDOW_TITLE: "  My Maya  "}):
+            assert _env.resolve_window_title(None) == "My Maya"
+
+    def test_blank_treated_as_none(self):
+        env = os.environ.copy()
+        env.pop(_env.ENV_WINDOW_TITLE, None)
+        with patch.dict(os.environ, env, clear=True):
+            assert _env.resolve_window_title(None) is None

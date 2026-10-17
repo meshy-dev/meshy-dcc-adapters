@@ -1,0 +1,7 @@
+groups:
+- name: meshy
+  description: Meshy model import and readback (main thread).
+  default_active: true
+  tools:
+  - import_model
+  - inspect_model

@@ -1,0 +1,17 @@
+groups:
+- name: node_graph
+  description: DAG traversal, attribute connections, and construction history tools
+  default_active: false
+  tools:
+  - apply_symmetry
+  - connect_attr
+  - create_node
+  - delete_history
+  - delete_node
+  - describe_node
+  - disconnect_attr
+  - get_dag_path
+  - list_connections
+  - list_history
+  - smooth_mesh
+  - transfer_attributes

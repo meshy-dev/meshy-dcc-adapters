@@ -1,0 +1,520 @@
+tools:
+- name: center_pivot
+  execution: sync
+  affinity: main
+  group: scene-management
+  description: Center the pivot point of an object to its bounding box center.
+  input_schema:
+    type: object
+    required:
+    - object_name
+    properties:
+      object_name:
+        type: string
+- name: create_locator
+  execution: sync
+  affinity: main
+  group: scene-management
+  description: Create a Maya locator node at an optional world-space position.
+  input_schema:
+    type: object
+    properties:
+      name:
+        type: string
+      position:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+- name: create_camera
+  description: Create a camera transform and shape with common camera attributes.
+  execution: sync
+  affinity: main
+  group: scene-management
+  input_schema:
+    type: object
+    properties:
+      name:
+        type: string
+      position:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+        default:
+        - 0.0
+        - 2.0
+        - 10.0
+      rotation:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      look_at:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      focal_length:
+        type: number
+        default: 35.0
+      near_clip:
+        type: number
+        default: 0.1
+      far_clip:
+        type: number
+        default: 10000.0
+      renderable:
+        type: boolean
+        default: true
+      orthographic:
+        type: boolean
+        default: false
+      orthographic_width:
+        type: number
+- name: duplicate_object
+  execution: sync
+  affinity: main
+  group: scene-management
+  description: Duplicate an object in the Maya scene, optionally as an instance.
+  input_schema:
+    type: object
+    required:
+    - object_name
+    properties:
+      object_name:
+        type: string
+      new_name:
+        type: string
+      instance:
+        type: boolean
+        default: false
+- name: freeze_transforms
+  execution: sync
+  affinity: main
+  group: scene-management
+  description: Freeze (apply) the transforms of an object, zeroing out translate/rotate and resetting scale to 1.
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+    - object_name
+    properties:
+      object_name:
+        type: string
+  output_schema:
+    type: object
+    required:
+    - object_name
+    - verified_transform
+    properties:
+      object_name:
+        type: string
+      verified_transform:
+        type: object
+        required:
+        - translate
+        - rotate
+        - scale
+        properties:
+          translate:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          rotate:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+          scale:
+            type: array
+            items:
+              type: number
+            minItems: 3
+            maxItems: 3
+- name: get_bounding_box
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: scene-management
+  description: Query the world-space bounding box of an object, returning min, max, center, and size.
+  input_schema:
+    type: object
+    required:
+    - object_name
+    properties:
+      object_name:
+        type: string
+- name: get_scene_info
+  description: Return a hierarchical DAG description of the current scene. Use
+    detail_mode=lightweight for high-frequency polling, standard when stable
+    node refs are needed, and full for the historical transform-rich payload.
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: core
+  input_schema:
+    type: object
+    properties:
+      include_transforms:
+        type: boolean
+        default: true
+        description: Include translate/rotate/scale fields in full detail mode.
+      detail_mode:
+        type: string
+        enum:
+        - lightweight
+        - standard
+        - full
+        default: full
+        description: Payload/cost profile. lightweight omits node_ref and transform
+          fields; standard includes node_ref; full preserves the historical payload.
+- name: find_by_pattern
+  description: Find nodes by Maya wildcard pattern, defaulting to transform nodes
+    so object searches exclude shapes and animation curves.
+  execution: sync
+  affinity: main
+  group: scene-management
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  input_schema:
+    type: object
+    required:
+    - pattern
+    properties:
+      pattern:
+        type: string
+        description: Name pattern using Maya wildcard syntax, such as mcp_ball_*.
+      type:
+        type:
+        - string
+        - 'null'
+        default: transform
+        description: Optional Maya node type filter. Pass null or an empty string
+          to disable filtering.
+- name: get_selection
+  description: Return the current Maya selection
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: core
+  input_schema:
+    type: object
+    properties: {}
+- name: get_session_info
+  description: Return Maya version, scene path, and basic session statistics
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: core
+  input_schema:
+    type: object
+    properties: {}
+- name: group_objects
+  description: Group a list of objects under a new transform node.
+  execution: sync
+  affinity: main
+  input_schema:
+    type: object
+    required:
+    - objects
+    properties:
+      objects:
+        type: array
+        items:
+          type: string
+        minItems: 1
+        description: Names of the objects to group.
+      group_name:
+        type: string
+        description: Optional name for the new group node.
+      world:
+        type: boolean
+        default: false
+        description: When true, parent the group at the world root.
+- name: list_cameras
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: scene-management
+  description: List all cameras in the scene with focal length, clip planes, and renderable status.
+  input_schema:
+    type: object
+    properties:
+      include_default:
+        type: boolean
+        default: true
+        description: Include Maya built-in cameras (persp, top, front, side).
+- name: look_through_camera
+  description: Switch a model panel to look through a camera.
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: scene-management
+  input_schema:
+    type: object
+    required:
+    - camera
+    properties:
+      camera:
+        type: string
+      panel:
+        type: string
+      view_fit:
+        type: boolean
+        default: false
+- name: list_objects
+  description: List objects in the current Maya scene. For wildcard name searches,
+    prefer find_by_pattern with type=transform to avoid matching shape or animation-curve
+    nodes.
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: scene-management
+  input_schema:
+    type: object
+    properties:
+      object_type:
+        type: string
+        description: Optional Maya node type filter (e.g. mesh, transform, joint).
+      dag:
+        type: boolean
+        default: true
+        description: Return only DAG nodes.
+- name: lock_object
+  execution: sync
+  affinity: main
+  group: scene-management
+  description: Lock or unlock the translate/rotate/scale attributes of an object.
+  input_schema:
+    type: object
+    required:
+    - object_name
+    properties:
+      object_name:
+        type: string
+      lock:
+        type: boolean
+        default: true
+- name: new_scene
+  description: Create a new empty Maya scene
+  execution: async
+  affinity: main
+  timeout_hint_secs: 60
+  annotations:
+    destructive_hint: true
+    idempotent_hint: true
+  group: scene-management
+  input_schema:
+    type: object
+    properties:
+      force:
+        type: boolean
+        default: false
+        description: Discard unsaved changes without prompting.
+      safe_dirty_check:
+        type: boolean
+        default: true
+        description: Return a structured error on dirty scenes instead of allowing a Maya save prompt.
+- name: open_scene
+  description: Open a Maya scene file from disk
+  execution: async
+  affinity: main
+  timeout_hint_secs: 300
+  annotations:
+    destructive_hint: true
+    idempotent_hint: true
+  group: scene-management
+  input_schema:
+    type: object
+    required:
+    - file_path
+    properties:
+      file_path:
+        type: string
+        description: Absolute or workspace-relative .ma/.mb file to open.
+      force:
+        type: boolean
+        default: false
+        description: Discard unsaved changes without prompting.
+      safe_dirty_check:
+        type: boolean
+        default: true
+        description: Return a structured error on dirty scenes instead of allowing a Maya save prompt.
+- name: parent_object
+  execution: sync
+  affinity: main
+  group: scene-management
+  description: Set or clear the parent of an object.
+  input_schema:
+    type: object
+    required:
+    - child
+    properties:
+      child:
+        type: string
+      parent:
+        type: string
+      world:
+        type: boolean
+        default: false
+- name: save_scene
+  description: >-
+    Canonical native Maya scene save. Saves the current scene in place, or first
+    renames it to file_path before saving as mayaAscii or mayaBinary. Use this
+    for .ma/.mb persistence; use maya_geometry__export_fbx or
+    maya_geometry__export_obj for interchange files.
+  execution: async
+  affinity: main
+  timeout_hint_secs: 120
+  group: scene-management
+  input_schema:
+    type: object
+    properties:
+      file_path:
+        type: string
+        description: Optional absolute or workspace-relative .ma/.mb destination path.
+      file_type:
+        type: string
+        enum:
+        - mayaAscii
+        - mayaBinary
+        default: mayaBinary
+- name: select_by_type
+  execution: sync
+  affinity: main
+  group: scene-management
+  description: Select all objects of a given Maya type (e.g. mesh, transform, joint, camera).
+  input_schema:
+    type: object
+    required:
+    - object_type
+    properties:
+      object_type:
+        type: string
+- name: set_frame_rate
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: scene-management
+  description: Change the scene playback frame rate.
+  input_schema:
+    type: object
+    properties:
+      fps:
+        type: string
+        enum:
+        - game
+        - film
+        - pal
+        - ntsc
+        - show
+        - palf
+        - ntscf
+        - 23.976fps
+        - 29.97fps
+        - 47.952fps
+        - 59.94fps
+        - 44100fps
+        - 48000fps
+        default: film
+- name: set_camera
+  description: Edit camera transform and common shape attributes.
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: scene-management
+  input_schema:
+    type: object
+    required:
+    - camera
+    properties:
+      camera:
+        type: string
+      position:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      rotation:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      look_at:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      focal_length:
+        type: number
+      near_clip:
+        type: number
+      far_clip:
+        type: number
+      renderable:
+        type: boolean
+      orthographic:
+        type: boolean
+      orthographic_width:
+        type: number
+- name: set_selection
+  description: Set the active Maya selection
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: scene-management
+  input_schema:
+    type: object
+    required:
+    - objects
+    properties:
+      objects:
+        type: array
+        items:
+          type: string
+        minItems: 1
+- name: set_visibility
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: scene-management
+  description: Show or hide an object in the viewport.
+  input_schema:
+    type: object
+    required:
+    - object_name
+    - visible
+    properties:
+      object_name:
+        type: string
+      visible:
+        type: boolean

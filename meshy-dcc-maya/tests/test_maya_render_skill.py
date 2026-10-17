@@ -1,0 +1,752 @@
+"""Unit tests for Maya render skill guard rails."""
+
+from __future__ import annotations
+
+import importlib.util
+import os
+import sys
+from pathlib import Path
+from types import ModuleType
+from unittest.mock import MagicMock, patch
+
+import yaml
+from conftest import load_and_call, load_and_call_with_mel
+
+
+def _write_playblast_bytes(data: bytes):
+    def _write(**kwargs):
+        frame = kwargs["frame"][0]
+        path = "{}.{}.png".format(kwargs["filename"], str(frame).zfill(4))
+        with open(path, "wb") as fh:
+            fh.write(data)
+        return path
+
+    return _write
+
+
+def _configure_render_cmds(cmds, renderer="mayaSoftware", current_frame=1.0):
+    prefix_holder = {"prefix": ""}
+
+    def _get_attr(attr):
+        values = {
+            "defaultRenderGlobals.currentRenderer": renderer,
+            "defaultResolution.width": 640,
+            "defaultResolution.height": 360,
+            "defaultRenderGlobals.imageFormat": 8,
+            "defaultRenderGlobals.imageFilePrefix": "",
+        }
+        return values.get(attr)
+
+    def _set_attr(attr, value, **_kwargs):
+        if attr == "defaultRenderGlobals.imageFilePrefix":
+            prefix_holder["prefix"] = value
+
+    def _current_time(*_args, **kwargs):
+        if kwargs.get("q"):
+            return current_frame
+        return None
+
+    def _workspace(*_args, **kwargs):
+        if kwargs.get("q") and kwargs.get("rootDirectory"):
+            return str(Path.cwd())
+        if kwargs.get("fileRuleEntry") == "images":
+            return "images"
+        return None
+
+    cmds.getAttr.side_effect = _get_attr
+    cmds.setAttr.side_effect = _set_attr
+    cmds.currentTime.side_effect = _current_time
+    cmds.workspace.side_effect = _workspace
+    cmds.ls.return_value = []
+    cmds.objExists.side_effect = lambda node: node == "persp"
+    cmds.listRelatives.return_value = ["perspShape"]
+    return prefix_holder
+
+
+def _configure_model_panel(cmds, panel="modelPanel4", renderer="vp2Renderer"):
+    def _get_panel(*_args, **kwargs):
+        if kwargs.get("withFocus"):
+            return panel
+        if kwargs.get("typeOf") == panel:
+            return "modelPanel"
+        if kwargs.get("type") == "modelPanel":
+            return [panel]
+        if kwargs.get("visiblePanels"):
+            return [panel]
+        return None
+
+    cmds.getPanel.side_effect = _get_panel
+    cmds.modelEditor.return_value = renderer
+
+
+def _configure_hidden_maya_window(cmds, panel="modelPanel4"):
+    """Model the #488 state: MayaWindow exists but no panel is visible."""
+
+    def _window(_name, **kwargs):
+        if kwargs.get("exists"):
+            return True
+        if kwargs.get("query") and kwargs.get("visible"):
+            return False
+        raise AssertionError("capture must not edit or show MayaWindow")
+
+    def _get_panel(*_args, **kwargs):
+        if kwargs.get("withFocus"):
+            return panel
+        if kwargs.get("typeOf") == panel:
+            return "modelPanel"
+        if kwargs.get("type") == "modelPanel":
+            return [panel]
+        if kwargs.get("visiblePanels"):
+            return []
+        return None
+
+    cmds.window.side_effect = _window
+    cmds.getPanel.side_effect = _get_panel
+    cmds.modelEditor.return_value = "vp2Renderer"
+    cmds.modelPanel.return_value = "persp"
+    cmds.about.return_value = False
+
+
+def test_set_render_settings_initializes_missing_arnold_defaults():
+    cmds = MagicMock()
+    created = {"value": False}
+    cmds.getAttr.return_value = "arnold"
+    cmds.objExists.side_effect = lambda name: created["value"] if name == "defaultArnoldDriver" else True
+    mtoa = ModuleType("mtoa")
+    mtoa_core = ModuleType("mtoa.core")
+
+    def _create_options():
+        created["value"] = True
+
+    mtoa_core.createOptions = _create_options
+    mtoa.core = mtoa_core
+
+    with patch.dict(sys.modules, {"mtoa": mtoa, "mtoa.core": mtoa_core}):
+        result = load_and_call(
+            "maya-render/scripts/set_render_settings.py",
+            cmds,
+            "main",
+            renderer="arnold",
+            image_format="png",
+        )
+
+    assert result["success"] is True, result
+    assert created["value"] is True
+    assert result["context"]["arnold_defaults_initialized"] is True
+    cmds.setAttr.assert_any_call("defaultArnoldDriver.aiTranslator", "png", type="string")
+
+
+def test_set_render_settings_fails_closed_when_arnold_defaults_cannot_initialize():
+    cmds = MagicMock()
+    cmds.objExists.return_value = False
+    mtoa = ModuleType("mtoa")
+    mtoa_core = ModuleType("mtoa.core")
+    mtoa_core.createOptions = MagicMock(side_effect=RuntimeError("MtoA startup failed"))
+    mtoa.core = mtoa_core
+
+    with patch.dict(sys.modules, {"mtoa": mtoa, "mtoa.core": mtoa_core}):
+        result = load_and_call(
+            "maya-render/scripts/set_render_settings.py",
+            cmds,
+            "main",
+            renderer="arnold",
+            image_format="exr",
+        )
+
+    assert result["success"] is False
+    assert result["error"] == "ARNOLD_DEFAULT_NODES_UNAVAILABLE"
+    assert result["context"]["code"] == "ARNOLD_DEFAULT_NODES_UNAVAILABLE"
+    assert "MtoA startup failed" in result["context"]["detail"]
+    cmds.setAttr.assert_not_called()
+
+
+def test_configure_color_management_applies_and_reads_back_ocio(tmp_path):
+    config = tmp_path / "studio.ocio"
+    config.write_text("ocio_profile_version: 2.4\n", encoding="utf-8")
+    cmds = MagicMock()
+
+    def _prefs(**kwargs):
+        if not kwargs.get("query"):
+            return None
+        for key, value in {
+            "configFilePath": str(config.resolve()),
+            "renderingSpaceName": "ACEScg",
+            "displayName": "Rec.1886 Rec.709 - Display",
+            "viewName": "ACES 1.0 - SDR Video",
+            "ociov2Enabled": True,
+            "outputTransformEnabled": True,
+        }.items():
+            if kwargs.get(key):
+                return value
+        return None
+
+    cmds.colorManagementPrefs.side_effect = _prefs
+    result = load_and_call(
+        "maya-render/scripts/configure_color_management.py",
+        cmds,
+        "main",
+        config_file_path=str(config),
+    )
+
+    assert result["success"] is True
+    assert result["context"]["ocio_v2_enabled"] is True
+    cmds.colorManagementPrefs.assert_any_call(edit=True, configFilePath=str(config.resolve()))
+    cmds.colorManagementPrefs.assert_any_call(edit=True, renderingSpaceName="ACEScg")
+    cmds.colorManagementPrefs.assert_any_call(edit=True, displayName="Rec.1886 Rec.709 - Display")
+    cmds.colorManagementPrefs.assert_any_call(edit=True, viewName="ACES 1.0 - SDR Video")
+    cmds.colorManagementPrefs.assert_any_call(
+        edit=True,
+        outputTarget="renderer",
+        outputUseViewTransform=True,
+        outputTransformEnabled=True,
+    )
+
+
+def test_setup_hdr_arnold_loads_mtoa_and_creates_skydome():
+    cmds = MagicMock()
+    cmds.pluginInfo.side_effect = [False, True]
+    cmds.createNode.side_effect = ["LookdevHDRI", "LookdevHDRITexture"]
+    cmds.shadingNode.return_value = "LookdevHDRIShape"
+    cmds.listRelatives.return_value = ["LookdevHDRIShape"]
+    cmds.attributeQuery.return_value = True
+
+    result = load_and_call(
+        "maya-render/scripts/setup_hdr_arnold.py",
+        cmds,
+        "main",
+        hdri_path="P:/assets/studio.hdr",
+        name="LookdevHDRI",
+    )
+
+    assert result["success"] is True
+    assert result["context"]["mtoa_loaded"] is True
+    cmds.loadPlugin.assert_called_once_with("mtoa", quiet=True)
+    cmds.shadingNode.assert_called_once_with(
+        "aiSkyDomeLight",
+        asLight=True,
+        name="LookdevHDRI_Shape",
+        parent="LookdevHDRI",
+    )
+    cmds.setAttr.assert_any_call("defaultRenderGlobals.currentRenderer", "arnold", type="string")
+
+
+def test_capture_viewport_forces_offscreen_when_view_fit_fails():
+    cmds = MagicMock()
+    cmds.currentTime.return_value = 1.0
+    _configure_model_panel(cmds)
+    cmds.viewFit.side_effect = RuntimeError("no usable panel")
+    cmds.playblast.side_effect = _write_playblast_bytes(b"png-bytes")
+
+    result = load_and_call(
+        "maya-render/scripts/capture_viewport.py",
+        cmds,
+        "main",
+        width=320,
+        height=200,
+        view_fit=True,
+        off_screen=False,
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["off_screen"] is True
+    assert result["context"]["view_fit_applied"] is False
+    assert result["context"]["off_screen_forced_by_view_fit_failure"] is True
+    _args, kwargs = cmds.playblast.call_args
+    assert kwargs["offScreen"] is True
+    assert kwargs["editorPanelName"] == "modelPanel4"
+    assert result["context"]["viewport_renderer"] == "vp2Renderer"
+
+
+def test_capture_viewport_fails_before_playblast_when_maya_window_is_hidden():
+    cmds = MagicMock()
+    cmds.currentTime.return_value = 1.0
+    _configure_hidden_maya_window(cmds)
+    cmds.playblast.side_effect = _write_playblast_bytes(b"solid-white-png")
+
+    result = load_and_call(
+        "maya-render/scripts/capture_viewport.py",
+        cmds,
+        "main",
+        width=320,
+        height=200,
+        off_screen=True,
+    )
+
+    assert result["success"] is False
+    assert result["context"]["error_code"] == "MAYA_VIEWPORT_UNAVAILABLE"
+    assert result["context"]["reason"] == "maya_window_hidden"
+    assert result["context"]["maya_window_visible"] is False
+    assert result["context"]["visible_model_panels"] == []
+    cmds.playblast.assert_not_called()
+
+
+def test_capture_viewport_preserves_batch_offscreen_without_a_window():
+    cmds = MagicMock()
+    cmds.currentTime.return_value = 1.0
+    cmds.about.return_value = True
+    cmds.window.return_value = False
+    cmds.getPanel.side_effect = lambda *_args, **_kwargs: None
+    cmds.playblast.side_effect = _write_playblast_bytes(b"batch-png")
+
+    result = load_and_call(
+        "maya-render/scripts/capture_viewport.py",
+        cmds,
+        "main",
+        width=320,
+        height=200,
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["off_screen"] is True
+    assert result["context"]["visible_model_panels"] == []
+    _args, kwargs = cmds.playblast.call_args
+    assert kwargs["offScreen"] is True
+
+
+def test_capture_viewport_fits_the_panel_camera():
+    cmds = MagicMock()
+    cmds.currentTime.return_value = 1.0
+    _configure_model_panel(cmds)
+    cmds.modelPanel.return_value = "persp"
+    cmds.playblast.side_effect = _write_playblast_bytes(b"png-bytes")
+
+    result = load_and_call(
+        "maya-render/scripts/capture_viewport.py",
+        cmds,
+        "main",
+        width=320,
+        height=200,
+        view_fit=True,
+    )
+
+    assert result["success"] is True, result
+    cmds.viewFit.assert_called_once_with("persp", allObjects=True, animate=False)
+
+
+def test_capture_viewport_reports_zero_byte_playblast():
+    cmds = MagicMock()
+    cmds.currentTime.return_value = 1.0
+    _configure_model_panel(cmds)
+    cmds.playblast.side_effect = _write_playblast_bytes(b"")
+
+    result = load_and_call(
+        "maya-render/scripts/capture_viewport.py",
+        cmds,
+        "main",
+        width=320,
+        height=200,
+    )
+
+    assert result["success"] is False
+    assert "0-byte" in result["message"] or "0-byte" in result["error"]
+    assert result["context"]["model_panel"] == "modelPanel4"
+    assert result["context"]["viewport_renderer"] == "vp2Renderer"
+
+
+def test_playblast_reports_zero_byte_output():
+    cmds = MagicMock()
+    cmds.currentTime.return_value = 1.0
+    _configure_model_panel(cmds)
+    cmds.playblast.side_effect = _write_playblast_bytes(b"")
+
+    result = load_and_call(
+        "maya-render/scripts/playblast.py",
+        cmds,
+        "main",
+        width=320,
+        height=200,
+    )
+
+    assert result["success"] is False
+    assert "0-byte" in result["message"] or "0-byte" in result["error"]
+    assert result["context"]["model_panel"] == "modelPanel4"
+
+
+def test_get_viewport_camera_prefers_focused_model_panel():
+    cmds = MagicMock()
+
+    def _get_panel(*_args, **kwargs):
+        if kwargs.get("withFocus"):
+            return "modelPanel4"
+        if kwargs.get("typeOf") == "modelPanel4":
+            return "modelPanel"
+        if kwargs.get("type") == "modelPanel":
+            return ["modelPanel4"]
+        if kwargs.get("visiblePanels"):
+            return ["modelPanel4"]
+        return None
+
+    cmds.getPanel.side_effect = _get_panel
+    cmds.modelPanel.return_value = "persp"
+    cmds.ls.return_value = ["perspShape"]
+    cmds.nodeType.side_effect = lambda node: "camera" if node == "perspShape" else "transform"
+    cmds.listRelatives.side_effect = lambda node, **kwargs: (
+        ["perspShape"] if kwargs.get("shapes") else ["persp"] if kwargs.get("parent") else []
+    )
+    cmds.objExists.return_value = True
+    cmds.getAttr.return_value = 35.0
+
+    result = load_and_call("maya-render/scripts/get_viewport_camera.py", cmds, "main")
+
+    assert result["success"] is True, result
+    assert result["context"]["camera"] == "persp"
+    assert result["context"]["camera_shape"] == "perspShape"
+    assert result["context"]["panel"] == "modelPanel4"
+    assert result["context"]["source"] == "focused_model_panel"
+
+
+def test_capture_playblast_sequence_writes_paths_and_camera_metadata(tmp_path):
+    cmds = MagicMock()
+
+    def _get_panel(*_args, **kwargs):
+        if kwargs.get("withFocus"):
+            return "modelPanel4"
+        if kwargs.get("typeOf") == "modelPanel4":
+            return "modelPanel"
+        if kwargs.get("type") == "modelPanel":
+            return ["modelPanel4"]
+        if kwargs.get("visiblePanels"):
+            return ["modelPanel4"]
+        return None
+
+    def _playblast(**kwargs):
+        prefix = kwargs["filename"]
+        compression = kwargs["compression"]
+        for frame in range(kwargs["startTime"], kwargs["endTime"] + 1):
+            Path("{}.{}.{}".format(prefix, str(frame).zfill(4), compression)).write_bytes(b"png")
+
+    cmds.getPanel.side_effect = _get_panel
+    cmds.modelEditor.return_value = "vp2Renderer"
+    cmds.modelPanel.return_value = "persp"
+    cmds.about.return_value = False
+    cmds.playblast.side_effect = _playblast
+    cmds.nodeType.side_effect = lambda node: "camera" if node == "shotCamShape" else "transform"
+    cmds.listRelatives.return_value = ["shotCamShape"]
+    cmds.objExists.return_value = True
+    cmds.getAttr.return_value = 50.0
+
+    result = load_and_call(
+        "maya-render/scripts/capture_playblast_sequence.py",
+        cmds,
+        "main",
+        output_dir=str(tmp_path),
+        prefix="shot 01",
+        start_frame=1,
+        end_frame=3,
+        width=640,
+        height=360,
+        camera="shotCam",
+        view_fit=True,
+    )
+
+    assert result["success"] is True, result
+    context = result["context"]
+    assert context["prefix"] == "shot_01"
+    assert context["frame_count"] == 3
+    assert len(context["files"]) == 3
+    assert all(Path(path).exists() for path in context["files"])
+    assert context["camera"] == "shotCam"
+    assert context["camera_metadata"]["camera_shape"] == "shotCamShape"
+    assert context["panel"] == "modelPanel4"
+    assert context["viewport_renderer"] == "vp2Renderer"
+    _args, playblast_kwargs = cmds.playblast.call_args
+    assert playblast_kwargs["editorPanelName"] == "modelPanel4"
+    cmds.lookThru.assert_any_call("modelPanel4", "shotCam")
+    cmds.lookThru.assert_any_call("modelPanel4", "persp")
+    cmds.viewFit.assert_called_once_with("persp", allObjects=True, animate=False)
+
+
+def test_capture_playblast_sequence_fails_without_writing_when_maya_window_is_hidden(tmp_path):
+    cmds = MagicMock()
+    _configure_hidden_maya_window(cmds)
+    output_dir = tmp_path / "must-not-be-created"
+
+    result = load_and_call(
+        "maya-render/scripts/capture_playblast_sequence.py",
+        cmds,
+        "main",
+        output_dir=str(output_dir),
+        start_frame=1,
+        end_frame=1,
+        off_screen=True,
+    )
+
+    assert result["success"] is False
+    assert result["context"]["error_code"] == "MAYA_VIEWPORT_UNAVAILABLE"
+    assert result["context"]["reason"] == "maya_window_hidden"
+    assert result["context"]["maya_window_visible"] is False
+    assert result["context"]["visible_model_panels"] == []
+    assert output_dir.exists() is False
+    cmds.playblast.assert_not_called()
+    cmds.lookThru.assert_not_called()
+
+
+def test_render_frame_uses_cmds_render_and_returns_nonempty_file(tmp_path):
+    cmds = MagicMock()
+    prefix_holder = _configure_render_cmds(cmds, renderer="mayaSoftware", current_frame=12.0)
+
+    def _render(camera, **_kwargs):
+        path = "{}.png".format(prefix_holder["prefix"])
+        Path(path).write_bytes(b"render-bytes")
+        return path
+
+    cmds.render.side_effect = _render
+
+    result = load_and_call(
+        "maya-render/scripts/render_frame.py",
+        cmds,
+        "main",
+        output_dir=str(tmp_path),
+        output_name="shot 01",
+        width=320,
+        height=200,
+    )
+
+    assert result["success"] is True, result
+    context = result["context"]
+    assert context["renderer"] == "mayaSoftware"
+    assert context["camera"] == "persp"
+    assert context["width"] == 320
+    assert context["height"] == 200
+    assert context["output_size"] == len(b"render-bytes")
+    assert context["image_base64"]
+    cmds.render.assert_called_once_with("persp", x=320, y=200)
+    assert Path(context["output_path"]).name == "shot_01.png"
+
+
+def test_render_frame_uses_arnold_mel_when_current_renderer_is_arnold(tmp_path):
+    cmds = MagicMock()
+    mel = MagicMock()
+    prefix_holder = _configure_render_cmds(cmds, renderer="arnold", current_frame=1.0)
+    cmds.pluginInfo.return_value = True
+    original_get_attr = cmds.getAttr.side_effect
+    cmds.getAttr.side_effect = lambda attr: (
+        "exr" if attr == "defaultArnoldDriver.aiTranslator" else original_get_attr(attr)
+    )
+
+    def _mel_eval(_command):
+        path = "{}.png".format(prefix_holder["prefix"])
+        Path(path).write_bytes(b"arnold-bytes")
+        return path
+
+    mel.eval.side_effect = _mel_eval
+
+    result = load_and_call_with_mel(
+        "maya-render/scripts/render_frame.py",
+        cmds,
+        mel,
+        output_dir=str(tmp_path),
+        camera="persp",
+        frame=5,
+        return_base64=False,
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["renderer"] == "arnold"
+    assert result["context"]["image_base64"] is None
+    cmds.currentTime.assert_any_call(5.0)
+    mel.eval.assert_called_once_with('arnoldRender -batch -camera "persp" -width 640 -height 360')
+    assert cmds.setAttr.call_args_list.count((("defaultArnoldDriver.aiTranslator", "png"), {"type": "string"})) == 1
+    assert cmds.setAttr.call_args_list.count((("defaultArnoldDriver.aiTranslator", "exr"), {"type": "string"})) == 1
+
+
+def test_render_frame_ignores_newer_arnold_log_output(tmp_path):
+    cmds = MagicMock()
+    mel = MagicMock()
+    prefix_holder = _configure_render_cmds(cmds, renderer="arnold", current_frame=1.0)
+    cmds.pluginInfo.return_value = True
+
+    def _mel_eval(_command):
+        image_path = Path("{}.png".format(prefix_holder["prefix"]))
+        log_path = Path("{}.log".format(prefix_holder["prefix"]))
+        image_path.write_bytes(b"arnold-image")
+        log_path.write_text("arnold diagnostics", encoding="utf-8")
+        newer = image_path.stat().st_mtime + 5.0
+        os.utime(log_path, (newer, newer))
+        return image_path
+
+    mel.eval.side_effect = _mel_eval
+
+    result = load_and_call_with_mel(
+        "maya-render/scripts/render_frame.py",
+        cmds,
+        mel,
+        output_dir=str(tmp_path),
+        camera="persp",
+        return_base64=False,
+    )
+
+    assert result["success"] is True, result
+    assert Path(result["context"]["output_path"]).suffix == ".png"
+    assert result["context"]["output_size"] == len(b"arnold-image")
+
+
+def test_render_scene_uses_current_time_instead_of_invalid_arnold_frame_flag(tmp_path):
+    cmds = MagicMock()
+    mel = MagicMock()
+    prefix_holder = _configure_render_cmds(cmds, renderer="arnold", current_frame=1.0)
+    cmds.pluginInfo.return_value = True
+
+    def _mel_eval(_command):
+        path = "{}.png".format(prefix_holder["prefix"])
+        Path(path).write_bytes(b"arnold-scene-bytes")
+        return path
+
+    mel.eval.side_effect = _mel_eval
+
+    result = load_and_call_with_mel(
+        "maya-render/scripts/render_scene.py",
+        cmds,
+        mel,
+        output_dir=str(tmp_path),
+        camera="persp",
+        frame=7,
+        format="png",
+        return_base64=False,
+    )
+
+    assert result["success"] is True, result
+    cmds.currentTime.assert_any_call(7.0)
+    mel.eval.assert_called_once_with('arnoldRender -batch -camera "persp" -width 640 -height 360')
+
+
+def test_render_scene_is_registered_with_complete_metadata():
+    tools_path = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-render" / "tools.yaml"
+    tools = yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]
+    tool = next(item for item in tools if item["name"] == "render_scene")
+
+    assert tool["execution"] == "async"
+    assert tool["affinity"] == "main"
+    assert tool["timeout_hint_secs"] == 600
+    assert tool["input_schema"]["type"] == "object"
+    assert {"format", "aa_samples", "return_base64"}.issubset(tool["input_schema"]["properties"])
+
+
+def test_render_frame_rejects_zero_byte_output(tmp_path):
+    cmds = MagicMock()
+    prefix_holder = _configure_render_cmds(cmds, renderer="mayaSoftware", current_frame=1.0)
+
+    def _render(camera, **_kwargs):
+        path = "{}.png".format(prefix_holder["prefix"])
+        Path(path).write_bytes(b"")
+        return path
+
+    cmds.render.side_effect = _render
+
+    result = load_and_call(
+        "maya-render/scripts/render_frame.py",
+        cmds,
+        "main",
+        output_dir=str(tmp_path),
+    )
+
+    assert result["success"] is False
+    assert result["context"]["error_code"] == "EMPTY_RENDER"
+    assert result["context"]["empty_paths"]
+
+
+def test_render_sequence_reuses_render_frame_for_inclusive_range(tmp_path, monkeypatch):
+    script = Path(__file__).parents[1] / "src/meshy_dcc_maya/skills/maya-render/scripts/render_sequence.py"
+    spec = importlib.util.spec_from_file_location("maya_render_sequence_test", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    calls = []
+    cancellation_checks = []
+
+    def _render_frame(**kwargs):
+        calls.append(kwargs)
+        return {"success": True, "context": {"output_path": str(tmp_path / (kwargs["output_name"] + ".png"))}}
+
+    monkeypatch.setattr(module, "_render_frame_function", lambda: _render_frame)
+    monkeypatch.setattr(module, "check_maya_cancelled", lambda: cancellation_checks.append(True))
+    result = module.render_sequence(
+        camera="shotCam",
+        output_dir=str(tmp_path),
+        start_frame=1,
+        end_frame=3,
+    )
+
+    assert result["context"]["frame_count"] == 3
+    assert [call["frame"] for call in calls] == [1, 2, 3]
+    assert all(call["return_base64"] is False for call in calls)
+    assert len(cancellation_checks) == 3
+
+
+def test_playblast_to_mp4_encodes_sequence(tmp_path, monkeypatch):
+    cmds = MagicMock()
+    _configure_model_panel(cmds)
+    cmds.currentTime.return_value = 1.0
+    cmds.playbackOptions.side_effect = lambda **kwargs: 1 if kwargs.get("minTime") else 2
+    cmds.about.return_value = False
+
+    def _playblast(**kwargs):
+        prefix = kwargs["filename"]
+        for frame in range(kwargs["startTime"], kwargs["endTime"] + 1):
+            Path("{}.{:04d}.png".format(prefix, frame)).write_bytes(b"frame")
+
+    def _run(command, stdout, stderr, text):
+        Path(command[-1]).write_bytes(b"mp4")
+        completed = MagicMock()
+        completed.returncode = 0
+        completed.stdout = ""
+        completed.stderr = ""
+        return completed
+
+    cmds.playblast.side_effect = _playblast
+    monkeypatch.setattr("shutil.which", lambda name: "ffmpeg" if name == "ffmpeg" else None)
+    monkeypatch.setattr("subprocess.run", _run)
+
+    result = load_and_call(
+        "maya-render/scripts/playblast_to_mp4.py",
+        cmds,
+        "main",
+        output_dir=str(tmp_path),
+        prefix="anim preview",
+        keep_frames=True,
+    )
+
+    assert result["success"] is True, result
+    context = result["context"]
+    assert Path(context["output_path"]).exists()
+    assert context["frame_count"] == 2
+    assert context["panel"] == "modelPanel4"
+    assert context["viewport_renderer"] == "vp2Renderer"
+    _args, playblast_kwargs = cmds.playblast.call_args
+    assert playblast_kwargs["editorPanelName"] == "modelPanel4"
+
+
+def test_debug_scene_snapshot_returns_summary_without_preview():
+    cmds = MagicMock()
+    cmds.ls.side_effect = lambda **kwargs: {
+        "transform": ["|root", "|root|meshA"],
+        "camera": ["perspShape"],
+        "mesh": ["meshAShape"],
+        "light": [],
+        "directionalLight": [],
+        "pointLight": [],
+        "spotLight": [],
+        "areaLight": [],
+        "aiSkyDomeLight": [],
+    }.get(kwargs.get("type"), [])
+    cmds.objectType.side_effect = lambda node: "transform"
+    cmds.listRelatives.side_effect = lambda node, **kwargs: (
+        ["|root"] if kwargs.get("parent") and node != "|root" else []
+    )
+    cmds.getAttr.return_value = True
+    cmds.file.return_value = "scene.ma"
+
+    result = load_and_call(
+        "maya-render/scripts/debug_scene_snapshot.py",
+        cmds,
+        "main",
+        include_preview=False,
+        include_ui=False,
+        max_nodes=1,
+    )
+
+    assert result["success"] is True, result
+    summary = result["context"]["scene_summary"]
+    assert summary["transform_count"] == 2
+    assert summary["mesh_count"] == 1
+    assert summary["truncated"] is True
+    assert result["context"]["preview"] is None

@@ -1,0 +1,64 @@
+"""Maya thread-affinity dispatchers (issue #128 directory module).
+
+Public dispatcher symbols are re-exported from their focused submodules
+through the :pep:`8`-compliant ``__all__`` below.
+
+The implementation is split per Single Responsibility into:
+
+================  ====================================================
+Module            Purpose
+================  ====================================================
+``job``           ``_JobEntry`` + ``_current_job`` ContextVar
+``cancel``        ``check_maya_cancelled`` cooperative checkpoint
+``ui``            ``MayaUiDispatcher`` (interactive)
+``standalone``    ``MayaStandaloneDispatcher`` (mayapy / batch)
+``pump``          ``MayaUiPump`` / ``_CorePump`` + factory helpers
+================  ====================================================
+
+This re-export layer is **zero-overhead**: every name binds to the same
+object as the originating submodule.  External callers do not need to
+update their imports.
+
+See: upstream maya issue 128
+"""
+
+# Import future modules
+from __future__ import annotations
+
+# Import local modules
+from meshy_dcc_maya.dispatcher.cancel import check_maya_cancelled
+from meshy_dcc_maya.dispatcher.job import DEFAULT_JOB_TIMEOUT_MS, _current_job, _JobEntry
+from meshy_dcc_maya.dispatcher.pump import (
+    DEFAULT_BUDGET_MS,
+    OVERRUN_MULTIPLIER,
+    MayaUiPump,
+    PyPumpedDispatcher,
+    _CorePump,
+    create_dispatcher,
+    create_pumped_dispatcher,
+)
+from meshy_dcc_maya.dispatcher.standalone import MayaStandaloneDispatcher
+from meshy_dcc_maya.dispatcher.ui import MayaUiDispatcher
+
+__all__ = [
+    # Cancellation
+    "check_maya_cancelled",
+    # Constants
+    "DEFAULT_BUDGET_MS",
+    "DEFAULT_JOB_TIMEOUT_MS",
+    "OVERRUN_MULTIPLIER",
+    # Dispatchers
+    "MayaUiDispatcher",
+    "MayaStandaloneDispatcher",
+    # Pumps
+    "MayaUiPump",
+    # Factories
+    "create_dispatcher",
+    "create_pumped_dispatcher",
+    # Core dispatcher used by create_pumped_dispatcher
+    "PyPumpedDispatcher",
+    # Internals exposed for advanced use
+    "_CorePump",
+    "_JobEntry",
+    "_current_job",
+]

@@ -1,0 +1,67 @@
+"""Retrieve pipeline metadata attributes from a Maya node."""
+
+# Import future modules
+from __future__ import annotations
+
+# Import built-in modules
+
+_META_ATTRS = ["asset_name", "asset_variant", "asset_version", "pipeline_step"]
+
+
+# Import local modules
+from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success  # noqa: E402
+
+from meshy_dcc_maya.api import validate_node_exists  # noqa: E402
+
+
+def get_asset_metadata(node_name: str) -> dict:
+    """Read pipeline metadata string attributes from a node.
+
+    Args:
+        node_name: Target node name.
+
+    Returns:
+        ToolResult dict with ``context.metadata`` dict.
+        Missing attributes are returned as empty strings.
+    """
+
+    if not node_name:
+        return skill_error("No node provided", "Provide 'node_name' parameter.")
+
+    try:
+        import maya.cmds as cmds  # noqa: PLC0415
+
+        err = validate_node_exists(cmds, node_name)
+        if err:
+            return err
+
+        metadata = {}
+        for attr in _META_ATTRS:
+            if cmds.attributeQuery(attr, node=node_name, exists=True):
+                metadata[attr] = cmds.getAttr("{}.{}".format(node_name, attr)) or ""
+            else:
+                metadata[attr] = ""
+
+        tagged = [k for k, v in metadata.items() if v]
+        return skill_success(
+            "Retrieved metadata from '{}' ({} tagged)".format(node_name, len(tagged)),
+            prompt=("Metadata retrieved. Use tag_asset_metadata to update any empty fields before publishing."),
+            node=node_name,
+            metadata=metadata,
+            tagged_count=len(tagged),
+        )
+    except ImportError:
+        return skill_error("Maya not available", "maya.cmds could not be imported")
+    except Exception as exc:
+        return skill_exception(exc, message="Failed to get metadata")
+
+
+@skill_entry
+def main(**kwargs):
+    return get_asset_metadata(**kwargs)
+
+
+if __name__ == "__main__":
+    from meshy_dcc_core.skill import run_main
+
+    run_main(main)

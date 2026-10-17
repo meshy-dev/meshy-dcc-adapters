@@ -1,0 +1,75 @@
+tools:
+- name: import_model
+  description: Import one Meshy FBX or OBJ from disk under a new group, build a standardSurface
+    from the Meshy texture set next to it (or textures) and assign it to every imported
+    mesh, then read it back. Refuses a name that already exists. One undo step. One-shot;
+    never repeat on an unknown outcome, inspect instead. The scene is left unsaved.
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: false
+    destructive_hint: false
+    idempotent_hint: false
+  group: meshy
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+    - source_path
+    properties:
+      source_path:
+        type: string
+        minLength: 1
+        maxLength: 1000
+        description: Absolute path of the .fbx or .obj file.
+      name:
+        type: string
+        maxLength: 64
+        description: Group and material name; defaults to the file name.
+      textures:
+        type: object
+        additionalProperties: false
+        description: Absolute image paths. Default, the Meshy set next to the model
+          - <stem>.png, <stem>_normal.png, <stem>_metallic.png, <stem>_roughness.png,
+          <stem>_metallic_roughness.png, <stem>_emission.png.
+        properties:
+          base_color:
+            type: string
+          normal:
+            type: string
+          metallic:
+            type: string
+          roughness:
+            type: string
+          metallic_roughness:
+            type: string
+            description: Packed glTF map, green roughness and blue metalness.
+          emission:
+            type: string
+  next-tools:
+    on-success:
+    - meshy_maya__inspect_model
+    on-failure:
+    - maya_scene__get_session_info
+- name: inspect_model
+  description: Read back a group or mesh transform - per mesh vertices, faces, triangles
+    and materials, world bounds in the scene unit, and per standardSurface input the
+    file, whether it exists, its colour space and the channel used. Read-only.
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    destructive_hint: false
+    idempotent_hint: true
+  group: meshy
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+    - node
+    properties:
+      node:
+        type: string
+        minLength: 1
+        maxLength: 256
+        description: Group or transform name, as import_model returned it.

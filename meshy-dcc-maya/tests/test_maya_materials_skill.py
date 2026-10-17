@@ -1,0 +1,216 @@
+"""Unit tests for maya-materials skill scripts."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from unittest.mock import MagicMock
+
+import yaml
+from conftest import load_and_call
+
+
+def test_set_material_attribute_maps_arnold_metallic_to_metalness():
+    cmds = MagicMock()
+    cmds.objExists.side_effect = lambda plug: plug in {"carPaint", "carPaint.metalness"}
+    cmds.nodeType.return_value = "aiStandardSurface"
+
+    def _plugin_info(_plugin, **kwargs):
+        if kwargs.get("loaded"):
+            return True
+        if kwargs.get("version"):
+            return "5.0.0.3"
+        return None
+
+    cmds.pluginInfo.side_effect = _plugin_info
+
+    result = load_and_call(
+        "maya-materials/scripts/set_material_attribute.py",
+        cmds,
+        "main",
+        material_name="carPaint",
+        attribute="metallic",
+        value=0.7,
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["requested_attribute"] == "metallic"
+    assert result["context"]["attribute"] == "metalness"
+    assert result["context"]["attribute_alias_applied"] is True
+    assert result["context"]["mtoa_version"] == "5.0.0.3"
+    cmds.setAttr.assert_called_once_with("carPaint.metalness", 0.7)
+
+
+def test_set_material_attribute_keeps_existing_attribute():
+    cmds = MagicMock()
+    cmds.objExists.side_effect = lambda plug: plug in {"lambert1", "lambert1.color"}
+    cmds.nodeType.return_value = "lambert"
+
+    result = load_and_call(
+        "maya-materials/scripts/set_material_attribute.py",
+        cmds,
+        "main",
+        material_name="lambert1",
+        attribute="color",
+        value=[1.0, 0.0, 0.0],
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["attribute"] == "color"
+    assert result["context"]["attribute_alias_applied"] is False
+    cmds.setAttr.assert_called_once_with("lambert1.color", 1.0, 0.0, 0.0, type="double3")
+
+
+def test_set_material_attribute_schema_accepts_rgb_arrays():
+    tools_path = Path(__file__).parents[1] / "src" / "meshy_dcc_maya" / "skills" / "maya-materials" / "tools.yaml"
+    tools = yaml.safe_load(tools_path.read_text(encoding="utf-8"))["tools"]
+    tool = next(item for item in tools if item["name"] == "set_material_attribute")
+    value_schema = tool["input_schema"]["properties"]["value"]
+
+    assert any(option.get("type") == "array" for option in value_schema["oneOf"])
+
+
+def test_assign_material_reads_back_every_requested_object():
+    cmds = MagicMock()
+    cmds.objectType.return_value = "shadingEngine"
+    cmds.ls.return_value = ["body", "rotor"]
+    cmds.sets.side_effect = [None, True, True]
+
+    result = load_and_call(
+        "maya-materials/scripts/assign_material.py",
+        cmds,
+        "main",
+        material_name="paintSG",
+        objects=["body", "rotor"],
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["verified_objects"] == ["body", "rotor"]
+    assert result["context"]["verified_count"] == 2
+
+
+def test_assign_material_fails_closed_on_missing_membership_readback():
+    cmds = MagicMock()
+    cmds.objectType.return_value = "shadingEngine"
+    cmds.ls.return_value = ["body"]
+    cmds.sets.side_effect = [None, False]
+    cmds.listRelatives.return_value = []
+
+    result = load_and_call(
+        "maya-materials/scripts/assign_material.py",
+        cmds,
+        "main",
+        material_name="paintSG",
+        objects=["body"],
+    )
+
+    assert result["success"] is False
+    assert result["context"]["unverified_objects"] == ["body"]
+    assert result["context"]["mutation_applied"] is True
+    assert result["context"]["rollback_attempted"] is False
+    assert result["context"]["rollback_verified"] is False
+
+
+def test_assign_material_rejects_a_partial_target_set_before_mutation():
+    cmds = MagicMock()
+    cmds.objExists.side_effect = lambda node: node != "missingRotor"
+    cmds.objectType.return_value = "shadingEngine"
+
+    result = load_and_call(
+        "maya-materials/scripts/assign_material.py",
+        cmds,
+        "main",
+        material_name="paintSG",
+        objects=["body", "missingRotor"],
+    )
+
+    assert result["success"] is False
+    assert result["context"]["missing_objects"] == ["missingRotor"]
+    cmds.sets.assert_not_called()
+
+
+def test_assign_texture_binds_base_color_and_verifies_connection():
+    cmds = MagicMock()
+    cmds.objExists.side_effect = lambda plug: plug in {"carPaint", "carPaint.baseColor", "carPaint_file.colorSpace"}
+    cmds.shadingNode.side_effect = ["carPaint_file", "carPaint_file_place2d"]
+    cmds.isConnected.return_value = True
+
+    result = load_and_call(
+        "maya-materials/scripts/assign_texture.py",
+        cmds,
+        "main",
+        material_name="carPaint",
+        texture_path="textures/body_basecolor.<UDIM>.exr",
+        slot="base_color",
+        use_udim=True,
+    )
+
+    assert result["success"] is True, result
+    verified = result.get("postcondition", {}).get("verified", result["context"].get("verified"))
+    assert verified is True
+    assert result["context"]["color_space"] == "sRGB"
+    cmds.setAttr.assert_any_call("carPaint_file.uvTilingMode", 3)
+    cmds.setAttr.assert_any_call("carPaint_file.colorSpace", "sRGB", type="string")
+    cmds.connectAttr.assert_any_call("carPaint_file.outColor", "carPaint.baseColor", force=True)
+    cmds.connectAttr.assert_any_call("carPaint_file_place2d.outUV", "carPaint_file.uvCoord", force=True)
+    cmds.connectAttr.assert_any_call("carPaint_file_place2d.outUvFilterSize", "carPaint_file.uvFilterSize", force=True)
+
+
+def test_assign_texture_uses_bump_conversion_for_normal_maps():
+    cmds = MagicMock()
+    cmds.objExists.side_effect = lambda plug: plug in {"carPaint", "carPaint.normalCamera", "normal_file.colorSpace"}
+    cmds.shadingNode.side_effect = ["normal_file", "normal_file_place2d", "normal_file_bump2d"]
+    cmds.isConnected.return_value = True
+
+    result = load_and_call(
+        "maya-materials/scripts/assign_texture.py",
+        cmds,
+        "main",
+        material_name="carPaint",
+        texture_path="textures/body_normal.exr",
+        slot="normal",
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["color_space"] == "Raw"
+    cmds.setAttr.assert_any_call("normal_file.colorSpace", "Raw", type="string")
+    cmds.setAttr.assert_any_call("normal_file_bump2d.bumpInterp", 1)
+    cmds.connectAttr.assert_any_call("normal_file_bump2d.outNormal", "carPaint.normalCamera", force=True)
+
+
+def test_assign_texture_uses_color_red_channel_for_scalar_maps():
+    cmds = MagicMock()
+    cmds.objExists.side_effect = lambda plug: plug in {"carPaint", "carPaint.roughness", "rough_file.colorSpace"}
+    cmds.shadingNode.side_effect = ["rough_file", "rough_file_place2d"]
+    cmds.isConnected.return_value = True
+
+    result = load_and_call(
+        "maya-materials/scripts/assign_texture.py",
+        cmds,
+        "main",
+        material_name="carPaint",
+        texture_path="textures/body_roughness.exr",
+        slot="roughness",
+    )
+
+    assert result["success"] is True, result
+    assert result["context"]["source_plug"] == "rough_file.outColorR"
+    cmds.connectAttr.assert_any_call("rough_file.outColorR", "carPaint.roughness", force=True)
+
+
+def test_assign_texture_uses_height_interpretation_for_bump_maps():
+    cmds = MagicMock()
+    cmds.objExists.side_effect = lambda plug: plug in {"carPaint", "carPaint.normalCamera", "bump_file.colorSpace"}
+    cmds.shadingNode.side_effect = ["bump_file", "bump_file_place2d", "bump_file_bump2d"]
+    cmds.isConnected.return_value = True
+
+    result = load_and_call(
+        "maya-materials/scripts/assign_texture.py",
+        cmds,
+        "main",
+        material_name="carPaint",
+        texture_path="textures/body_bump.exr",
+        slot="bump",
+    )
+
+    assert result["success"] is True, result
+    cmds.setAttr.assert_any_call("bump_file_bump2d.bumpInterp", 0)

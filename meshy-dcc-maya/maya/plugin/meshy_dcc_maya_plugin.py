@@ -1,0 +1,1744 @@
+"""meshy_dcc_maya_plugin — Maya plugin entry point.
+
+Loads the MCP Streamable HTTP server inside Maya.
+
+**Plugin file naming**: This file is intentionally named ``meshy_dcc_maya_plugin.py``
+(not ``meshy_dcc_maya.py``) to avoid a Python namespace collision.  Maya adds the
+``plug-ins/`` directory to ``sys.path``, so a file named ``meshy_dcc_maya.py``
+would shadow the ``meshy_dcc_maya`` Python package, breaking all imports inside
+the plugin itself.
+
+Installation
+------------
+Copy this file (or create a symlink) into a directory on ``MAYA_PLUG_IN_PATH``.
+Load it via **Window > Settings/Preferences > Plug-in Manager**.
+
+Alternatively, add to ``userSetup.py``::
+
+    import maya.cmds as cmds
+    cmds.loadPlugin("meshy_dcc_maya_plugin")
+
+Standalone / batch mode
+-----------------------
+The plugin is fully usable in ``mayapy`` / Maya standalone.  Menu creation is
+skipped automatically when ``MayaWindow`` is not available (i.e. non-interactive
+sessions).
+
+Gateway mode (default ON)
+-------------------------
+By default the plugin starts a per-Maya ``meshy-dcc-server sidecar``. The sidecar
+ensures a standalone machine-wide gateway is running on port ``19765`` and then
+registers this Maya instance as a backend. Every Maya sidecar gets an explicit
+``--display-name`` and, when available, ``--instance-id``; the gateway gets a machine-level
+``--gateway-name`` (default ``meshy-dcc-gateway@<hostname>``) so admin and CLI
+debug views can distinguish the gateway from Maya sessions.
+
+Connect your MCP client (Claude Desktop, etc.) to the **single gateway endpoint**::
+
+    http://127.0.0.1:19765/mcp
+
+Newer sidecar binaries also expose the standalone gateway on the local network by
+default::
+
+    http://<this-machine-lan-ip>:59765/mcp
+
+Remote listener election still follows the local gateway winner on
+``127.0.0.1:19765``. Set ``MESHY_DCC_GATEWAY_REMOTE_PORT=0`` to disable the LAN
+listener, or ``MESHY_DCC_GATEWAY_REMOTE_HOST`` / ``MESHY_DCC_GATEWAY_REMOTE_PORT``
+to choose a different bind address.
+
+The gateway exposes a bounded dynamic surface (``search_tools`` / ``describe_tool`` /
+``call_tool``) and MCP ``resources/read`` on ``gateway://instances`` for instance
+discovery (see ``gateway://docs/agent-workflows``). Legacy ``list_dcc_instances`` /
+``connect_to_dcc`` meta-tools are no longer advertised on current gateways.
+
+To **disable** the gateway: set ``MESHY_DCC_GATEWAY_PORT=0`` before starting Maya.
+
+Configuration
+-------------
+``MESHY_DCC_MAYA_PORT``
+    TCP port for this instance's MCP HTTP server.  Default ``0`` (OS-assigned).
+    Using ``0`` is recommended when running multiple Maya instances.
+
+``MESHY_DCC_MAYA_SERVER_NAME``
+    Name advertised in the MCP ``initialize`` response.  Default: ``"maya-mcp"``.
+
+``MESHY_DCC_GATEWAY_PORT``
+    Standalone gateway port.  Default ``19765``.  Set to ``0`` to disable.
+
+``MESHY_DCC_GATEWAY_NAME``
+    Optional human-readable gateway label.  Defaults to
+    ``meshy-dcc-gateway@<hostname>`` in sidecar mode.
+
+``MESHY_DCC_GATEWAY_REMOTE_PORT``
+    LAN gateway listener port. Default ``59765``. Set to ``0`` to disable.
+
+``MESHY_DCC_GATEWAY_REMOTE_HOST``
+    LAN gateway listener bind address. Default ``0.0.0.0``.
+
+``MESHY_DCC_REGISTRY_DIR``
+    Directory for the shared ``FileRegistry`` JSON.  Defaults to OS temp dir.
+
+``MESHY_DCC_MAYA_WINDOW_TITLE``
+    Optional substring of the main Maya window title, passed to the MCP server
+    as ``dcc_window_title`` for instance-bound diagnostics and screenshot routing
+    (``meshy-dcc-core`` 0.14+).  Usually unnecessary; same-process PID resolution
+    is the default.
+
+``MESHY_DCC_PYTHON_EXECUTABLE``
+    Python interpreter for skill worker subprocesses.  Auto-set to
+    ``sys.executable`` (i.e. ``mayapy``) at plugin load time.
+
+``MESHY_DCC_PYTHON_INIT_SNIPPET``
+    One-liner executed by each skill worker before running any tool script.
+    Auto-set to ``import maya.standalone; maya.standalone.initialize(name='python')``.
+
+``MESHY_DCC_MAYA_FAULTHANDLER``
+    Set to ``0`` to disable Python fatal-signal traceback logging. Crash logs
+    are written under ``MESHY_DCC_LOG_DIR`` or the OS temp directory.
+
+``MESHY_DCC_MAYA_SUPPRESS_CRASH_REPORTER``
+    Set to ``1`` to suppress Maya crash-reporter/CER dialogs for unattended
+    MCP automation sessions. Disabled by default for interactive artists.
+"""
+
+# Import future modules
+from __future__ import annotations
+
+# Import built-in modules
+import faulthandler
+import logging
+import os
+import signal
+import socket
+import sys
+import tempfile
+import threading
+from pathlib import Path
+from typing import Optional
+
+import maya.api.OpenMaya as om  # Python API 2.0 — required for MFnPlugin on Maya 2020+
+import maya.cmds as cmds
+
+logger = logging.getLogger(__name__)
+
+VENDOR = "Meshy"
+
+# Default gateway port — same as meshy-dcc-server binary default
+_DEFAULT_GATEWAY_PORT = 19765
+_faulthandler_file = None
+_faulthandler_path: Optional[Path] = None
+_faulthandler_enabled_by_plugin = False
+_faulthandler_registered_signal = None
+
+
+def _record_bootstrap_stage(stage: str, status: str, **details) -> None:
+    """Best-effort stage telemetry for the fixed non-interactive GUI launch."""
+    log_path = os.environ.get("MESHY_DCC_MAYA_BOOTSTRAP_LOG")
+    if not log_path:
+        return
+    try:
+        from meshy_dcc_maya.gui_bootstrap import record_bootstrap_stage  # noqa: PLC0415
+
+        record_bootstrap_stage(log_path, stage, status, **details)
+    except Exception as exc:  # noqa: BLE001 — diagnostics must not break Plug-in Manager loading
+        logger.error("meshy-dcc-maya: unable to write GUI bootstrap stage %s/%s: %s", stage, status, exc)
+
+
+# ── ensure meshy_dcc_maya package is importable ────────────────────────────────
+
+
+def _plugin_dir() -> Path:
+    """Directory containing this plugin file (``plug-ins/``).
+
+    Maya sometimes loads ``.py`` plug-ins in a context where ``__file__`` is
+    not injected; fall back to the code object filename (same approach as
+    ``inspect.getfile(inspect.currentframe())`` but without importing inspect).
+    """
+    try:
+        return Path(__file__).resolve().parent
+    except NameError:
+        # Frame 0 is this function; co_filename is the path to this source file.
+        return Path(sys._getframe(0).f_code.co_filename).resolve().parent
+
+
+def _ensure_package_importable() -> None:
+    """Prefer the sibling ``python/`` (or ``python37/``) tree next to this plugin.
+
+    Maya may already have a different ``meshy_dcc_core`` / ``meshy_dcc_maya`` on
+    ``sys.path`` (site-packages, PYTHONPATH).  A mismatched pair leaves
+    ``meshy_dcc_core`` half-initialised when ``from meshy_dcc_core import _core``
+    races with lazy submodules — the classic "partially initialized module"
+    error.  We therefore pin the module-root ``python*`` directory to the
+    *front* of ``sys.path`` and drop stale ``sys.modules`` entries when their
+    files are not under that tree or when the first import fails.
+    """
+    plugin_dir = _plugin_dir()
+    module_root = plugin_dir.parent
+    python_dir = module_root / ("python37" if sys.version_info[:2] == (3, 7) else "python")
+    if not python_dir.is_dir():
+        python_dir = module_root / "python"
+    if not python_dir.is_dir():
+        return
+
+    python_str = str(python_dir.resolve())
+
+    def _prepend_python_path() -> None:
+        while python_str in sys.path:
+            sys.path.remove(python_str)
+        sys.path.insert(0, python_str)
+        logger.debug("Pinned %s to front of sys.path for meshy-dcc-maya imports", python_str)
+
+    def _purge_dcc_modules() -> None:
+        keys = [
+            k
+            for k in list(sys.modules)
+            if k == "meshy_dcc_core"
+            or k.startswith("meshy_dcc_core.")
+            or k == "meshy_dcc_maya"
+            or k.startswith("meshy_dcc_maya.")
+        ]
+        for k in keys:
+            del sys.modules[k]
+
+    def _module_tree_wrong_origin(name: str) -> bool:
+        mod = sys.modules.get(name)
+        if mod is None:
+            return False
+        roots = []
+        mod_file = getattr(mod, "__file__", None)
+        if mod_file:
+            roots.append(os.path.dirname(os.path.realpath(mod_file)))
+        for entry in getattr(mod, "__path__", None) or ():
+            roots.append(os.path.realpath(entry))
+        if not roots:
+            return False
+        want = os.path.realpath(python_str)
+        return not any(r == want or r.startswith(want + os.sep) for r in roots)
+
+    _prepend_python_path()
+
+    if _module_tree_wrong_origin("meshy_dcc_maya") or _module_tree_wrong_origin("meshy_dcc_core"):
+        logger.warning(
+            "Reloading meshy_dcc_* from %s (cached modules were not from this module root)",
+            python_str,
+        )
+        _purge_dcc_modules()
+        _prepend_python_path()
+
+    try:
+        import meshy_dcc_maya  # noqa: F401
+    except ImportError:
+        _purge_dcc_modules()
+        _prepend_python_path()
+        import meshy_dcc_maya  # noqa: F401
+
+
+_ensure_package_importable()
+
+
+def _get_version() -> str:
+    try:
+        from meshy_dcc_maya.__version__ import __version__  # noqa: PLC0415
+
+        return __version__
+    except Exception:
+        return "0.0.0"
+
+
+VERSION = _get_version()
+
+# ── module-level state ────────────────────────────────────────────────────────
+_handle = None
+_host = None
+_host_dispatcher = None
+_host_startup = None
+_menu_name = "MeshyDccMenu"
+_restart_lock = threading.Lock()  # prevent overlapping restart calls
+_shutdown_coordinator = None  # Issue #186 — safety-net composition root
+_sidecar_handle = None  # RFC #998 — default-on meshy-dcc-server sidecar subprocess
+_original_autosave_enabled = None  # Maya AutoSave persistent snooze — see _disable_autosave_for_session
+_crash_reporter_suppressed_by_plugin = False
+_crash_reporter_previous_option_var = None
+_crash_reporter_had_option_var = False
+_crash_reporter_env_keys_set_by_plugin = set()
+
+
+# ── standalone detection ──────────────────────────────────────────────────────
+
+
+def _is_interactive() -> bool:
+    """Return True when Maya is running in interactive (GUI) mode."""
+    try:
+        return not cmds.about(batch=True)
+    except Exception:
+        return False
+
+
+# ── user-visible diagnostics (issue #3929) ─────────────────────────────────
+
+
+def _display(message: str, *, error: bool = False) -> None:
+    """Show ``message`` where an artist or TD will actually see it.
+
+    ``logger.error`` alone is invisible in Maya — the ``logging`` package has
+    no handler configured inside Maya, so a failed plug-in load used to leave
+    the session with no MCP server and no explanation at all.
+
+    :meth:`OpenMaya.MGlobal.displayError` / ``displayWarning`` write to the
+    Script Editor **and** Maya's status line, which is visible even when the
+    Script Editor has never been opened. Best effort: reporting must never
+    mask the original failure, so every channel is guarded.
+    """
+    try:
+        if error:
+            om.MGlobal.displayError(message)
+        else:
+            om.MGlobal.displayWarning(message)
+    except Exception:  # noqa: BLE001 — never let reporting raise
+        pass
+    try:
+        cmds.warning(message)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+# ── crash-reporter suppression (issue #241) ─────────────────────────────────
+
+
+_CRASH_REPORTER_ENV = "MESHY_DCC_MAYA_SUPPRESS_CRASH_REPORTER"
+_CRASH_REPORTER_OPTION_VAR = "CrashReporterEnabled"
+_CRASH_REPORTER_ENV_DEFAULTS = {
+    "MAYA_DISABLE_CIP": "1",
+    "MAYA_DISABLE_CER": "1",
+    "MAYA_DISABLE_CLIC_IPM": "1",
+}
+
+
+def _env_truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _enable_crash_reporter_suppression_for_plugin() -> None:
+    """Opt-in suppression for Maya's Qt/CER crash reporter dialogs.
+
+    This is deliberately not the default: artists may want Maya's recovery
+    dialog in an interactive session. Automation users can opt in with
+    ``MESHY_DCC_MAYA_SUPPRESS_CRASH_REPORTER=1`` to avoid unattended jobs being
+    wedged behind a modal reporter window.
+    """
+    global _crash_reporter_had_option_var
+    global _crash_reporter_previous_option_var
+    global _crash_reporter_suppressed_by_plugin
+
+    if not _env_truthy(_CRASH_REPORTER_ENV):
+        return
+    if _crash_reporter_suppressed_by_plugin:
+        return
+
+    for key, value in _CRASH_REPORTER_ENV_DEFAULTS.items():
+        if key not in os.environ:
+            os.environ[key] = value
+            _crash_reporter_env_keys_set_by_plugin.add(key)
+
+    try:
+        _crash_reporter_had_option_var = bool(cmds.optionVar(exists=_CRASH_REPORTER_OPTION_VAR))
+        if _crash_reporter_had_option_var:
+            _crash_reporter_previous_option_var = cmds.optionVar(query=_CRASH_REPORTER_OPTION_VAR)
+        cmds.optionVar(intValue=(_CRASH_REPORTER_OPTION_VAR, 0))
+        logger.info("meshy-dcc-maya: Maya crash reporter suppression enabled")
+    except Exception as exc:  # noqa: BLE001 — never block plugin load
+        logger.warning("meshy-dcc-maya: crash reporter suppression setup skipped: %s", exc)
+    _crash_reporter_suppressed_by_plugin = True
+
+
+def _disable_crash_reporter_suppression_for_plugin() -> None:
+    """Undo the opt-in crash-reporter suppression this plugin applied."""
+    global _crash_reporter_had_option_var
+    global _crash_reporter_previous_option_var
+    global _crash_reporter_suppressed_by_plugin
+
+    if not _crash_reporter_suppressed_by_plugin:
+        return
+
+    for key in list(_crash_reporter_env_keys_set_by_plugin):
+        if os.environ.get(key) == _CRASH_REPORTER_ENV_DEFAULTS[key]:
+            os.environ.pop(key, None)
+        _crash_reporter_env_keys_set_by_plugin.discard(key)
+
+    try:
+        if _crash_reporter_had_option_var:
+            cmds.optionVar(intValue=(_CRASH_REPORTER_OPTION_VAR, int(_crash_reporter_previous_option_var)))
+        else:
+            cmds.optionVar(remove=_CRASH_REPORTER_OPTION_VAR)
+    except Exception as exc:  # noqa: BLE001 — best-effort cleanup only
+        logger.debug("meshy-dcc-maya: crash reporter suppression restore skipped: %s", exc)
+
+    _crash_reporter_previous_option_var = None
+    _crash_reporter_had_option_var = False
+    _crash_reporter_suppressed_by_plugin = False
+
+
+# ── plugin API version declaration ──────────────────────────────────────────
+
+
+def maya_useNewAPI() -> None:
+    """Declare Python API 2.0 to Maya."""
+
+
+# ── plugin init ───────────────────────────────────────────────────────────────
+
+
+def initializePlugin(plugin):
+    """Called by Maya when the plugin is loaded.
+
+    Init flow split per execution mode:
+
+    * **Interactive Maya** — schedule the real startup work via
+      :func:`_start_async` so ``initializePlugin`` returns immediately
+      and Maya's main-thread boot continues. When the plug-in is set
+      to ``autoLoad=true``, ``initializePlugin`` fires during the
+      *early* GUI-init phase where the QApplication event loop is not
+      yet pumping and scriptJob registration is gated. Running the
+      synchronous startup path here would (and did, see the user
+      report 2026-05-16) pin Maya's main thread inside plug-in
+      init re-entrancy: HTTP-server bind, gateway-election thread
+      spawn, and — once sidecar mode lands — the QTcpServer.listen()
+      call all hit a partially-constructed Qt main-loop and stall.
+      ``_start_async`` defers the work behind every other pending
+      deferred task via ``cmds.evalDeferred(_, lowestPriority=True)``
+      so it lands once Maya is fully idle. See :func:`_start_async`
+      for the full design rationale and the history of failed worker-
+      thread variants.
+
+    * **Batch Maya / mayapy** — no event loop to wait for, so call
+      :func:`_start` directly. The synchronous path is correct here:
+      ``mayapy`` callers expect ``initializePlugin`` to return only
+      after the server is reachable so they can issue requests
+      immediately after the load.
+    """
+    om.MFnPlugin(plugin, VENDOR, VERSION)
+    try:
+        _enable_crash_reporter_suppression_for_plugin()
+        if _is_interactive():
+            # Issue #3929 — a menu failure must never cost us the server, so
+            # the two startup steps are no longer chained in one try block.
+            try:
+                _add_menu()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("meshy-dcc-maya menu setup failed: %s", exc)
+            _start_async()
+        else:
+            _start()
+    except Exception as exc:
+        message = "meshy-dcc-maya: plug-in init failed — MCP tools are unavailable (%s: %s)" % (
+            type(exc).__name__,
+            exc,
+        )
+        logger.error("meshy-dcc-maya plugin failed to initialize: %s", exc)
+        _display(message, error=True)
+        raise RuntimeError(f"meshy-dcc-maya init failed: {exc}") from exc
+
+
+def uninitializePlugin(plugin):
+    """Called by Maya when the plugin is unloaded.
+
+    Issue #126 — every cleanup step runs even when an earlier one raises so
+    the FileRegistry entry is always released.  ``_stop_blocking()`` is
+    invoked from a ``finally`` block so a menu-removal failure (e.g. partial
+    UI shutdown) cannot leak the running server.
+
+    Issue #186 — the shutdown safety nets installed at plugin load are
+    uninstalled in the same ``finally`` path (before ``_stop_blocking``)
+    so they do not fire a second time while plugin cleanup is already in
+    flight.
+    """
+    om.MFnPlugin(plugin)
+    try:
+        if _is_interactive():
+            try:
+                _remove_menu()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("meshy-dcc-maya menu removal error: %s", exc)
+    finally:
+        try:
+            _uninstall_shutdown_safety()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("meshy-dcc-maya shutdown safety teardown error: %s", exc)
+        try:
+            _stop_blocking()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("meshy-dcc-maya server stop error: %s", exc)
+        try:
+            _disable_faulthandler_for_plugin()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("meshy-dcc-maya faulthandler teardown error: %s", exc)
+        try:
+            _disable_crash_reporter_suppression_for_plugin()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("meshy-dcc-maya crash reporter suppression teardown error: %s", exc)
+        logger.info("meshy-dcc-maya plugin unloaded")
+
+
+# ── server helpers ────────────────────────────────────────────────────────────
+
+
+def _resolve_config():
+    """Read all config from env vars and return as a dict."""
+    port = int(os.environ.get("MESHY_DCC_MAYA_PORT", "0"))
+    server_name = os.environ.get("MESHY_DCC_MAYA_SERVER_NAME", "maya-mcp")
+    gateway_port_str = os.environ.get("MESHY_DCC_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT))
+    try:
+        gateway_port = int(gateway_port_str)
+    except ValueError:
+        gateway_port = _DEFAULT_GATEWAY_PORT
+
+    # Sidecar mode keeps gateway ownership outside Maya (immune to Maya
+    # main-thread starvation). Keep the in-process server as a plain
+    # instance only.
+    try:
+        from meshy_dcc_maya.sidecar import is_sidecar_mode_enabled  # noqa: PLC0415
+
+        if is_sidecar_mode_enabled():
+            gateway_port = 0
+    except ImportError:
+        pass
+
+    registry_dir = os.environ.get("MESHY_DCC_REGISTRY_DIR") or None
+    try:
+        dcc_version = str(cmds.about(version=True))
+    except Exception:
+        dcc_version = None
+    out = {
+        "port": port,
+        "server_name": server_name,
+        "gateway_port": gateway_port if gateway_port > 0 else 0,
+        "registry_dir": registry_dir,
+        "dcc_version": dcc_version,
+    }
+    # Optional: helps WindowFinder / diagnostics__screenshot when PIDs are ambiguous
+    wtitle = os.environ.get("MESHY_DCC_MAYA_WINDOW_TITLE", "").strip()
+    if wtitle:
+        out["dcc_window_title"] = wtitle
+    return out
+
+
+def _export_worker_env() -> None:
+    """Export env vars for the subprocess fallback path.
+
+    ``MayaMcpServer.register_builtin_actions`` wires an in-process executor
+    (issue #108) so skills normally run inside the live Maya interpreter.
+    This function is still called as a safety net: if the in-process path is
+    unavailable (meshy-dcc-core < 0.14) the core skill launcher falls back to
+    spawning a subprocess and these env vars ensure it uses the correct
+    ``mayapy`` and initialises Maya standalone.
+
+    ``MESHY_DCC_PYTHON_EXECUTABLE``
+        Points at ``mayapy`` so the subprocess uses the same interpreter.
+
+    ``MESHY_DCC_PYTHON_INIT_SNIPPET``
+        Initialises Maya standalone in the worker process.
+
+    Uses ``setdefault`` so advanced users can still override.
+    See: upstream maya issue 63, #108
+    """
+    os.environ.setdefault("MESHY_DCC_PYTHON_EXECUTABLE", sys.executable)
+    os.environ.setdefault(
+        "MESHY_DCC_PYTHON_INIT_SNIPPET",
+        "import maya.standalone; maya.standalone.initialize(name='python')",
+    )
+    # Issue #125 — auto-correct MESHY_DCC_PYTHON_EXECUTABLE if it points at maya.exe
+    # (GUI) instead of mayapy.exe (headless).  Idempotent; no-op when the env
+    # var already points at a Python interpreter or when core < 0.14.17.
+    try:
+        from meshy_dcc_maya._pyexec import auto_correct as _auto_correct_pyexec  # noqa: PLC0415
+
+        _auto_correct_pyexec()
+    except Exception as exc:  # noqa: BLE001 — never block plugin load
+        logger.debug("MESHY_DCC_PYTHON_EXECUTABLE auto-correct skipped: %s", exc)
+    logger.debug(
+        "Subprocess fallback env set: MESHY_DCC_PYTHON_EXECUTABLE=%s",
+        os.environ["MESHY_DCC_PYTHON_EXECUTABLE"],
+    )
+
+
+def _start() -> None:
+    """Start the MCP server (called from Maya main thread).
+
+    Thin wrapper around :func:`_start_impl` that guarantees the failure is
+    visible. ``_start`` is handed to ``cmds.evalDeferred``, so an exception
+    raised here is caught by Maya's deferred dispatcher and reported nowhere
+    (issue #3929): the plug-in manager says "loaded", no MCP server ever
+    starts, and nothing in the UI explains why.
+    """
+    try:
+        _start_impl()
+    except Exception as exc:  # noqa: BLE001 — report, then let Maya see it too
+        _display(
+            "meshy-dcc-maya: MCP server failed to start — %s: %s" % (type(exc).__name__, exc),
+            error=True,
+        )
+        raise
+
+
+def _start_impl() -> None:
+    """Start the MCP server (called from Maya main thread)."""
+    global _handle, _host, _host_dispatcher, _host_startup
+
+    _record_bootstrap_stage("adapter_import", "started")
+    try:
+        import meshy_dcc_maya  # noqa: PLC0415
+        from meshy_dcc_maya._plugin_dispatcher import (  # noqa: PLC0415
+            PluginDispatcherError,
+            install_plugin_host_startup,
+            resolve_plugin_host_startup,
+        )
+    except Exception as exc:
+        _record_bootstrap_stage("adapter_import", "failed", error_type=type(exc).__name__)
+        logger.error("Failed to import MCP server: %s", exc)
+        raise
+
+    try:
+        _export_worker_env()
+        _enable_faulthandler_for_plugin()
+        # Issue #148 — closing Maya's default commandPort and turning off its
+        # security warning keeps stray probes from freezing the main thread.
+        # Opt-in: the module loads in every Maya session the artist starts,
+        # and that warning is what stops a web page from running MEL.
+        if os.environ.get("MESHY_DCC_MAYA_COMMANDPORT_HYGIENE", "").strip() == "1":
+            try:
+                from meshy_dcc_maya._maya_commandport_hygiene import configure_commandport_hygiene  # noqa: PLC0415
+
+                configure_commandport_hygiene()
+            except Exception as exc:  # noqa: BLE001 — never block plugin load
+                logger.debug("commandPort hygiene skipped: %s", exc)
+        cfg = _resolve_config()
+        is_batch = bool(cmds.about(batch=True))
+        _host_startup = resolve_plugin_host_startup(is_batch)
+        _host_dispatcher = _host_startup.dispatcher
+        _host = _host_startup.host
+        install_plugin_host_startup(_host_startup)
+    except PluginDispatcherError as exc:
+        _record_bootstrap_stage("adapter_import", "failed", error_type=type(exc).__name__)
+        detail = exc.as_dict()
+        logger.error("Failed to start MCP server: %s", detail["message"])
+        for remedy in detail["context"].get("possible_solutions") or []:
+            logger.error("  -> %s", remedy)
+        raise RuntimeError(detail["message"]) from exc
+    except Exception as exc:
+        _record_bootstrap_stage("adapter_import", "failed", error_type=type(exc).__name__)
+        logger.error("Failed to start MCP server: %s", exc)
+        raise
+
+    _record_bootstrap_stage("adapter_import", "succeeded")
+    _record_bootstrap_stage("registry_registration", "started")
+    try:
+        _handle = meshy_dcc_maya.start_server(host_dispatcher=_host_dispatcher, **cfg)
+        if _host is not None:
+            _host.start()
+    except Exception as exc:
+        _record_bootstrap_stage("registry_registration", "failed", error_type=type(exc).__name__)
+        logger.error("Failed to start MCP server: %s", exc)
+        raise
+    _record_bootstrap_stage("registry_registration", "succeeded")
+    if _post_start(cfg) is not False:
+        _record_bootstrap_stage("bootstrap_complete", "succeeded")
+
+
+def _start_async() -> None:
+    """Defer MCP server startup until Maya's main-thread boot is complete.
+
+    Design rationale
+    ----------------
+    Three previous revisions tried to keep ``initializePlugin`` non-blocking
+    by spawning a worker thread for ``start_server(...)`` and then handing
+    finalisation back to the UI thread. Every variant had a real-world
+    failure mode in interactive Maya:
+
+    1. ``cmds.evalDeferred(_finish_on_main, lowestPriority=True)`` from the
+       worker thread crashed with "必须为标志'lowestPriority'传递一个布尔
+       参数" — ``cmds.*`` is not thread-safe; kwargs are marshalled through
+       the MEL command engine on the wrong thread.
+
+    2. ``maya.utils.executeDeferred(_finish_on_main)`` from the worker
+       thread was thread-safe in theory (it routes through
+       ``executeInMainThreadWithResult`` to add the call to the deferred
+       queue) but **deadlocked** Maya in 2022/2023 builds: that channel is
+       gated on a state flag flipped only after plugin-init completes, so
+       the worker (holding the GIL while waiting) and the main thread
+       (inside ``initializePlugin``, waiting on the worker via the GIL)
+       form a cycle that pins Maya.
+
+    3. ``cmds.scriptJob(idleEvent=poll, protected=True)`` + a
+       ``threading.Event`` polled from the worker still raced against
+       Maya's plugin-init re-entrancy guards in some builds — the same
+       ``executeInMainThread`` channel is needed to register the scriptJob
+       safely from non-main threads, and Maya's idle-event dispatch can
+       freeze briefly during the late phases of boot.
+
+    The current design (per user request 2026-05-13) is the **simplest**
+    path that works everywhere: stay on the main thread, wait for Maya to
+    finish booting, then run the synchronous startup path in-place.
+
+    * ``initializePlugin`` is invoked on Maya's main thread.
+    * ``cmds.evalDeferred(_start, lowestPriority=True)`` queues ``_start``
+      at the **back** of Maya's deferred queue, *behind* every other
+      pending deferred task: ``userSetup.py`` follow-ups, autoload scene,
+      other plugins' init code, etc.
+    * When ``_start`` finally fires, Maya's main thread is fully idle and
+      the UI is responsive. ``start_server(...)`` and ``MayaHost.start()``
+      run synchronously on the main thread — no cross-thread invoke, no
+      worker, no scriptJob polling, no event coordination.
+    * ``start_server(...)`` itself spawns the HTTP server / gateway
+      election in its own internal worker threads; those don't need to
+      coordinate back to the main thread for completion (they are
+      independent loops).
+
+    The trade-off: when ``_start`` fires it briefly blocks the Maya UI
+    while skill discovery + builtin action registration happen (~10–500
+    ms depending on skill count). This pause is invisible to users
+    because it lands during the post-boot idle moment when Maya is
+    already showing its empty scene; the alternative (an unreliable
+    cross-thread hand-off that occasionally pins Maya forever) is far
+    worse.
+    """
+    try:
+        cmds.evalDeferred(_start, lowestPriority=True)
+    except Exception as exc:
+        message = "meshy-dcc-maya: could not schedule MCP server startup — %s: %s" % (
+            type(exc).__name__,
+            exc,
+        )
+        logger.error("Failed to schedule MCP server startup: %s", exc)
+        _display(message, error=True)
+        raise
+
+
+def _post_start(cfg: dict) -> bool:
+    _print_startup_info(cfg)
+    _install_shutdown_safety()
+    _disable_autosave_for_session()
+    try:
+        from meshy_dcc_maya._log_hygiene import prune_maya_logs  # noqa: PLC0415
+
+        prune_maya_logs()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("log pruning skipped: %s", exc)
+    try:
+        from meshy_dcc_maya._stale_cleanup import warn_if_too_many_stale  # noqa: PLC0415
+
+        warn_if_too_many_stale(
+            registry_dir=os.environ.get("MESHY_DCC_REGISTRY_DIR") or None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("stale-instance scan skipped: %s", exc)
+
+    return _maybe_spawn_sidecar()
+
+
+def _faulthandler_opted_out() -> bool:
+    return os.environ.get("MESHY_DCC_MAYA_FAULTHANDLER", "1").strip().lower() in {"0", "false", "off", "no"}
+
+
+def _faulthandler_log_dir() -> Path:
+    base = os.environ.get("MESHY_DCC_LOG_DIR")
+    if base:
+        return Path(base)
+    return Path(tempfile.gettempdir()) / "meshy-dcc-maya"
+
+
+def _enable_faulthandler_for_plugin() -> None:
+    """Enable Python fatal-signal tracebacks for Maya crash post-mortems."""
+    global _faulthandler_enabled_by_plugin, _faulthandler_file, _faulthandler_path, _faulthandler_registered_signal
+
+    if _faulthandler_opted_out():
+        logger.info("meshy-dcc-maya: faulthandler disabled via MESHY_DCC_MAYA_FAULTHANDLER=0")
+        return
+    if faulthandler.is_enabled():
+        logger.debug("meshy-dcc-maya: faulthandler already enabled; leaving existing handler in place")
+        return
+    try:
+        log_dir = _faulthandler_log_dir()
+        log_dir.mkdir(parents=True, exist_ok=True)
+        _faulthandler_path = log_dir / "maya-faulthandler-{}.log".format(os.getpid())
+        _faulthandler_file = open(str(_faulthandler_path), "a", buffering=1)
+        faulthandler.enable(file=_faulthandler_file, all_threads=True)
+        sigusr1 = getattr(signal, "SIGUSR1", None)
+        if sigusr1 is not None:
+            try:
+                faulthandler.register(sigusr1, file=_faulthandler_file, all_threads=True)
+                _faulthandler_registered_signal = sigusr1
+            except (RuntimeError, ValueError, OSError) as exc:
+                logger.debug("meshy-dcc-maya: SIGUSR1 faulthandler registration skipped: %s", exc)
+        _faulthandler_enabled_by_plugin = True
+        logger.info("meshy-dcc-maya: faulthandler crash log enabled at %s", _faulthandler_path)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("meshy-dcc-maya: faulthandler setup failed: %s", exc)
+
+
+def _disable_faulthandler_for_plugin() -> None:
+    """Undo faulthandler setup when this plugin installed it."""
+    global _faulthandler_enabled_by_plugin, _faulthandler_file, _faulthandler_path, _faulthandler_registered_signal
+
+    if not _faulthandler_enabled_by_plugin:
+        return
+    if _faulthandler_registered_signal is not None:
+        try:
+            faulthandler.unregister(_faulthandler_registered_signal)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("meshy-dcc-maya: faulthandler signal unregister skipped: %s", exc)
+        _faulthandler_registered_signal = None
+    try:
+        faulthandler.disable()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("meshy-dcc-maya: faulthandler disable skipped: %s", exc)
+    try:
+        if _faulthandler_file is not None:
+            _faulthandler_file.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("meshy-dcc-maya: faulthandler log close skipped: %s", exc)
+    _faulthandler_file = None
+    _faulthandler_path = None
+    _faulthandler_enabled_by_plugin = False
+
+
+def _disable_autosave_for_session() -> None:
+    """Persistently disable Maya AutoSave while the plug-in is loaded.
+
+    Reported 2026-05-16: with three Maya instances running through the
+    sidecar, AutoSave's periodic timer fires on the still-untitled
+    scene, Maya pops a modal "必须给出名称才能保存文件" dialog
+    asking for a filename, the dialog blocks the main thread, and
+    every MCP request piles up behind it. The user sees "all three
+    Mayas hung" even though the dispatcher and Qt server are healthy.
+
+    The fix is to disable AutoSave **for the entire MCP session**,
+    not just per-job. Per-job snooze in :mod:`_safe_session` leaves a
+    window between jobs where the timer can still fire; persistent
+    disable closes that window.
+
+    Trade-off: while the plug-in is loaded, AutoSave does not protect
+    the user from data loss on an unexpected Maya exit. This is
+    acceptable for sessions driven by MCP because:
+
+    * MCP-dispatched jobs are reproducible (the agent can re-issue
+      them) — AutoSave's value is mainly for interactive Maya use.
+    * Manual ``cmds.file(save=True)`` still works; only the timer
+      is suspended.
+    * The persistent disable is **reversible** — :func:`_stop_blocking`
+      restores the original state on plug-in unload.
+
+    The snapshot of the original ``enable`` flag is stored on the
+    module-level :data:`_original_autosave_enabled` so unload can
+    restore exactly what was running before the plug-in loaded.
+    Off unless ``MESHY_DCC_MAYA_DISABLE_AUTOSAVE=1``: the switch lives in
+    the user's preferences and would stay off after a crash.
+
+    Never raises — every step is wrapped so a missing AutoSave
+    feature (older Maya, headless mayapy without UI) cannot block
+    plug-in startup.
+    """
+    global _original_autosave_enabled
+
+    # Opt-in: Maya keeps the AutoSave switch in the user's preferences, so a
+    # crash before the restore would leave the artist's AutoSave off for good.
+    if os.environ.get("MESHY_DCC_MAYA_DISABLE_AUTOSAVE", "").strip().lower() not in {"1", "true", "on", "yes"}:
+        return
+
+    try:
+        was_enabled = bool(cmds.autoSave(query=True, enable=True))
+    except Exception as exc:  # noqa: BLE001 — Maya may raise nondescript errors
+        logger.debug("AutoSave query failed: %s", exc)
+        return
+
+    _original_autosave_enabled = was_enabled
+    if not was_enabled:
+        logger.debug("AutoSave was already disabled; nothing to do")
+        return
+
+    try:
+        cmds.autoSave(enable=False)
+        logger.info(
+            "meshy-dcc-maya: AutoSave disabled for the duration of this session "
+            "(MESHY_DCC_MAYA_DISABLE_AUTOSAVE=1)",
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("AutoSave disable failed; modal save-prompt may still appear: %s", exc)
+
+
+def _restore_autosave_for_session() -> None:
+    """Undo :func:`_disable_autosave_for_session` on plug-in unload.
+
+    Reads the snapshot captured at startup and flips AutoSave back to
+    whatever the user had before we touched it. Safe to call when no
+    snapshot exists (no-op).
+    """
+    global _original_autosave_enabled
+    if _original_autosave_enabled is None:
+        return
+    try:
+        cmds.autoSave(enable=bool(_original_autosave_enabled))
+        logger.debug(
+            "meshy-dcc-maya: AutoSave restored to enable=%s",
+            _original_autosave_enabled,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("AutoSave restore failed: %s", exc)
+    finally:
+        _original_autosave_enabled = None
+
+
+def _maybe_spawn_sidecar() -> bool:
+    """Spawn the default ``meshy-dcc-server sidecar`` subprocess.
+
+    Sidecar mode is the **strategic** direction for crash-isolated
+    actions (RFC #998 — Maya / Blender / Houdini C++ aborts and
+    modal native dialogs that the in-process Python dispatcher cannot
+    intercept). The sidecar process runs alongside Maya, is supervised
+    by Maya's PID via the binary's PPID-watch, and survives non-
+    cooperative Maya shutdowns so the gateway can emit structured
+    ``host-died`` envelopes instead of transport-error cascades.
+
+    Activation is enabled by default and can be disabled with
+    :data:`meshy_dcc_maya.sidecar.ENV_SIDECAR_MODE`
+    (``MESHY_DCC_MAYA_SIDECAR=0``). When the binary cannot be resolved,
+    the failure is logged structurally and the in-process server keeps
+    running; sidecar spawn never blocks plug-in init.
+
+    The handle is parked on module-level state so
+    :func:`_stop_blocking` can tear it down ahead of the in-process
+    server during ``uninitializePlugin``.
+    """
+    global _sidecar_handle
+    try:
+        from meshy_dcc_maya.sidecar import (  # noqa: PLC0415
+            SidecarSpawnError,
+            is_sidecar_mode_enabled,
+            start_sidecar,
+        )
+    except ImportError:
+        # Package unavailable (older meshy-dcc-maya wheel) — silent no-op.
+        # The in-process server remains available when the sidecar package
+        # is missing, so plug-in startup should not grow noisy here.
+        _record_bootstrap_stage("sidecar_spawn", "failed", error_type="ImportError")
+        return False
+
+    if not is_sidecar_mode_enabled():
+        # Feature explicitly disabled. Stay silent — no script-editor
+        # output, no debug log. Users who want signal can grep their
+        # log file for "MESHY_DCC_MAYA_SIDECAR" or read the plug-in
+        # docstring.
+        _record_bootstrap_stage("sidecar_spawn", "skipped", reason="disabled")
+        return True
+
+    if _sidecar_handle is not None:
+        logger.warning(
+            "meshy-dcc-maya: sidecar already running (pid=%s); stopping before respawn",
+            getattr(_sidecar_handle.proc, "pid", "?"),
+        )
+        _stop_sidecar_if_running()
+
+    _record_bootstrap_stage("sidecar_spawn", "started")
+    try:
+        # meshy-dcc-server >= 0.17.9 uses the same default registry path as
+        # GatewayRunner and also honours MESHY_DCC_REGISTRY_DIR itself, so the
+        # plugin no longer needs to mirror core's path resolution here.
+        _sidecar_handle = start_sidecar(
+            adapter_version=VERSION,
+            display_name=_resolve_sidecar_display_name(),
+            discovery_mcp_url=_handle.mcp_url() if _handle is not None else None,
+            gateway_name=_resolve_gateway_name(),
+            instance_id=_resolve_instance_id(),
+        )
+    except SidecarSpawnError as exc:
+        _record_bootstrap_stage("sidecar_spawn", "failed", error_type=type(exc).__name__)
+        logger.error(
+            "meshy-dcc-maya: sidecar spawn failed; continuing with the in-process "
+            "Maya server only. Default sidecar gateway startup requires the "
+            "meshy-dcc-server binary. Install with `mayapy -m pip install "
+            "meshy-dcc-server`, set MESHY_DCC_SERVER_BIN, put meshy-dcc-server on "
+            "PATH, or set MESHY_DCC_MAYA_SIDECAR=0 before loading the plugin to "
+            "use the legacy in-process gateway. Cause: %s",
+            exc,
+        )
+        _sidecar_handle = None
+        return False
+
+    _record_bootstrap_stage(
+        "sidecar_spawn",
+        "succeeded",
+        sidecar_pid=getattr(_sidecar_handle.proc, "pid", None),
+    )
+    _print_sidecar_info(_sidecar_handle)
+    _probe_gateway_health_deferred(_sidecar_handle)
+    return True
+
+
+def _print_sidecar_info(handle) -> None:  # noqa: ANN001
+    """Append a sidecar banner to the script editor / viewport HUD."""
+    gateway_port = _resolve_gateway_port_for_display()
+    gateway_lines = []
+    if gateway_port > 0:
+        gateway_lines.append(f"  Gateway      : http://127.0.0.1:{gateway_port}/mcp  (sidecar-managed)")
+        try:
+            from meshy_dcc_maya.sidecar import resolve_gateway_remote_options  # noqa: PLC0415
+
+            remote_host, remote_port = resolve_gateway_remote_options()
+        except Exception:  # noqa: BLE001
+            remote_host, remote_port = "0.0.0.0", 59765
+        if remote_port > 0:
+            display_host = _gateway_remote_display_host(remote_host)
+            gateway_lines.append(f"  Gateway LAN  : http://{display_host}:{remote_port}/mcp  (sidecar-managed)")
+
+    border = "=" * 60
+    lines = [
+        border,
+        f"  meshy-dcc-maya v{VERSION}",
+        border,
+        f"  Binary       : {handle.binary_path}",
+        f"  PID          : {handle.proc.pid}",
+        f"  Qt server    : 127.0.0.1:{handle.qt_port}  ({handle.qt_binding})",
+        f"  host-rpc URI : {handle.host_rpc_uri}",
+        f"  watch-pid    : {handle.maya_pid} (Maya)",
+        *gateway_lines,
+        border,
+    ]
+    stdout_path = getattr(handle, "stdout_path", None)
+    stderr_path = getattr(handle, "stderr_path", None)
+    if stdout_path:
+        lines.insert(-1, f"  stdout log   : {stdout_path}")
+    if stderr_path:
+        lines.insert(-1, f"  stderr log   : {stderr_path}")
+    print("\n".join(lines))  # noqa: T201 — intentional console output
+
+    if _is_interactive():
+        try:
+            cmds.inViewMessage(
+                amg=f"Meshy DCC <b>sidecar</b> PID <b>{handle.proc.pid}</b> attached",
+                pos="topCenter",
+                fade=True,
+                fadeStayTime=4000,
+            )
+        except Exception:  # noqa: BLE001 — viewport HUD is cosmetic
+            pass
+
+
+def _probe_gateway_health_deferred(
+    handle=None,  # noqa: ANN001 - sidecar handle shape is intentionally duck-typed.
+    delay: float = 1.0,
+    timeout: float = 1.0,
+    attempts: int = 12,
+    interval: float = 1.0,
+) -> None:
+    """Deferred gateway health probe (non-blocking, runs on a daemon thread).
+
+    Spawned after the sidecar so users get timely feedback about whether the
+    sidecar-managed gateway actually became reachable.  The gateway daemon may
+    need a couple of seconds to reclaim stale registry state and bind the local
+    and LAN listeners, so this probe is deliberately bounded-retry rather than a
+    single startup snapshot.
+    """
+    gateway_port = _resolve_gateway_port_for_display()
+    if gateway_port <= 0:
+        return
+    attempts = max(1, int(attempts))
+    interval = max(0.0, float(interval))
+
+    def _probe() -> None:
+        import time
+        from urllib.error import HTTPError, URLError
+        from urllib.request import urlopen
+
+        time.sleep(delay)
+        url = f"http://127.0.0.1:{gateway_port}/health"
+        last_error = None
+        for attempt in range(1, attempts + 1):
+            try:
+                with urlopen(url, timeout=timeout) as resp:
+                    if resp.status == 200:
+                        exit_message = _format_sidecar_exit_message(handle)
+                        if exit_message:
+                            print(  # noqa: T201
+                                f"[meshy-dcc-maya] Gateway health OK at {url}, but {exit_message}"
+                            )
+                            return
+                        time.sleep(0.25)
+                        exit_message = _format_sidecar_exit_message(handle)
+                        if exit_message:
+                            print(  # noqa: T201
+                                f"[meshy-dcc-maya] Gateway health OK at {url}, but {exit_message}"
+                            )
+                            return
+                        print(f"[meshy-dcc-maya] Gateway health OK: {url}")  # noqa: T201
+                        return
+                    last_error = f"HTTP {resp.status}"
+            except HTTPError as exc:
+                last_error = f"HTTP {exc.code}"
+            except (URLError, OSError) as exc:
+                last_error = str(exc) or exc.__class__.__name__
+
+            proc = getattr(handle, "proc", None)
+            poll = getattr(proc, "poll", None)
+            if callable(poll):
+                returncode = poll()
+                if returncode is not None:
+                    print(  # noqa: T201
+                        f"[meshy-dcc-maya] Gateway NOT reachable at {url}; "
+                        f"{_format_sidecar_exit_message(handle, returncode=returncode)} "
+                        f"Last probe error: {last_error}. Check meshy-dcc-server "
+                        f"logs or run: meshy-dcc-server gateway --port {gateway_port}"
+                    )
+                    return
+
+            if attempt < attempts:
+                time.sleep(interval)
+
+        print(  # noqa: T201
+            f"[meshy-dcc-maya] Gateway NOT reachable at {url} after {attempts} "
+            f"attempt(s). Last probe error: {last_error}. The sidecar may still "
+            f"be starting the gateway, stale registry state may need cleanup, "
+            f"or the meshy-dcc-server binary may be missing the gateway-daemon "
+            f"feature."
+        )
+
+    t = threading.Thread(target=_probe, name="meshy-dcc-gateway-probe", daemon=True)
+    t.start()
+
+
+def _format_sidecar_exit_message(handle=None, returncode=None) -> str:  # noqa: ANN001
+    proc = getattr(handle, "proc", None)
+    if proc is None:
+        return ""
+    if returncode is None:
+        poll = getattr(proc, "poll", None)
+        if not callable(poll):
+            return ""
+        returncode = poll()
+    if returncode is None:
+        return ""
+    pid = getattr(proc, "pid", "?")
+    parts = [f"sidecar PID {pid} exited early (exit={returncode})."]
+    stderr_path = getattr(handle, "stderr_path", None)
+    stdout_path = getattr(handle, "stdout_path", None)
+    if stderr_path:
+        parts.append(f"stderr log: {stderr_path}.")
+        tail = _read_log_tail(stderr_path)
+        if tail:
+            parts.append(f"stderr tail: {tail}")
+    if stdout_path:
+        parts.append(f"stdout log: {stdout_path}.")
+    return " ".join(parts)
+
+
+def _read_log_tail(path, *, limit: int = 800) -> str:  # noqa: ANN001
+    try:
+        with open(path, "rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - limit), os.SEEK_SET)
+            data = handle.read()
+    except OSError:
+        return ""
+    text = data.decode("utf-8", "replace").strip()
+    return " ".join(text.split())
+
+
+def _resolve_gateway_port_for_display() -> int:
+    raw = os.environ.get("MESHY_DCC_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT))
+    try:
+        port = int(raw)
+    except ValueError:
+        port = _DEFAULT_GATEWAY_PORT
+    return port if port > 0 else 0
+
+
+def _gateway_remote_display_host(bind_host: str) -> str:
+    if bind_host not in {"", "0.0.0.0", "::"}:
+        return bind_host
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            host = sock.getsockname()[0]
+            if host and not host.startswith("127."):
+                return host
+    except OSError:
+        pass
+    try:
+        host = socket.gethostbyname(socket.gethostname())
+        if host and not host.startswith("127."):
+            return host
+    except OSError:
+        pass
+    return "<LAN-IP>"
+
+
+def _print_startup_info(cfg: dict) -> None:
+    """Print startup info to Maya console and script editor."""
+    import meshy_dcc_maya.server as _srv_mod  # noqa: PLC0415
+
+    instance_url = _handle.mcp_url() if _handle else "<not running>"
+    gateway_port = cfg.get("gateway_port") or 0
+    dcc_version = cfg.get("dcc_version") or "unknown"
+
+    srv = _srv_mod._server_instance  # noqa: SLF001
+    is_gw = bool(srv and getattr(srv, "is_gateway", False))
+
+    # Detect sidecar-managed gateway mode. When sidecar mode is enabled
+    # _resolve_config() sets gateway_port=0 for the in-process server
+    # because the gateway is owned by the sidecar binary. Read the env
+    # directly to report the user's actual gateway port setting.
+    _sidecar_gw_port = 0
+    if gateway_port == 0:
+        try:
+            from meshy_dcc_maya.sidecar import is_sidecar_mode_enabled  # noqa: PLC0415
+
+            if is_sidecar_mode_enabled():
+                raw = os.environ.get("MESHY_DCC_GATEWAY_PORT", "")
+                _sidecar_gw_port = int(raw) if raw.strip().isdigit() else 0
+        except (ImportError, ValueError):
+            pass
+
+    # ── banner ────────────────────────────────────────────────────────────────
+    border = "=" * 60
+    lines = [
+        border,
+        f"  meshy-dcc-maya v{VERSION}  |  Maya {dcc_version}",
+        border,
+        f"  Instance URL : {instance_url}",
+    ]
+
+    if gateway_port > 0:
+        gw_url = f"http://127.0.0.1:{gateway_port}"
+        if is_gw:
+            lines.append(f"  Gateway URL  : {gw_url}  [THIS INSTANCE IS GATEWAY]")
+            lines.append(f"  Connect MCP client to: {gw_url}/mcp")
+        else:
+            lines.append(f"  Gateway URL  : {gw_url}  [registered as instance]")
+            lines.append(f"  Connect MCP client to: {gw_url}/mcp  (via gateway)")
+        lines.append("  Instance discovery: MCP resources/read uri=gateway://instances")
+    elif _sidecar_gw_port > 0:
+        lines.append(
+            f"  Gateway      : sidecar-managed (port {_sidecar_gw_port}, starting...)",
+        )
+        lines.append(f"  Connect MCP client to: {instance_url}")
+    else:
+        lines.append(f"  Connect MCP client to: {instance_url}")
+        lines.append("  (Gateway disabled — set MESHY_DCC_GATEWAY_PORT=19765 to enable)")
+
+    lines.append(border)
+
+    banner = "\n".join(lines)
+
+    # Print to Maya script editor / output window
+    print(banner)  # noqa: T201 — intentional console output
+
+    # Also show in Maya viewport HUD (interactive mode only)
+    if _is_interactive() and _handle:
+        try:
+            if is_gw:
+                hud_msg = f"Meshy DCC <b>[GATEWAY]</b> {gw_url}/mcp"
+            elif gateway_port > 0:
+                hud_msg = f"Meshy DCC <b>[instance]</b> → gateway {gw_url}/mcp"
+            else:
+                hud_msg = f"Meshy DCC ready: {instance_url}"
+            cmds.inViewMessage(amg=hud_msg, pos="topCenter", fade=True, fadeStayTime=4000)
+        except Exception:
+            pass  # viewport HUD is cosmetic, never block startup
+
+
+def _stop_sidecar_if_running() -> None:
+    """Terminate the supervised sidecar subprocess and clear ``_sidecar_handle``.
+
+    Shared by plugin unload, menu Stop, and Restart MCP Server so we never
+    orphan a ``meshy-dcc-server sidecar`` child (and its FileRegistry row)
+    when the in-process HTTP server is torn down and respawned.
+    """
+    global _sidecar_handle
+
+    if _sidecar_handle is None:
+        return
+    try:
+        from meshy_dcc_maya.sidecar import stop_sidecar  # noqa: PLC0415
+
+        stop_sidecar(_sidecar_handle)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("meshy-dcc-maya: sidecar stop_sidecar raised: %s", exc)
+    finally:
+        _sidecar_handle = None
+
+
+def _stop_blocking() -> None:
+    """Stop the server, blocking until fully shut down.
+
+    Safe to call from any thread.  Uses the standard stop_server() path
+    which calls handle.shutdown() (blocking).  Only used during plugin
+    unload (``uninitializePlugin``), where blocking is acceptable.
+
+    Ordering matters here:
+
+    1. Sidecar subprocess teardown is attempted **first** so it
+       deregisters from the shared FileRegistry while we still have
+       a healthy Python interpreter. If we let it ride the PPID-watch
+       path during Maya exit instead, the row would still be cleaned
+       up by the OS sentinel fallback, but the call path is
+       structurally cleaner when we tear down explicitly.
+    2. In-process MCP HTTP server stops next via the standard
+       ``stop_server()`` path.
+
+    Any single failure does NOT abort the whole sequence — each step
+    is wrapped so the others still run, mirroring the resilience
+    contract issue #126 added for the in-process path.
+    """
+    global _handle, _host, _host_dispatcher, _host_startup
+
+    _stop_sidecar_if_running()
+
+    try:
+        from meshy_dcc_maya._plugin_dispatcher import shutdown_plugin_host_startup  # noqa: PLC0415
+
+        shutdown_plugin_host_startup(_host_startup)
+        _host_startup = None
+        _host = None
+        _host_dispatcher = None
+        import meshy_dcc_maya  # noqa: PLC0415
+
+        meshy_dcc_maya.stop_server()
+        _handle = None
+    except Exception as exc:
+        logger.warning("Failed to stop MCP server: %s", exc)
+
+    # Restore AutoSave to whatever the user had before plug-in load —
+    # done after server tear-down so the very last MCP request still
+    # benefits from the persistent snooze.
+    try:
+        _restore_autosave_for_session()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("AutoSave restore on shutdown raised: %s", exc)
+
+
+# ── shutdown safety nets (issue #186) ─────────────────────────────────────────
+
+
+def _resolve_instance_id() -> Optional[str]:
+    """Return the Maya MCP instance id for the active server, if available.
+
+    Used to tag the crash-resilient process sentinel (issue #186) so
+    sweepers can cross-reference a FileRegistry row against its
+    sentinel.  Robust to every degraded state — missing server,
+    Python-3.7 fallback path, server not yet registered.  Sidecar launch
+    treats the value as a strict CLI contract, so degraded states return
+    ``None`` instead of a cosmetic sentinel like ``"unknown"``.
+    """
+    try:
+        import meshy_dcc_maya  # noqa: PLC0415
+        from meshy_dcc_maya._identity import normalize_instance_id  # noqa: PLC0415
+
+        server = getattr(meshy_dcc_maya.server, "_server_instance", None)
+        if server is not None:
+            instance_id = getattr(server, "instance_id", None)
+            normalized = normalize_instance_id(instance_id)
+            if normalized:
+                return normalized
+            if instance_id:
+                logger.debug("ignoring invalid server instance id for sidecar launch: %r", instance_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("instance id lookup failed: %s", exc)
+    return None
+
+
+def _resolve_sidecar_display_name() -> str:
+    """Return a stable human-readable label for this Maya sidecar."""
+    try:
+        version = str(cmds.about(version=True)).strip() or "unknown"
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Maya version lookup for sidecar display name failed: %s", exc)
+        version = "unknown"
+    return "Maya {0} pid {1}".format(version, os.getpid())
+
+
+def _resolve_gateway_name() -> str:
+    """Return the machine-level gateway label passed to meshy-dcc-server."""
+    raw = os.environ.get("MESHY_DCC_GATEWAY_NAME")
+    if raw and raw.strip():
+        return raw.strip()
+    try:
+        hostname = socket.gethostname().strip()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("hostname lookup for gateway name failed: %s", exc)
+        hostname = "localhost"
+    if not hostname:
+        hostname = "localhost"
+    return "meshy-dcc-gateway@{0}".format(hostname)
+
+
+def _install_shutdown_safety() -> None:
+    """Wire the ``kMayaExiting`` / ``atexit`` / sentinel / __del__ safety nets.
+
+    Called from :func:`initializePlugin` immediately after ``_start()``
+    so the coordinator can tag the process sentinel with the freshly
+    allocated instance id.  Never raises — a failure here degrades to
+    "only ``uninitializePlugin`` can clean up", which is the pre-#186
+    behaviour.
+    """
+    global _shutdown_coordinator
+    try:
+        from meshy_dcc_maya._shutdown_safety import ShutdownCoordinator  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("shutdown safety module unavailable: %s", exc)
+        return
+    try:
+        coordinator = ShutdownCoordinator()
+        coordinator.install(
+            stop_callback=_stop_blocking,
+            instance_id=_resolve_instance_id() or "unknown",
+            registry_dir=os.environ.get("MESHY_DCC_REGISTRY_DIR") or None,
+        )
+        _shutdown_coordinator = coordinator
+        logger.debug("shutdown safety nets installed (issue #186)")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("shutdown safety install failed: %s", exc)
+
+
+def _uninstall_shutdown_safety() -> None:
+    """Tear down the shutdown safety nets installed by :func:`_install_shutdown_safety`.
+
+    Idempotent — safe when install failed or was never called.
+    """
+    global _shutdown_coordinator
+    coord = _shutdown_coordinator
+    _shutdown_coordinator = None
+    if coord is None:
+        return
+    try:
+        coord.uninstall()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("shutdown safety uninstall failed: %s", exc)
+
+
+def _stop_host_on_main_thread() -> None:
+    """Stop the Maya host idle tick (``detach_tick`` / ``scriptJob`` — main thread only)."""
+    global _host, _host_dispatcher, _host_startup
+    if _host is None and _host_startup is None:
+        return
+    try:
+        from meshy_dcc_maya._plugin_dispatcher import shutdown_plugin_host_startup  # noqa: PLC0415
+
+        shutdown_plugin_host_startup(_host_startup)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("MCP host stop failed: %s", exc)
+    finally:
+        _host_startup = None
+        _host = None
+        _host_dispatcher = None
+
+
+def _running_mcp_server():
+    """Return the live :class:`~meshy_dcc_maya.server.MayaMcpServer` or ``None``.
+
+    Prefer the public module alias, but fall back to the internal holder so
+    menu actions still work if those two ever diverge during a bad partial
+    shutdown path.
+    """
+    import meshy_dcc_maya.server as _srv_mod  # noqa: PLC0415
+
+    srv = _srv_mod._server_instance  # noqa: SLF001
+    if srv is not None:
+        return srv
+    holder = getattr(_srv_mod, "_instance_holder", None)
+    if holder and holder[0] is not None:
+        return holder[0]
+    return None
+
+
+def _server_url() -> str:
+    if _handle is not None:
+        try:
+            return _handle.mcp_url()
+        except Exception:
+            pass
+    return "<not running>"
+
+
+# ── menu ─────────────────────────────────────────────────────────────────────
+
+
+def _add_menu() -> None:
+    try:
+        if cmds.menu(_menu_name, exists=True):
+            cmds.deleteUI(_menu_name)
+        cmds.menu(_menu_name, label="Meshy DCC", parent="MayaWindow", tearOff=False)
+        cmds.menuItem(label="OpenAPI Docs", command=lambda *_: _open_openapi_docs())
+        cmds.menuItem(label="Admin Panel", command=lambda *_: _open_admin_panel())
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label="Copy Instance ID", command=lambda *_: _copy_instance_id())
+        cmds.menuItem(label="Server Info", command=lambda *_: _show_server_info())
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label="Restart MCP Server", command=lambda *_: _restart_deferred())
+        cmds.menuItem(label="Stop MCP Server", command=lambda *_: _stop_blocking())
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label="Enable/Disable Hot Reload", command=lambda *_: _toggle_hot_reload())
+        cmds.menuItem(divider=True)
+        cmds.menuItem(label="About Meshy DCC", command=lambda *_: _show_about())
+    except Exception as exc:
+        logger.warning("Could not add Meshy DCC menu: %s", exc)
+
+
+def _remove_menu() -> None:
+    try:
+        if cmds.menu(_menu_name, exists=True):
+            cmds.deleteUI(_menu_name)
+    except Exception:
+        pass
+
+
+def _show_url() -> None:
+    srv = _running_mcp_server()
+    instance_url = _server_url()
+    gateway_port = int(os.environ.get("MESHY_DCC_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT)))
+    is_gw = bool(srv and getattr(srv, "is_gateway", False))
+
+    if gateway_port > 0:
+        gw_url = f"http://127.0.0.1:{gateway_port}/mcp"
+        if is_gw:
+            msg = f"Gateway (this instance):\n  {gw_url}\n\nInstance URL:\n  {instance_url}"
+        else:
+            msg = f"Gateway:\n  {gw_url}\n\nThis instance:\n  {instance_url}"
+    else:
+        msg = f"MCP Server URL:\n  {instance_url}"
+
+    cmds.confirmDialog(title="Meshy DCC — Server URLs", message=msg, button=["OK"])
+
+
+def _restart_deferred() -> None:
+    """Restart the MCP server without blocking the Maya UI thread for long.
+
+    ``MayaHost.stop()`` / ``detach_tick`` must run on the Maya main thread.
+    ``meshy_dcc_maya.stop_server()`` joins the Rust HTTP stack and may take
+    hundreds of milliseconds — that work runs on a daemon thread.  A prior
+    implementation only ``signal_shutdown`` + cleared ``_server_instance``
+    without clearing ``_instance_holder``; ``start_server()`` then saw the old
+    server as still ``is_running`` and returned the stale handle, so Restart
+    appeared to do nothing and Hot Reload thought the server was down.
+    """
+    if not _restart_lock.acquire(blocking=False):
+        cmds.warning("Meshy DCC: restart already in progress, please wait.")
+        return
+
+    cmds.inViewMessage(amg="Meshy DCC: restarting…", pos="topCenter", fade=True)
+
+    # Tear down the prior sidecar before stop_server/_start respawn a new one.
+    # Without this, Restart MCP Server orphans the old meshy-dcc-server sidecar
+    # process and its FileRegistry row (menu Stop/unload already call
+    # _stop_sidecar_if_running via _stop_blocking).
+    _stop_sidecar_if_running()
+
+    try:
+        _stop_host_on_main_thread()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Meshy DCC: restart host phase failed: %s", exc)
+
+    def _main_thread_finish_restart() -> None:
+        try:
+            _start()
+        except Exception as exc:
+            logger.error("Meshy DCC: restart _start() failed: %s", exc)
+        finally:
+            _restart_lock.release()
+
+    def _bg_shutdown_then_schedule_start() -> None:
+        global _handle
+        try:
+            import meshy_dcc_maya  # noqa: PLC0415
+
+            meshy_dcc_maya.stop_server()
+        except Exception as exc:
+            logger.warning("Meshy DCC: restart stop_server failed: %s", exc)
+        finally:
+            _handle = None
+        try:
+            import maya.utils  # noqa: PLC0415
+
+            maya.utils.executeDeferred(_main_thread_finish_restart)
+        except Exception as exc:
+            logger.error("Meshy DCC: restart executeDeferred failed: %s", exc)
+            _restart_lock.release()
+
+    threading.Thread(
+        target=_bg_shutdown_then_schedule_start,
+        daemon=True,
+        name="meshy-dcc-restart",
+    ).start()
+
+
+def _open_browser() -> None:
+    url = _server_url()
+    if url and url != "<not running>":
+        import webbrowser  # noqa: PLC0415
+
+        webbrowser.open(url)
+    else:
+        cmds.warning("MCP server is not running.")
+
+
+def _openapi_base_url() -> str:
+    """Return base URL for the running server (strip /mcp suffix)."""
+    url = _server_url()
+    if url and url != "<not running>":
+        return url.replace("/mcp", "")
+    return ""
+
+
+def _open_openapi_docs() -> None:
+    """Open the DCC service OpenAPI docs (Swagger UI) in the default browser."""
+    base = _openapi_base_url()
+    if not base:
+        cmds.warning("MCP server is not running.")
+        return
+    import webbrowser  # noqa: PLC0415
+
+    webbrowser.open(base + "/docs")
+
+
+def _gateway_url() -> str:
+    """Return the gateway base URL (from MESHY_DCC_GATEWAY_PORT env var)."""
+    gateway_port = int(os.environ.get("MESHY_DCC_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT)))
+    if gateway_port <= 0:
+        return ""
+    return f"http://127.0.0.1:{gateway_port}"
+
+
+def _open_admin_panel() -> None:
+    """Open the gateway admin panel in the default browser."""
+    gw = _gateway_url()
+    if not gw:
+        cmds.warning("Gateway is disabled (MESHY_DCC_GATEWAY_PORT=0). Cannot open admin panel.")
+        return
+    import webbrowser  # noqa: PLC0415
+
+    webbrowser.open(gw + "/admin")
+
+
+def _toggle_hot_reload() -> None:
+    """Toggle hot-reload on/off for the MCP server."""
+    srv = _running_mcp_server()
+    if srv is None:
+        cmds.warning("MCP server is not running.")
+        return
+
+    try:
+        if srv.is_hot_reload_enabled:
+            srv.disable_hot_reload()
+            cmds.inViewMessage(amg="Meshy DCC: hot-reload <b>disabled</b>", pos="topCenter", fade=True, fadeStayTime=2000)
+            print("Hot-reload disabled")  # noqa: T201
+        else:
+            if srv.enable_hot_reload():
+                stats = srv.hot_reload_stats
+                msg = f"Meshy DCC: hot-reload <b>enabled</b> ({len(stats['watched_paths'])} paths)"
+                cmds.inViewMessage(amg=msg, pos="topCenter", fade=True, fadeStayTime=2000)
+                print(f"Hot-reload enabled: monitoring {len(stats['watched_paths'])} paths")  # noqa: T201
+            else:
+                cmds.warning("Failed to enable hot-reload")
+    except Exception as exc:
+        logger.error("Hot-reload toggle error: %s", exc)
+        cmds.warning(f"Error toggling hot-reload: {exc}")
+
+
+# ── clipboard helper ────────────────────────────────────────────────────────
+
+
+def _set_clipboard_text(text: str) -> None:
+    """Set the system clipboard text, trying PySide2 then PySide6."""
+    for binding in ("PySide2", "PySide6"):
+        try:
+            mod = __import__(binding)
+            app = mod.QtWidgets.QApplication.instance()
+            if app is not None:
+                app.clipboard().setText(text)
+                return
+        except Exception:
+            continue
+    raise RuntimeError("Unable to access system clipboard (no PySide binding available)")
+
+
+# ── new menu actions ─────────────────────────────────────────────────────────
+
+
+def _copy_instance_id() -> None:
+    """Copy the Meshy DCC instance UUID to the system clipboard."""
+    instance_id = _resolve_instance_id()
+    if not instance_id:
+        cmds.warning("Meshy DCC: Instance ID not available. Is the server running?")
+        return
+    try:
+        _set_clipboard_text(instance_id)
+    except RuntimeError as exc:
+        cmds.warning(str(exc))
+        return
+    print(f"Meshy DCC: Instance ID copied to clipboard: {instance_id}")  # noqa: T201
+    if _is_interactive():
+        try:
+            cmds.inViewMessage(
+                amg="Meshy DCC: Instance ID <b>copied</b> to clipboard",
+                pos="topCenter",
+                fade=True,
+                fadeStayTime=2000,
+            )
+        except Exception:
+            pass
+
+
+def _show_server_info() -> None:
+    """Show server status information in a dialog."""
+    instance_id = _resolve_instance_id()
+    instance_url = _server_url()
+
+    dcc_version = "unknown"
+    try:
+        dcc_version = str(cmds.about(version=True))
+    except Exception:
+        pass
+
+    gateway_port_str = os.environ.get("MESHY_DCC_GATEWAY_PORT", str(_DEFAULT_GATEWAY_PORT))
+    try:
+        gp = int(gateway_port_str)
+    except ValueError:
+        gp = _DEFAULT_GATEWAY_PORT
+    gateway_display = "disabled" if gp <= 0 else str(gp)
+
+    core_version = "unknown"
+    try:
+        from meshy_dcc_core.server_base import _package_version  # noqa: PLC0415
+
+        core_version = _package_version() or "unknown"
+    except Exception:
+        pass
+
+    msg = (
+        f"Instance UUID: {instance_id or 'N/A'}\n"
+        f"DCC: Maya {dcc_version}\n"
+        f"PID: {os.getpid()}\n"
+        f"MCP URL: {instance_url}\n"
+        f"Gateway Port: {gateway_display}\n"
+        f"Core Version: {core_version}\n"
+        f"Adapter Version: {VERSION}\n"
+        f"Python: {sys.version.split()[0]}"
+    )
+    cmds.confirmDialog(title="Meshy DCC — Server Info", message=msg, button=["OK"])
+
+
+def _show_about() -> None:
+    """Show about dialog with version information."""
+    dcc_version = "unknown"
+    try:
+        dcc_version = str(cmds.about(version=True))
+    except Exception:
+        pass
+
+    msg = (
+        f"meshy-dcc-maya v{VERSION}\n"
+        f"Maya {dcc_version}\n"
+        f"Python {sys.version.split()[0]}\n\n"
+        "Meshy DCC — AI-driven DCC automation.\n"
+        "https://www.meshy.ai"
+    )
+    cmds.confirmDialog(title="About Meshy DCC", message=msg, button=["OK"])

@@ -1,0 +1,294 @@
+"""Unit tests for ``meshy_dcc_maya._maya_commandport_hygiene`` (issue #148).
+
+Mocks ``maya.cmds`` / ``maya.mel`` because these are not importable
+in the standard CI matrix (no Maya install). The corresponding
+real-Maya behaviour is exercised separately by the mayapy E2E test
+in ``tests/e2e/test_maya_commandport_hygiene_e2e.py``.
+"""
+
+# Import future modules
+from __future__ import annotations
+
+# Import built-in modules
+import sys
+from types import ModuleType
+from unittest.mock import MagicMock, patch
+
+# Import third-party modules
+import pytest
+
+# Import local modules
+from meshy_dcc_maya import _maya_commandport_hygiene as _commandport
+
+# ────────────────────────────────────────────────────────────────────────
+# _is_disabled_by_env
+# ────────────────────────────────────────────────────────────────────────
+
+
+class TestIsDisabledByEnv:
+    @pytest.mark.parametrize("value", ["0", " 0", "0 "])
+    def test_disabled_when_env_is_zero(self, monkeypatch, value):
+        monkeypatch.setenv(_commandport.ENV_DISABLE_WARNING, value)
+        assert _commandport._is_disabled_by_env() is True
+
+    @pytest.mark.parametrize("value", ["", "1", "true", "yes", "no", "00"])
+    def test_not_disabled_for_other_values(self, monkeypatch, value):
+        monkeypatch.setenv(_commandport.ENV_DISABLE_WARNING, value)
+        assert _commandport._is_disabled_by_env() is False
+
+    def test_default_is_not_disabled(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        assert _commandport._is_disabled_by_env() is False
+
+
+# ────────────────────────────────────────────────────────────────────────
+# _list_open_ports
+# ────────────────────────────────────────────────────────────────────────
+
+
+def _patch_mel(eval_return):
+    fake_mel = MagicMock()
+    fake_mel.eval = MagicMock(return_value=eval_return)
+    fake_maya = MagicMock()
+    fake_maya.mel = fake_mel
+    return patch.dict(sys.modules, {"maya": fake_maya, "maya.mel": fake_mel})
+
+
+class TestListOpenPorts:
+    def test_returns_empty_when_maya_not_installed(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "maya.mel", None)
+        # ``import maya.mel`` with sentinel None raises ImportError on Python 3.
+        assert _commandport._list_open_ports() == []
+
+    def test_returns_empty_when_mel_returns_none(self):
+        with _patch_mel(None):
+            assert _commandport._list_open_ports() == []
+
+    def test_normalises_single_string(self):
+        with _patch_mel("mayaCommand"):
+            assert _commandport._list_open_ports() == ["mayaCommand"]
+
+    def test_returns_empty_when_mel_returns_empty_string(self):
+        with _patch_mel(""):
+            assert _commandport._list_open_ports() == []
+
+    def test_normalises_list_and_strips_falsy(self):
+        with _patch_mel(["a", "", None, "b"]):
+            assert _commandport._list_open_ports() == ["a", "b"]
+
+    def test_swallows_mel_eval_exception(self):
+        fake_mel = MagicMock()
+        fake_mel.eval = MagicMock(side_effect=RuntimeError("mel boom"))
+        fake_maya = MagicMock()
+        fake_maya.mel = fake_mel
+        with patch.dict(sys.modules, {"maya": fake_maya, "maya.mel": fake_mel}):
+            assert _commandport._list_open_ports() == []
+
+    def test_returns_empty_when_iter_fails(self):
+        # Non-string non-iterable should fall through TypeError handler.
+        with _patch_mel(42):
+            assert _commandport._list_open_ports() == []
+
+
+# ────────────────────────────────────────────────────────────────────────
+# close_default_commandport
+# ────────────────────────────────────────────────────────────────────────
+
+
+class TestCloseDefaultCommandPort:
+    def test_zero_when_env_disabled(self, monkeypatch):
+        monkeypatch.setenv(_commandport.ENV_CLOSE_DEFAULT, "0")
+        fake_cmds = MagicMock()
+        fake_maya = MagicMock()
+        fake_maya.cmds = fake_cmds
+        with patch.dict(sys.modules, {"maya": fake_maya, "maya.cmds": fake_cmds}):
+            assert _commandport.close_default_commandport() == 0
+        fake_cmds.commandPort.assert_not_called()
+
+    def test_closes_open_default_aliases(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_CLOSE_DEFAULT, raising=False)
+        fake_cmds = MagicMock()
+        fake_cmds.commandPort.side_effect = [True, None, True, None]
+        fake_maya = MagicMock()
+        fake_maya.cmds = fake_cmds
+
+        with patch.dict(sys.modules, {"maya": fake_maya, "maya.cmds": fake_cmds}):
+            assert _commandport.close_default_commandport() == 2
+
+        kwargs_seq = [c[1] for c in fake_cmds.commandPort.call_args_list]
+        assert kwargs_seq[0] == {"query": True, "sourceType": "mel"}
+        assert fake_cmds.commandPort.call_args_list[0][0] == (":50007",)
+        assert kwargs_seq[1] == {"name": ":50007", "close": True}
+        assert kwargs_seq[2] == {"query": True, "sourceType": "mel"}
+        assert fake_cmds.commandPort.call_args_list[2][0] == ("commandportDefault",)
+        assert kwargs_seq[3] == {"name": "commandportDefault", "close": True}
+
+    def test_ignores_closed_default_port(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_CLOSE_DEFAULT, raising=False)
+        fake_cmds = MagicMock()
+        fake_cmds.commandPort.return_value = False
+        fake_maya = MagicMock()
+        fake_maya.cmds = fake_cmds
+
+        with patch.dict(sys.modules, {"maya": fake_maya, "maya.cmds": fake_cmds}):
+            assert _commandport.close_default_commandport() == 0
+
+
+# ────────────────────────────────────────────────────────────────────────
+# suppress_security_warnings
+# ────────────────────────────────────────────────────────────────────────
+
+
+class TestSuppressSecurityWarnings:
+    def test_zero_when_env_disabled(self, monkeypatch):
+        monkeypatch.setenv(_commandport.ENV_DISABLE_WARNING, "0")
+        with patch.object(_commandport, "_list_open_ports") as ports:
+            assert _commandport.suppress_security_warnings() == 0
+            ports.assert_not_called()
+
+    def test_zero_when_no_open_ports(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        with patch.object(_commandport, "_list_open_ports", return_value=[]):
+            assert _commandport.suppress_security_warnings() == 0
+
+    def test_calls_close_then_reopen_per_port(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        fake_cmds = MagicMock()
+        fake_cmds.commandPort.side_effect = [
+            "mel",
+            None,
+            None,
+            "python",
+            None,
+            None,
+        ]
+        fake_maya = MagicMock()
+        fake_maya.cmds = fake_cmds
+        with patch.object(_commandport, "_list_open_ports", return_value=["p1", "p2"]):
+            with patch.dict(sys.modules, {"maya": fake_maya, "maya.cmds": fake_cmds}):
+                assert _commandport.suppress_security_warnings() == 2
+        # Each port: query sourceType, close, reopen preserving sourceType.
+        assert fake_cmds.commandPort.call_count == 6
+        kwargs_seq = [c[1] for c in fake_cmds.commandPort.call_args_list]
+        assert kwargs_seq[0] == {"name": "p1", "query": True, "sourceType": True}
+        assert kwargs_seq[1] == {"name": "p1", "close": True}
+        assert kwargs_seq[2] == {"name": "p1", "securityWarning": False, "sourceType": "mel"}
+        assert kwargs_seq[3] == {"name": "p2", "query": True, "sourceType": True}
+        assert kwargs_seq[4] == {"name": "p2", "close": True}
+        assert kwargs_seq[5] == {"name": "p2", "securityWarning": False, "sourceType": "python"}
+
+    def test_configure_commandport_hygiene_runs_close_then_suppress(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        monkeypatch.delenv(_commandport.ENV_CLOSE_DEFAULT, raising=False)
+        with patch.object(_commandport, "close_default_commandport", return_value=1) as close_fn:
+            with patch.object(_commandport, "suppress_security_warnings", return_value=2) as suppress_fn:
+                _commandport.configure_commandport_hygiene()
+        close_fn.assert_called_once_with()
+        suppress_fn.assert_called_once_with()
+
+    def test_partial_failure_counts_only_successes(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        fake_cmds = MagicMock()
+
+        # Make port "bad" raise; "ok" succeeds (close + reopen).
+        def cmd(**kw):
+            if kw.get("name") == "bad" and kw.get("close"):
+                raise RuntimeError("close failed")
+
+        fake_cmds.commandPort = MagicMock(side_effect=cmd)
+        fake_maya = MagicMock()
+        fake_maya.cmds = fake_cmds
+        with patch.object(_commandport, "_list_open_ports", return_value=["bad", "ok"]):
+            with patch.dict(sys.modules, {"maya": fake_maya, "maya.cmds": fake_cmds}):
+                assert _commandport.suppress_security_warnings() == 1
+
+    def test_zero_when_cmds_unimportable(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        monkeypatch.setitem(sys.modules, "maya.cmds", None)
+        with patch.object(_commandport, "_list_open_ports", return_value=["only"]):
+            assert _commandport.suppress_security_warnings() == 0
+
+
+# ────────────────────────────────────────────────────────────────────────
+# disable_warning_in_place (issue #3929)
+# ────────────────────────────────────────────────────────────────────────
+
+
+def _fake_listener(security_warning=True):
+    listener = MagicMock()
+    listener.servObj = MagicMock()
+    listener.servObj.securityWarning = security_warning
+    return listener
+
+
+def _patch_registry(monkeypatch, registry):
+    """Make ``maya.app.general.CommandPort`` expose ``registry``."""
+    module = ModuleType("maya.app.general.CommandPort")
+    setattr(module, "__commandPorts", registry)
+    app_module = ModuleType("maya.app.general")
+    app_module.CommandPort = module
+    app_pkg = ModuleType("maya.app")
+    app_pkg.general = app_module
+    maya_module = ModuleType("maya")
+    maya_module.app = app_pkg
+    monkeypatch.setitem(sys.modules, "maya", maya_module)
+    monkeypatch.setitem(sys.modules, "maya.app", app_pkg)
+    monkeypatch.setitem(sys.modules, "maya.app.general", app_module)
+    monkeypatch.setitem(sys.modules, "maya.app.general.CommandPort", module)
+    return module
+
+
+class TestDisableWarningInPlace:
+    def test_clears_flag_without_touching_the_port(self, monkeypatch):
+        listener = _fake_listener()
+        _patch_registry(monkeypatch, {":50007": listener})
+
+        assert _commandport.disable_warning_in_place(":50007") is True
+        assert listener.servObj.securityWarning is False
+
+    def test_false_when_port_not_in_registry(self, monkeypatch):
+        _patch_registry(monkeypatch, {":50007": _fake_listener()})
+        assert _commandport.disable_warning_in_place(":7001") is False
+
+    def test_false_when_registry_module_missing(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "maya.app.general.CommandPort", None)
+        assert _commandport.disable_warning_in_place(":50007") is False
+
+    def test_false_when_listener_has_no_serv_obj(self, monkeypatch):
+        _patch_registry(monkeypatch, {":50007": object()})
+        assert _commandport.disable_warning_in_place(":50007") is False
+
+
+class TestSuppressSecurityWarningsInPlace:
+    def test_does_not_close_ports_covered_by_the_registry(self, monkeypatch):
+        """Regression #3929: an in-use commandPort must survive plug-in startup."""
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        listener = _fake_listener()
+        _patch_registry(monkeypatch, {":7001": listener})
+
+        fake_cmds = MagicMock()
+        fake_maya = sys.modules["maya"]
+        fake_maya.cmds = fake_cmds
+        monkeypatch.setitem(sys.modules, "maya.cmds", fake_cmds)
+
+        with patch.object(_commandport, "_list_open_ports", return_value=[":7001"]):
+            assert _commandport.suppress_security_warnings() == 1
+
+        assert listener.servObj.securityWarning is False
+        assert fake_cmds.commandPort.call_count == 0, "no close/re-open cycle for a registered port"
+
+    def test_falls_back_to_reopen_for_unregistered_ports(self, monkeypatch):
+        monkeypatch.delenv(_commandport.ENV_DISABLE_WARNING, raising=False)
+        _patch_registry(monkeypatch, {})
+        fake_cmds = MagicMock()
+        fake_cmds.commandPort.side_effect = ["python", None, None]
+        sys.modules["maya"].cmds = fake_cmds
+        monkeypatch.setitem(sys.modules, "maya.cmds", fake_cmds)
+
+        with patch.object(_commandport, "_list_open_ports", return_value=[":7001"]):
+            assert _commandport.suppress_security_warnings() == 1
+
+        kwargs_seq = [c[1] for c in fake_cmds.commandPort.call_args_list]
+        assert kwargs_seq[0] == {"name": ":7001", "query": True, "sourceType": True}
+        assert kwargs_seq[1] == {"name": ":7001", "close": True}
+        assert kwargs_seq[2] == {"name": ":7001", "securityWarning": False, "sourceType": "python"}

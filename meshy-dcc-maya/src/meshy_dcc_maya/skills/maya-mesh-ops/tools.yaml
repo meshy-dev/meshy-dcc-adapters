@@ -1,0 +1,504 @@
+tools:
+- name: apply_subdivision
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: modeling
+  description: Apply mesh-focused subdivision/topology smoothing. Use maya-node-graph
+    for construction-history inspection or attribute wiring.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      level:
+        type: integer
+        default: 1
+      method:
+        type: string
+        default: preview
+    required:
+    - object_name
+- name: cleanup_mesh
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Clean up polygon mesh topology and invalid components. Use maya-node-graph
+    delete_history/list_history for construction-history operations.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      non_manifold:
+        type: boolean
+        default: true
+      lamina_faces:
+        type: boolean
+        default: true
+      invalid_components:
+        type: boolean
+        default: true
+    required:
+    - object_name
+- name: combine_meshes
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Combine meshes in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      objects:
+        oneOf:
+        - type: string
+        - type: array
+          items:
+            type: string
+          minItems: 1
+      name:
+        type: string
+    required:
+    - objects
+- name: create_proxy_mesh
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Create a proxy mesh in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      reduction:
+        type: number
+        default: 0.5
+      name:
+        type: string
+    required:
+    - object_name
+- name: extract_faces
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Extract mesh faces in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      face_indices:
+        oneOf:
+        - type: string
+        - type: array
+          items:
+            type: integer
+          minItems: 1
+      keep_original:
+        type: boolean
+        default: false
+      separate:
+        type: boolean
+        default: true
+    required:
+    - object_name
+    - face_indices
+- name: get_mesh_edge_info
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: modeling
+  description: Get mesh edge information without modifying the Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      edge_indices:
+        oneOf:
+        - type: string
+        - type: array
+          items:
+            type: integer
+          minItems: 1
+    required:
+    - object_name
+- name: get_poly_count
+  execution: sync
+  affinity: main
+  annotations:
+    read_only_hint: true
+    idempotent_hint: true
+  group: modeling
+  description: Get polygon counts without modifying the Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+- name: loft_sections
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Create a polygon mesh by lofting two or more NURBS curve sections and verify the result.
+  input_schema:
+    type: object
+    additionalProperties: false
+    properties:
+      sections:
+        type: array
+        items:
+          type: string
+          minLength: 1
+        minItems: 2
+        maxItems: 64
+      name:
+        type: string
+        minLength: 1
+      degree:
+        type: integer
+        enum:
+        - 1
+        - 3
+        default: 3
+      close:
+        type: boolean
+        default: false
+    required:
+    - sections
+  output_schema:
+    type: object
+    required:
+    - object_name
+    - object_uuid
+    - shape
+    - shape_uuid
+    - input_sections
+    - history_uuid
+    properties:
+      object_name:
+        type: string
+      object_uuid:
+        type: string
+      shape:
+        type: string
+      shape_uuid:
+        type: string
+      input_sections:
+        type: array
+        items:
+          type: string
+      history_node:
+        type:
+        - string
+        - 'null'
+      history_uuid:
+        type: string
+- name: array_instances
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Create a bounded linear array of Maya instances and verify every transform.
+  input_schema:
+    type: object
+    additionalProperties: false
+    properties:
+      object_name:
+        type: string
+        minLength: 1
+      count:
+        type: integer
+        minimum: 2
+        maximum: 128
+      translate_step:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+        default:
+        - 0.0
+        - 0.0
+        - 0.0
+      rotate_step:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+        default:
+        - 0.0
+        - 0.0
+        - 0.0
+      name_prefix:
+        type: string
+        minLength: 1
+    required:
+    - object_name
+    - count
+  output_schema:
+    type: object
+    required:
+    - source
+    - source_uuid
+    - objects
+    - object_uuids
+    - verified_count
+    properties:
+      source:
+        type: string
+      source_uuid:
+        type: string
+      objects:
+        type: array
+        items:
+          type: string
+        minItems: 2
+        maxItems: 128
+      object_uuids:
+        type: array
+        items:
+          type: string
+        minItems: 2
+        maxItems: 128
+      verified_count:
+        type: integer
+        minimum: 2
+        maximum: 128
+- name: merge_vertices
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Merge mesh vertices in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+      threshold:
+        type: number
+        default: 0.001
+    required:
+    - object_name
+- name: mirror_mesh
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Mirror mesh data in the current Maya scene.
+  input_schema:
+    type: object
+    additionalProperties: false
+    properties:
+      object_name:
+        type: string
+      axis:
+        type: string
+        enum:
+        - x
+        - y
+        - z
+        default: x
+      cut_position:
+        type: number
+        default: 0.0
+      merge_threshold:
+        type: number
+        minimum: 0
+        default: 0.001
+      merge_border:
+        type: boolean
+        default: true
+    required:
+    - object_name
+  output_schema:
+    type: object
+    required:
+    - object_name
+    - axis
+    - faces_before
+    - faces_after
+    properties:
+      object_name:
+        type: string
+      axis:
+        type: string
+        enum:
+        - x
+        - y
+        - z
+      cut_position:
+        type: number
+      faces_before:
+        type: integer
+        minimum: 0
+      faces_after:
+        type: integer
+        minimum: 1
+- name: lathe_profile
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Revolve one NURBS profile into a polygon mesh and verify the result.
+  input_schema:
+    type: object
+    additionalProperties: false
+    properties:
+      profile:
+        type: string
+        minLength: 1
+      name:
+        type: string
+        minLength: 1
+      axis:
+        type: string
+        enum:
+        - x
+        - y
+        - z
+        default: y
+      segments:
+        type: integer
+        minimum: 3
+        maximum: 256
+        default: 16
+      sweep_angle:
+        type: number
+        exclusiveMinimum: 0
+        maximum: 360
+        default: 360.0
+      degree:
+        type: integer
+        enum:
+        - 1
+        - 3
+        default: 3
+    required:
+    - profile
+  output_schema:
+    type: object
+    required:
+    - object_name
+    - object_uuid
+    - shape
+    - shape_uuid
+    - profile
+    - axis
+    - history_uuid
+    properties:
+      object_name:
+        type: string
+      object_uuid:
+        type: string
+      shape:
+        type: string
+      shape_uuid:
+        type: string
+      profile:
+        type: string
+      axis:
+        type: string
+        enum:
+        - x
+        - y
+        - z
+      history_node:
+        type:
+        - string
+        - 'null'
+      history_uuid:
+        type: string
+- name: select_by_material
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Select objects by material in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      material_name:
+        type: string
+    required:
+    - material_name
+- name: set_pivot
+  execution: sync
+  affinity: main
+  annotations:
+    idempotent_hint: true
+  group: modeling
+  description: Set and verify both rotate and scale pivots on a Maya transform.
+  input_schema:
+    type: object
+    additionalProperties: false
+    properties:
+      object_name:
+        type: string
+        minLength: 1
+      position:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      space:
+        type: string
+        enum:
+        - world
+        - object
+        default: world
+    required:
+    - object_name
+    - position
+  output_schema:
+    type: object
+    required:
+    - object_name
+    - rotate_pivot
+    - scale_pivot
+    - space
+    properties:
+      object_name:
+        type: string
+      rotate_pivot:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      scale_pivot:
+        type: array
+        items:
+          type: number
+        minItems: 3
+        maxItems: 3
+      space:
+        type: string
+        enum:
+        - world
+        - object
+- name: separate_mesh
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Separate mesh data in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+    required:
+    - object_name
+- name: triangulate
+  execution: sync
+  affinity: main
+  group: modeling
+  description: Triangulate triangulate in the current Maya scene.
+  input_schema:
+    type: object
+    properties:
+      object_name:
+        type: string
+    required:
+    - object_name
