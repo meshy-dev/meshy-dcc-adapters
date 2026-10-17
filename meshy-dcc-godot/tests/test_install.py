@@ -4,11 +4,11 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from meshy_dcc_core.deployment import validate_install_sop_report
 
 from meshy_dcc_godot import install as install_module
 from meshy_dcc_godot import install_verify
 from meshy_dcc_godot.install import PLUGIN_PATH, install_addon, main
-from meshy_dcc_godot.install_contract import INSTALL_SOP_SCHEMA_VERSION
 
 
 def test_standard_install_dry_run_returns_plan_without_writing(
@@ -39,9 +39,10 @@ def test_standard_install_dry_run_returns_plan_without_writing(
 
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    # The SOP schema version tracks the installed meshy-dcc-core, so assert
-    # against the same constant the adapter resolves instead of a literal.
-    assert payload["schema_version"] == INSTALL_SOP_SCHEMA_VERSION
+    # Core's schema pins the report's schema_version to 1; its exported
+    # INSTALL_SOP_SCHEMA_VERSION (2) is the schema document's revision.
+    validate_install_sop_report(payload)
+    assert payload["schema_version"] == 1
     assert payload["dcc_type"] == "godot"
     assert payload["status"] == "planned"
     assert payload["verify"]["directly_usable"] is False

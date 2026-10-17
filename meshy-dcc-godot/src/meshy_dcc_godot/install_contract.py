@@ -18,6 +18,11 @@ from meshy_dcc_core.deployment.install_sop import (
 
 from .__version__ import __version__
 
+# The report's own ``schema_version``: the Install SOP schema pins it to 1
+# (``const``). Core's ``INSTALL_SOP_SCHEMA_VERSION`` is the revision of the
+# schema document (``-v2``), not this field.
+REPORT_SCHEMA_VERSION = 1
+
 
 def core_version() -> str:
     try:
@@ -36,7 +41,7 @@ def version_tuple(value: str) -> tuple[int, int, int] | None:
 def plan_result(project: Path) -> dict[str, Any]:
     destination = project.resolve() / "addons" / "meshy_dcc_godot"
     return {
-        "schema_version": INSTALL_SOP_SCHEMA_VERSION,
+        "schema_version": REPORT_SCHEMA_VERSION,
         "status": "planned",
         "dcc_type": "godot",
         "adapter_version": __version__,
@@ -68,6 +73,7 @@ __all__ = [
     "INSTALL_EXIT_REQUIRES_RESTART",
     "INSTALL_EXIT_VERIFY",
     "INSTALL_SOP_SCHEMA_VERSION",
+    "REPORT_SCHEMA_VERSION",
     "core_version",
     "plan_result",
     "version_tuple",
