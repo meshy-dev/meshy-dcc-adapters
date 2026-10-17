@@ -14,11 +14,18 @@ web-app results into a host and live elsewhere.
 | [`meshy-dcc-unity/`](meshy-dcc-unity/) | Unity Editor (UPM package + Python sidecar) | 0.1.0 |
 | [`meshy-dcc-godot/`](meshy-dcc-godot/) | Godot (editor plugin + Python sidecar) | 0.1.0 |
 | [`meshy-dcc-unreal/`](meshy-dcc-unreal/) | Unreal Editor (plugin, Unreal's Python) | 0.1.0 |
+| [`meshy-dcc-openscad/`](meshy-dcc-openscad/) | OpenSCAD (per-project sidecar driving its command line) | 0.1.0 |
+| [`meshy-dcc-houdini/`](meshy-dcc-houdini/) | Houdini (package file, Houdini's Python), experimental | 0.1.0 |
+| [`meshy-dcc-substance3d-painter/`](meshy-dcc-substance3d-painter/) | Substance 3D Painter (startup plugin), experimental | 0.1.0 |
+| [`meshy-dcc-c4d/`](meshy-dcc-c4d/) | Cinema 4D (headless c4dpy on project files), experimental | 0.1.0 |
+| [`meshy-dcc-roblox/`](meshy-dcc-roblox/) | Roblox Studio (Studio plugin + Python sidecar), experimental | 0.1.0 |
+| [`meshy-dcc-3dsmax/`](meshy-dcc-3dsmax/) | 3ds Max, Windows only (startup script, 3ds Max's Python), experimental | 0.1.0 |
 
 Each directory is a self-contained project with its own README, CHANGELOG,
 tests, packaging and version line, built against the `meshy_dcc_core` wheel
-from meshy-dcc-core. Each began as a fork of an MIT-licensed project and has
-fully diverged from it; its `LICENSE` and `NOTICE` carry the attribution.
+from meshy-dcc-core. Most began as a fork of an MIT-licensed project and have fully diverged from
+it; their `LICENSE` and `NOTICE` carry the attribution. Experimental adapters
+were built and tested without the host itself.
 
 ## Releases
 
