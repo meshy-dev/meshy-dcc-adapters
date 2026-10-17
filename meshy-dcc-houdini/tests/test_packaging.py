@@ -40,7 +40,7 @@ def test_houdini_files_hook_every_candidate_python_and_ship_the_shelf(tmp_path):
         ("meshy_dcc_core-0.2.0-cp38-abi3-win_amd64.whl", "windows-x64", None),
         ("meshy_dcc_core-0.2.0-cp38-abi3-win_amd64.whl", "macos-arm64", "not built for"),
         ("meshy_dcc_core-0.3.0-cp38-abi3-macosx_11_0_arm64.whl", "macos-arm64", "need meshy_dcc_core"),
-        ("dcc_mcp_core-0.20.36-cp38-abi3-macosx_11_0_arm64.whl", "macos-arm64", "not a meshy_dcc_core"),
+        ("other_core-0.2.0-cp38-abi3-macosx_11_0_arm64.whl", "macos-arm64", "not a meshy_dcc_core"),
     ],
 )
 def test_core_wheel_must_match_the_range_and_platform(name, platform, error):
