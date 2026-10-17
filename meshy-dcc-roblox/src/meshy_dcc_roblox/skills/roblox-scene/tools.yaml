@@ -1,0 +1,131 @@
+tools:
+  - name: session
+    description: Read the place this instance serves (name, PlaceId, GameId), Studio and plugin versions, whether Luau is allowed and whether Studio has undo history. dirty is always null; Studio cannot report unsaved changes. Read-only.
+    input_schema: {type: object, properties: {}, additionalProperties: false}
+    output_schema: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 30
+    source_file: scripts/dispatch.py
+  - name: get_scene_tree
+    description: List instances below a root (default Workspace) to a depth, each with path, name, class, child count and, for parts and models, position and size in studs. Read-only.
+    input_schema:
+      type: object
+      properties:
+        root: {type: string, maxLength: 500, description: "Path such as Workspace or ReplicatedStorage/Assets."}
+        depth: {type: integer, minimum: 1, maximum: 10, default: 3}
+        max_nodes: {type: integer, minimum: 1, maximum: 5000, default: 500}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 60
+    source_file: scripts/dispatch.py
+  - name: inspect_instance
+    description: Read one instance by path - class, common properties (position, orientation, size, color, material, anchored, transparency...), pivot and attributes. Read-only.
+    input_schema:
+      type: object
+      required: [path]
+      properties:
+        path: {type: string, maxLength: 500}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 30
+    source_file: scripts/dispatch.py
+  - name: create_instance
+    description: Create one instance (Part, Model, Folder, PointLight...) under a parent (default Workspace) with initial properties, as one undo step, and read it back. The name must be free among its siblings.
+    input_schema:
+      type: object
+      required: [class_name]
+      properties:
+        class_name: {type: string, maxLength: 100}
+        parent: {type: string, maxLength: 500, default: Workspace}
+        name: {type: string, minLength: 1, maxLength: 100}
+        properties: {type: object, description: "Property name to JSON value: [x,y,z] for Vector3, [r,g,b] or #rrggbb for Color3, item name for Enum."}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: false
+    destructive: false
+    idempotent: false
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 30
+    source_file: scripts/dispatch.py
+  - name: set_properties
+    description: Set existing properties of one instance (Color, Material, Size, Anchored, Transparency...) as one undo step and read it back. Name and Parent are not set this way; services cannot be changed.
+    input_schema:
+      type: object
+      required: [path, properties]
+      properties:
+        path: {type: string, maxLength: 500}
+        properties: {type: object}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: false
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 30
+    source_file: scripts/dispatch.py
+  - name: move_instance
+    description: Move a part or model so its pivot is at position (studs), optionally with rotation in degrees (X, Y, Z orientation); without rotation the current rotation is kept. One undo step; returns the new pivot.
+    input_schema:
+      type: object
+      required: [path, position]
+      properties:
+        path: {type: string, maxLength: 500}
+        position: {type: array, items: {type: number}, minItems: 3, maxItems: 3}
+        rotation: {type: array, items: {type: number}, minItems: 3, maxItems: 3}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: false
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 30
+    source_file: scripts/dispatch.py
+  - name: delete_instance
+    description: Remove one instance and its descendants from the place as one undo step (Ctrl+Z in Studio restores it). Services, Terrain and the camera are refused.
+    input_schema:
+      type: object
+      required: [path]
+      properties:
+        path: {type: string, maxLength: 500}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: false
+    destructive: true
+    idempotent: false
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 30
+    source_file: scripts/dispatch.py
+  - name: execute_luau
+    description: Run Luau in the Studio edit DataModel at plugin level and return its printed output and return values. Refused unless the user turned on Allow Luau in Studio's Meshy DCC toolbar. One undo step; an error rolls its changes back. Prefer the typed tools.
+    input_schema:
+      type: object
+      required: [code]
+      properties:
+        code: {type: string, minLength: 1, maxLength: 100000}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: false
+    destructive: true
+    idempotent: false
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 120
+    source_file: scripts/dispatch.py

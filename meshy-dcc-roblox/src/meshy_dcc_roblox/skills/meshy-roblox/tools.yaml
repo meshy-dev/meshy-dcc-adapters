@@ -1,0 +1,40 @@
+tools:
+  - name: import_model
+    description: Build a Meshy GLB from an absolute path into the open place as a Model of MeshParts with a PBR SurfaceAppearance, as one undo step, and read it back. Session-only unless publish is true, which uploads the meshes and images to the user's Roblox inventory - only with the user's consent. Never repeat on an unknown outcome.
+    input_schema:
+      type: object
+      required: [path]
+      properties:
+        path: {type: string, minLength: 5, maxLength: 1000, pattern: "\\.[gG][lL][bB]$", description: "Absolute path to a .glb file."}
+        name: {type: string, minLength: 1, maxLength: 100, description: "Model name, free among the parent's children; default the file name."}
+        parent: {type: string, maxLength: 500, default: Workspace}
+        position: {type: array, items: {type: number}, minItems: 3, maxItems: 3, description: "Where the GLB origin goes, in studs."}
+        scale: {type: number, exclusiveMinimum: 0, maximum: 10000, default: 3.5714285714285716, description: "Studs per glTF metre."}
+        flip_v: {type: boolean, default: false, description: "Flip texture V if the texture shows upside down."}
+        max_texture_size: {type: integer, minimum: 16, maximum: 1024, default: 1024}
+        publish: {type: boolean, default: false, description: "Upload meshes and images to the user's Roblox inventory so the model saves with the place."}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: false
+    destructive: false
+    idempotent: false
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 300
+    source_file: scripts/import_model.py
+  - name: inspect_model
+    description: Read back a Model or MeshPart by path - each MeshPart's vertex and triangle counts, size, position, mesh source (Object for session-only, Uri for uploaded) and bound texture maps, plus the model bounds and pivot. Read-only.
+    input_schema:
+      type: object
+      required: [path]
+      properties:
+        path: {type: string, maxLength: 500}
+      additionalProperties: false
+    output_schema: {type: object}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: main
+    timeout_hint_secs: 60
+    source_file: scripts/dispatch.py
