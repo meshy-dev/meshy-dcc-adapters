@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meshy-dcc-material-maker"
+version = "0.1.0"
+description = "Typed Material Maker project inspection and export for Meshy DCC"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
+keywords = ["material-maker", "procedural-materials", "ptex", "mcp", "dcc", "automation"]
+dependencies = ["meshy-dcc-core>=0.2.0,<0.3.0"]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "jsonschema>=4.17,<5",
+    "pytest>=8",
+    "pyyaml>=6,<7",
+    "ruff>=0.8",
+    "tomli>=2,<3; python_version < '3.11'",
+    "twine>=7.0; python_version >= '3.10'",
+]
+
+[project.urls]
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-material-maker"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
+
+[project.scripts]
+meshy-dcc-material-maker = "meshy_dcc_material_maker.cli:main"
+meshy-dcc-material-maker-doctor = "meshy_dcc_material_maker.install:main"
+meshy-dcc-material-maker-install = "meshy_dcc_material_maker.install:main"
+
+[project.entry-points."meshy_dcc.adapters"]
+material-maker = "meshy_dcc_material_maker:MaterialMakerMcpServer"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meshy_dcc_material_maker"]
+artifacts = ["src/meshy_dcc_material_maker/skills/**"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/meshy_dcc_material_maker", "tests", "README.md", "install.md", "LICENSE", "NOTICE", "CHANGELOG.md", "tools"]
+exclude = [
+    ".cache/**",
+    ".tmp/**",
+    ".venv/**",
+    "dist/**",
+    "docs/**/*.png",
+    "docs/**/*.svg",
+    "docs/**/*.webp",
+    "release/**",
+    "work/**",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
