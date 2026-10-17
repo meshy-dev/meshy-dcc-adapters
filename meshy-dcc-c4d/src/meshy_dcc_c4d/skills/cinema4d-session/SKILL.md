@@ -18,9 +18,9 @@ metadata:
 
 # Cinema 4D session
 
-Start with `get_status`, then create or inspect a `.c4d` document. Every path must be
-inside `MESHY_DCC_C4D_ALLOWED_ROOTS`; set `MESHY_DCC_C4D_C4DPY` when automatic
-discovery cannot locate the licensed executable. Document writes use an atomic staged
-file and are re-opened after mutation. Use `cinema4d-modeling` for object, interchange,
-and rendering operations.
-
+Start with `get_status`: it runs the licensed `c4dpy` once and reports the Cinema 4D,
+API and Python versions. Then create or inspect a `.c4d` document. Every path must be
+inside the folder the instance was started for (`MESHY_DCC_C4D_ALLOWED_ROOTS`). Each
+call starts `c4dpy` and works on the file on disk, not on a scene open in the Cinema 4D
+GUI. Document writes use an atomic staged file and are re-opened after mutation. Use
+`cinema4d-modeling` for object, interchange, and rendering operations.

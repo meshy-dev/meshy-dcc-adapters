@@ -20,5 +20,6 @@ metadata:
 
 Inspect the document before changing it. Use unique object names, save mutations to the
 same `.c4d` document, and inspect or validate the durable result. Paths are restricted to
-`MESHY_DCC_C4D_ALLOWED_ROOTS`; set `MESHY_DCC_C4D_C4DPY` when discovery cannot
-locate the licensed `c4dpy` executable.
+the folder the instance was started for (`MESHY_DCC_C4D_ALLOWED_ROOTS`). A document that
+is also open in the Cinema 4D GUI does not see these changes until it is reopened there,
+and saving it from the GUI overwrites them.
