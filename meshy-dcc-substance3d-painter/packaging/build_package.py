@@ -56,9 +56,11 @@ PLATFORMS = {
         "x86_64-pc-windows-msvc",
     ),
 }
-# Trimmed from the installer's runtime: tests, GUI toolkits, headers and launchers it never loads.
+# Trimmed from the installer's runtime: tests, GUI toolkits, headers, launchers and the bundled
+# pip and setuptools, none of which it loads.
 EXCLUDED = shutil.ignore_patterns(
     "__pycache__",
+    "site-packages",
     "test",
     "tests",
     "idlelib",
