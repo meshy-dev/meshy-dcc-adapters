@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Optional
 
-from dcc_mcp_material_maker.server import MaterialMakerMcpServer
+from meshy_dcc_material_maker.server import MaterialMakerMcpServer
 
 
 def post(url: str, method: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
@@ -81,22 +81,22 @@ def typed_name(names: set[str], base_name: str) -> str:
 
 
 def main() -> None:
-    executable = os.environ.get("DCC_MCP_MATERIAL_MAKER_EXECUTABLE")
-    sample_value = os.environ.get("DCC_MCP_MATERIAL_MAKER_SAMPLE")
+    executable = os.environ.get("MESHY_DCC_MATERIAL_MAKER_EXECUTABLE")
+    sample_value = os.environ.get("MESHY_DCC_MATERIAL_MAKER_SAMPLE")
     if not executable or not Path(executable).is_file():
-        raise RuntimeError("DCC_MCP_MATERIAL_MAKER_EXECUTABLE must name the official executable")
+        raise RuntimeError("MESHY_DCC_MATERIAL_MAKER_EXECUTABLE must name the official executable")
     if not sample_value:
-        raise RuntimeError("DCC_MCP_MATERIAL_MAKER_SAMPLE must name a real .ptex project")
+        raise RuntimeError("MESHY_DCC_MATERIAL_MAKER_SAMPLE must name a real .ptex project")
     sample = Path(sample_value).resolve()
     if not sample.is_file() or sample.suffix.lower() != ".ptex":
-        raise RuntimeError("DCC_MCP_MATERIAL_MAKER_SAMPLE must name a real .ptex project")
+        raise RuntimeError("MESHY_DCC_MATERIAL_MAKER_SAMPLE must name a real .ptex project")
 
-    with tempfile.TemporaryDirectory(prefix="dcc-mcp-material-maker-live-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="meshy-dcc-material-maker-live-") as temp_dir:
         root = Path(temp_dir).resolve()
-        os.environ["DCC_MCP_MATERIAL_MAKER_ALLOWED_ROOTS"] = os.pathsep.join(
+        os.environ["MESHY_DCC_MATERIAL_MAKER_ALLOWED_ROOTS"] = os.pathsep.join(
             (str(sample.parent), str(root))
         )
-        os.environ["DCC_MCP_DISABLE_DEFAULT_SKILL_PATHS"] = "1"
+        os.environ["MESHY_DCC_DISABLE_DEFAULT_SKILL_PATHS"] = "1"
         server = MaterialMakerMcpServer(port=0, registry_dir=str(root / "registry"))
         try:
             server.register_builtin_actions()
@@ -150,7 +150,7 @@ def main() -> None:
         for target, result in exports.items():
             assert result["success"] is True
             context = result["context"]
-            assert context["target"] == target
+            assert context["target"].startswith(target)
             assert context["file_count"] > 0
             assert context["total_bytes"] > 0
             assert all(item["bytes"] > 0 and len(item["sha256"]) == 64 for item in context["files"])

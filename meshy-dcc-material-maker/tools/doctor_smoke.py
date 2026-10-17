@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from dcc_mcp_core.deployment import load_install_sop_schema
+from meshy_dcc_core.deployment import load_install_sop_schema
 from jsonschema import Draft202012Validator
 
 SCHEMA = load_install_sop_schema()
@@ -17,10 +17,10 @@ SCHEMA = load_install_sop_schema()
 
 def _check(args: list[str], expected_exit: int) -> None:
     env = os.environ.copy()
-    env.pop("DCC_MCP_MATERIAL_MAKER_EXECUTABLE", None)
-    env.pop("DCC_MCP_MATERIAL_MAKER_VERSION", None)
+    env.pop("MESHY_DCC_MATERIAL_MAKER_EXECUTABLE", None)
+    env.pop("MESHY_DCC_MATERIAL_MAKER_VERSION", None)
     completed = subprocess.run(
-        [sys.executable, "-m", "dcc_mcp_material_maker.install", *args],
+        [sys.executable, "-m", "meshy_dcc_material_maker.install", *args],
         capture_output=True,
         check=False,
         encoding="utf-8",
@@ -40,7 +40,7 @@ def _check(args: list[str], expected_exit: int) -> None:
 
 
 def main() -> None:
-    with tempfile.TemporaryDirectory(prefix="dcc-mcp-material-maker-doctor-") as directory:
+    with tempfile.TemporaryDirectory(prefix="meshy-dcc-material-maker-doctor-") as directory:
         root = Path(directory)
         _check(
             ["doctor", "--json", "--executable", str(root / "missing")],

@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from dcc_mcp_core import validate_skill
+from meshy_dcc_core import validate_skill
 
-skills_root = Path(__file__).parents[1] / "src" / "dcc_mcp_material_maker" / "skills"
+skills_root = Path(__file__).parents[1] / "src" / "meshy_dcc_material_maker" / "skills"
 reports = [
     validate_skill(str(path))
     for path in skills_root.iterdir()

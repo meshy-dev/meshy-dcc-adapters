@@ -8,16 +8,16 @@ import sys
 from pathlib import Path
 
 import pytest
-from dcc_mcp_core.deployment import install_sop as core_install_sop
-from dcc_mcp_core.deployment import load_install_sop_schema
+from meshy_dcc_core.deployment import install_sop as core_install_sop
+from meshy_dcc_core.deployment import load_install_sop_schema
 from jsonschema import Draft202012Validator
 
-from dcc_mcp_material_maker import install, server
+from meshy_dcc_material_maker import install, server
 
 SCHEMA_PATH = (
     Path(core_install_sop.__file__).resolve().parent.parent
     / "schemas"
-    / "adapter-install-sop-v1.schema.json"
+    / "adapter-install-sop-v2.schema.json"
 )
 
 
@@ -590,11 +590,11 @@ def test_uninstall_rejects_unowned_empty_directory_without_removing_anything(
 
 def test_schema_matches_published_core_contract():
     schema = _schema()
-    assert schema["$id"] == "https://dcc-mcp.github.io/schemas/adapter-install-sop-v1.schema.json"
+    assert schema["$id"] == "https://www.meshy.ai/meshy-dcc/schemas/adapter-install-sop-v2.schema.json"
     assert install._sha256_file(SCHEMA_PATH) == (
-        "3ca25788439917b4d4c0617230a762f9797756b5b54f45c8c4149f975b90f904"
+        "71df77f27399d8017d43393f0376c154a8b9bd4700f38098ed66b91a33eb9275"
     )
-    assert SCHEMA_PATH.stat().st_size == 4261
+    assert SCHEMA_PATH.stat().st_size == 4906
 
 
 def test_install_sop_schema_comes_only_from_published_core():
@@ -602,29 +602,29 @@ def test_install_sop_schema_comes_only_from_published_core():
     published_path = (
         Path(core_install_sop.__file__).resolve().parent.parent
         / "schemas"
-        / "adapter-install-sop-v1.schema.json"
+        / "adapter-install-sop-v2.schema.json"
     )
     raw = published_path.read_bytes()
 
-    assert len(raw) == 4261
+    assert len(raw) == 4906
     assert hashlib.sha256(raw).hexdigest() == (
-        "3ca25788439917b4d4c0617230a762f9797756b5b54f45c8c4149f975b90f904"
+        "71df77f27399d8017d43393f0376c154a8b9bd4700f38098ed66b91a33eb9275"
     )
     assert load_install_sop_schema() == json.loads(raw)
     assert not (
-        root / "src" / "dcc_mcp_material_maker" / "schemas" / "adapter-install-sop-v1.schema.json"
+        root / "src" / "meshy_dcc_material_maker" / "schemas" / "adapter-install-sop-v2.schema.json"
     ).exists()
-    assert "src/dcc_mcp_material_maker/schemas/**" not in (root / "pyproject.toml").read_text(
+    assert "src/meshy_dcc_material_maker/schemas/**" not in (root / "pyproject.toml").read_text(
         encoding="utf-8"
     )
 
 
-def test_status_skill_requires_a_material_maker_specific_probe_project():
+def test_status_tool_proves_readiness_only_with_a_probe_project():
     tools_yaml = (
         Path(install.__file__).resolve().parent
         / "skills"
         / "material-maker-materials"
         / "tools.yaml"
     ).read_text(encoding="utf-8")
-    assert "required: [probe_project]" in tools_yaml
+    assert "probe_project: {type: string" in tools_yaml
     assert "Run a no-input native CLI readiness probe" not in tools_yaml

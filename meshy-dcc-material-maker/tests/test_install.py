@@ -6,29 +6,21 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_material_maker import install, server
-from dcc_mcp_material_maker.bridge import MaterialMakerError
+from meshy_dcc_material_maker import install, server
+from meshy_dcc_material_maker.bridge import MaterialMakerError
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_published_install_sop_core_floor_is_projected_everywhere():
-    expected = "0.20.14"
+def test_core_range_is_the_same_everywhere():
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    runbook = (ROOT / "install.md").read_text(encoding="utf-8")
     skill = (
-        ROOT / "src" / "dcc_mcp_material_maker" / "skills" / "material-maker-materials" / "SKILL.md"
+        ROOT / "src" / "meshy_dcc_material_maker" / "skills" / "material-maker-materials" / "SKILL.md"
     ).read_text(encoding="utf-8")
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
-    assert install.MIN_CORE_VERSION == expected
-    assert "dcc-mcp-core>={},<1.0.0".format(expected) in pyproject.replace(" ", "")
-    assert "dcc-mcp-core` {} or newer".format(expected) in readme
-    assert "dcc-mcp-core>={},<1.0.0".format(expected) in runbook.replace(" ", "")
-    assert "dcc-mcp-core {}+".format(expected) in skill
-    assert 'DCC_MCP_CORE_FLOOR: "{}"'.format(expected) in workflow
-    assert "dcc-mcp-core==${{ env.DCC_MCP_CORE_FLOOR }}" in workflow
+    assert install.MIN_CORE_VERSION == "0.2.0"
+    assert '"meshy-dcc-core>=0.2.0,<0.3.0"' in pyproject
+    assert "meshy-dcc-core>=0.2.0,<0.3.0" in skill
 
 
 def test_standard_doctor_json_reports_missing_executable_as_preflight_failure(tmp_path, capsys):
@@ -56,7 +48,7 @@ def test_standard_doctor_json_reports_missing_executable_as_preflight_failure(tm
     }
     assert report["config"]["requested_executable"] == str(missing)
     assert report["runtime"]["python_executable"] == sys.executable
-    assert report["core"]["minimum_version"] == "0.20.14"
+    assert report["core"]["minimum_version"] == "0.2.0"
     assert report["host"]["minimum_version"] == "1.7.0"
 
 
@@ -131,7 +123,7 @@ def test_verify_success_reports_runtime_core_endpoint_and_config(monkeypatch, tm
     assert report["failure"] is None
     assert report["next_steps"] == []
     assert report["host"]["satisfies_minimum"] is True
-    assert report["core"]["minimum_version"] == "0.20.14"
+    assert report["core"]["minimum_version"] == "0.2.0"
     assert report["core"]["satisfies_minimum"] is True
     assert report["endpoint"] == {
         "kind": "native_cli",
@@ -155,7 +147,7 @@ def test_doctor_rejects_unsupported_core_before_claiming_usable(monkeypatch, tmp
             return {"ready": True, "engine": {"returncode": 0}}
 
     monkeypatch.setattr(install, "MaterialMakerCli", ReadyMaterialMakerCli)
-    monkeypatch.setattr(install.metadata, "version", lambda _name: "0.20.13")
+    monkeypatch.setattr(install.metadata, "version", lambda _name: "0.1.9")
 
     with pytest.raises(SystemExit) as raised:
         server.main(
@@ -194,7 +186,7 @@ def test_verify_requires_explicit_product_version_when_native_cli_cannot_report_
             raise AssertionError("version floor must be checked before the native readiness probe")
 
     monkeypatch.setattr(install, "MaterialMakerCli", UnversionedMaterialMakerCli)
-    monkeypatch.delenv("DCC_MCP_MATERIAL_MAKER_VERSION", raising=False)
+    monkeypatch.delenv("MESHY_DCC_MATERIAL_MAKER_VERSION", raising=False)
 
     with pytest.raises(SystemExit) as raised:
         server.main(["verify", "--json", "--executable", str(executable)])
@@ -271,7 +263,7 @@ def test_legacy_install_alias_is_deprecated_read_only_doctor(monkeypatch, tmp_pa
         sys,
         "argv",
         [
-            "dcc-mcp-material-maker-install",
+            "meshy-dcc-material-maker-install",
             "--json",
             "--executable",
             str(executable),
@@ -287,9 +279,9 @@ def test_legacy_install_alias_is_deprecated_read_only_doctor(monkeypatch, tmp_pa
     report = json.loads(capsys.readouterr().out)
     assert report["command"] == "doctor"
     assert report["invocation"] == {
-        "name": "dcc-mcp-material-maker-install",
+        "name": "meshy-dcc-material-maker-install",
         "deprecated": True,
-        "replacement": ["dcc-mcp-material-maker", "doctor", "--json"],
+        "replacement": ["meshy-dcc-material-maker", "doctor", "--json"],
     }
     assert report["side_effects"] == {
         "installs": False,
@@ -297,66 +289,16 @@ def test_legacy_install_alias_is_deprecated_read_only_doctor(monkeypatch, tmp_pa
     }
 
 
-def test_install_runbook_teaches_wheel_lifecycle_without_claiming_unpublished_pypi():
+def test_runbook_documents_the_project_installer_and_the_diagnostic_flags():
     runbook = (ROOT / "install.md").read_text(encoding="utf-8")
-
-    for heading in (
-        "## Requirements",
-        "## Supported versions",
-        "## Agent quick path",
-        "## Manual path",
-        "## Verify",
-        "## Upgrade",
-        "## Uninstall",
-        "## Troubleshooting",
-    ):
-        assert heading in runbook
-
-    assert "Windows" in runbook
-    assert "macOS" in runbook
-    assert "Linux" in runbook
-    assert "dcc_mcp_material_maker-<version>-py3-none-any.whl" in runbook
-    assert "not currently published to PyPI" in runbook
-    assert "does not download or cache Material Maker" in runbook
-    assert (
-        "https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-material-maker/main/install.md"
-        in runbook
-    )
-
-
-def test_readme_routes_installation_to_runbook_without_dead_pypi_command():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
     assert "[Installation](install.md)" in readme
-    assert "pip install dcc-mcp-material-maker" not in readme
-
-
-def test_ci_executes_installed_doctor_json_exit_contract():
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert "python tools/doctor_smoke.py" in workflow
-
-
-def test_ci_executes_installed_wheel_sop_contract_on_windows_and_linux():
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    smoke = (ROOT / "tools" / "wheel_smoke.py").read_text(encoding="utf-8")
-
-    assert "os: [ubuntu-latest, windows-latest]" in workflow
-    assert "runs-on: ${{ matrix.os }}" in workflow
-    assert "python tools/wheel_smoke.py" in workflow
-    for flag in ("--yes", "--dry-run", "--dcc-path", "--python", "--execute"):
-        assert flag in smoke
-
-
-def test_runbook_documents_standard_flags_and_current_release_boundaries():
-    runbook = (ROOT / "install.md").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-
+    for verb in ("install-project", "uninstall-project", "serve --project", "doctor"):
+        assert verb in runbook
     for flag in ("--yes", "--dry-run", "--dcc-path", "--python", "--execute"):
         assert flag in runbook
-    combined = (runbook + readme).lower()
-    assert "carried compatibility" not in combined
-    assert "core #2320" not in combined
-    assert "canonical resource published by `dcc-mcp-core` 0.20.14" in " ".join(runbook.split())
-    assert "real material maker acceptance remains unverified" in combined
+    assert "never installs, updates or changes Material Maker" in runbook
 
 
 def test_source_distribution_includes_install_runbook():

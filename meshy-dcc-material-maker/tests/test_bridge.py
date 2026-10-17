@@ -14,8 +14,8 @@ from typing import Optional
 
 import pytest
 
-from dcc_mcp_material_maker import bridge
-from dcc_mcp_material_maker.bridge import (
+from meshy_dcc_material_maker import bridge
+from meshy_dcc_material_maker.bridge import (
     MaterialMakerCli,
     MaterialMakerError,
     MaterialMakerTimeoutError,

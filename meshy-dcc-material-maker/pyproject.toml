@@ -3,15 +3,15 @@ requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dcc-mcp-material-maker"
-version = "0.4.1"
-description = "Typed Material Maker project inspection and export for DCC-MCP"
+name = "meshy-dcc-material-maker"
+version = "0.1.0"
+description = "Typed Material Maker project inspection and export for Meshy DCC"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "loonghao", email = "hal.long@outlook.com" }]
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 keywords = ["material-maker", "procedural-materials", "ptex", "mcp", "dcc", "automation"]
-dependencies = ["dcc-mcp-core>=0.20.14,<1.0.0"]
+dependencies = ["meshy-dcc-core>=0.2.0,<0.3.0"]
 
 [project.optional-dependencies]
 dev = [
@@ -25,24 +25,24 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/dcc-mcp/dcc-mcp-material-maker"
-Repository = "https://github.com/dcc-mcp/dcc-mcp-material-maker"
-Issues = "https://github.com/dcc-mcp/dcc-mcp-material-maker/issues"
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-material-maker"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
 
 [project.scripts]
-dcc-mcp-material-maker = "dcc_mcp_material_maker.server:main"
-dcc-mcp-material-maker-doctor = "dcc_mcp_material_maker.install:main"
-dcc-mcp-material-maker-install = "dcc_mcp_material_maker.install:main"
+meshy-dcc-material-maker = "meshy_dcc_material_maker.cli:main"
+meshy-dcc-material-maker-doctor = "meshy_dcc_material_maker.install:main"
+meshy-dcc-material-maker-install = "meshy_dcc_material_maker.install:main"
 
-[project.entry-points."dcc_mcp.adapters"]
-material_maker = "dcc_mcp_material_maker:MaterialMakerMcpServer"
+[project.entry-points."meshy_dcc.adapters"]
+material-maker = "meshy_dcc_material_maker:MaterialMakerMcpServer"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dcc_mcp_material_maker"]
-artifacts = ["src/dcc_mcp_material_maker/skills/**"]
+packages = ["src/meshy_dcc_material_maker"]
+artifacts = ["src/meshy_dcc_material_maker/skills/**"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/dcc_mcp_material_maker", "docs", "tests", "README.md", "install.md", "LICENSE", "CHANGELOG.md", "tools"]
+include = ["src/meshy_dcc_material_maker", "tests", "README.md", "install.md", "LICENSE", "NOTICE", "CHANGELOG.md", "tools"]
 exclude = [
     ".cache/**",
     ".tmp/**",

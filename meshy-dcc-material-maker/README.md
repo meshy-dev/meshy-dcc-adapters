@@ -1,97 +1,73 @@
-# dcc-mcp-material-maker
+# meshy-dcc-material-maker
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/dcc-mcp-material-maker-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/images/dcc-mcp-material-maker.svg">
-    <img src="docs/images/dcc-mcp-material-maker.svg" alt="DCC-MCP · MATERIAL MAKER" width="600">
-  </picture>
-</p>
+The Meshy DCC Core adapter for [Material Maker](https://www.materialmaker.org),
+the open-source procedural material editor. An agent builds and edits
+Material Maker graphs (`.ptex`) in a project folder and renders them, through
+Material Maker's own command-line exporter, into PBR texture sets and engine
+materials for Blender, Godot, Unity, Unreal or glTF: tileable materials for
+Meshy models, or normal and height maps derived from a Meshy texture.
 
-Typed, workspace-bounded Material Maker automation for DCC-MCP.
+Targets Material Maker 1.7 and later. Verified with Material Maker 1.7 on
+macOS arm64: install, `meshy-dcc start-instance`, graph creation and editing,
+export with readback, save and reopen, and safe stop. The Windows x64 package
+is built the same way and has not run on a real host yet.
 
-![Material Maker and game-material workflow](docs/images/material-maker-showcase.webp)
+## How it works
 
-_Illustrative workflow generated with OpenAI ImageGen from the retained source in `docs/images/sources`; it is not a Material Maker screenshot or host-validation artifact._
+Material Maker has no plug-in or scripting interface, so the adapter is a
+standalone sidecar with its own Python. Each instance serves one project
+folder:
 
-The adapter inspects and validates Material Maker `.ptex` graphs without launching
-the editor, then uses Material Maker's documented command-line exporter for
-Blender, Godot, Unity, or Unreal handoff. It is a standalone service: there is no
-in-process plug-in, loopback bridge, arbitrary GDScript, shader, or shell input.
+- graphs are JSON files, which the adapter reads and edits itself, checking
+  node types, parameters and ports against the node library of the Material
+  Maker it was set up with;
+- an export runs Material Maker's documented
+  `--export-material --target <profile> --output-dir <dir>` on the saved file.
+  Material Maker briefly opens a 1x1 window and takes focus while it renders
+  (`--headless` crashes Material Maker 1.7 on macOS, so it is not used); the
+  textures come out at 2048x2048.
 
-## Capabilities
+No tool reads or writes outside the project folder. Graphs that would reach
+the camera (`webcam`), download nodes from materialmaker.org (`website:`) or
+write outside the export folder are refused.
 
-| Typed tool | Contract |
-| --- | --- |
-| `get_status` | Load a trusted `.ptex` and require bounded transient export artifacts from the native executable. |
-| `inspect_project` | Report file hash, graph/node/connection counts, material outputs, and node types. |
-| `validate_project` | Check graph structure, unique node names, endpoints, ports, and configured limits. |
-| `export_material` | Export one valid `.ptex` project into a new staging-backed output directory. |
+## With Meshy DCC
 
-Interactive graph authoring is intentionally outside this adapter's typed
-contract. Use Material Maker itself when visible node editing is required.
-
-## Requirements
-
-- Python 3.9 or newer
-- `dcc-mcp-core` 0.20.14 or newer
-- Material Maker 1.7.0 or newer for native export
-
-Follow [Installation](install.md) for the supported wheel lifecycle, three-platform
-configuration, JSON verification, upgrade, uninstall, and troubleshooting contract.
-The adapter wheel is not currently published to PyPI; do not treat the package name
-as an available public pip install until the release artifact and Core catalog entry exist.
-
-After installing a trusted, digest-verified wheel, point the adapter at the official
-Material Maker executable, report its canonical product release, and choose a
-trusted `.ptex` readiness project:
+`packaging/build_package.py` builds the package: a relocatable CPython 3.11
+with `meshy_dcc_core` and this adapter, plus `bin/meshy-dcc-material-maker-sidecar`.
 
 ```bash
-export DCC_MCP_MATERIAL_MAKER_EXECUTABLE=/opt/material-maker/material_maker
-export DCC_MCP_MATERIAL_MAKER_VERSION=1.7.0
-export DCC_MCP_MATERIAL_MAKER_PROBE_PROJECT=/workspace/materials/readiness.ptex
-export DCC_MCP_MATERIAL_MAKER_ALLOWED_ROOTS=/workspace/materials
-dcc-mcp-material-maker install --json --dry-run --install-root /workspace/dcc-mcp-material-maker --dcc-path /opt/material-maker/material_maker --python /usr/bin/python3
-# Review the schema-valid plan, then execute its exact next_steps[].command.
-dcc-mcp-material-maker verify --json --install-root /workspace/dcc-mcp-material-maker
-dcc-mcp-material-maker
+meshy-dcc install --dcc-type material-maker --project /path/to/materials --execute
+meshy-dcc start-instance --dcc-type material-maker --project /path/to/materials --wait-ready --yes
+meshy-dcc load-skill material-maker-materials --dcc-type material-maker
 ```
 
-On Windows, use semicolons between multiple allowed roots; on POSIX systems,
-use colons. The adapter also searches common installation locations when the
-executable variable is omitted.
+Install extracts the package and runs its `install-project` verb, which
+writes `.meshy-dcc/` into the folder: the start-instance launch plan, the
+Material Maker executable to use, and a receipt (the directory ignores itself
+for version control). Material Maker is found through `--dcc-path`, or in
+`/Applications` and `~/Applications` on macOS. Material Maker itself is never
+installed or changed.
 
-## Safety model
+The `material-maker-materials` skill has `get_status`, `create_material`,
+`get_graph`, `edit_graph`, `list_node_types`, `inspect_project`,
+`validate_project` and `export_material`. Every edit is saved at once, so an
+instance never has unsaved work and stops on request.
 
-- resolves projects and destinations under explicit allowed roots;
-- accepts UTF-8 JSON `.ptex` projects only;
-- bounds project size, graph traversal, node/connection counts, export files,
-  export bytes, runtime, and captured output;
-- invokes a fixed executable argument vector with `shell=False` semantics;
-- supports Core cancellation and owns the complete native process tree with a
-  Windows Job Object or POSIX process group so timeout/cancel leaves no orphan;
-- exports into a private staging directory, rejects links and empty output,
-  hashes every file, and atomically exposes only a complete new directory;
-- treats process exit zero without a validated `.ptex` and nonempty bounded
-  export artifacts as not ready;
-- never overwrites an existing export directory.
-
-See [Architecture](docs/architecture.md) for trust boundaries and configuration.
+See [Installation](install.md) for the package's own verbs and diagnostics.
 
 ## Development
 
 ```bash
-python -m pip install -e ".[dev]"
-python -m pytest -q
-python -m ruff check src tests tools
-python -m ruff format --check src tests tools
+python -m pip install --no-deps <meshy_dcc_core wheel>
+python -m pip install --no-deps -e .
+python -m pip install pytest pytest-xdist pyyaml "jsonschema>=4.18"
+PYTHONPATH=src:. python -m pytest tests -n 2
 python tools/lint_skills.py
-python -m build
-python -m twine check dist/*
+python packaging/build_package.py --core-wheel <wheel> --platform macos-arm64 --output-dir dist
 ```
 
-The native exporter follows the official Material Maker command-line interface:
-<https://rodzilla.itch.io/material-maker>.
-
-Real Material Maker acceptance remains unverified; automated tests use bounded
-native helpers and synthetic projects rather than the licensed host.
+The tests use synthetic node libraries and a stand-in executable.
+`tests/live_material_maker_smoke.py` drives a real Material Maker
+(`MESHY_DCC_MATERIAL_MAKER_EXECUTABLE`, `MESHY_DCC_MATERIAL_MAKER_SAMPLE`); run
+it by hand with `MESHY_DCC_GATEWAY_PORT` set to a free port.
