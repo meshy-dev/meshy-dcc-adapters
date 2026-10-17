@@ -789,8 +789,12 @@ class MayaMcpServer(DccServerBase):
         Before that, :meth:`_run_version_self_check` logs which adapter/core
         version is actually executing and warns on distribution drift.
         """
+        from meshy_dcc_maya._safe_stop import attach_safe_stop  # noqa: PLC0415
+
         self._run_version_self_check()
-        return super().start()
+        handle = super().start()
+        attach_safe_stop(self)
+        return handle
 
     def _upgrade_to_gateway(self) -> bool:
         """Promote to gateway on the Maya UI thread when possible.

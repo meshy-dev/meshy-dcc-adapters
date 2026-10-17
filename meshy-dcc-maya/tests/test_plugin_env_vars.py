@@ -324,16 +324,16 @@ class TestSidecarUsesCoreRegistryDefaults:
         _, kwargs = sidecar_pkg.start_sidecar.call_args
         assert "registry_dir" not in kwargs
 
-    def test_sidecar_default_disables_in_process_gateway_port(self, plugin_module, monkeypatch):
-        """Gateway election must run in the sidecar binary by default."""
-        monkeypatch.delenv("MESHY_DCC_MAYA_SIDECAR", raising=False)
+    def test_sidecar_mode_moves_gateway_election_out_of_maya(self, plugin_module, monkeypatch):
+        """With the sidecar on, gateway election runs in the sidecar binary."""
+        monkeypatch.setenv("MESHY_DCC_MAYA_SIDECAR", "1")
         monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
         cfg = plugin_module._resolve_config()
         assert cfg.get("gateway_port") == 0
 
-    def test_sidecar_opt_out_preserves_in_process_gateway_port(self, plugin_module, monkeypatch):
-        """Operators can return to the legacy in-process gateway with an explicit opt-out."""
-        monkeypatch.setenv("MESHY_DCC_MAYA_SIDECAR", "0")
+    def test_default_keeps_in_process_gateway_port(self, plugin_module, monkeypatch):
+        """By default there is no sidecar; the in-process server keeps the gateway port."""
+        monkeypatch.delenv("MESHY_DCC_MAYA_SIDECAR", raising=False)
         monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
         cfg = plugin_module._resolve_config()
         assert cfg.get("gateway_port") == 19765

@@ -601,15 +601,17 @@ def _start_impl() -> None:
     try:
         _export_worker_env()
         _enable_faulthandler_for_plugin()
-        # Issue #148 — defuse the modal commandPort security warning that
-        # would otherwise freeze Maya's main thread when a stray client
-        # (or the gateway probe) connects to the legacy commandPort.
-        try:
-            from meshy_dcc_maya._maya_commandport_hygiene import configure_commandport_hygiene  # noqa: PLC0415
+        # Issue #148 — closing Maya's default commandPort and turning off its
+        # security warning keeps stray probes from freezing the main thread.
+        # Opt-in: the module loads in every Maya session the artist starts,
+        # and that warning is what stops a web page from running MEL.
+        if os.environ.get("MESHY_DCC_MAYA_COMMANDPORT_HYGIENE", "").strip() == "1":
+            try:
+                from meshy_dcc_maya._maya_commandport_hygiene import configure_commandport_hygiene  # noqa: PLC0415
 
-            configure_commandport_hygiene()
-        except Exception as exc:  # noqa: BLE001 — never block plugin load
-            logger.debug("commandPort hygiene skipped: %s", exc)
+                configure_commandport_hygiene()
+            except Exception as exc:  # noqa: BLE001 — never block plugin load
+                logger.debug("commandPort hygiene skipped: %s", exc)
         cfg = _resolve_config()
         is_batch = bool(cmds.about(batch=True))
         _host_startup = resolve_plugin_host_startup(is_batch)
@@ -829,8 +831,8 @@ def _disable_autosave_for_session() -> None:
     The snapshot of the original ``enable`` flag is stored on the
     module-level :data:`_original_autosave_enabled` so unload can
     restore exactly what was running before the plug-in loaded.
-    Operators who depend on AutoSave can opt out via
-    ``MESHY_DCC_MAYA_DISABLE_AUTOSAVE=0``.
+    Off unless ``MESHY_DCC_MAYA_DISABLE_AUTOSAVE=1``: the switch lives in
+    the user's preferences and would stay off after a crash.
 
     Never raises — every step is wrapped so a missing AutoSave
     feature (older Maya, headless mayapy without UI) cannot block
@@ -838,8 +840,9 @@ def _disable_autosave_for_session() -> None:
     """
     global _original_autosave_enabled
 
-    if os.environ.get("MESHY_DCC_MAYA_DISABLE_AUTOSAVE", "1").strip().lower() in {"0", "false", "off", "no"}:
-        logger.info("meshy-dcc-maya: AutoSave persistent-disable opted out via env var")
+    # Opt-in: Maya keeps the AutoSave switch in the user's preferences, so a
+    # crash before the restore would leave the artist's AutoSave off for good.
+    if os.environ.get("MESHY_DCC_MAYA_DISABLE_AUTOSAVE", "").strip().lower() not in {"1", "true", "on", "yes"}:
         return
 
     try:
@@ -857,7 +860,7 @@ def _disable_autosave_for_session() -> None:
         cmds.autoSave(enable=False)
         logger.info(
             "meshy-dcc-maya: AutoSave disabled for the duration of this session "
-            "(set MESHY_DCC_MAYA_DISABLE_AUTOSAVE=0 to opt out)",
+            "(MESHY_DCC_MAYA_DISABLE_AUTOSAVE=1)",
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("AutoSave disable failed; modal save-prompt may still appear: %s", exc)

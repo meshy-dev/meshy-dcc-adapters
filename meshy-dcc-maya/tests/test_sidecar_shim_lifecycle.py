@@ -255,9 +255,10 @@ class TestEnvAndHelpers:
         assert is_sidecar_mode_enabled({ENV_SIDECAR_MODE: "yes"})
         assert is_sidecar_mode_enabled({ENV_SIDECAR_MODE: "on"})
 
-    def test_is_sidecar_mode_enabled_default_true(self):
-        assert is_sidecar_mode_enabled({})
-        assert is_sidecar_mode_enabled({ENV_SIDECAR_MODE: ""})
+    def test_is_sidecar_mode_enabled_default_false(self):
+        assert not is_sidecar_mode_enabled({})
+        assert not is_sidecar_mode_enabled({ENV_SIDECAR_MODE: ""})
+        assert not is_sidecar_mode_enabled({ENV_SIDECAR_MODE: "maybe"})
 
     def test_is_sidecar_mode_enabled_respects_opt_out_values(self):
         assert not is_sidecar_mode_enabled({ENV_SIDECAR_MODE: "0"})

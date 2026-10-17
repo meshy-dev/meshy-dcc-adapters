@@ -85,7 +85,6 @@ ENV_GATEWAY_REMOTE_PORT = "MESHY_DCC_GATEWAY_REMOTE_PORT"
 DEFAULT_GATEWAY_REMOTE_HOST = "0.0.0.0"
 DEFAULT_GATEWAY_REMOTE_PORT = 59765
 _TRUTHY_VALUES = frozenset({"1", "true", "yes", "on"})
-_FALSEY_VALUES = frozenset({"0", "false", "no", "off"})
 
 # Grace period before SIGKILL on shutdown. 5 s matches the sidecar
 # binary's own ``--shutdown-timeout-secs`` default; cap at the same
@@ -154,7 +153,10 @@ def build_qtserver_uri(port: int, host: str = "127.0.0.1") -> str:
 
 
 def is_sidecar_mode_enabled(env: Optional[dict] = None) -> bool:
-    """Return ``True`` unless sidecar mode is explicitly disabled.
+    """Return ``True`` only when sidecar mode is explicitly enabled.
+
+    Off by default: the ``meshy-dcc`` CLI runs the gateway, and the sidecar
+    would also open a LAN listener. ``MESHY_DCC_MAYA_SIDECAR=1`` turns it on.
 
     Args:
         env: optional environment-variable mapping to consult. Defaults
@@ -162,14 +164,7 @@ def is_sidecar_mode_enabled(env: Optional[dict] = None) -> bool:
             exercised without mutating the live process environment.
     """
     raw = (env if env is not None else os.environ).get(ENV_SIDECAR_MODE)
-    if raw is None or not raw.strip():
-        return True
-    normalized = raw.strip().lower()
-    if normalized in _FALSEY_VALUES:
-        return False
-    # Unknown values preserve the default-on behaviour; only explicit
-    # falsey tokens opt out.
-    return True
+    return raw is not None and raw.strip().lower() in _TRUTHY_VALUES
 
 
 def resolve_gateway_remote_options(env: Optional[dict] = None) -> tuple[str, int]:
