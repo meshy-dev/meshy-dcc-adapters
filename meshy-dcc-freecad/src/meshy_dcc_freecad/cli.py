@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -24,13 +27,42 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def serve(argv: Sequence[str]) -> int:
+    """Run the service; ``--project`` becomes the allowed root unless one is configured."""
+    parser = argparse.ArgumentParser(prog="meshy-dcc-freecad serve")
+    parser.add_argument("--project", type=Path, help="Directory holding the FCStd documents")
+    parser.add_argument("--freecad", type=Path, help="FreeCADCmd to run every call with")
+    parser.add_argument("--freecad-version", help="FreeCAD version to register")
+    args = parser.parse_args(list(argv))
+    if sys.stderr is None:  # pythonw.exe: no console streams to write to
+        sys.stdout = sys.stderr = open(os.devnull, "w")
+    if args.project:
+        os.environ.setdefault("MESHY_DCC_FREECAD_ALLOWED_ROOTS", str(args.project.absolute()))
+    if args.freecad:
+        os.environ["MESHY_DCC_FREECAD_EXECUTABLE"] = str(args.freecad)
+    if args.freecad_version:
+        os.environ["MESHY_DCC_FREECAD_HOST_VERSION"] = args.freecad_version
+    from .bridge import RUN_DIR_ENV, running_calls
+    from .server import main as server_main
+
+    run_dir = tempfile.mkdtemp(prefix="meshy-dcc-freecad-")
+    os.environ[RUN_DIR_ENV] = run_dir
+    try:
+        server_main()
+    finally:
+        if not running_calls():  # a cancelled call still reads the stop marker
+            shutil.rmtree(run_dir, ignore_errors=True)
+    return 0
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if not arguments:
-        from .server import main as server_main
+    if not arguments or arguments[0] == "serve":
+        return serve(arguments[1:])
+    if arguments[0] in ("install", "uninstall"):
+        from .install import main as install_main
 
-        server_main()
-        return 0
+        return install_main(arguments)
     args = _parser().parse_args(arguments)
     if args.command is None:
         _parser().error("a command is required")

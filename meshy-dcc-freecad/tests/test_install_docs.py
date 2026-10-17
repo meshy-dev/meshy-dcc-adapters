@@ -6,6 +6,7 @@ def test_install_runbook_is_wheel_first_and_platform_complete():
     text = (root / "install.md").read_text(encoding="utf-8")
 
     for heading in (
+        "## With Meshy DCC",
         "## Requirements",
         "## Supported versions",
         "## Agent quick path",
@@ -23,9 +24,14 @@ def test_install_runbook_is_wheel_first_and_platform_complete():
         "meshy-dcc-freecad doctor --json",
         "meshy-dcc-freecad verify --json",
         "python -m pip uninstall meshy-dcc-freecad",
+        "meshy-dcc install --dcc-type freecad --project <dir>",
+        "meshy-dcc-freecad uninstall --project <dir>",
     ):
         assert command in text
-    assert "https://raw.githubusercontent.com/meshy-dev/meshy-dcc-adapters/main/meshy-dcc-freecad/install.md" in text
+    assert (
+        "https://raw.githubusercontent.com/meshy-dev/meshy-dcc-adapters/main/meshy-dcc-freecad/install.md"
+        in text
+    )
     assert "no adapter-managed binary cache" in text
     assert 'pip install -e ".[dev]"' not in text
 

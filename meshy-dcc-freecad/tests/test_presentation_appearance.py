@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
-from meshy_dcc_core import validate_skill
 from jsonschema import Draft7Validator
+from meshy_dcc_core import validate_skill
 
 from meshy_dcc_freecad import freecad_driver, presentation, write_contract
 from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge

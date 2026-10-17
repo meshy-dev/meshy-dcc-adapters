@@ -4,6 +4,27 @@ This is the canonical standalone adapter runbook. Agents should read the
 [raw file](https://raw.githubusercontent.com/meshy-dev/meshy-dcc-adapters/main/meshy-dcc-freecad/install.md)
 before changing an installation.
 
+## With Meshy DCC
+
+The usual path. `meshy-dcc` downloads the package for the platform (its own
+CPython 3.11 with `meshy_dcc_core` and this adapter), then sets up one project
+directory:
+
+```text
+meshy-dcc install --dcc-type freecad --project <dir> [--dcc-path <FreeCAD>] --execute
+meshy-dcc start-instance --dcc-type freecad --project <dir> --wait-ready --yes
+meshy-dcc stop-instance --dcc-type freecad --instance-id <short>
+```
+
+FreeCAD is found at `/Applications/FreeCAD.app` or `~/Applications/FreeCAD.app`
+on macOS and under `C:/Program Files/FreeCAD */` or
+`~/AppData/Local/Programs/FreeCAD */` on Windows; pass `--dcc-path` for
+anything else (the app bundle, `FreeCAD.exe`, or FreeCADCmd). The package's
+`bin/meshy-dcc-freecad install --project <dir> --dcc-path <FreeCAD>` runs
+`verify` against that FreeCAD and writes `<dir>/.meshy-dcc/launch-plan.json`;
+`meshy-dcc-freecad uninstall --project <dir>` removes it. The service then
+treats the project as its only allowed root.
+
 ## Requirements
 
 - Python 3.7 or newer for the adapter service. This is the **wrapper** side
@@ -36,12 +57,12 @@ which the service and the in-FreeCAD driver both read:
 
 | FreeCAD | Status | Real-machine evidence |
 | --- | --- | --- |
-| 1.0.x | supported | CI end-to-end run on 1.0.2 |
-| 1.1.x | supported | CI end-to-end run on 1.1.4 |
+| 1.0.x | supported | Linux end-to-end run on 1.0.2 (before the fork) |
+| 1.1.x | supported | Linux end-to-end run on 1.1.4 (before the fork); Meshy real-host lanes on macOS arm64 |
 | anything else | rejected | n/a |
 
-Both pinned CI artifacts are Linux AppImages built against Python 3.11, so
-3.11 is the host interpreter the matrix is currently verified against.
+Both releases ship Python 3.11, so 3.11 is the host interpreter the matrix is
+verified against.
 
 | Platform | FreeCAD installation | Discovery |
 | --- | --- | --- |
@@ -239,7 +260,14 @@ If multiple versions exist, pin discovery with `MESHY_DCC_FREECAD_EXECUTABLE` or
 
 ## Uninstall
 
-Stop the standalone `meshy-dcc-freecad` process, then remove the wheel:
+With Meshy DCC, stop the instance and remove the project's launch plan:
+
+```text
+meshy-dcc stop-instance --dcc-type freecad --instance-id <short>
+meshy-dcc-freecad uninstall --project <dir>
+```
+
+Standalone, stop the `meshy-dcc-freecad` process, then remove the wheel:
 
 ```text
 python -m pip uninstall meshy-dcc-freecad

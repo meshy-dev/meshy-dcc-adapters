@@ -13,12 +13,31 @@ from types import SimpleNamespace
 import pytest
 from png_fixture import checker, png, ramp, solid
 
+from meshy_dcc_freecad import bridge as bridge_module
 from meshy_dcc_freecad import freecad_driver, presentation, raster, write_contract
 from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, RenderVerificationError
 
 
+@pytest.fixture(autouse=True)
+def _render_allowed(monkeypatch):
+    """These tests judge synthesised frames, so they run on every platform."""
+    monkeypatch.setattr(bridge_module, "_RENDER_REFUSED", False)
+
+
 def _bridge(tmp_path):
     return FreecadBridge(allowed_roots=[tmp_path])
+
+
+def test_macos_refuses_before_any_host_call(tmp_path, monkeypatch):
+    monkeypatch.setattr(bridge_module, "_RENDER_REFUSED", True)
+    monkeypatch.setattr(FreecadBridge, "_invoke", lambda *a, **k: pytest.fail("host was called"))
+    with pytest.raises(BridgeError) as error:
+        _bridge(tmp_path).render_view(str(tmp_path / "missing.FCStd"))
+    assert error.value.code == "render_host_limited"
+    capability = FreecadBridge._render_capability(
+        {"ready": True, "gui_library": {"importable": True}}
+    )
+    assert capability["status"] == "host_limited"
 
 
 def _geometry(width, height, fraction_columns=0.25):

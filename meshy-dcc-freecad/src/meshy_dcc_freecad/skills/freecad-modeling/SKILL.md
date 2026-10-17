@@ -18,7 +18,7 @@ metadata:
     search-hint: >-
       FreeCAD add update transform scale copy mirror primitive box cylinder
       sphere cone torus wedge helix boolean union cut intersection import export
-      STEP IGES BREP STL OBJ 3MF
+      STEP IGES BREP STL OBJ GLB 3MF Meshy model
     tools: tools.yaml
 ---
 
@@ -40,8 +40,12 @@ shape or mesh source it composes on top of the orientation already in the copied
 geometry, because a boolean result and a mesh hold their orientation in their
 coordinates with no `Placement` to invert.
 
-Geometry import supports STEP, IGES, BREP, STL, and OBJ; export supports those
-plus 3MF, which is export-only. Mesh export uses explicit bounded tessellation
+Geometry import supports STEP, IGES, BREP, STL, OBJ and GLB; export supports
+STEP, IGES, BREP, STL, OBJ and 3MF. A GLB (the format Meshy models download in)
+lands as a `Mesh::Feature` converted from metres to millimetres and from
+glTF's Y-up to FreeCAD's Z-up, with every triangle and without materials or
+textures; the source file must sit inside the allowed roots like any other
+input. Only the self-contained `.glb` form is accepted, not `.gltf`. Mesh export uses explicit bounded tessellation
 settings. No inline Python is accepted here — the typed tools accept arguments,
 never source text. The one escape hatch is `freecad-session`'s `run_script`,
 which takes a **path to a script file** and runs it in a disposable FreeCAD

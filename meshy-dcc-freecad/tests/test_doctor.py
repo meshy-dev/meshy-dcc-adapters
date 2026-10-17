@@ -108,6 +108,8 @@ def test_no_verb_preserves_the_existing_server_entrypoint(monkeypatch):
 
     calls = []
     monkeypatch.setattr(server, "main", lambda: calls.append("server"))
+    # serve sets the run directory for the service's lifetime; undo it after the test.
+    monkeypatch.setenv("MESHY_DCC_FREECAD_RUN_DIR", "")
 
     assert cli.main([]) == 0
     assert calls == ["server"]

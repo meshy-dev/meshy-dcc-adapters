@@ -13,6 +13,7 @@ All documents are synthetic.
 import base64
 import hashlib
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,13 @@ from meshy_dcc_freecad import raster
 from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, RenderVerificationError
 from meshy_dcc_freecad.presentation import MAX_RENDER_HEIGHT, MAX_RENDER_WIDTH
 
-pytestmark = [pytest.mark.freecad, pytest.mark.freecad_gui]
+pytestmark = [
+    pytest.mark.freecad,
+    pytest.mark.freecad_gui,
+    pytest.mark.skipif(
+        sys.platform == "darwin", reason="render_view refuses on macOS (no offscreen OpenGL)"
+    ),
+]
 HOST_SCRIPT = Path(__file__).parent / "native/presentation_host.py"
 VIEWS = ["isometric", "front", "top", "right"]
 SELECTION = ["BodyWithPort", "PortCut"]

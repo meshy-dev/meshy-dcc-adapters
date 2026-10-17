@@ -58,6 +58,7 @@ Every mutation runs on a sibling staging copy and replaces the original only
 after FreeCADCmd reports success and a non-empty document exists.
 
 Source and output paths must stay under `MESHY_DCC_FREECAD_ALLOWED_ROOTS`.
+Started by `meshy-dcc start-instance`, that is the project directory alone.
 Existing destinations require explicit `overwrite=true`. `remove_object`
 refuses referenced objects unless `cascade=true` is explicit.
 
@@ -125,3 +126,8 @@ The script is responsible for its own persistence. A script that changes a
 durable document should be followed by `inspect_document` or
 `validate_document`, so the write is verified on the real file rather than
 trusted from the exit code.
+
+`render_view` cannot run on macOS: Qt's offscreen platform has no OpenGL
+context there, so the tool refuses with `render_host_limited` and
+`get_capabilities` reports it `host_limited`. Use `save_copy` with `view` and
+`visible_objects`, and look at the copy in FreeCAD.

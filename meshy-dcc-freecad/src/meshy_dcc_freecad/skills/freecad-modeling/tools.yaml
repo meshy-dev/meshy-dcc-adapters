@@ -238,7 +238,7 @@ tools:
     next-tools: {on-success: [validate_document, inspect_document], on-failure: [inspect_document]}
 
   - name: import_geometry
-    description: Import one STEP, IGES, BREP, STL, or OBJ artifact as a named Part or Mesh object.
+    description: Import one STEP, IGES, BREP, STL, OBJ or GLB artifact as a named Part or Mesh object (a GLB lands as a mesh in millimetres, without materials).
     source_file: scripts/import_geometry.py
     input_schema:
       type: object

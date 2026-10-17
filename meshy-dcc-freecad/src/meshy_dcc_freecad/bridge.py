@@ -50,8 +50,9 @@ from .snapshots import (
 
 _DOCUMENT_SUFFIX = ".fcstd"
 _RENDER_SUFFIX = ".png"
-_IMPORT_SUFFIXES = {".brep", ".brp", ".iges", ".igs", ".obj", ".step", ".stl", ".stp"}
-_EXPORT_SUFFIXES = _IMPORT_SUFFIXES | {".3mf"}
+_EXCHANGE_SUFFIXES = {".brep", ".brp", ".iges", ".igs", ".obj", ".step", ".stl", ".stp"}
+_IMPORT_SUFFIXES = _EXCHANGE_SUFFIXES | {".glb"}
+_EXPORT_SUFFIXES = _EXCHANGE_SUFFIXES | {".3mf"}
 _OBJECT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
 # Document discovery bounds. A listing is a filesystem walk, so the only thing
@@ -100,6 +101,15 @@ _RENDER_REMEDIATION = {
         "that frame_margin is not so large the model falls below the detection threshold."
     ),
 }
+
+# Qt's offscreen platform has no OpenGL context on macOS: FreeCADCmd crashes
+# (SIGSEGV) as soon as it creates the 3D view, so a render is refused up front.
+_RENDER_REFUSED = sys.platform == "darwin"
+_RENDER_HOST_LIMITED = (
+    "FreeCAD cannot capture a view headlessly on macOS: Qt's offscreen platform has no "
+    "OpenGL context there. Use save_copy with a view and visible_objects, then open the "
+    "copy in FreeCAD to look at it."
+)
 
 # ``run_script`` is the one entry point this adapter gives a caller for work
 # none of its typed tools cover, so it gets its own timeout ceiling instead of
@@ -600,6 +610,61 @@ def _hardlink_unsupported_message(detail: object) -> str:
     )
 
 
+# The service's run directory (set by ``serve``). Skill scripts run in their own
+# processes, so they leave a marker named after each FreeCAD child's PID here
+# while it runs, and a safe stop writes ``stopping`` to end those calls.
+RUN_DIR_ENV = "MESHY_DCC_FREECAD_RUN_DIR"
+STOPPING_MARKER = "stopping"
+
+
+def _run_dir() -> Optional[Path]:
+    value = os.environ.get(RUN_DIR_ENV)
+    return Path(value) if value else None
+
+
+def _check_stopping() -> None:
+    run_dir = _run_dir()
+    if run_dir is not None and (run_dir / STOPPING_MARKER).exists():
+        raise BridgeError(
+            "The FreeCAD service is stopping, so this call was cancelled before it saved; "
+            "the document is unchanged.",
+            "service_stopping",
+        )
+
+
+def _spawn(*args: Any, **kwargs: Any) -> subprocess.Popen:
+    _check_stopping()
+    process = subprocess.Popen(*args, **kwargs)
+    run_dir = _run_dir()
+    if run_dir is not None:
+        try:
+            (run_dir / str(process.pid)).touch()
+        except OSError:
+            pass
+    return process
+
+
+def running_calls() -> list[int]:
+    """PIDs of FreeCAD children still running a call for this service."""
+    from meshy_dcc_core._install_lifecycle_process import is_pid_alive
+
+    run_dir = _run_dir()
+    if run_dir is None or not run_dir.is_dir():
+        return []
+    live = []
+    for marker in run_dir.iterdir():
+        if not marker.name.isdigit():
+            continue
+        if is_pid_alive(int(marker.name)):
+            live.append(int(marker.name))
+        else:
+            try:
+                marker.unlink()
+            except OSError:
+                pass
+    return live
+
+
 def _discard_partial(path: Path) -> None:
     """Remove a publication target this process just created with ``O_EXCL``."""
     try:
@@ -1013,7 +1078,7 @@ class FreecadBridge:
                 environment.pop("PYTHONHOME", None)
             with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as stdout_file:
                 with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as stderr_file:
-                    process = subprocess.Popen(
+                    process = _spawn(
                         command,
                         cwd=str(temp_dir),
                         env=environment,
@@ -1027,6 +1092,7 @@ class FreecadBridge:
                         deadline = started + timeout
                         while process.poll() is None:
                             check_dcc_cancelled()
+                            _check_stopping()
                             if time.monotonic() >= deadline:
                                 raise BridgeTimeoutError(
                                     "FreeCAD %s backend exceeded the %.1f second timeout"
@@ -1213,7 +1279,7 @@ class FreecadBridge:
                 environment.pop("PYTHONHOME", None)
             with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as stdout_file:
                 with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as stderr_file:
-                    process = subprocess.Popen(
+                    process = _spawn(
                         command,
                         cwd=str(temp_dir),
                         env=environment,
@@ -1228,6 +1294,7 @@ class FreecadBridge:
                         deadline = started + timeout
                         while process.poll() is None:
                             check_dcc_cancelled()
+                            _check_stopping()
                             if time.monotonic() >= deadline:
                                 timed_out = True
                                 raise BridgeTimeoutError(
@@ -1548,6 +1615,9 @@ class FreecadBridge:
                 "headless-only build cannot render. Reported by the host as: %s"
                 % (gui.get("error") if isinstance(gui, dict) else "unknown")
             )
+        elif _RENDER_REFUSED:
+            state = "host_limited"
+            remediation = _RENDER_HOST_LIMITED
         else:
             state = "available"
             remediation = None
@@ -1966,6 +2036,8 @@ class FreecadBridge:
         and puts all of them back before returning. The source file is never
         written.
         """
+        if _RENDER_REFUSED:
+            raise BridgeError(_RENDER_HOST_LIMITED, "render_host_limited")
         source = self._document_path(document_path)
         if not isinstance(include_image, bool):
             raise BridgeError("include_image must be a boolean")

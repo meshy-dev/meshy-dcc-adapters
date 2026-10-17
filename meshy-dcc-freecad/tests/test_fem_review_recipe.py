@@ -22,9 +22,9 @@ from pathlib import Path
 
 import pytest
 import yaml
+from jsonschema import Draft202012Validator
 from meshy_dcc_core import validate_skill
 from meshy_dcc_core.recipes import load_recipe_pack, validate_recipe_inputs
-from jsonschema import Draft202012Validator
 
 SKILLS = Path(__file__).parents[1] / "src" / "meshy_dcc_freecad" / "skills"
 SKILL_DIR = SKILLS / "freecad-fem-review"

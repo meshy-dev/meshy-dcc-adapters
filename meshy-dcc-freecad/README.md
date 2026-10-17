@@ -1,7 +1,48 @@
 # meshy-dcc-freecad
 
 Meshy DCC adapter for FreeCAD: typed, durable parametric modeling and CAD
-exchange.
+exchange, and Meshy model import (GLB, OBJ, STL).
+
+Verified with FreeCAD 1.1.4 on macOS arm64 through `meshy-dcc`: install,
+start-instance, GLB import with read-back, save copy and reopen in a new
+service, and safe stop; the real-FreeCAD test lanes pass there except
+`render_view`, which macOS cannot run headlessly (see below). Windows x64 is
+packaged but not yet checked on a real host.
+
+The adapter is a service, not a FreeCAD plugin: it runs beside FreeCAD, starts
+a fresh `FreeCADCmd` (safe mode, throwaway user config) for every call, and
+works on `.FCStd` files inside one project directory. Nothing is installed into
+FreeCAD or its preferences, and no FreeCAD window opens. Each mutating call
+saves the document and reads it back before it reports success; open the file
+in FreeCAD to look at the result.
+
+## With Meshy DCC
+
+`packaging/build_package.py` builds the Meshy DCC package: a relocatable
+CPython with `meshy_dcc_core` and this adapter, plus `bin/meshy-dcc-freecad`
+(`.cmd` on Windows). FreeCAD's own Python is not used for the service.
+
+```bash
+meshy-dcc install --dcc-type freecad --project /path/to/cad-project --execute
+meshy-dcc start-instance --dcc-type freecad --project /path/to/cad-project --wait-ready --yes
+meshy-dcc load-skill freecad-modeling --instance-id <short>
+meshy-dcc call freecad.<short>.freecad_modeling__import_geometry --wait \
+  --json '{"document_path":"/path/to/cad-project/scene.FCStd","input_path":"/path/to/cad-project/models/model.glb","object_name":"Model"}'
+meshy-dcc stop-instance --dcc-type freecad --instance-id <short>
+```
+
+`install` extracts the package and runs `bin/meshy-dcc-freecad install
+--project <dir> --dcc-path <FreeCAD>`: it finds FreeCADCmd next to the FreeCAD
+the operator named (`FreeCAD.app`, `FreeCAD.exe` or FreeCADCmd itself), checks
+it with `verify` (a real FreeCADCmd run against the compatibility matrix), and
+writes `.meshy-dcc/launch-plan.json` (it ignores itself for version control).
+`start-instance` then runs the service with the project as its only allowed
+root, so documents and the models to import must sit inside the project.
+
+A service launched by `start-instance` advertises a safe stop. Calls save as
+they go, so there is never unsaved work; a stop is refused while a FreeCAD
+call is still running unless it carries `discard_unsaved`, which cancels the
+call and leaves its document as it was.
 
 ## Capabilities
 
@@ -17,7 +58,9 @@ exchange.
   with typed dimensions and placements.
 - Scale, copy, and mirror objects into a new object named by the caller.
 - Create parametric union, cut, and intersection features.
-- Import STEP, IGES, BREP, STL, and OBJ geometry, and export those plus 3MF.
+- Import STEP, IGES, BREP, STL, OBJ and GLB geometry, and export STEP, IGES,
+  BREP, STL, OBJ and 3MF. A GLB (Meshy's model format) lands as a mesh in
+  millimetres with glTF's Y-up turned into FreeCAD's Z-up, without materials.
 - Fillet and chamfer edges on an existing solid, with a feasibility pre-check
   that refuses a radius or distance the adjacent faces cannot absorb.
 - Build linear and polar patterns (up to 1000 instances) and mirror a solid
@@ -46,10 +89,10 @@ versions, different `sys.path`, and different site-packages:
 
 | Side | What runs there | Python version | Who owns that version |
 | --- | --- | --- | --- |
-| Wrapper (service side) | the `meshy-dcc-freecad` CLI, server, and `doctor`, plus the process that launches `FreeCADCmd` | **3.7+** (`requires-python = ">=3.7"`) | the environment you `pip install meshy-dcc-freecad` into |
-| Host (FreeCAD side) | `src/meshy_dcc_freecad/freecad_driver.py` and every skill script | **3.10+** — the interpreter FreeCAD is built against and ships (3.11 in both release lines CI exercises) | your FreeCAD installation |
+| Wrapper (service side) | the `meshy-dcc-freecad` CLI, server, and `doctor`, plus the process that launches `FreeCADCmd` | **3.7+** (`requires-python = ">=3.7"`) | the Meshy DCC package's CPython 3.11, or the environment you install the wheel into |
+| Host (FreeCAD side) | `src/meshy_dcc_freecad/freecad_driver.py` and every skill script | **3.10+** — the interpreter FreeCAD is built against and ships (3.11 in FreeCAD 1.0 and 1.1) | your FreeCAD installation |
 
-- `meshy-dcc-core` 0.20.36+ in the **wrapper** environment.
+- `meshy-dcc-core` 0.2.x in the **wrapper** environment.
 - A FreeCAD version covered by the compatibility matrix below, with either a working
   `FreeCADCmd`/`freecadcmd` or an explicitly configured compatible executable Python
   interpreter and installed native FreeCAD library for the opt-in `python-module`
@@ -80,10 +123,10 @@ contract, this section only points at it:
 | 1.1.x | supported |
 | anything else | rejected with an explicit error code |
 
-Both supported lines are exercised end-to-end on real FreeCAD in CI —
-**1.0.2** and **1.1.4**, the two pinned AppImages in
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — and both ship Python
-3.11 as the host interpreter. A version outside the matrix is **not** silently
+The matrix entries record Linux runs on **1.0.2** and **1.1.4** from before
+the fork; Meshy has run the real-host test lanes on 1.1.4 for macOS arm64.
+Both releases ship Python 3.11 as the host interpreter. A version outside the
+matrix is **not** silently
 downgraded to "probably fine":
 `meshy-dcc-freecad doctor --json` fails with an `error_code`
 (`freecad_host_version_unsupported`, `freecad_host_version_unverified`,
@@ -92,16 +135,16 @@ supported ranges, and the command that pins a supported one. The same matrix is
 re-checked inside FreeCAD before any geometry work, so a skipped preflight does
 not turn into a silent modelling bug.
 
-## Install
+## Standalone
 
-Install the published wheel, prove the standalone FreeCAD runtime, then start
-the service:
+Without `meshy-dcc install`, install the wheel next to `meshy_dcc_core`, prove
+the FreeCAD runtime, then start the service:
 
 ```text
 python -m pip install --upgrade meshy-dcc-freecad
 meshy-dcc-freecad doctor --json
 meshy-dcc-freecad verify --json
-meshy-dcc-freecad
+meshy-dcc-freecad serve --project /path/to/cad-project --freecad /path/to/FreeCADCmd
 ```
 
 See [install.md](install.md) for Windows, macOS, and Linux discovery, stable
@@ -362,6 +405,11 @@ working software GL path. A host without `FreeCADGui` cannot render, and
 instead of letting the first call be the discovery. The adapter sets
 `LIBGL_ALWAYS_SOFTWARE=1` on the child process (overridable) and disables
 FreeCAD's notification area, which can deadlock under the offscreen platform.
+
+On macOS, Qt's offscreen platform has no OpenGL context, and FreeCADCmd crashes
+when it creates the 3D view (seen with FreeCAD 1.1.4 on macOS arm64). There
+`get_capabilities` reports `render_view` as `host_limited` and the tool refuses
+with `render_host_limited` before starting FreeCAD.
 
 See the [headless render qualification](docs/validation/render-view.md) record
 for the host API facts this relies on, the evidence per layer, and what is

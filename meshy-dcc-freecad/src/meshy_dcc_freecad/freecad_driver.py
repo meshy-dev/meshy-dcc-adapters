@@ -19,6 +19,13 @@ _SIBLING_MODULES = {}
 # import branch would be a contract violation rather than a supported path.
 _IMPORT_MESH_SUFFIXES = ("stl", "obj")
 
+# GLB (binary glTF, what Meshy exports) is read through FreeCAD's Import module,
+# which converts metres to millimetres and builds one face per triangle, and
+# lands as a Mesh::Feature: geometry only, materials and textures are dropped.
+# Only the self-contained binary form: a .gltf names side files by URI, which
+# could pull data from outside the allowed roots.
+_IMPORT_GLB_SUFFIX = "glb"
+
 # Exchange formats the Mesh module owns on the export side. 3MF joined the set
 # because it is the mainstream 3D-printing container and the host's MeshCore
 # writer has shipped a Reader3MF/Writer3MF pair on both supported release lines;
@@ -2018,6 +2025,33 @@ def model_boolean_operation(params):
         _close_document(App, doc)
 
 
+def _read_glb_mesh(app, path):
+    """Read a GLB's triangles into a mesh, returning it with the source triangle count."""
+    import Import
+    import Mesh
+    import Part
+
+    scratch = app.newDocument("MeshyGlbImport", hidden=True, temp=True)
+    try:
+        Import.insert(path, scratch.Name)
+        shapes = [
+            Part.getShape(obj)
+            for obj in scratch.Objects
+            if obj.TypeId in ("App::Part", "Part::Feature")
+            and obj.getParentGeoFeatureGroup() is None
+        ]
+        faces = [face for shape in shapes for face in shape.Faces]
+        if not faces:
+            raise ValueError("The GLB file holds no triangles")
+        if any(len(face.Vertexes) != 3 for face in faces):
+            raise ValueError("The GLB file holds a primitive that is not a triangle")
+        points, triangles = Part.makeCompound(faces).tessellate(0.01)
+    finally:
+        _close_document(app, scratch)
+    mesh = Mesh.Mesh([[points[a], points[b], points[c]] for a, b, c in triangles])
+    return mesh, len(faces)
+
+
 def model_import_geometry(params):
     import FreeCAD as App
 
@@ -2027,7 +2061,8 @@ def model_import_geometry(params):
     object_name = _required(params, "object_name", tool)
     label = params.get("label")
     suffix = input_path.lower().rsplit(".", 1)[-1]
-    is_mesh = suffix in _IMPORT_MESH_SUFFIXES
+    is_glb = suffix == _IMPORT_GLB_SUFFIX
+    is_mesh = suffix in _IMPORT_MESH_SUFFIXES or is_glb
     doc = _open_document(App, params["document_path"])
     try:
         read_back = _ReadBack(tool, version, params)
@@ -2051,7 +2086,10 @@ def model_import_geometry(params):
 
             # Read and reject the source before creating an object for it, so a
             # failed import leaves no half-initialised object behind.
-            mesh = Mesh.Mesh(input_path)
+            if is_glb:
+                mesh, source_triangles = _read_glb_mesh(App, input_path)
+            else:
+                mesh = Mesh.Mesh(input_path)
             if not getattr(mesh, "CountPoints", 0):
                 raise ValueError("Imported mesh is empty")
             source_box = getattr(mesh, "BoundBox", None)
@@ -2109,6 +2147,15 @@ def model_import_geometry(params):
                 "The imported mesh holds a different point or facet count than "
                 "the source file, so part of the import was dropped.",
             )
+            if is_glb:
+                read_back.check(
+                    facets == source_triangles,
+                    "source.triangles",
+                    source_triangles,
+                    facets,
+                    "The imported mesh holds a different triangle count than the "
+                    "GLB file, so part of the model was dropped.",
+                )
             landed_box = getattr(mesh, "BoundBox", None)
             if source_box is not None:
                 read_back.check(
