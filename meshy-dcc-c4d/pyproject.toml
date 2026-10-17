@@ -3,16 +3,16 @@ requires=["hatchling>=1.26"]
 build-backend="hatchling.build"
 
 [project]
-name="dcc-mcp-cinema4d"
-version="0.3.2"
-description="Production Cinema 4D adapter for typed headless modeling, interchange, inspection, and rendering"
+name="meshy-dcc-c4d"
+version="0.1.0"
+description="Cinema 4D adapter for Meshy DCC: typed headless c4dpy document, modeling, interchange and render tools"
 readme="README.md"
 requires-python=">=3.9"
 license={text="MIT"}
-authors=[{name="loonghao",email="hal.long@outlook.com"}]
+authors=[{name="Meshy",email="support@meshy.ai"}]
 keywords=["cinema4d","c4dpy","3d","dcc","mcp","automation"]
 classifiers=[
-  "Development Status :: 4 - Beta",
+  "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
@@ -21,30 +21,26 @@ classifiers=[
   "Programming Language :: Python :: 3.12",
   "Operating System :: OS Independent",
 ]
-dependencies=["dcc-mcp-core>=0.20.36,<1.0.0"]
+dependencies=["meshy-dcc-core>=0.2.0,<0.3.0"]
 
 [project.urls]
-Homepage="https://github.com/dcc-mcp/dcc-mcp-cinema4d"
-Repository="https://github.com/dcc-mcp/dcc-mcp-cinema4d"
-Issues="https://github.com/dcc-mcp/dcc-mcp-cinema4d/issues"
+Homepage="https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-c4d"
+Repository="https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues="https://github.com/meshy-dev/meshy-dcc-adapters/issues"
 
 [project.optional-dependencies]
 test=["pytest>=8","ruff>=0.8","PyYAML>=6","jsonschema>=4.23"]
-dev=["pytest>=8","ruff>=0.8","PyYAML>=6","jsonschema>=4.23","build>=1.2","twine>=6"]
+dev=["pytest>=8","ruff>=0.8","PyYAML>=6","jsonschema>=4.23","build>=1.2"]
 
 [project.scripts]
-dcc-mcp-cinema4d="dcc_mcp_cinema4d.server:main"
+meshy-dcc-c4d="meshy_dcc_c4d.server:main"
 
-[project.entry-points."dcc_mcp.adapters"]
-c4d="dcc_mcp_cinema4d:Cinema4dMcpServer"
-cinema4d="dcc_mcp_cinema4d:Cinema4dMcpServer"
+[project.entry-points."meshy_dcc.adapters"]
+c4d="meshy_dcc_c4d:Cinema4dMcpServer"
 
 [tool.hatch.build.targets.wheel]
-packages=["src/dcc_mcp_cinema4d"]
-artifacts=["src/dcc_mcp_cinema4d/skills/**", "src/dcc_mcp_cinema4d/compat_matrix.json"]
-
-[tool.hatch.build.targets.sdist]
-exclude=["docs/**/*.png", "docs/**/*.svg", "docs/**/*.webp"]
+packages=["src/meshy_dcc_c4d"]
+artifacts=["src/meshy_dcc_c4d/skills/**", "src/meshy_dcc_c4d/compat_matrix.json"]
 
 [tool.pytest.ini_options]
 testpaths=["tests"]

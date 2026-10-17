@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from dcc_mcp_cinema4d.bridge import get_bridge
+from meshy_dcc_c4d.bridge import get_bridge
 
 
 def main(argv: list[str] | None = None) -> int:

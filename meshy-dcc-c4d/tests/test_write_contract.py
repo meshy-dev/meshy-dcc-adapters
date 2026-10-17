@@ -19,9 +19,9 @@ from pathlib import Path
 import pytest
 from test_bridge import FakeBridge, _file_identity, _jpeg_bytes, _png_bytes
 
-from dcc_mcp_cinema4d import write_contract
-from dcc_mcp_cinema4d.bridge import WriteVerificationError
-from dcc_mcp_cinema4d.cinema4d_driver import _METHODS
+from meshy_dcc_c4d import write_contract
+from meshy_dcc_c4d.bridge import WriteVerificationError
+from meshy_dcc_c4d.cinema4d_driver import _METHODS
 
 
 def test_every_driver_method_is_classified() -> None:
@@ -354,7 +354,7 @@ def test_render_at_the_requested_resolution_is_verified(tmp_path: Path) -> None:
 
 def test_verification_failure_is_a_bridge_error(tmp_path: Path) -> None:
     """Callers that catch BridgeError must still catch a read-back mismatch."""
-    from dcc_mcp_cinema4d.bridge import BridgeError
+    from meshy_dcc_c4d.bridge import BridgeError
 
     document = _document(tmp_path)
     bridge = FakeBridge(tmp_path, persist=False)
@@ -365,4 +365,4 @@ def test_verification_failure_is_a_bridge_error(tmp_path: Path) -> None:
 
 def test_module_imports_without_cinema4d() -> None:
     """The contract module must not depend on a licensed host to import."""
-    assert sys.modules["dcc_mcp_cinema4d.write_contract"] is write_contract
+    assert sys.modules["meshy_dcc_c4d.write_contract"] is write_contract

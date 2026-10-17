@@ -1,6 +1,6 @@
 import pytest
 
-from dcc_mcp_cinema4d import cinema4d_driver
+from meshy_dcc_c4d import cinema4d_driver
 
 
 def test_driver_validates_vectors():

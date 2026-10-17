@@ -13,9 +13,9 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from dcc_mcp_cinema4d import _process as process_support
-from dcc_mcp_cinema4d import install as installer
-from dcc_mcp_cinema4d.bridge import BridgeError, Cinema4dBridge
+from meshy_dcc_c4d import _process as process_support
+from meshy_dcc_c4d import install as installer
+from meshy_dcc_c4d.bridge import BridgeError, Cinema4dBridge
 
 
 def _host_identity(path: Path, *, digest: str = "a" * 64) -> installer.HostIdentity:
@@ -44,7 +44,7 @@ def _context(tmp_path: Path) -> installer.InstallContext:
             adapter_version=installer.__version__,
             core_version="0.20.15",
             adapter_origin=Path(installer.__file__).parent,
-            core_origin=Path(sys.prefix) / "site-packages" / "dcc_mcp_core",
+            core_origin=Path(sys.prefix) / "site-packages" / "meshy_dcc_core",
         ),
         state_root=state_root,
         receipt_path=state_root / "receipt.json",
@@ -72,14 +72,14 @@ def _request(
 def test_uses_released_core_contract_and_official_schema(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    assert installer.MINIMUM_CORE_VERSION == "0.20.36"
+    assert installer.MINIMUM_CORE_VERSION == "0.2.0"
     installer._require_official_core_contract()
     context = _context(tmp_path)
     monkeypatch.setattr(installer, "_resolve_context", lambda *_args, **_kwargs: context)
 
     outcome = installer.run_lifecycle(_request(tmp_path, "install"), environ={})
 
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator(load_install_sop_schema()).validate(outcome.result)
     assert outcome.result["schema_version"] == 1
@@ -94,7 +94,7 @@ def test_report_schema_version_follows_the_published_schema_not_the_artifact_rev
     still 1. Emitting the artifact revision produced a report that failed the
     schema it was validated against, so the two must stay decoupled.
     """
-    from dcc_mcp_core.deployment import INSTALL_SOP_SCHEMA_VERSION, load_install_sop_schema
+    from meshy_dcc_core.deployment import INSTALL_SOP_SCHEMA_VERSION, load_install_sop_schema
 
     schema = load_install_sop_schema()
 
@@ -125,7 +125,7 @@ def test_every_lifecycle_operation_returns_schema_valid_json(
 
     outcome = installer.run_lifecycle(_request(tmp_path, operation), environ={})
 
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator(load_install_sop_schema()).validate(outcome.result)
     assert outcome.result["operation"] == operation
@@ -845,14 +845,14 @@ def test_subprocess_environment_isolated_from_python_and_secret_variables(
 ) -> None:
     monkeypatch.setenv("PYTHONPATH", "shadow")
     monkeypatch.setenv("PYTHONHOME", "shadow-home")
-    monkeypatch.setenv("DCC_MCP_TOKEN", "secret-token")
+    monkeypatch.setenv("MESHY_DCC_TOKEN", "secret-token")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "secret-key")
 
     environment = installer._isolated_environment({"PATH": os.environ.get("PATH", "")})
 
     assert "PYTHONPATH" not in environment
     assert "PYTHONHOME" not in environment
-    assert "DCC_MCP_TOKEN" not in environment
+    assert "MESHY_DCC_TOKEN" not in environment
     assert "AWS_SECRET_ACCESS_KEY" not in environment
     assert environment["PYTHONNOUSERSITE"] == "1"
 
@@ -873,7 +873,7 @@ def test_public_failures_are_schema_valid_and_redact_paths_secrets_and_raw_outpu
     outcome = installer.run_lifecycle(_request(tmp_path, "verify"), environ={})
     serialized = json.dumps(outcome.result)
 
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator(load_install_sop_schema()).validate(outcome.result)
     assert outcome.exit_code == 40
@@ -1147,7 +1147,7 @@ def test_posix_supervisor_kills_the_session_when_the_caller_dies(tmp_path: Path)
     info_path = tmp_path / "supervisor-info.json"
     controller_script = (
         "import json,os,pathlib,sys,time; "
-        "from dcc_mcp_cinema4d._process import isolated_environment,start_owned_process; "
+        "from meshy_dcc_c4d._process import isolated_environment,start_owned_process; "
         "root=pathlib.Path(sys.argv[1]); info=pathlib.Path(sys.argv[2]); "
         "sink=open(os.devnull,'wb'); deadline=time.monotonic()+10; "
         "owned=start_owned_process([sys.executable,'-c','import time; time.sleep(60)'],"
@@ -1189,13 +1189,13 @@ def test_posix_supervisor_kills_the_session_when_the_caller_dies(tmp_path: Path)
 def test_cli_argument_errors_return_only_schema_valid_json(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from dcc_mcp_cinema4d.server import main
+    from meshy_dcc_c4d.server import main
 
     exit_code = main(["install", "--json", "--unknown-option", "token-123"])
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator(load_install_sop_schema()).validate(payload)
     assert exit_code == 10
@@ -1210,9 +1210,9 @@ def test_cli_timeout_errors_return_stable_schema_json(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
-    from dcc_mcp_cinema4d.server import main
+    from meshy_dcc_c4d.server import main
 
     exit_code = main(
         [

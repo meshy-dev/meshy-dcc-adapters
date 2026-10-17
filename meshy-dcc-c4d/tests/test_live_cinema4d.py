@@ -46,9 +46,9 @@ def _real_cinema4d() -> bool:
 @pytest.mark.skipif(not _real_cinema4d(), reason="%s is not set" % C4D_TEST_EXECUTABLE)
 def test_real_cinema4d_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     executable = os.environ[C4D_TEST_EXECUTABLE]
-    # The bridge resolves its runtime from DCC_MCP_CINEMA4D_C4DPY; accept either
+    # The bridge resolves its runtime from MESHY_DCC_C4D_C4DPY; accept either
     # name so the documented gate and the existing variable both work.
-    monkeypatch.setenv("DCC_MCP_CINEMA4D_C4DPY", executable)
-    monkeypatch.setenv("DCC_MCP_CINEMA4D_ALLOWED_ROOTS", str(tmp_path))
+    monkeypatch.setenv("MESHY_DCC_C4D_C4DPY", executable)
+    monkeypatch.setenv("MESHY_DCC_C4D_ALLOWED_ROOTS", str(tmp_path))
 
     assert smoke_main(["--evidence-dir", str(tmp_path / "evidence")]) == 0

@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 
 
 def _context(tmp_path: Path):
-    from dcc_mcp_cinema4d import install
+    from meshy_dcc_c4d import install
 
     executable = tmp_path / ("c4dpy.exe" if os.name == "nt" else "c4dpy")
     executable.write_bytes(b"synthetic")
@@ -32,7 +32,7 @@ def _context(tmp_path: Path):
             install.__version__,
             "0.20.15",
             Path(install.__file__).parent,
-            Path(sys.prefix) / "site-packages" / "dcc_mcp_core",
+            Path(sys.prefix) / "site-packages" / "meshy_dcc_core",
         ),
         state_root=state,
         receipt_path=receipt,
@@ -42,9 +42,9 @@ def _context(tmp_path: Path):
 
 
 def test_doctor_cli_reports_missing_c4dpy_as_official_stable_json(tmp_path: Path, capsys) -> None:
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
-    from dcc_mcp_cinema4d import server
+    from meshy_dcc_c4d import server
 
     exit_code = server.main(["doctor", "--c4dpy", str(tmp_path / "missing-c4dpy"), "--json"])
 
@@ -61,7 +61,7 @@ def test_doctor_cli_reports_missing_c4dpy_as_official_stable_json(tmp_path: Path
 def test_doctor_alias_runs_verify_without_leaking_host_paths(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
-    from dcc_mcp_cinema4d import install, server
+    from meshy_dcc_c4d import install, server
 
     context = _context(tmp_path)
     monkeypatch.setattr(install, "_resolve_context", lambda *_args, **_kwargs: context)
@@ -91,7 +91,7 @@ def test_doctor_alias_runs_verify_without_leaking_host_paths(
 def test_verify_reports_not_ready_as_stable_schema_failure(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
-    from dcc_mcp_cinema4d import install, server
+    from meshy_dcc_c4d import install, server
 
     context = _context(tmp_path)
     monkeypatch.setattr(install, "_resolve_context", lambda *_args, **_kwargs: context)
@@ -117,7 +117,7 @@ def test_verify_reports_not_ready_as_stable_schema_failure(
 
 
 def test_host_build_parser_enforces_r21_floor() -> None:
-    from dcc_mcp_cinema4d.install import MINIMUM_HOST_BUILD, _host_build
+    from meshy_dcc_c4d.install import MINIMUM_HOST_BUILD, _host_build
 
     assert _host_build("R20.0") < MINIMUM_HOST_BUILD
     assert _host_build("R21.0") >= MINIMUM_HOST_BUILD
@@ -134,7 +134,7 @@ def _run_doctor_with_runtime(runtime: dict, monkeypatch, tmp_path: Path) -> dict
     import io
     from contextlib import redirect_stdout
 
-    from dcc_mcp_cinema4d import install, server
+    from meshy_dcc_c4d import install, server
 
     context = _context(tmp_path)
     context.receipt_path.parent.mkdir(parents=True, exist_ok=True)

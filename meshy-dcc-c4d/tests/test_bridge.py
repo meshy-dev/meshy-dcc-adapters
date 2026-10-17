@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_cinema4d import bridge as bridge_module
-from dcc_mcp_cinema4d import install
-from dcc_mcp_cinema4d.bridge import BridgeError, BridgeTimeoutError, Cinema4dBridge
+from meshy_dcc_c4d import bridge as bridge_module
+from meshy_dcc_c4d import install
+from meshy_dcc_c4d.bridge import BridgeError, BridgeTimeoutError, Cinema4dBridge
 
 
 def _file_identity(path) -> str:
@@ -384,7 +384,7 @@ def test_packaged_driver_rejects_unknown_methods(tmp_path, monkeypatch):
 def test_bridge_waits_when_executable_launches_worker_and_exits(tmp_path, monkeypatch):
     _accept_synthetic_runtime_identity(monkeypatch)
     launcher = tmp_path / "launcher.py"
-    driver = Path(__file__).parents[1] / "src" / "dcc_mcp_cinema4d" / "cinema4d_driver.py"
+    driver = Path(__file__).parents[1] / "src" / "meshy_dcc_c4d" / "cinema4d_driver.py"
     launcher.write_text(
         "import subprocess, sys\n"
         "subprocess.Popen([sys.executable, %r, *sys.argv[1:]])\n" % str(driver),

@@ -3,16 +3,16 @@ from unittest.mock import patch
 
 import yaml
 
-from dcc_mcp_cinema4d.server import Cinema4dMcpServer
+from meshy_dcc_c4d.server import Cinema4dMcpServer
 
 ROOT = Path(__file__).parents[1]
-SKILLS = ROOT / "src" / "dcc_mcp_cinema4d" / "skills"
+SKILLS = ROOT / "src" / "meshy_dcc_c4d" / "skills"
 
 
 def test_server_uses_core_canonical_c4d_type():
     with (
-        patch("dcc_mcp_cinema4d.server.DccServerOptions.from_env") as from_env,
-        patch("dcc_mcp_cinema4d.server.DccServerBase.__init__", return_value=None),
+        patch("meshy_dcc_c4d.server.DccServerOptions.from_env") as from_env,
+        patch("meshy_dcc_c4d.server.DccServerBase.__init__", return_value=None),
     ):
         Cinema4dMcpServer()
 
@@ -62,7 +62,7 @@ def test_skill_contracts_are_complete_and_bounded():
 def test_public_sources_do_not_expose_arbitrary_python():
     text = "\n".join(
         path.read_text(encoding="utf-8")
-        for path in (ROOT / "src" / "dcc_mcp_cinema4d").rglob("*")
+        for path in (ROOT / "src" / "meshy_dcc_c4d").rglob("*")
         if path.is_file() and path.suffix in {".md", ".py", ".yaml"}
     ).lower()
     assert "exec(" not in text
@@ -86,9 +86,3 @@ def test_the_cinema4d_marker_is_not_an_empty_promise():
 
     assert users, "no test uses the cinema4d marker; delete the marker instead"
 
-
-def test_ci_excludes_the_real_host_marker():
-    """Real-host tests are opt-in; CI must keep running contract-level only."""
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-
-    assert '-m "not cinema4d"' in ci

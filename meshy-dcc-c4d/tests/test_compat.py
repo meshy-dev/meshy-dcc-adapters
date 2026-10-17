@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_cinema4d import compat
+from meshy_dcc_c4d import compat
 
 
 @pytest.fixture(scope="module")
@@ -210,3 +210,4 @@ def test_verdict_is_json_serialisable() -> None:
     payload = json.dumps(compat.classify_host(27000, "3.9.7"))
 
     assert "interpreter_drift" in payload
+
