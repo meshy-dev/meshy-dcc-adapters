@@ -1,0 +1,57 @@
+[build-system]
+requires=["hatchling>=1.26"]
+build-backend="hatchling.build"
+
+[project]
+name="meshy-dcc-c4d"
+version="0.1.0"
+description="Cinema 4D adapter for Meshy DCC: typed headless c4dpy document, modeling, interchange and render tools"
+readme="README.md"
+requires-python=">=3.9"
+license={text="MIT"}
+authors=[{name="Meshy",email="support@meshy.ai"}]
+keywords=["cinema4d","c4dpy","3d","dcc","mcp","automation"]
+classifiers=[
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+]
+dependencies=["meshy-dcc-core>=0.2.0,<0.3.0"]
+
+[project.urls]
+Homepage="https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-c4d"
+Repository="https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues="https://github.com/meshy-dev/meshy-dcc-adapters/issues"
+
+[project.optional-dependencies]
+test=["pytest>=8","ruff>=0.8","PyYAML>=6","jsonschema>=4.23"]
+dev=["pytest>=8","ruff>=0.8","PyYAML>=6","jsonschema>=4.23","build>=1.2"]
+
+[project.scripts]
+meshy-dcc-c4d="meshy_dcc_c4d.server:main"
+
+[project.entry-points."meshy_dcc.adapters"]
+c4d="meshy_dcc_c4d:Cinema4dMcpServer"
+
+[tool.hatch.build.targets.wheel]
+packages=["src/meshy_dcc_c4d"]
+artifacts=["src/meshy_dcc_c4d/skills/**", "src/meshy_dcc_c4d/compat_matrix.json"]
+
+[tool.pytest.ini_options]
+testpaths=["tests"]
+pythonpath=["src","."]
+markers=["cinema4d: requires a real licensed c4dpy runtime"]
+
+[tool.ruff.lint]
+# FA catches PEP 604 unions (`dict | None`) written without
+# `from __future__ import annotations`, which raise at runtime on Python 3.9.
+select=["E","F","I","B","FA"]
+
+[tool.ruff]
+line-length=100
+target-version="py39"
