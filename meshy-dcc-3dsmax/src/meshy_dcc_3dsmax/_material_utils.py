@@ -1,0 +1,454 @@
+"""Helpers for 3ds Max material and map skill scripts."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+from meshy_dcc_3dsmax._scene_utils import iter_scene_nodes, node_identity, resolve_node_objects
+
+COLOR_ATTRS = {
+    "diffuse": ("diffuse", "diffuseColor", "base_color", "baseColor"),
+    "base_color": ("base_color", "baseColor", "diffuse", "diffuseColor"),
+    "specular": ("specular", "specularColor"),
+}
+NUMERIC_ATTRS = {
+    "roughness": ("roughness", "roughnessValue"),
+    "metalness": ("metalness", "metalnessValue", "metallic"),
+    "opacity": ("opacity", "opacityValue"),
+    "glossiness": ("glossiness", "glossinessValue"),
+}
+MAP_SLOTS = {
+    # pymxs exposes modern Physical Material properties with native snake_case
+    # names.  MXSWrapperBase may silently accept an unknown camelCase Python
+    # attribute without connecting it to the host material, so native names
+    # must be attempted first.
+    "diffuse": ("diffuseMap", "baseColorMap"),
+    "base_color": ("baseColorMap", "diffuseMap"),
+    "normal": ("bump_map", "normal_map", "normalMap", "bumpMap"),
+    "bump": ("bump_map", "bumpMap", "normal_map", "normalMap"),
+    "roughness": ("roughnessMap",),
+    "metalness": ("metalnessMap", "metallicMap"),
+    "opacity": ("opacityMap",),
+}
+_MATERIAL_REGISTRY: Dict[int, Dict[str, Any]] = {}
+
+
+def material_success(message: str, **data: Any) -> Dict[str, Any]:
+    """Return a consistent success envelope."""
+    return {"success": True, "status": "success", "message": message, "data": data}
+
+
+def material_error(message: str, **data: Any) -> Dict[str, Any]:
+    """Return a consistent error envelope."""
+    return {"success": False, "status": "error", "message": message, "data": data}
+
+
+def iter_scene_materials(runtime: Any) -> List[Any]:
+    """Return known scene materials as a plain list."""
+    for attr in ("sceneMaterials", "materials"):
+        try:
+            values = list(getattr(runtime, attr))
+            if values:
+                return values
+        except Exception:  # noqa: BLE001
+            continue
+    materials = []
+    for node in iter_scene_nodes(runtime):
+        material = getattr(node, "material", None)
+        if material is not None and material not in materials:
+            materials.append(material)
+    return materials
+
+
+def _renderer_bitmap_connections(material: Any, *, runtime: Any) -> List[Dict[str, Any]]:
+    """Report bitmap connections through the renderer-native slot resolver."""
+    from meshy_dcc_3dsmax._renderer_materials import renderer_bitmap_connections
+
+    return renderer_bitmap_connections(material, runtime=runtime)
+
+
+def material_identity(material: Any, runtime: Any = None) -> Dict[str, Any]:
+    """Return JSON-safe material metadata.
+
+    ``runtime`` lets the map report include renderer-native slots (VRayMtl
+    ``texmap_*``) instead of only the historical generic slot names.
+    """
+    maps = (
+        _renderer_bitmap_connections(material, runtime=runtime)
+        if runtime is not None
+        else bitmap_connections(material)
+    )
+    return {
+        "name": str(getattr(material, "name", "")),
+        "type": type(material).__name__,
+        "diffuse": _color_value(material, "diffuse"),
+        "base_color": _color_value(material, "base_color"),
+        "specular": _color_value(material, "specular"),
+        "roughness": _numeric_value(material, "roughness"),
+        "metalness": _numeric_value(material, "metalness"),
+        "opacity": _numeric_value(material, "opacity"),
+        "glossiness": _numeric_value(material, "glossiness"),
+        "maps": maps,
+    }
+
+
+def bitmap_connections(material: Any, extra_slots: Optional[Dict[str, Sequence[str]]] = None) -> List[Dict[str, Any]]:
+    """Return bitmap/map slot connections for one material.
+
+    ``extra_slots`` adds renderer-native slot names (for example VRayMtl
+    ``texmap_*``) so a connection written through the native property is still
+    reported back to the caller.
+    """
+    rows = []
+    seen = set()
+    slots = {slot: tuple(attrs) for slot, attrs in MAP_SLOTS.items()}
+    for slot, attrs in (extra_slots or {}).items():
+        merged = list(slots.get(slot, ()))
+        for attr in attrs:
+            if attr not in merged:
+                merged.append(attr)
+        slots[slot] = tuple(merged)
+    for slot, attrs in slots.items():
+        for attr in attrs:
+            if attr in seen:
+                continue
+            seen.add(attr)
+            bitmap = getattr(material, attr, None)
+            if bitmap is None:
+                continue
+            path = _bitmap_path(bitmap)
+            rows.append(
+                {
+                    "slot": slot,
+                    "attribute": attr,
+                    "map_type": type(bitmap).__name__,
+                    "path": path,
+                    "exists": Path(path).expanduser().is_file() if path else None,
+                }
+            )
+    return rows
+
+
+def find_material(runtime: Any, name: str) -> Optional[Any]:
+    """Find a material by exact name."""
+    for material in iter_scene_materials(runtime):
+        if str(getattr(material, "name", "")) == str(name):
+            return material
+    return _MATERIAL_REGISTRY.get(id(runtime), {}).get(str(name))
+
+
+def resolve_material(runtime: Any, material_name: str) -> Dict[str, Any]:
+    """Resolve a material by name."""
+    material = find_material(runtime, material_name)
+    if material is None:
+        return material_error("Material not found", material_name=material_name)
+    return material_success("Resolved material", material=material_identity(material), object=material)
+
+
+def resolve_material_targets(
+    runtime: Any,
+    *,
+    node_names: Optional[Sequence[str]] = None,
+    handles: Optional[Sequence[int]] = None,
+    use_selection: bool = False,
+) -> Dict[str, Any]:
+    """Resolve explicit node targets or an explicitly requested selection."""
+    if use_selection:
+        try:
+            selected = list(runtime.selection)
+        except Exception:  # noqa: BLE001
+            selected = []
+        if not selected:
+            return material_error("Current selection is empty", objects=[])
+        return {"success": True, "message": "Resolved selected nodes", "objects": selected}
+    result = resolve_node_objects(runtime, node_names=node_names, handles=handles)
+    if not result.get("success"):
+        return material_error(result["message"], errors=result.get("errors", []), objects=[])
+    result["status"] = "success"
+    return result
+
+
+def create_material(runtime: Any, *, name: str, kind: str) -> Any:
+    """Create a native material with a conservative fallback chain.
+
+    Callers write attributes through ``apply_material_attribute``, which
+    verifies each write; this helper only constructs and registers, so it never
+    has a write result it would have to drop.
+    """
+    constructors = {
+        "physical": ("PhysicalMaterial", "Physical_Material", "StandardMaterial"),
+        "pbr": ("PhysicalMaterial", "Physical_Material", "StandardMaterial"),
+        "standard": ("StandardMaterial",),
+    }[kind]
+    material = None
+    for constructor_name in constructors:
+        constructor = getattr(runtime, constructor_name, None)
+        if callable(constructor):
+            material = constructor()
+            break
+    if material is None:
+        material = type("Material", (), {})()
+    material.name = name
+    _register_material(runtime, material)
+    return material
+
+
+def set_material_attribute(material: Any, attribute: str, value: Any, *, runtime: Any = None) -> List[str]:
+    """Set one common material attribute."""
+    warnings = []
+    if attribute in COLOR_ATTRS:
+        converted = _coerce_color(value, runtime=runtime)
+        for attr in COLOR_ATTRS[attribute]:
+            try:
+                setattr(material, attr, converted)
+                return warnings
+            except Exception as exc:  # noqa: BLE001
+                warnings.append("Could not set {}: {}".format(attr, exc))
+        return warnings
+    if attribute in NUMERIC_ATTRS:
+        for attr in NUMERIC_ATTRS[attribute]:
+            try:
+                setattr(material, attr, float(value))
+                return warnings
+            except Exception as exc:  # noqa: BLE001
+                warnings.append("Could not set {}: {}".format(attr, exc))
+        return warnings
+    return ["Unsupported material attribute: {}".format(attribute)]
+
+
+def _is_undefined(value: Any) -> bool:
+    """Return True when a host readback is Max's ``undefined`` placeholder.
+
+    pymxs returns ``undefined`` -- not ``None`` -- for a node that carries no
+    material, so clearing an assignment reads back a truthy wrapper.
+    """
+    if value is None:
+        return True
+    if type(value).__name__ == "undefined":
+        return True
+    try:
+        import pymxs
+
+        if getattr(pymxs.runtime, "undefined", None) is value:
+            return True
+    except Exception:  # noqa: BLE001 - offline doubles install no pymxs.
+        pass
+    return str(value) == "undefined"
+
+
+def _same_material(candidate: Any, material: Any) -> bool:
+    """Compare two material wrappers by identity, host equality, or name.
+
+    A material is a host wrapper, not a scalar: pymxs hands back a new
+    equivalent wrapper on every attribute read, so a bare ``is`` check would
+    report a successful assignment as a mismatch.
+    """
+    if candidate is material:
+        return True
+    expected_empty = material is None or _is_undefined(material)
+    if expected_empty:
+        return _is_undefined(candidate)
+    if _is_undefined(candidate):
+        return False
+    try:
+        if bool(candidate == material):
+            return True
+    except Exception:  # noqa: BLE001 - some host wrappers raise on ``==``.
+        pass
+    expected_name = getattr(material, "name", None)
+    actual_name = getattr(candidate, "name", None)
+    if expected_name is None or actual_name is None:
+        return False
+    expected_name = str(expected_name)
+    # An empty name matches every other unnamed material, so it proves nothing.
+    return bool(expected_name) and expected_name == str(actual_name)
+
+
+def assign_material(nodes: Sequence[Any], material: Any) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Assign a material to nodes and verify each assignment.
+
+    Returns the verified rows and the rows the host did not keep. A host that
+    swallows the assignment must not be reported as a node that carries the
+    material.
+    """
+    rows = []
+    errors = []
+    identity = material_identity(material)
+    for node in nodes:
+        row = {"node": node_identity(node), "material": identity}
+        try:
+            node.material = material
+        except Exception as exc:  # noqa: BLE001 - readback is the fail-closed boundary.
+            row["error"] = "Could not assign the material: {}".format(exc)
+            errors.append(row)
+            continue
+        if not _same_material(getattr(node, "material", None), material):
+            row["error"] = "Material readback did not match the assignment"
+            errors.append(row)
+            continue
+        rows.append(row)
+    return rows, errors
+
+
+def reset_materials(
+    nodes: Sequence[Any], default_material: Optional[Any] = None
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Reset nodes to a default or empty material assignment and verify each.
+
+    Returns the verified rows and the rows the host did not keep.
+    """
+    rows = []
+    errors = []
+    for node in nodes:
+        row = {
+            "node": node_identity(node),
+            "material": material_identity(default_material) if default_material is not None else None,
+        }
+        try:
+            node.material = default_material
+        except Exception as exc:  # noqa: BLE001 - readback is the fail-closed boundary.
+            row["error"] = "Could not reset the material: {}".format(exc)
+            errors.append(row)
+            continue
+        if not _same_material(getattr(node, "material", None), default_material):
+            row["error"] = "Material readback did not match the reset value"
+            errors.append(row)
+            continue
+        rows.append(row)
+    return rows, errors
+
+
+def create_bitmap(runtime: Any, texture_path: str) -> Any:
+    """Create a native bitmap texture with a fallback object."""
+    constructor = getattr(runtime, "Bitmaptexture", None) or getattr(runtime, "BitmapTexture", None)
+    if callable(constructor):
+        try:
+            return constructor(filename=texture_path)
+        except TypeError:
+            bitmap = constructor()
+            bitmap.filename = texture_path
+            return bitmap
+    bitmap = type("BitmapTexture", (), {})()
+    bitmap.filename = texture_path
+    return bitmap
+
+
+def assign_bitmap(material: Any, slot: str, bitmap: Any, *, runtime: Any = None) -> List[str]:
+    """Assign a bitmap to one common map slot."""
+    attrs = MAP_SLOTS.get(slot)
+    if not attrs:
+        return ["Unsupported map slot: {}".format(slot)]
+    warnings = []
+    assigned_map = bitmap
+    if slot == "normal" and runtime is not None:
+        assigned_map, wrapper_warnings = wrap_normal_map(runtime, bitmap)
+        warnings.extend(wrapper_warnings)
+    for attr in attrs:
+        try:
+            setattr(material, attr, assigned_map)
+            return warnings
+        except Exception as exc:  # noqa: BLE001
+            warnings.append("Could not set map slot {}: {}".format(attr, exc))
+    return warnings
+
+
+def wrap_normal_map(runtime: Any, bitmap: Any) -> Tuple[Any, List[str]]:
+    """Wrap a bitmap in Max's native Normal Bump texmap when available."""
+    warnings = []
+    for constructor_name in ("Normal_Bump", "NormalBump"):
+        constructor = getattr(runtime, constructor_name, None)
+        if not callable(constructor):
+            continue
+        try:
+            wrapper = constructor()
+        except Exception as exc:  # noqa: BLE001
+            warnings.append("Could not create {}: {}".format(constructor_name, exc))
+            continue
+        for attr in ("normal_map", "normalMap"):
+            try:
+                setattr(wrapper, attr, bitmap)
+                return wrapper, warnings
+            except Exception as exc:  # noqa: BLE001
+                warnings.append("Could not set Normal Bump {}: {}".format(attr, exc))
+    warnings.append("Normal Bump texmap unavailable; assigned the bitmap directly")
+    return bitmap, warnings
+
+
+def _bitmap_path(value: Any) -> str:
+    """Resolve a bitmap filename through direct or Normal Bump connections."""
+    direct = getattr(value, "filename", "") or getattr(value, "path", "")
+    if direct:
+        return str(direct)
+    for attr in ("normal_map", "normalMap", "bump_map", "bumpMap"):
+        nested = getattr(value, attr, None)
+        if nested is not None and nested is not value:
+            path = getattr(nested, "filename", "") or getattr(nested, "path", "")
+            if path:
+                return str(path)
+    return ""
+
+
+def missing_textures(materials: Sequence[Any]) -> List[Dict[str, Any]]:
+    """Return missing bitmap paths for material maps."""
+    rows = []
+    for material in materials:
+        for connection in bitmap_connections(material):
+            if connection["path"] and connection["exists"] is False:
+                rows.append({"material": material_identity(material), "connection": connection})
+    return rows
+
+
+def _register_material(runtime: Any, material: Any) -> None:
+    _MATERIAL_REGISTRY.setdefault(id(runtime), {})[str(getattr(material, "name", ""))] = material
+    for attr in ("sceneMaterials", "materials"):
+        values = getattr(runtime, attr, None)
+        if values is None:
+            continue
+        try:
+            if material in values:
+                return
+        except Exception:  # noqa: BLE001
+            pass
+        if isinstance(values, list):
+            values.append(material)
+            return
+        append = getattr(runtime, "append", None)
+        if callable(append):
+            append(values, material)
+            return
+
+
+def _coerce_color(value: Any, *, runtime: Any = None) -> Any:
+    if isinstance(value, (list, tuple)) and len(value) >= 3:
+        channels = [float(value[0]), float(value[1]), float(value[2])]
+    else:
+        channels = [float(value), float(value), float(value)]
+    color = getattr(runtime, "color", None) if runtime is not None else None
+    return color(*channels) if callable(color) else channels
+
+
+def _color_value(material: Any, attribute: str) -> Optional[List[float]]:
+    for attr in COLOR_ATTRS[attribute]:
+        value = getattr(material, attr, None)
+        if value is None:
+            continue
+        if all(hasattr(value, channel) for channel in ("r", "g", "b")):
+            return [float(value.r), float(value.g), float(value.b)]
+        try:
+            return _coerce_color(value)
+        except Exception:  # noqa: BLE001
+            return [str(value)]
+    return None
+
+
+def _numeric_value(material: Any, attribute: str) -> Optional[float]:
+    for attr in NUMERIC_ATTRS[attribute]:
+        value = getattr(material, attr, None)
+        if value is None:
+            continue
+        try:
+            return float(value)
+        except Exception:  # noqa: BLE001
+            return None
+    return None

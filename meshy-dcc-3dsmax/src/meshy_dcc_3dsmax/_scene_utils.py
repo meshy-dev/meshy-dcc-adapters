@@ -1,0 +1,711 @@
+"""Small helpers shared by 3ds Max skill scripts."""
+
+from __future__ import annotations
+
+import inspect
+import math
+from collections.abc import Mapping, Sequence
+from typing import Any, Dict, List, Optional, Tuple
+
+
+def coerce_vector3(value: Any, name: str) -> Optional[List[float]]:
+    """Normalize a 3D vector from ``[x, y, z]`` or ``{"x": ..., ...}``."""
+    if value is None:
+        return None
+
+    if isinstance(value, Mapping):
+        raw = [value.get("x"), value.get("y"), value.get("z")]
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        raw = list(value)
+    else:
+        raise ValueError("{} must be an object with x/y/z or a 3-item array".format(name))
+
+    if len(raw) != 3 or any(item is None for item in raw):
+        raise ValueError("{} must contain exactly x, y, and z values".format(name))
+
+    try:
+        return [float(raw[0]), float(raw[1]), float(raw[2])]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("{} values must be numbers".format(name)) from exc
+
+
+def make_point3(runtime: Any, value: Any, name: str = "position") -> Optional[Any]:
+    """Create a pymxs Point3 from user input."""
+    vector = coerce_vector3(value, name)
+    if vector is None:
+        return None
+    return runtime.Point3(vector[0], vector[1], vector[2])
+
+
+def set_node_position(runtime: Any, node: Any, position: Any) -> Optional[List[float]]:
+    """Apply a position to a 3ds Max node and return the normalized vector."""
+    vector = coerce_vector3(position, "position")
+    if vector is None:
+        return None
+    node.pos = runtime.Point3(vector[0], vector[1], vector[2])
+    return vector
+
+
+def json_safe(value: Any, depth: int = 0) -> Any:
+    """Best-effort conversion of pymxs/Python values into JSON-safe data."""
+    if depth > 4:
+        return str(value)
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, Mapping):
+        return {str(key): json_safe(item, depth + 1) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):
+        return [json_safe(item, depth + 1) for item in value]
+
+    identity = node_identity(value)
+    if identity["node_name"] or identity["object_id"] is not None:
+        return identity
+    return str(value)
+
+
+def node_identity(node: Any) -> Dict[str, Any]:
+    """Return a JSON-safe identity payload for a 3ds Max node-like object."""
+    handle = getattr(node, "handle", None)
+    try:
+        object_id = int(handle) if handle is not None else None
+    except (TypeError, ValueError):
+        object_id = None
+    parent = getattr(node, "parent", None)
+    class_name = getattr(getattr(node, "baseObject", None), "__class__", None)
+    payload = {
+        "node_name": str(getattr(node, "name", "")),
+        "object_id": object_id,
+        "class_name": getattr(class_name, "__name__", type(node).__name__),
+        "parent": str(getattr(parent, "name", "")) if parent is not None else None,
+        "visible": node_visible(node),
+    }
+    return payload
+
+
+def iter_scene_nodes(runtime: Any) -> List[Any]:
+    """Return scene nodes from ``runtime.objects`` as a plain list."""
+    try:
+        return list(runtime.objects)
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _coerce_handle(handle: Optional[int]) -> Optional[int]:
+    if handle is None:
+        return None
+    try:
+        return int(handle)
+    except (TypeError, ValueError):
+        return None
+
+
+def resolve_node(runtime: Any, *, node_name: Optional[str] = None, handle: Optional[int] = None) -> Dict[str, Any]:
+    """Resolve one node by name or handle and return a structured envelope."""
+    if not node_name and handle is None:
+        return {"success": False, "message": "node_name or handle is required", "matches": []}
+
+    matches: List[Any] = []
+    all_nodes = iter_scene_nodes(runtime)
+    if node_name:
+        matches.extend(node for node in all_nodes if str(getattr(node, "name", "")) == str(node_name))
+        if not matches:
+            try:
+                node = runtime.getNodeByName(node_name)
+            except Exception:  # noqa: BLE001
+                node = None
+            if node is not None:
+                matches.append(node)
+
+    if handle is not None:
+        wanted = _coerce_handle(handle)
+        resolved = []
+        for node in all_nodes:
+            try:
+                if int(getattr(node, "handle")) == wanted:
+                    resolved.append(node)
+            except Exception:  # noqa: BLE001
+                continue
+        matches = resolved
+
+    identities = [node_identity(node) for node in matches]
+    if not identities:
+        return {"success": False, "message": "No matching node found", "matches": []}
+    if len(identities) > 1:
+        return {"success": False, "message": "Node reference is ambiguous", "matches": identities}
+    return {"success": True, "message": "Resolved node", "node": identities[0], "matches": identities}
+
+
+def resolve_node_object(
+    runtime: Any, *, node_name: Optional[str] = None, handle: Optional[int] = None
+) -> Tuple[Dict[str, Any], Any]:
+    """Resolve one node and return both the envelope and raw node object."""
+    result = resolve_node(runtime, node_name=node_name, handle=handle)
+    if not result.get("success"):
+        return result, None
+    node_identity_payload = result["node"]
+    for node in iter_scene_nodes(runtime):
+        if node_identity(node) == node_identity_payload:
+            return result, node
+    if node_name:
+        try:
+            return result, runtime.getNodeByName(node_name)
+        except Exception:  # noqa: BLE001
+            pass
+    return result, None
+
+
+def resolve_node_objects(
+    runtime: Any,
+    *,
+    node_names: Optional[Sequence[str]] = None,
+    handles: Optional[Sequence[int]] = None,
+) -> Dict[str, Any]:
+    """Resolve multiple nodes by names and/or handles."""
+    raw_names = list(node_names or [])
+    raw_handles = list(handles or [])
+    if not raw_names and not raw_handles:
+        return {"success": False, "message": "node_names or handles is required", "nodes": [], "objects": []}
+
+    nodes: List[Any] = []
+    errors: List[Dict[str, Any]] = []
+    for name in raw_names:
+        result, node = resolve_node_object(runtime, node_name=str(name))
+        if node is None:
+            errors.append(
+                {"node_name": str(name), "message": result.get("message"), "matches": result.get("matches", [])}
+            )
+        else:
+            nodes.append(node)
+    for handle in raw_handles:
+        result, node = resolve_node_object(runtime, handle=_coerce_handle(handle))
+        if node is None:
+            errors.append({"handle": handle, "message": result.get("message"), "matches": result.get("matches", [])})
+        else:
+            nodes.append(node)
+
+    if errors:
+        return {
+            "success": False,
+            "message": "One or more node references could not be resolved",
+            "errors": errors,
+            "objects": [],
+        }
+    return {
+        "success": True,
+        "message": "Resolved nodes",
+        "nodes": [node_identity(node) for node in nodes],
+        "objects": nodes,
+    }
+
+
+# ── Verified writes ─────────────────────────────────────────────────────
+# A pymxs wrapper accepts unknown properties without persisting them, so a bare
+# setattr is not evidence that anything changed. Every write in this module is
+# read back and classified as applied, unverified, or rejected.
+
+ATTR_APPLIED = "applied"
+ATTR_UNVERIFIED = "unverified"
+ATTR_REJECTED = "rejected"
+
+
+def _numeric_sequence(value: Any) -> Optional[List[float]]:
+    """Return numeric channels for colors and vectors, or ``None``."""
+    if value is None or isinstance(value, (bool, str, bytes, Mapping)):
+        return None
+    if isinstance(value, Sequence):
+        try:
+            return [float(item) for item in value]
+        except (TypeError, ValueError):
+            return None
+    for axes in (("x", "y", "z"), ("r", "g", "b")):
+        if all(hasattr(value, axis) for axis in axes):
+            try:
+                return [float(getattr(value, axis)) for axis in axes]
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def attribute_matches(readback: Any, value: Any) -> bool:
+    """Report whether a read-back attribute value equals the requested one.
+
+    A ``None`` read-back means the host holds no value for the attribute, which
+    is what a write it silently dropped looks like. It therefore only matches a
+    ``None`` request: ``bool(None)`` is ``False``, so folding it into the
+    boolean comparison would verify a dropped ``False`` as applied.
+    """
+    if readback is None:
+        return value is None
+    if value is None:
+        return False
+    if isinstance(value, bool) or isinstance(readback, bool):
+        return bool(readback) == bool(value)
+    if isinstance(value, (int, float)):
+        try:
+            return math.isclose(float(readback), float(value), rel_tol=1e-6, abs_tol=1e-6)
+        except (TypeError, ValueError):
+            return False
+    readback_channels = _numeric_sequence(readback)
+    requested_channels = _numeric_sequence(value)
+    if readback_channels and requested_channels and len(readback_channels) == len(requested_channels):
+        return all(
+            math.isclose(a, b, rel_tol=1e-6, abs_tol=1e-6) for a, b in zip(readback_channels, requested_channels)
+        )
+    return str(readback) == str(value)
+
+
+def _target_label(target: Any) -> str:
+    """Name a write target in error messages."""
+    name = getattr(target, "name", None)
+    return str(name) if name else type(target).__name__
+
+
+def _exposed_attributes(target: Any, candidates: Sequence[str]) -> List[str]:
+    """Return the candidate attributes the host object exposes, in order."""
+    exposed: List[str] = []
+    for name in candidates:
+        try:
+            getattr(target, name)
+        except Exception:  # noqa: BLE001 - an unreadable property is not an exposed one.
+            continue
+        exposed.append(name)
+    return exposed
+
+
+def apply_object_attribute(
+    target: Any,
+    attribute: str,
+    value: Any,
+    *,
+    label: Optional[str] = None,
+    optional: bool = False,
+    compare: Optional[Any] = None,
+    candidates: Optional[Sequence[str]] = None,
+) -> Dict[str, Any]:
+    """Write one attribute on a host object and verify the host kept it.
+
+    ``candidates`` lists alternate property names for the same value, tried in
+    order; hosts differ between MAXScript casing and snake_case mirrors. A write
+    is only reported applied when the value reads back equal. A write the host
+    took but that cannot be read back is reported unverified, never applied.
+
+    3ds Max exposes several of these as a read-only ``is*`` getter next to a
+    writable short name, and which one a host offers is not knowable up front.
+    Each exposed candidate is tried in turn and the first that verifies wins, so
+    a read-only candidate cannot fail a write the host can actually take. A
+    candidate is only abandoned, never written twice once it verifies.
+    """
+    names = list(candidates) if candidates else [attribute]
+    if attribute not in names:
+        names.insert(0, attribute)
+    name = label or attribute
+    exposed = _exposed_attributes(target, names)
+    if not exposed:
+        return _attribute_row(
+            name,
+            attribute,
+            ATTR_REJECTED,
+            value,
+            None,
+            "{} does not expose {}".format(_target_label(target), "/".join(names)),
+            optional=optional,
+        )
+
+    write_failures: List[str] = []
+    outcome: Optional[Dict[str, Any]] = None
+    for candidate in exposed:
+        try:
+            setattr(target, candidate, value)
+        except Exception as exc:  # noqa: BLE001 - an explicit rejection; try the next name.
+            write_failures.append("Could not set {}: {}".format(candidate, exc))
+            continue
+        try:
+            readback = getattr(target, candidate)
+        except Exception as exc:  # noqa: BLE001 - an unreadable value is reported, never assumed.
+            outcome = _attribute_row(
+                name,
+                candidate,
+                ATTR_UNVERIFIED,
+                value,
+                None,
+                "Could not read back {} to verify the value: {}".format(candidate, exc),
+                optional=optional,
+            )
+            continue
+        matches = compare(readback, value) if callable(compare) else attribute_matches(readback, value)
+        if matches:
+            return _attribute_row(name, candidate, ATTR_APPLIED, value, readback, None, optional=optional)
+        outcome = _attribute_row(
+            name,
+            candidate,
+            ATTR_REJECTED,
+            value,
+            readback,
+            "{} read back {!r} after writing {!r}".format(candidate, readback, value),
+            optional=optional,
+        )
+
+    if outcome is not None:
+        return outcome
+    return _attribute_row(
+        name,
+        exposed[0],
+        ATTR_REJECTED,
+        value,
+        None,
+        "; ".join(write_failures),
+        optional=optional,
+    )
+
+
+def _attribute_row(
+    name: str,
+    attribute: str,
+    status: str,
+    requested: Any,
+    actual: Any,
+    message: Optional[str],
+    *,
+    optional: bool,
+) -> Dict[str, Any]:
+    """Build one per-attribute write result row."""
+    if status == ATTR_REJECTED and optional:
+        status = ATTR_UNVERIFIED
+    return {
+        "property": name,
+        "attribute": attribute,
+        "status": status,
+        "requested": requested,
+        "actual": actual,
+        "error": message if status == ATTR_REJECTED else None,
+        "warning": message if status == ATTR_UNVERIFIED else None,
+    }
+
+
+def summarize_attribute_results(results: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """Collapse per-attribute write results into applied / errors / warnings."""
+    warnings = [row["warning"] for row in results if row["status"] == ATTR_UNVERIFIED and row.get("warning")]
+    return {
+        "applied": [row["property"] for row in results if row["status"] == ATTR_APPLIED],
+        "applied_count": sum(1 for row in results if row["status"] == ATTR_APPLIED),
+        "unverified": [row["property"] for row in results if row["status"] == ATTR_UNVERIFIED],
+        "errors": [dict(row) for row in results if row["status"] == ATTR_REJECTED],
+        "warnings": warnings,
+        "property_results": [dict(row) for row in results],
+    }
+
+
+def node_visible(node: Any) -> bool:
+    """Best-effort visibility state for a 3ds Max node."""
+    hidden = getattr(node, "isHidden", None)
+    if callable(hidden):
+        try:
+            hidden = hidden()
+        except Exception:  # noqa: BLE001
+            hidden = None
+    if isinstance(hidden, bool):
+        return not hidden
+    visibility = getattr(node, "visibility", None)
+    if isinstance(visibility, (int, float)):
+        return visibility > 0
+    return True
+
+
+def set_node_visible(runtime: Any, node: Any, visible: bool) -> None:
+    """Set node visibility using properties first, then runtime helpers."""
+    try:
+        setattr(node, "isHidden", not visible)
+        return
+    except Exception:  # noqa: BLE001
+        pass
+    helper = getattr(runtime, "unhide", None) if visible else getattr(runtime, "hide", None)
+    if callable(helper):
+        helper(node)
+
+
+def node_bounding_box(node: Any) -> Dict[str, Any]:
+    """Serialize a node bounding box from min/max-like attributes."""
+    min_value = getattr(node, "min", None)
+    max_value = getattr(node, "max", None)
+    return {
+        "node": node_identity(node),
+        "min": point3_to_list(min_value),
+        "max": point3_to_list(max_value),
+    }
+
+
+def point3_to_list(value: Any) -> Optional[List[float]]:
+    """Serialize a Point3-like value into floats."""
+    if value is None:
+        return None
+    for attrs in (("x", "y", "z"), ("X", "Y", "Z")):
+        try:
+            return [float(getattr(value, attrs[0])), float(getattr(value, attrs[1])), float(getattr(value, attrs[2]))]
+        except Exception:  # noqa: BLE001
+            pass
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)) and len(value) >= 3:
+        try:
+            return [float(value[0]), float(value[1]), float(value[2])]
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def is_camera_node(node: Any, *, runtime: Any = None) -> bool:
+    """Best-effort camera detection."""
+    if bool(getattr(node, "is_camera", False)):
+        return True
+    runtime_names = []
+    if runtime is not None:
+        predicate = getattr(runtime, "isKindOf", None)
+        camera_class = getattr(runtime, "Camera", None)
+        if callable(predicate) and camera_class is not None:
+            try:
+                if bool(predicate(node, camera_class)):
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
+        for method_name in ("classOf", "superClassOf"):
+            method = getattr(runtime, method_name, None)
+            if callable(method):
+                try:
+                    runtime_names.append(str(method(node)))
+                except Exception:  # noqa: BLE001
+                    pass
+    text = " ".join(
+        [
+            type(node).__name__,
+            type(getattr(node, "baseObject", None)).__name__,
+            str(getattr(node, "className", "")),
+            *runtime_names,
+        ]
+    ).lower()
+    return "camera" in text
+
+
+def euler_degrees_to_list(value: Any) -> Optional[List[float]]:
+    """Serialize an EulerAngles-like value into degrees as floats."""
+    return point3_to_list(value)
+
+
+def color_to_list(value: Any) -> Optional[List[float]]:
+    """Serialize a Color-like value (r/g/b) into floats."""
+    if value is None:
+        return None
+    for attrs in (("r", "g", "b"), ("R", "G", "B")):
+        try:
+            return [float(getattr(value, attrs[0])), float(getattr(value, attrs[1])), float(getattr(value, attrs[2]))]
+        except Exception:  # noqa: BLE001
+            pass
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes)) and len(value) >= 3:
+        try:
+            return [float(value[0]), float(value[1]), float(value[2])]
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def quat_to_list(value: Any) -> Optional[List[float]]:
+    """Serialize a Quat-like value (x/y/z/w) into floats."""
+    for attrs in (("x", "y", "z", "w"), ("X", "Y", "Z", "W")):
+        try:
+            return [
+                float(getattr(value, attrs[0])),
+                float(getattr(value, attrs[1])),
+                float(getattr(value, attrs[2])),
+                float(getattr(value, attrs[3])),
+            ]
+        except Exception:  # noqa: BLE001
+            pass
+    return None
+
+
+def matrix_rows(value: Any) -> Optional[List[List[float]]]:
+    """Serialize a Matrix3-like value into its four rows as float lists."""
+    if value is None:
+        return None
+    rows = []
+    for index in range(4):
+        try:
+            row = value[index]
+        except Exception:  # noqa: BLE001
+            try:
+                row = value.row(index)
+            except Exception:  # noqa: BLE001
+                return None
+        serialized = point3_to_list(row)
+        if serialized is None:
+            return None
+        rows.append(serialized)
+    return rows
+
+
+def matrix_equal(left: Any, right: Any, tolerance: float = 1e-4) -> bool:
+    """Compare two Matrix3-like values row by row."""
+    left_rows = matrix_rows(left)
+    right_rows = matrix_rows(right)
+    if left_rows is None or right_rows is None:
+        return False
+    for left_row, right_row in zip(left_rows, right_rows):
+        for left_value, right_value in zip(left_row, right_row):
+            if abs(left_value - right_value) > tolerance:
+                return False
+    return True
+
+
+def vector_equal(left: Any, right: Any, tolerance: float = 1e-4) -> bool:
+    """Compare two Point3/Color-like values component by component."""
+    left_values = point3_to_list(left)
+    if left_values is None:
+        left_values = color_to_list(left)
+    right_values = point3_to_list(right)
+    if right_values is None:
+        right_values = color_to_list(right)
+    if left_values is None or right_values is None:
+        return False
+    return all(abs(a - b) <= tolerance for a, b in zip(left_values, right_values))
+
+
+def scalar_equal(left: Any, right: Any, tolerance: float = 1e-6) -> bool:
+    """Compare two scalar values with a tolerance."""
+    if isinstance(left, bool) or isinstance(right, bool):
+        return bool(left) is bool(right)
+    try:
+        return abs(float(left) - float(right)) <= tolerance
+    except (TypeError, ValueError):
+        return str(left) == str(right)
+
+
+def property_values_match(current: Any, expected: Any) -> bool:
+    """Compare a readback property value with the value that was written.
+
+    Shared by every property write path so a rename, a single-property write
+    and a batched patch all accept exactly the same evidence that a write took
+    effect. The comparison is driven by the *expected* value: booleans compare
+    by identity, numbers with a tolerance, Point3/Color component by component,
+    and everything else by string form.
+    """
+    if isinstance(expected, bool) or isinstance(current, bool):
+        return bool(current) is bool(expected)
+    if isinstance(expected, (int, float)) and isinstance(current, (int, float)):
+        return scalar_equal(current, expected)
+    if isinstance(expected, str):
+        return str(current) == expected
+    serialized_expected = serialize_property_value(expected)
+    if isinstance(serialized_expected, list):
+        return vector_equal(current, expected)
+    rows = serialize_property_value(expected)
+    if isinstance(rows, list) and rows and isinstance(rows[0], list):
+        return matrix_equal(current, expected)
+    return str(current) == str(expected)
+
+
+def _build_scalar(current: Any, value: Any, name: str) -> Any:
+    if isinstance(current, bool):
+        if isinstance(value, bool):
+            return value
+        raise ValueError("{} expects a boolean value".format(name))
+    if isinstance(current, int) and not isinstance(value, bool):
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float) and float(value).is_integer():
+            return int(value)
+        raise ValueError("{} expects an integer value".format(name))
+    if isinstance(current, float):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError("{} expects a numeric value".format(name))
+        return float(value)
+    if isinstance(current, str):
+        if not isinstance(value, str):
+            raise ValueError("{} expects a string value".format(name))
+        return value
+    return None
+
+
+def build_property_value(runtime: Any, current: Any, value: Any, name: str) -> Any:
+    """Coerce a user supplied value into the shape the target property expects.
+
+    Raises ``ValueError`` whenever the value cannot be represented in the
+    target type so callers fail loudly instead of writing a wrong value.
+    """
+    scalar = _build_scalar(current, value, name)
+    if scalar is not None:
+        return scalar
+
+    if point3_to_list(current) is not None and hasattr(current, "x"):
+        vector = coerce_vector3(value, name)
+        return runtime.Point3(vector[0], vector[1], vector[2])
+
+    if color_to_list(current) is not None and hasattr(current, "r"):
+        vector = coerce_vector3(value, name)
+        return runtime.Color(vector[0], vector[1], vector[2])
+
+    if quat_to_list(current) is not None:
+        if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) != 4:
+            raise ValueError("{} expects four components [x, y, z, w]".format(name))
+        return runtime.Quat(value[0], value[1], value[2], value[3])
+
+    return value
+
+
+def serialize_property_value(value: Any) -> Any:
+    """Convert one property value into JSON-safe data."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    point = point3_to_list(value)
+    if point is not None and hasattr(value, "x") and not hasattr(value, "w"):
+        return point
+    color = color_to_list(value)
+    if color is not None and hasattr(value, "r"):
+        return color
+    quat = quat_to_list(value)
+    if quat is not None:
+        return quat
+    rows = matrix_rows(value)
+    if rows is not None:
+        return rows
+    return json_safe(value)
+
+
+def read_property(node: Any, name: str) -> Dict[str, Any]:
+    """Read one property from a node and report availability explicitly."""
+    try:
+        value = getattr(node, name)
+    except Exception as exc:  # noqa: BLE001
+        return {"name": name, "available": False, "error": "{}: {}".format(type(exc).__name__, exc)}
+
+    if callable(value):
+        return {
+            "name": name,
+            "available": False,
+            "callable": True,
+            "error": "{} is a method, not a property".format(name),
+        }
+
+    return {"name": name, "available": True, "type": type(value).__name__, "value": serialize_property_value(value)}
+
+
+def runtime_symbol_info(runtime: Any, name: str) -> Dict[str, Any]:
+    """Return safe metadata for one runtime symbol."""
+    try:
+        value = getattr(runtime, name)
+    except Exception as exc:  # noqa: BLE001
+        return {"name": name, "available": False, "error": str(exc)}
+
+    signature = None
+    try:
+        signature = str(inspect.signature(value)) if callable(value) else None
+    except (TypeError, ValueError):
+        signature = None
+
+    doc = getattr(value, "__doc__", None)
+    if isinstance(doc, str):
+        doc = doc.strip().splitlines()[0] if doc.strip() else None
+    return {
+        "name": name,
+        "available": True,
+        "type": type(value).__name__,
+        "callable": callable(value),
+        "signature": signature,
+        "doc": doc,
+    }

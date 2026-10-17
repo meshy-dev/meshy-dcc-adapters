@@ -1,0 +1,93 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "meshy-dcc-3dsmax"
+version = "0.1.0"
+description = "3ds Max adapter for Meshy DCC: scene, import, material and render tools on the host's own Python"
+authors = [{ name = "Meshy", email = "support@meshy.ai" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.7"
+keywords = ["3dsmax", "3ds-max", "mcp", "dcc", "ai", "llm", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+
+dependencies = [
+    "meshy-dcc-core>=0.2.0,<0.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-xdist>=3.0",
+    "requests>=2.28.0",
+    "ruff>=0.8.0",
+    "hatchling",
+    "build",
+    "tomli; python_version < '3.11'",
+    "pyyaml>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-3dsmax"
+Repository = "https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues = "https://github.com/meshy-dev/meshy-dcc-adapters/issues"
+
+[project.entry-points."meshy_dcc.adapters"]
+3dsmax = "meshy_dcc_3dsmax:MaxMcpServer"
+
+[project.scripts]
+meshy-dcc-3dsmax = "meshy_dcc_3dsmax.install_cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meshy_dcc_3dsmax"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short -m 'not e2e and not packaging and not integration'"
+markers = [
+    "e2e: end-to-end tests that require a real 3ds Max instance",
+    "packaging: tests for packaging that require network access",
+    "integration: integration tests that require a running 3ds Max instance",
+]
+
+[tool.coverage.run]
+source = ["meshy_dcc_3dsmax"]
+branch = true
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py37"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
