@@ -15,7 +15,6 @@ from __future__ import annotations
 # Import built-in modules
 import logging
 import os
-from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -60,9 +59,6 @@ ENV_PROJECT_TOOLS = "MESHY_DCC_MAYA_PROJECT_TOOLS"
 #: running module version with the installed distribution metadata for
 #: ``meshy-dcc-maya`` and ``meshy-dcc-core`` and warns on drift.  ``"0"`` disables.
 ENV_VERSION_CHECK = "MESHY_DCC_MAYA_VERSION_CHECK"
-
-#: Default SQLite filename inside the platform data directory.
-DEFAULT_JOB_DB_FILENAME = "jobs.db"
 
 #: Fallback MCP HTTP port when neither the caller nor ``MESHY_DCC_MAYA_PORT``
 #: supplies one.  ``0`` lets the OS pick a free port.
@@ -117,26 +113,16 @@ def resolve_job_storage(job_storage_path: Optional[str]) -> Optional[str]:
     1. Explicit ``job_storage_path`` argument (when not ``None``).  An
        empty string preserves the empty intent.
     2. ``MESHY_DCC_MAYA_JOB_STORAGE`` env var.
-    3. ``<platform_data_dir>/meshy-dcc-maya/jobs.db`` (auto-created).
+    3. ``None``: core's own per-process database. A shared default file
+       would let only the first of two Maya sessions start, because the
+       SQLite store takes an exclusive lease.
     """
     if job_storage_path is not None:
         if not str(job_storage_path).strip():
             return ""  # explicit "disable persistence"
         return job_storage_path
 
-    env_val = os.environ.get(ENV_JOB_STORAGE)
-    if env_val is not None:
-        return env_val
-
-    try:
-        from meshy_dcc_core import get_data_dir  # noqa: PLC0415
-
-        data_dir = Path(get_data_dir()) / "meshy-dcc-maya"
-        data_dir.mkdir(parents=True, exist_ok=True)
-        return str(data_dir / DEFAULT_JOB_DB_FILENAME)
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("Could not resolve default job storage path: %s", exc)
-        return None
+    return os.environ.get(ENV_JOB_STORAGE)
 
 
 def resolve_job_recovery(job_recovery: Optional[str]) -> str:

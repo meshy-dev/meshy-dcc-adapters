@@ -16,6 +16,7 @@ from __future__ import annotations
 
 # Import built-in modules
 import importlib.util
+import os
 import sys
 import time
 from pathlib import Path
@@ -50,6 +51,18 @@ def load_skill_script(skill_dir: str, script_name: str):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+@pytest.fixture(autouse=True)
+def _job_store_per_test(tmp_path, monkeypatch):
+    """Give each test its own SQLite job store.
+
+    Core's default store is one file per process, leased until its server
+    stops. Tests leave servers running, so a later test in the same worker
+    would find the file taken and refuse to start.
+    """
+    if "MESHY_DCC_JOB_STORAGE_PATH" not in os.environ:
+        monkeypatch.setenv("MESHY_DCC_JOB_STORAGE_PATH", str(tmp_path / "jobs.db"))
 
 
 def make_mock_maya(

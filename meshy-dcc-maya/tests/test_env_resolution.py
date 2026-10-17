@@ -49,14 +49,11 @@ class TestResolveJobStorage:
         with patch.dict(os.environ, {_env.ENV_JOB_STORAGE: path}):
             assert _env.resolve_job_storage(None) == path
 
-    def test_default_under_data_dir(self):
+    def test_default_is_core_per_process_database(self):
         env = os.environ.copy()
         env.pop(_env.ENV_JOB_STORAGE, None)
         with patch.dict(os.environ, env, clear=True):
-            result = _env.resolve_job_storage(None)
-        # Either we got a real default path, or the data-dir helper failed
-        # gracefully (returned None) — both are acceptable.
-        assert result is None or result.endswith(_env.DEFAULT_JOB_DB_FILENAME)
+            assert _env.resolve_job_storage(None) is None
 
 
 class TestResolveJobRecovery:

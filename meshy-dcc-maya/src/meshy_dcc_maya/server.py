@@ -64,6 +64,9 @@ from meshy_dcc_maya.host import MayaCallableDispatcher
 
 logger = logging.getLogger(__name__)
 
+#: Core reads an explicit job store from here while it builds its server.
+_CORE_JOB_STORAGE_ENV = "MESHY_DCC_JOB_STORAGE_PATH"
+
 #: Fallback MCP HTTP port (``0`` = let the OS choose).  Re-exported from
 #: :mod:`meshy_dcc_maya._env` so the env-var resolver and the public constant
 #: cannot drift apart.
@@ -131,6 +134,8 @@ class MayaServerOptions:
     def to_core_options(self) -> DccServerOptions:
         return DccServerOptions.from_env(
             dcc_name="maya",
+            # ``""`` asks for in-memory jobs.
+            enable_job_persistence=_env.resolve_job_storage(self.job_storage_path) != "",
             builtin_skills_dir=_BUILTIN_SKILLS_DIR,
             port=_env.resolve_port(self.port),
             server_name=self.server_name,
@@ -220,10 +225,22 @@ class MayaMcpServer(DccServerBase):
                 instance_type=instance_type,
             )
 
-        super().__init__(options=options.to_core_options())
+        # Core builds its inner server, and opens the job store, inside
+        # ``__init__``; an explicit store has to be in place before that.
+        job_store = _env.resolve_job_storage(options.job_storage_path)
+        previous_store = os.environ.get(_CORE_JOB_STORAGE_ENV)
+        if job_store:
+            os.environ[_CORE_JOB_STORAGE_ENV] = job_store
+        try:
+            super().__init__(options=options.to_core_options())
+        finally:
+            if job_store:
+                if previous_store is None:
+                    os.environ.pop(_CORE_JOB_STORAGE_ENV, None)
+                else:
+                    os.environ[_CORE_JOB_STORAGE_ENV] = previous_store
 
         metrics_enabled = options.metrics_enabled
-        job_storage_path = options.job_storage_path
         job_recovery = options.job_recovery
         enable_workflows = options.enable_workflows
         gateway_port = options.gateway_port
@@ -238,16 +255,6 @@ class MayaMcpServer(DccServerBase):
         if _env.resolve_metrics_enabled(metrics_enabled):
             self._config.enable_prometheus = True
             logger.info("[%s] Prometheus /metrics endpoint enabled", "maya")
-
-        # ── Job persistence + notifications (issue #89) ─────────────────
-        effective_job_path = _env.resolve_job_storage(job_storage_path)
-        if effective_job_path:
-            self._config.job_storage_path = effective_job_path
-            logger.info("[%s] Job storage: %s", "maya", effective_job_path)
-        elif effective_job_path == "":
-            # Explicit "disable persistence" — clear the path that
-            # ``DccServerBase._init_job_persistence`` may have set.
-            self._config.job_storage_path = ""
 
         self._job_recovery: str = _env.resolve_job_recovery(job_recovery)
         # Propagate the chosen recovery policy into the inner Rust config so

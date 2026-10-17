@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -132,15 +133,15 @@ class TestJobPersistence:
         server = srv_mod.MayaMcpServer(port=0)
         assert server._config.job_storage_path == db
 
-    def test_job_storage_path_default_is_platform_dir(self, monkeypatch):
-        """Without explicit config the default path is inside get_data_dir()."""
+    def test_job_storage_path_default_is_per_process(self, monkeypatch):
+        """Without explicit config core keeps one database per Maya process."""
         monkeypatch.delenv("MESHY_DCC_MAYA_JOB_STORAGE", raising=False)
+        monkeypatch.delenv("MESHY_DCC_JOB_STORAGE_PATH", raising=False)
         srv_mod = _fresh_server_module()
         server = srv_mod.MayaMcpServer(port=0, job_storage_path=None)
         path = server._config.job_storage_path
         assert path is not None
-        assert path.endswith("jobs.db")
-        assert "meshy-dcc-maya" in path
+        assert path.endswith("meshy-dcc-maya-{}-jobs.db".format(os.getpid()))
 
     def test_job_storage_disabled_with_empty_string(self):
         """Passing ``job_storage_path=""`` disables persistence."""
