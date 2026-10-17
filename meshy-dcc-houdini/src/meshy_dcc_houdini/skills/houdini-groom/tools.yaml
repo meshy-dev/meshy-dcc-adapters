@@ -1,0 +1,97 @@
+tools:
+  - name: build_short_fur_groom
+    description: >-
+      Build a Houdini 22 Hair Generate 2.0 network for short fur and optionally
+      append Guide Deform so roots follow animated skin. Returns all node paths
+      and the parameter names available in the installed Houdini build.
+    source_file: scripts/build_short_fur_groom.py
+    execution: sync
+    affinity: main
+    group: fur-authoring
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [geo_path, rest_skin]
+      properties:
+        geo_path: {type: string, description: Geometry SOP container path.}
+        rest_skin: {type: string, description: Rest skin SOP name in geo_path.}
+        animated_skin: {type: string, description: Optional animated skin SOP name.}
+        guides: {type: string, description: Optional guide curve SOP name.}
+        skin_group: {type: string, default: "", description: Primitive group that grows fur.}
+        density: {type: number, minimum: 0.001, maximum: 10000000, default: 120000, description: Hair density.}
+        length: {type: number, exclusiveMinimum: 0, maximum: 10, default: 0.025, description: Fur length in scene units.}
+        segments: {type: integer, minimum: 2, maximum: 64, default: 5, description: Segments per unguided hair.}
+        clump_strength: {type: number, minimum: 0, maximum: 1, default: 0.15, description: Optional Hair Clump strength.}
+        region_profiles:
+          type: array
+          minItems: 1
+          maxItems: 16
+          description: >-
+            Optional anatomy regions. Each region creates an independent Hair
+            Generate and optional Hair Clump chain before a shared merge and
+            animated Guide Deform. Omitted values inherit top-level defaults.
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, skin_group]
+            properties:
+              name:
+                type: string
+                pattern: "^[A-Za-z][A-Za-z0-9_]{0,31}$"
+                description: Stable region and node-name suffix such as head, thorax, or abdomen.
+              skin_group: {type: string, minLength: 1, description: Skin group for this fur region.}
+              guides: {type: string, minLength: 1, description: Optional region-specific guide curve SOP name.}
+              density: {type: number, minimum: 0.001, maximum: 10000000}
+              length: {type: number, exclusiveMinimum: 0, maximum: 10}
+              segments: {type: integer, minimum: 2, maximum: 64}
+              clump_strength: {type: number, minimum: 0, maximum: 1}
+        deform_method:
+          type: string
+          enum: [surface, guide_shape, point]
+          default: surface
+          description: Guide Deform method; surface is recommended for short insect fur.
+        name_prefix: {type: string, default: insect_fur, description: Prefix for created SOP names.}
+    next-tools:
+      on-success:
+        - houdini_geometry__get_cook_status
+      on-failure:
+        - houdini_scene__get_node_info
+  - name: add_groom_step
+    description: Add a single grooming SOP step (hairgen, hairclump, frizz, brush, ...) to a fur or hair chain.
+    source_file: scripts/add_groom_step.py
+    execution: sync
+    affinity: main
+    group: authoring
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [geo_path, step_type]
+      additionalProperties: false
+      properties:
+        geo_path:
+          type: string
+          description: Absolute path of a SOP network that will host the step.
+        step_type:
+          type: string
+          enum: [generate, clump, guide_deform, frizz, brush, guide_groom, hair_card, copy]
+        source_path:
+          type: string
+          description: Absolute path of the upstream groom node; wired into input 0.
+        node_name:
+          type: string
+          description: Node name; defaults to the groom SOP type plus 1.
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.

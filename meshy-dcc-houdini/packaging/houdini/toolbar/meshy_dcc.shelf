@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<shelfDocument>
+  <toolshelf name="Meshy DCC" label="Meshy DCC">
+    <memberTool name="meshy_dcc_houdini_copy_id"/>
+    <memberTool name="meshy_dcc_houdini_server_info"/>
+    <memberTool name="meshy_dcc_houdini_about"/>
+    <memberTool name="meshy_dcc_houdini_start"/>
+    <memberTool name="meshy_dcc_houdini_stop"/>
+  </toolshelf>
+  <tool name="meshy_dcc_houdini_copy_id" label="Copy Instance ID" icon="BUTTONS_info" helpText="Copy the Meshy DCC instance UUID to the clipboard.">
+    <script scriptType="python"><![CDATA[
+try:
+    import meshy_dcc_houdini
+    server = meshy_dcc_houdini.get_server()
+except Exception:
+    server = None
+
+instance_id = None
+if server is not None:
+    for attr in ("instance_id", "_config"):
+        val = getattr(server, attr, None)
+        if isinstance(val, str):
+            instance_id = val
+            break
+        if hasattr(val, "instance_id"):
+            instance_id = getattr(val, "instance_id", None)
+            if isinstance(instance_id, str):
+                break
+    if instance_id is None:
+        instance_id = getattr(server, "instance_id", None) or "unknown"
+
+copied = False
+try:
+    import hou
+    hou.ui.copyTextToClipboard(str(instance_id))
+    copied = True
+except Exception:
+    pass
+# Fallback: copy to stdout for headless / non-Qt sessions
+if not copied:
+    print("Instance ID: {}".format(instance_id))
+
+message = "Instance ID copied: {}".format(instance_id) if copied else "Instance ID: {}".format(instance_id)
+try:
+    import hou
+    hou.ui.setStatusMessage(message)
+except Exception:
+    print(message)
+]]></script>
+  </tool>
+  <tool name="meshy_dcc_houdini_server_info" label="Server Info" icon="BUTTONS_info" helpText="Show Meshy DCC Houdini server information.">
+    <script scriptType="python"><![CDATA[
+try:
+    import meshy_dcc_houdini
+    server = meshy_dcc_houdini.get_server()
+except Exception:
+    server = None
+
+if server is not None and getattr(server, "is_running", False):
+    instance_id = None
+    for attr in ("instance_id", "_config"):
+        val = getattr(server, attr, None)
+        if isinstance(val, str):
+            instance_id = val
+            break
+        if hasattr(val, "instance_id"):
+            instance_id = getattr(val, "instance_id", None)
+            if isinstance(instance_id, str):
+                break
+    if instance_id is None:
+        instance_id = getattr(server, "instance_id", None) or "unknown"
+
+    try:
+        from meshy_dcc_houdini import __version__ as adapter_version
+    except Exception:
+        adapter_version = "unknown"
+
+    try:
+        from meshy_dcc_houdini._version_probe import get_houdini_version_string
+        houdini_version = get_houdini_version_string()
+    except Exception:
+        houdini_version = "unknown"
+
+    lines = [
+        "Meshy DCC Houdini Server Info",
+        "  MCP URL:       {}".format(server.mcp_url),
+        "  Instance UUID: {}".format(instance_id),
+        "  Adapter:       meshy-dcc-houdini {}".format(adapter_version),
+        "  Houdini:       {}".format(houdini_version),
+        "  Port:          {}".format(server.port),
+    ]
+    info = "\n".join(lines)
+else:
+    info = "Meshy DCC Houdini server is not running."
+
+try:
+    import hou
+    hou.ui.displayMessage(info, title="Meshy DCC Houdini Server Info")
+except Exception:
+    print(info)
+]]></script>
+  </tool>
+  <tool name="meshy_dcc_houdini_about" label="About Meshy DCC" icon="BUTTONS_help" helpText="About Meshy DCC Houdini.">
+    <script scriptType="python"><![CDATA[
+try:
+    from meshy_dcc_houdini import __version__ as adapter_version
+except Exception:
+    adapter_version = "unknown"
+
+try:
+    from meshy_dcc_houdini._version_probe import get_houdini_version_string
+    houdini_version = get_houdini_version_string()
+except Exception:
+    houdini_version = "unknown"
+
+about = (
+    "Meshy DCC Houdini v{}\n"
+    "Houdini {}\n\n"
+    "https://www.meshy.ai"
+).format(adapter_version, houdini_version)
+
+try:
+    import hou
+    hou.ui.displayMessage(about, title="About Meshy DCC Houdini")
+except Exception:
+    print(about)
+]]></script>
+  </tool>
+  <tool name="meshy_dcc_houdini_start" label="Start Meshy DCC" icon="MISC_python" helpText="Start the Meshy DCC Houdini server.">
+    <script scriptType="python"><![CDATA[
+try:
+    import meshy_dcc_houdini
+
+    server = meshy_dcc_houdini.start_server(wait_ready=False)
+    message = "Meshy DCC Houdini server: {}".format(server.mcp_url)
+except Exception as exc:
+    message = "Meshy DCC Houdini start failed: {}".format(exc)
+
+try:
+    import hou
+
+    hou.ui.setStatusMessage(message)
+except Exception:
+    print(message)
+]]></script>
+  </tool>
+  <tool name="meshy_dcc_houdini_stop" label="Stop Meshy DCC" icon="MISC_python" helpText="Stop the Meshy DCC Houdini server.">
+    <script scriptType="python"><![CDATA[
+try:
+    import meshy_dcc_houdini
+
+    meshy_dcc_houdini.stop_server()
+    message = "Meshy DCC Houdini server stopped."
+except Exception as exc:
+    message = "Meshy DCC Houdini stop failed: {}".format(exc)
+
+try:
+    import hou
+
+    hou.ui.setStatusMessage(message)
+except Exception:
+    print(message)
+]]></script>
+  </tool>
+</shelfDocument>

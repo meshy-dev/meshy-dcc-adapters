@@ -1,0 +1,50 @@
+"""Read parameter names and values for a material/shader node (read-only)."""
+
+from __future__ import annotations
+
+from typing import Optional
+
+from _lookdev_common import get_node, node_summary  # noqa: E402
+from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
+
+from meshy_dcc_houdini.api import safe_parm_eval
+
+
+def get_material_parms(material_path: str, name_filter: Optional[str] = None) -> dict:
+    """Return evaluated parameter values for the material at *material_path*."""
+    try:
+        import hou  # noqa: PLC0415
+    except ImportError:
+        return skill_error("Houdini not available", "hou could not be imported")
+
+    try:
+        node = get_node(hou, material_path)
+        parms = []
+        for parm in node.parms():
+            name = parm.name()
+            if name_filter and name_filter.lower() not in name.lower():
+                continue
+            try:
+                value = safe_parm_eval(parm)
+            except Exception:  # noqa: BLE001
+                value = None
+            parms.append({"name": name, "value": value})
+        return skill_success(
+            "Read material parameters",
+            material=node_summary(node),
+            count=len(parms),
+            parameters=parms,
+        )
+    except Exception as exc:
+        return skill_exception(exc, message="Failed to read material parameters")
+
+
+@skill_entry
+def main(**kwargs) -> dict:
+    return get_material_parms(**kwargs)
+
+
+if __name__ == "__main__":
+    from meshy_dcc_core.skill import run_main
+
+    run_main(main)

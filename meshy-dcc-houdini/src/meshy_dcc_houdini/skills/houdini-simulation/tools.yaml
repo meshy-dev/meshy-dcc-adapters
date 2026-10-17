@@ -1,0 +1,300 @@
+tools:
+  - name: create_simulation_network
+    description: Create or reuse a DOP solver skeleton; object sources and wiring are still required.
+    source_file: scripts/create_simulation_network.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [parent_path, simulation_type]
+      properties:
+        parent_path:
+          type: string
+          description: Parent path such as /obj.
+        simulation_type:
+          type: string
+          enum: [pyro, flip, rbd, vellum]
+        network_name:
+          type: string
+          default: dopnet1
+        solver_name:
+          type: string
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.
+  - name: configure_simulation_solver
+    description: Apply bounded parameter overrides to an existing simulation solver and optionally cook it.
+    source_file: scripts/configure_simulation_solver.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [solver_path, parameters]
+      properties:
+        solver_path:
+          type: string
+        parameters:
+          type: object
+        cook:
+          type: boolean
+          default: false
+  - name: inspect_simulation_network
+    description: Inspect DOP children, solver types, parameter readback, errors, and timeline metadata.
+    source_file: scripts/inspect_simulation_network.py
+    execution: sync
+    affinity: main
+    group: inspect
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [network_path]
+      properties:
+        network_path:
+          type: string
+  - name: validate_simulation_setup
+    description: Validate that a DOP network contains the requested solver family and has no cook errors.
+    source_file: scripts/validate_simulation_setup.py
+    execution: sync
+    affinity: main
+    group: inspect
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [network_path]
+      properties:
+        network_path:
+          type: string
+        simulation_type:
+          type: string
+          enum: [pyro, flip, rbd, vellum]
+  - name: create_fracture
+    description: Create a fracture SOP (voronoi, boolean or RBD material fracture) and optionally wire its source.
+    source_file: scripts/create_fracture.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [parent_path, fracture_type]
+      additionalProperties: false
+      properties:
+        parent_path:
+          type: string
+          description: Absolute path of a SOP network that will host the fracture node.
+        fracture_type:
+          type: string
+          enum: [voronoi, boolean, material]
+        source_path:
+          type: string
+          description: Absolute path of the geometry to fracture; wired into input 0 when given.
+        node_name:
+          type: string
+          default: fracture1
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.
+  - name: create_constraint_network
+    description: Create a DOP constraint network with an optional glue, soft, wire or cone-twist relationship SOP.
+    source_file: scripts/create_constraint_network.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [dopnet_path, constraint_type]
+      additionalProperties: false
+      properties:
+        dopnet_path:
+          type: string
+          description: Absolute path of a DOP network.
+        constraint_type:
+          type: string
+          enum: [glue, soft, wire, cone]
+        network_name:
+          type: string
+          default: constraintnetwork1
+        relationship_parent:
+          type: string
+          description: Absolute path of a SOP network that hosts the relationship SOP.
+        relationship_name:
+          type: string
+          description: Relationship SOP name; defaults to the constraint type.
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.
+  - name: create_collision_source
+    description: Create a DOP collision object bound to a SOP path and attach it to the solver.
+    source_file: scripts/create_collision_source.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [dopnet_path, source_path]
+      additionalProperties: false
+      properties:
+        dopnet_path:
+          type: string
+          description: Absolute path of a DOP network.
+        source_path:
+          type: string
+          description: Absolute SOP path of the collision geometry.
+        collision_type:
+          type: string
+          enum: [static, deforming]
+          default: static
+        node_name:
+          type: string
+          default: staticobject1
+        connect_to:
+          type: string
+          description: Absolute path of the node to attach to; defaults to the first solver in the network.
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.
+  - name: create_pyro_source
+    description: Create a pyro source SOP that turns geometry into volume source attributes.
+    source_file: scripts/create_pyro_source.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [parent_path]
+      additionalProperties: false
+      properties:
+        parent_path:
+          type: string
+          description: Absolute path of a SOP network that will host the source node.
+        source_path:
+          type: string
+          description: Absolute path of the geometry to convert into a source; wired into input 0.
+        source_type:
+          type: string
+          enum: [sop, volume]
+          default: sop
+        node_name:
+          type: string
+          description: Node name; defaults to the source node type plus 1.
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.
+  - name: add_pyro_post_process
+    description: Create a pyro post-process SOP that reshapes a cached simulation after the fact.
+    source_file: scripts/add_pyro_post_process.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [parent_path]
+      additionalProperties: false
+      properties:
+        parent_path:
+          type: string
+          description: Absolute path of a SOP network that will host the post-process node.
+        source_path:
+          type: string
+          description: Absolute path of the upstream DOP import; wired into input 0.
+        node_name:
+          type: string
+          default: pyropostprocess1
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.
+  - name: add_gas_field
+    description: Create a DOP gas micro-solver (turbulence, disturbance, resize, ...) and attach it to the solver.
+    source_file: scripts/add_gas_field.py
+    execution: sync
+    affinity: main
+    group: setup
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [dopnet_path, field_type]
+      additionalProperties: false
+      properties:
+        dopnet_path:
+          type: string
+          description: Absolute path of a DOP network.
+        field_type:
+          type: string
+          enum: [turbulence, disturbance, vortex_confinement, resize, dissipation, target_field]
+        node_name:
+          type: string
+          description: Node name; defaults to the gas node type plus 1.
+        parameters:
+          type: object
+          description: Bounded Houdini parameter name to value overrides.
+        connect_to:
+          type: string
+          description: Absolute path of the node to attach to; defaults to the first solver in the network.

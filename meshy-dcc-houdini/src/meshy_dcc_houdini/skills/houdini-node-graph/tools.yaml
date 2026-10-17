@@ -1,0 +1,158 @@
+tools:
+  - name: get_connections
+    description: >-
+      Return a node's input paths, output paths, and (optionally) parameter
+      dependents/consumers. Read-only graph query.
+    source_file: scripts/get_connections.py
+    execution: sync
+    affinity: main
+    group: graph-query
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [node_path]
+      properties:
+        node_path:
+          type: string
+          description: Node to inspect.
+        include_dependents:
+          type: boolean
+          default: true
+          description: Include downstream parameter/reference dependents.
+  - name: connect_input
+    description: >-
+      Wire a source node's output into a target node's input at an explicit
+      input index. Returns a structured error if either node is missing.
+    source_file: scripts/connect_input.py
+    execution: sync
+    affinity: main
+    group: graph-edit
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [node_path, input_index, source_path]
+      properties:
+        node_path:
+          type: string
+          description: Target node receiving the connection.
+        input_index:
+          type: integer
+          minimum: 0
+          description: Input index on the target node.
+        source_path:
+          type: string
+          description: Source node to feed in.
+        source_output:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Output index on the source node.
+  - name: disconnect_input
+    description: >-
+      Clear the connection feeding a node's input index.
+    source_file: scripts/disconnect_input.py
+    execution: sync
+    affinity: main
+    group: graph-edit
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [node_path, input_index]
+      properties:
+        node_path:
+          type: string
+          description: Node whose input to clear.
+        input_index:
+          type: integer
+          minimum: 0
+          description: Input index to disconnect.
+  - name: inspect_network
+    description: >-
+      Full semantic inspection of a Houdini parent network. Reports broken
+      inputs (unconnected input slots), orphaned nodes (zero connections),
+      directed cycles, disconnected subgraphs, type-mismatched connections
+      (cross-context wiring e.g. SOP→ROP), and chain roots/ends. Read-only.
+    source_file: scripts/inspect_network.py
+    execution: sync
+    affinity: main
+    group: graph-inspect
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [parent_path]
+      properties:
+        parent_path:
+          type: string
+          description: Parent network path to inspect (e.g. /obj/geo1).
+  - name: auto_layout
+    description: >-
+      Auto-arrange nodes under a parent network with controllable user-layout
+      preservation. When preserve_user_layout=true (default), nodes whose
+      positions differ from Houdini's default layoutChildren() result are
+      treated as user-touched and left unchanged. Two strategies:
+      'houdini_default' (use built-in layoutChildren then restore preserved
+      nodes) and 'tree_left_to_right' (topological tree layout, sinks on the
+      right). Pass dry_run=true to preview without mutating the scene.
+    source_file: scripts/auto_layout.py
+    execution: sync
+    affinity: main
+    group: graph-layout
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+    input_schema:
+      type: object
+      required: [parent_path]
+      properties:
+        parent_path:
+          type: string
+          description: Parent network path to layout (e.g. /obj/geo1).
+        strategy:
+          type: string
+          enum: [houdini_default, tree_left_to_right]
+          default: houdini_default
+          description: Layout strategy.
+        preserve_user_layout:
+          type: boolean
+          default: true
+          description: Skip nodes whose positions appear user-touched.
+        spacing_x:
+          type: number
+          default: 200.0
+          description: Horizontal spacing (tree_left_to_right only).
+        spacing_y:
+          type: number
+          default: 100.0
+          description: Vertical spacing (tree_left_to_right only).
+        dry_run:
+          type: boolean
+          default: false
+          description: Preview the layout plan without mutating.
