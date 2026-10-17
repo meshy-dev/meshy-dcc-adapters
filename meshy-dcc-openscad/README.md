@@ -1,175 +1,63 @@
 # meshy-dcc-openscad
 
-<p align="center">
-  <img src="docs/assets/meshy-dcc-openscad.svg" alt="Meshy DCC · OPENSCAD" width="600">
-</p>
+The Meshy DCC Core adapter for OpenSCAD: write, inspect, validate, export and
+render OpenSCAD models through the bounded `openscad` command line, and stand
+Meshy-generated STL models on printable bases.
 
-Production OpenSCAD adapter for deterministic model inspection, validation,
-geometry export, and PNG rendering through Meshy DCC.
+Verified with the OpenSCAD 2026.10.15 snapshot on macOS arm64: install,
+`meshy-dcc start-instance`, writing a `.scad`, STL export with a parameter
+change, PNG render, a Meshy model on a print base, calls through the gateway,
+restart with read-back, and safe stop. The Windows package is built but has
+not run on Windows.
 
-![Parameterized OpenSCAD bracket moving through topology validation to a game-ready mesh](docs/images/meshy-dcc-openscad-showcase.webp)
-
-_Illustrative workflow based on the live OpenSCAD → FreeCAD → Blender/Godot acceptance run; generated source is retained in `docs/images/meshy-dcc-openscad-showcase-source.png`._
-
-<!-- meshy-dcc-coverage-pointer:start -->
-<!-- Generated from meshy-dcc-catalog.yml by scripts/generate_adapter_pointer.py in meshy-dcc/meshy-dcc-core. Do not edit by hand. -->
-## Part of the Meshy DCC host matrix
-
-**meshy-dcc-openscad** — OpenSCAD adapter for deterministic model validation, export, and
-rendering.
-
-It is one of **47 host adapters** in the Meshy DCC catalog. Every adapter speaks the same
-MCP protocol and builds on the same core runtime contract; each one exposes the tools
-its own host needs on top of that.
-
-- [All host adapters and install metadata](https://www.meshy.ai/meshy-dcc/ecosystem)
-- [Host matrix on the core README](https://github.com/meshy-dev/meshy-dcc-core#readme)
-- [Showcase](https://www.meshy.ai/meshy-dcc/showcase)
-
-This block is generated from the catalog entry in
-[`meshy-dcc-catalog.yml`](https://github.com/meshy-dev/meshy-dcc-core/blob/main/meshy-dcc-catalog.yml).
-Re-run the generator after changing the catalog.
-<!-- meshy-dcc-coverage-pointer:end -->
-
-## Capabilities
-
-- Detect the standalone OpenSCAD CLI and report version-specific capabilities.
-- Inspect modules, functions, variables, and `include`/`use` references without
-  executing source.
-- Validate a parameterized model with structured warning/error diagnostics.
-- Export STL (explicit binary or ASCII), 3MF, AMF, OFF, CSG, DXF, SVG, PDF,
-  and OpenSCAD diagnostic formats.
-- Render bounded PNG previews or full geometry renders with typed camera,
-  projection, color-scheme, size, and parameter inputs.
-- Stage outputs atomically, read the artifact back to prove the write landed,
-  and return file size plus SHA-256 provenance.
-
-The adapter does not accept arbitrary OpenSCAD command-line arguments or raw
-`-D` expressions. JSON scalar/array parameters are encoded by the adapter.
-
-## Requirements
-
-- Python 3.7+
-- `meshy-dcc-core` 0.20.36+
-- OpenSCAD inside the verified compatibility matrix
-
-Supported ranges are declared in `compat_matrix.json` and enforced before any
-tool runs: OpenSCAD `2021.01.x` and `2026.09.x`. A host outside the matrix is
-refused with an explicit error code rather than run unverified, and
-`meshy-dcc-openscad doctor --json` always reports the version it found together
-with that verdict.
-
-On Windows, point to `openscad.com` when possible; if `openscad.exe` is
-configured and a sibling `openscad.com` exists, the adapter selects the console
-launcher automatically.
-
-## Runtime boundary
-
-OpenSCAD is not a Python host and has no embedded interpreter for the adapter
-to run inside. The adapter is a Python process that supervises an `openscad`
-CLI child process:
-
-```text
-host side (this adapter)               OpenSCAD side (child process)
------------------------------------    ---------------------------------
-external Python 3.7+                   `openscad` CLI executable
-meshy_dcc_openscad.bridge                --version / --help probes
-meshy_dcc_openscad._process              one supervised process tree per call,
-                                       bounded by a single absolute deadline
-meshy_dcc_openscad._probe_supervisor     owning the child's stdout/stderr files
-```
-
-What follows from that boundary:
-
-- The Python version that matters is the host-side one that owns the wheel.
-  There is no second interpreter, so there is no host/embedded version mismatch
-  to diagnose.
-- Every CLI call is a fresh process with a bounded deadline: no persistent
-  session, no in-process state, no shared memory.
-- Arguments cross the boundary as an argument vector, never through a shell, so
-  a model path or parameter is never interpreted as shell syntax.
-- Results come back as files plus bounded captured output, and a mutating tool
-  re-reads the artifact to prove the write landed (see
-  [`docs/write-contract.md`](docs/write-contract.md)).
-
-## Install
-
-See [`install.md`](install.md) for wheel-only setup, platform discovery, the
-official six-verb Install SOP lifecycle, ownership receipts, rollback, and
-troubleshooting.
+## With Meshy DCC
 
 ```bash
-python -m pip install meshy-dcc-openscad
-meshy-dcc-openscad doctor --json
-meshy-dcc-openscad install --yes --json
-meshy-dcc-openscad
+meshy-dcc install --dcc-type openscad --project /path/to/models --execute
+meshy-dcc start-instance --dcc-type openscad --project /path/to/models --wait-ready --yes
 ```
 
-For an explicit standalone readiness check:
+The package carries its own CPython with `meshy_dcc_core` and this adapter;
+OpenSCAD needs no Python. `install` runs the package's `install-project`, which
+checks the OpenSCAD executable (from `--dcc-path` or the usual install
+location) against the supported versions and records the project's
+start-instance launch plan in `.meshy-dcc/`. The instance is the adapter
+process; it needs no OpenSCAD window. Its workspace root is the project
+directory, and relative tool paths resolve there. See [`install.md`](install.md).
 
-```powershell
-meshy-dcc-openscad verify --executable "C:\Program Files\OpenSCAD\openscad.com" --json
-```
+## Skills
 
-For development:
+| Skill | Tools |
+|---|---|
+| `openscad-pipeline` | `get_status`, `get_capabilities`, `inspect_source` (read-only); `write_model_source` (new self-contained `.scad`); `validate_model`, `export_model` (STL, 3MF, AMF, OFF, CSG, DXF, SVG, PDF), `render_preview` (PNG) |
+| `meshy-openscad` | `write_print_base`: a new parametric `.scad` that imports a Meshy STL, scales it to a height in mm, centres it and stands it on a round or square base |
+
+`validate_model`, `export_model` and `render_preview` run as jobs; poll
+`jobs_get_status`. Parameter overrides are JSON values, never raw `-D`
+expressions. Outputs are staged and moved into place only after OpenSCAD
+succeeds, existing files are replaced only with `overwrite: true`, and every
+mutating tool reads its artifact back before it reports success
+([`docs/write-contract.md`](docs/write-contract.md)).
+
+## Supported OpenSCAD
+
+`2021.01.x`, `2026.09.x` and `2026.10.x`, declared in
+`src/meshy_dcc_openscad/compat_matrix.json`. Anything else is refused with an
+`openscad_host_version_*` error rather than run unverified. 2021.01 is the last
+stable release and is Intel-only on macOS; Apple Silicon needs a development
+snapshot from openscad.org.
+
+## Development
 
 ```bash
-python -m pip install -e ".[dev]"
-python -m pytest
+uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python --no-deps <meshy_dcc_core wheel>
+uv pip install --python .venv/bin/python pytest pyyaml 'jsonschema>=4.18'
+PYTHONPATH=src:. .venv/bin/python -m pytest tests
+.venv/bin/python tools/lint_skills.py
+uv run --python 3.11 --no-project python packaging/build_package.py \
+    --core-wheel <wheel> --platform macos-arm64 --output-dir dist
 ```
 
-## Configuration
-
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `MESHY_DCC_OPENSCAD_EXECUTABLE` | Exact OpenSCAD executable or install directory | `PATH` and standard install locations |
-| `MESHY_DCC_OPENSCAD_ALLOWED_ROOTS` | `os.pathsep`-separated source/output roots | server working directory |
-| `MESHY_DCC_OPENSCAD_MAX_SOURCE_BYTES` | Maximum source size | 4 MiB |
-| `MESHY_DCC_OPENSCAD_MAX_TIMEOUT_SECS` | Maximum per-call deadline | 1800 seconds |
-| `MESHY_DCC_OPENSCAD_PORT` | Fixed adapter port when direct addressing is required | OS-assigned |
-
-The service registers as a standalone Meshy DCC instance. It has no bound GUI
-PID and needs no OpenSCAD window.
-
-## Agent workflow
-
-Use the standard discovery path:
-
-```bash
-meshy-dcc list
-meshy-dcc search --query "OpenSCAD validate export STL"
-meshy-dcc load-skill openscad-pipeline --dcc-type openscad --instance-id <instance-short>
-meshy-dcc describe openscad.<instance-short>.openscad_pipeline__validate_model
-```
-
-Then call `inspect_source` → `validate_model` → `export_model` or
-`render_preview`. Long calls are asynchronous and should be polled through the
-core job tools returned by the call.
-
-`examples/production_smoke.scad` is a parameterized enclosure used by the live
-acceptance test. Override `width`, `depth`, `height`, `wall`, `corner_radius`,
-or `vent_count` to verify safe parameter encoding and reproducible artifacts.
-
-## Safety contract
-
-- Source and output paths must remain under configured allowed roots.
-- Existing outputs are never replaced unless `overwrite=true` is explicit.
-- Exports use sibling temporary files and become visible only after success.
-- A mutating tool returns only after re-reading the artifact and proving the
-  write landed; a mismatch is an explicit error naming the expected and actual
-  values instead of a reported success.
-- Parameter names, values, nesting, count, image dimensions, formats, and
-  deadlines are bounded.
-- Cancellation and timeouts terminate the owned OpenSCAD child process.
-- Captured process output is limited to 64 KiB per stream.
-
-## Verification
-
-CI installs a real OpenSCAD for every supported range -- each binary pinned by
-version and SHA-256 -- and runs the end-to-end case that validates, exports
-STL, and renders PNG. The job fails if that case is skipped, so a missing host
-cannot look like a pass. See [`install.md`](install.md) for the ranges and the
-error codes.
-
-OpenSCAD CLI reference:
-<https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_OpenSCAD_in_a_command_line_environment>
+`OPENSCAD_TEST_EXECUTABLE=<exe>` with `-m openscad` runs the real-OpenSCAD
+cases on `examples/production_smoke.scad`.

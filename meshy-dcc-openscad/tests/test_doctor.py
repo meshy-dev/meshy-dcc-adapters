@@ -8,8 +8,8 @@ import pytest
 
 
 def _validate(payload: dict) -> None:
-    from meshy_dcc_core.deployment import load_install_sop_schema
     from jsonschema import Draft202012Validator
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator(load_install_sop_schema()).validate(payload)
 

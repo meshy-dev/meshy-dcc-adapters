@@ -1,242 +1,93 @@
-# OpenSCAD Standalone Install SOP v1
+# Installing the OpenSCAD adapter
 
-This adapter invokes an OS-managed OpenSCAD command-line executable. Nothing
-is installed into the OpenSCAD application. The canonical raw guide is
-<https://raw.githubusercontent.com/meshy-dev/meshy-dcc-openscad/main/install.md>.
+OpenSCAD has no embedded Python and nothing is installed into it. The adapter
+is a Python process that runs the `openscad` command-line executable, one
+bounded child process per call. Each project (a directory of `.scad` sources
+and their outputs) gets its own adapter instance, and that directory is the
+instance's workspace root.
 
-## Requirements
+## With Meshy DCC
 
-- OpenSCAD inside the verified compatibility matrix (see "Supported versions";
-  the matrix ships with the wheel as `compat_matrix.json` and is read at
-  runtime). Get it from the official project or an operating-system package
-  repository.
-- External Python 3.7 or newer with `meshy-dcc-core>=0.20.36,<1.0.0`.
-- Read/write access to each path in `MESHY_DCC_OPENSCAD_ALLOWED_ROOTS`.
+```shell
+meshy-dcc install --dcc-type openscad --project /path/to/models --execute
+meshy-dcc start-instance --dcc-type openscad --project /path/to/models --wait-ready --yes
+```
 
-The adapter does not download, scrape, update, or execute a remote OpenSCAD
-payload. There is no adapter-managed binary cache. OpenSCAD remains owned by
-the operating-system package manager or official installation.
+`install` downloads the package (a relocatable CPython 3.11 with
+`meshy_dcc_core` and this adapter), extracts it, and runs
+`bin/meshy-dcc-openscad-sidecar install-project <project> --openscad <exe>
+--sidecar <launcher>`. That checks the OpenSCAD executable against the
+version matrix below and writes `<project>/.meshy-dcc/launch-plan.json`
+(the directory ignores itself for version control). Nothing outside the
+project and the package directory is written.
+
+OpenSCAD is found through `--dcc-path`, or the one match of the catalog's
+usual install locations:
+
+| Platform | Executable |
+| --- | --- |
+| macOS | `/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD` (or `~/Applications/...`) |
+| Windows | `C:\Program Files\OpenSCAD\openscad.exe`; the adapter runs the sibling `openscad.com` console launcher |
+
+`start-instance` runs `meshy-dcc-openscad-sidecar serve --project <project>
+--openscad <exe>`. The instance needs no OpenSCAD window. Stop it with
+`meshy-dcc stop-instance`; it holds no unsaved state.
 
 ## Supported versions
 
-### Runtime boundary
+OpenSCAD versions are calendar based: `YYYY.MM` for releases and
+`YYYY.MM.DD` for the dated development snapshots. The ranges are declared in
+`compat_matrix.json` and enforced by `install-project` and before every
+modelling call:
 
-OpenSCAD is **not** a Python host: it has no embedded interpreter for the
-adapter to run inside. The adapter is a Python process that supervises an
-`openscad` CLI child process and talks to it only through command-line flags,
-stdin/stdout/stderr, and files on disk.
-
-```text
-host side (this adapter)              OpenSCAD side (child process)
-----------------------------------    ----------------------------------
-external Python 3.7+                 `openscad` CLI executable
-meshy_dcc_openscad.bridge              --version / --help probes
-meshy_dcc_openscad._process            one supervised process tree per call,   
-                                     bounded by a single absolute deadline
-meshy_dcc_openscad._probe_supervisor   owning the child's stdout/stderr files
-```
-
-Consequences worth knowing before debugging:
-
-- The Python version that matters is the **host-side** one that owns the wheel.
-  There is no second interpreter to keep in sync, so there is no
-  host/embedded version mismatch to diagnose.
-- Every CLI call is a fresh process with a bounded deadline; there is no
-  persistent session, no in-process state, and no shared memory.
-- Arguments cross the boundary as an argument vector, never through a shell,
-  so a model path or `-D` parameter is never interpreted as shell syntax.
-- Results cross back as files plus bounded captured output. A mutating tool
-  re-reads the artifact from disk to prove the write landed (see
-  `docs/write-contract.md`).
-
-| Platform | Automatic discovery | Explicit example |
+| Range | Example | Verified |
 | --- | --- | --- |
-| Windows | `openscad.com` then `openscad` on `PATH`, followed by `%ProgramFiles%\OpenSCAD` | `C:\Program Files\OpenSCAD\openscad.com` |
-| macOS | `openscad` on `PATH`; otherwise use the application bundle executable | `/Applications/OpenSCAD.app/Contents/MacOS/OpenSCAD` |
-| Linux | `openscad` on `PATH`, normally provided by the distribution package manager | `/usr/bin/openscad` |
+| `2021.01.x` | `2021.01` (last stable release; Intel-only on macOS) | upstream CI on Linux |
+| `2026.09.x` | `2026.09.29` snapshot | upstream CI on Linux; macOS Apple Silicon |
+| `2026.10.x` | `2026.10.15` snapshot | macOS Apple Silicon, end to end through Meshy DCC |
 
-On Windows, use `openscad.com` for machine-readable console behavior. If an
-`openscad.exe` override has a sibling `openscad.com`, the adapter selects the
-`.com` launcher automatically.
+A host outside the matrix is refused with an error code:
+`openscad_host_version_unsupported` (older), `openscad_host_version_unverified`
+(newer), `openscad_host_version_unlisted` (in between, for example `2024.x`) or
+`openscad_host_version_unparsable`.
 
-### Version matrix
-
-OpenSCAD versions are calendar based: `YYYY.MM` for releases and `YYYY.MM.DD`
-for the dated snapshots the project publishes between releases. The supported
-ranges are declared in `compat_matrix.json` and enforced before any tool runs.
-
-| Range | Example | Status |
-| --- | --- | --- |
-| `2021.01.x` | `2021.01` | Supported, verified by a real end-to-end CI run |
-| `2026.09.x` | `2026.09.29` | Supported, verified by a real end-to-end CI run |
-
-Anything else is refused rather than silently accepted: a host below the matrix
-is reported as `openscad_host_version_unsupported`, one above it as
-`openscad_host_version_unverified`, and one in between (for example a `2024.x`
-build) as `openscad_host_version_unlisted`. `meshy-dcc-openscad doctor --json`
-always reports the version it actually found under `runtime.host_matrix` with
-its `status`, the covered `supported_ranges`, and a suggested action.
-
-## Agent quick path
-
-Install the released Python wheel, then run the bounded version and capability
-probe before starting the service:
+## Without Meshy DCC's installer
 
 ```shell
 python -m pip install meshy-dcc-openscad
-meshy-dcc-openscad doctor --json
-meshy-dcc-openscad install --dry-run --json
-meshy-dcc-openscad install --yes --json
+meshy-dcc-openscad install-project /path/to/models --openscad <exe> --sidecar "$(command -v meshy-dcc-openscad)"
+meshy-dcc-openscad serve --project /path/to/models --openscad <exe>
 ```
 
-Proceed only when the JSON response has exit `0` and
-`verify.directly_usable=true`. Follow the structured `next_steps` command for
-other outcomes. `install` records the exact external Python, Core module, and
-OS-managed OpenSCAD executable identities; it never installs or downloads the
-OpenSCAD application.
+`MESHY_DCC_OPENSCAD_ALLOWED_ROOTS` (path list with the platform separator)
+adds workspace roots after the project, for example a folder of Meshy
+downloads. `MESHY_DCC_OPENSCAD_MAX_SOURCE_BYTES` (default 4 MiB) and
+`MESHY_DCC_OPENSCAD_MAX_TIMEOUT_SECS` (default 1800) bound each call.
 
-Set the allowed workspace before starting the foreground adapter service:
+## Diagnostics
+
+The lifecycle verbs probe an OpenSCAD and report structured JSON with stable
+exit codes (`0` usable, `10` discovery, configuration, core or version matrix,
+`30` receipt, `40` runtime or capability probe):
 
 ```shell
-# Windows PowerShell example
-$env:MESHY_DCC_OPENSCAD_ALLOWED_ROOTS = "D:\models;D:\exports"
-meshy-dcc-openscad
+meshy-dcc-openscad doctor --executable <exe> --json
+meshy-dcc-openscad verify --executable <exe> --json
 ```
 
-With no verb, `meshy-dcc-openscad` retains the existing service-start behavior.
-
-## Manual path
-
-When discovery is ambiguous, provide the absolute OS-managed executable:
-
-```shell
-meshy-dcc-openscad doctor --executable <absolute-openscad-cli> --json
-```
-
-The persistent environment equivalent is:
-
-```text
-MESHY_DCC_OPENSCAD_EXECUTABLE=<absolute-openscad-cli>
-MESHY_DCC_OPENSCAD_RECEIPT=<absolute-adapter-receipt-path>
-MESHY_DCC_OPENSCAD_ALLOWED_ROOTS=<path-list-using-the-platform-separator>
-MESHY_DCC_OPENSCAD_MAX_SOURCE_BYTES=4194304
-MESHY_DCC_OPENSCAD_MAX_TIMEOUT_SECS=1800
-```
-
-Windows path lists use `;`; macOS and Linux use `:`. Invalid numeric settings
-or missing roots fail preflight. This standalone adapter has no plugin copy,
-host-side Python installation, application registration, or binary cache. Its
-receipt is adapter-owned metadata only and defaults to
-`~/.meshy-dcc/receipts/openscad.json`.
-
-## Lifecycle
-
-The public CLI implements the official Core Install SOP schema with six verbs:
-
-| Verb | Effect |
-| --- | --- |
-| `doctor` | Probe prerequisites and report a plan without mutation |
-| `install` | Atomically record the selected, verified runtime identities |
-| `status` | Compare the current runtime with the owned receipt |
-| `verify` | Re-probe and freshly recapture every identity |
-| `upgrade` | Replace an existing owned receipt after re-verification |
-| `uninstall` | Remove only the owned adapter receipt |
-
-Mutations require `--yes`; `--dry-run` returns the exact plan. A same-directory
-lock serializes receipt changes. Installs and upgrades stage a complete receipt
-and atomically replace it; a failed commit keeps the prior valid receipt.
-Uninstall rolls a displaced receipt back if deletion cannot complete.
-
-## Verify
-
-Run an explicit deep check when selecting a particular installation:
-
-```shell
-meshy-dcc-openscad verify --executable <absolute-openscad-cli> --timeout-secs 20 --json
-```
-
-The result reports executable source and launcher, local CLI endpoint,
-workspace/limit configuration, Core and OpenSCAD versions, detected flags, and
-supported output extensions. Schema `1` includes
-`verify.directly_usable`, `failure_stage`, `failure_reason`, and
-machine-executable `next_steps`.
-
-Stable exits are:
-
-| Code | Meaning |
-| --- | --- |
-| `0` | Core, executable, OpenSCAD version, and capability probe are usable |
-| `10` | Discovery, configuration, Core floor, or host version matrix failed |
-| `20` | External artifact acquisition failed (not used by this non-provisioning adapter) |
-| `30` | Receipt installation, upgrade, lock, or rollback failed |
-| `40` | The executable was found but runtime/capability verification failed |
-| `50` | A host restart is required (not used by the standalone CLI) |
-
-The repository's real CLI acceptance uses
-`examples/production_smoke.scad` to validate, export STL, and render PNG through
-the bounded adapter bridge. Run it only with an explicitly installed official
-CLI:
-
-```shell
-OPENSCAD_TEST_EXECUTABLE=<absolute-openscad-cli> python -m pytest tests/test_bridge.py::test_real_openscad_validate_export_and_render -m openscad -q
-```
-
-CI runs this exact test on a real OpenSCAD for every supported range, with each
-binary pinned by version and SHA-256, and fails the job if the case is skipped.
-
-## Upgrade
-
-Stop the foreground adapter, upgrade the wheel or OpenSCAD through their own
-trusted installers, inspect the lifecycle plan, then atomically replace the
-owned receipt:
-
-```shell
-python -m pip install --upgrade meshy-dcc-openscad
-meshy-dcc-openscad upgrade --dry-run --json
-meshy-dcc-openscad upgrade --yes --json
-```
-
-No mutable "latest" binary URL is used. Python wheel caching is owned by pip;
-inspect it with `python -m pip cache info` and deliberately clean it with
-`python -m pip cache purge`. OpenSCAD package cache cleanup remains owned by the
-selected OS package manager. The adapter itself has no cache to migrate.
-
-## Uninstall
-
-Stop the foreground service, remove the adapter-owned receipt, then remove the
-Python wheel:
-
-```shell
-meshy-dcc-openscad uninstall --yes --json
-python -m pip uninstall meshy-dcc-openscad
-```
-
-Remove OpenSCAD separately through the same trusted installer/package manager
-only when the application itself is no longer required. The lifecycle command
-does not remove the application, an operator-owned file, or a binary cache.
+`install`, `status`, `upgrade` and `uninstall` manage an optional receipt
+(`~/.meshy-dcc/receipts/openscad.json`, or `--receipt-path`) recording the
+verified Python, core and OpenSCAD identities. Meshy DCC's own install does
+not use it.
 
 ## Troubleshooting
 
-- `executable_discovery`, exit `10`: put the CLI on `PATH`, set
-  `MESHY_DCC_OPENSCAD_EXECUTABLE`, or pass absolute `--executable`.
-- On Windows, configure `openscad.com`; `openscad.exe` can attach GUI behavior
-  and is automatically replaced by a sibling `.com` when available.
-- `configuration`, exit `10`: fix numeric limits and ensure every allowed root
-  exists and uses the correct platform path separator.
-- `core_version`, exit `10`: upgrade Core in the external Python that owns the
-  adapter wheel.
-- `host_version`, exit `10`: install an OpenSCAD inside the matrix above and
-  re-run `doctor --json`. The `error_code` field names the verdict
-  (`openscad_host_version_unsupported`, `..._unverified`, `..._unlisted`, or
-  `..._unparsable`) and `steps` carry the covered ranges.
-- `receipt` or `ownership`, exit `30`/`40`: keep the receipt on a regular,
-  non-reparse path and use `upgrade --yes` to adopt an intentionally changed
-  Core, Python, or OpenSCAD executable.
-- `lock` or `cleanup`, exit `30`/`40`: wait for the current lifecycle mutation
-  to finish; cleanup failures are reported and never hidden as success.
-- `runtime_start` or `runtime_timeout`, exit `40`: run `--version` directly as
-  the same user, check executable permissions and endpoint path, then retry.
-- `capability_probe`, exit `40`: verify `--help` succeeds for the same CLI;
-  partial or GUI-only installations are not directly usable.
-- A healthy Python service alone is not proof of a usable CLI. Require exit `0`
-  and `verify.directly_usable=true` before export or render calls.
+- `openscad_host_version_*`: install an OpenSCAD inside the matrix, then run
+  `meshy-dcc install` again.
+- On Windows, configure `openscad.exe` or `openscad.com`; the console
+  launcher is chosen automatically when it sits next to the `.exe`.
+- A path outside the workspace roots is refused; copy inputs into the
+  project or add a root with `MESHY_DCC_OPENSCAD_ALLOWED_ROOTS`.
+- The real-OpenSCAD test runs only with an explicit executable:
+  `OPENSCAD_TEST_EXECUTABLE=<exe> python -m pytest tests/test_bridge.py -m openscad -q`,
+  using `examples/production_smoke.scad`.

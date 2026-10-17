@@ -13,8 +13,8 @@ import pytest
 
 
 def _schema_validate(payload: dict) -> None:
-    from meshy_dcc_core.deployment import load_install_sop_schema
     from jsonschema import Draft202012Validator
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     Draft202012Validator(load_install_sop_schema()).validate(payload)
 
@@ -66,7 +66,7 @@ def test_uses_only_the_official_core_install_contract() -> None:
 
     import meshy_dcc_openscad.doctor as lifecycle
 
-    assert lifecycle.MINIMUM_CORE_VERSION == "0.20.36"
+    assert lifecycle.MINIMUM_CORE_VERSION == "0.2.0"
     assert lifecycle.load_install_sop_schema() == load_install_sop_schema()
     assert lifecycle.SCHEMA_VERSION == 1
     assert lifecycle.LIFECYCLE_COMMANDS == frozenset(
@@ -74,8 +74,7 @@ def test_uses_only_the_official_core_install_contract() -> None:
     )
     pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
     project = pyproject.read_text(encoding="utf-8")
-    assert '"meshy-dcc-core>=0.20.36,<1.0.0"' in project
-    assert "\"importlib-metadata>=4.13,<7; python_version<'3.8'\"" in project
+    assert '"meshy-dcc-core>=0.2.0,<0.3.0"' in project
 
 
 def test_core_identity_binds_the_resolved_managed_python_entrypoint(

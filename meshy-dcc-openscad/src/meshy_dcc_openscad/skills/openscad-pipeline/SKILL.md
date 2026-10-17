@@ -5,13 +5,13 @@ description: >-
   standalone CLI. Use for deterministic SCAD build pipelines; do not use it
   for arbitrary command-line flags. Bounded self-contained source creation is supported.
 license: MIT
-compatibility: "Python 3.7+; OpenSCAD 2021.01.x or 2026.09.x; meshy-dcc-core 0.20.36+"
+compatibility: "Python 3.8+; OpenSCAD 2021.01.x, 2026.09.x or 2026.10.x; meshy-dcc-core 0.2.0+"
 allowed-tools: "python"
 metadata:
   meshy-dcc:
     dcc: openscad
     layer: domain
-    version: "0.5.0"  # x-release-please-version
+    version: "0.1.0"
     tags: [openscad, cad, parametric-modeling, pipeline]
     search-hint: >-
       OpenSCAD status capabilities inspect SCAD modules dependencies validate

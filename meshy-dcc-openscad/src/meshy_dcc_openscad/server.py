@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import signal
 import sys
 import threading
@@ -14,6 +15,7 @@ from meshy_dcc_core.server_base import DccServerBase
 
 from .__version__ import __version__
 
+START_OPERATION_ENV = "MESHY_DCC_START_OPERATION_ID"
 _server: Optional["OpenscadMcpServer"] = None
 
 
@@ -59,7 +61,10 @@ class OpenscadMcpServer(DccServerBase):
         super().__init__(options=options)
 
     def _version_string(self):
-        return __version__
+        # The registry row names the host's version: the OpenSCAD this adapter drives.
+        from .bridge import get_bridge
+
+        return get_bridge().host_identity()[0] or "unknown"
 
 
 def start_server(port: Optional[int] = None):
@@ -109,12 +114,35 @@ def _print_doctor_result(result: Mapping[str, Any], *, json_output: bool) -> Non
             print("next: %s" % " ".join(str(part) for part in command))
 
 
+def _attach_safe_stop(server: OpenscadMcpServer, stopped: threading.Event) -> None:
+    """Advertise ``safe_stop_url`` for an instance ``meshy-dcc start-instance`` launched.
+
+    The adapter holds no unsaved work: every write is a complete file on disk
+    by the time its call returns, so a stop for this instance always proceeds.
+    """
+    handle = getattr(server, "_handle", None)
+    if not os.environ.get(START_OPERATION_ENV) or handle is None:
+        return
+    from meshy_dcc_core.host.safe_stop import serve_safe_stop
+
+    def handle_stop(body: dict) -> "tuple[int, dict]":
+        if not server.instance_id or body.get("instance_id") != server.instance_id:
+            return 409, {"stopping": False, "reason": "instance_mismatch"}
+        # Stop after the 202 is written; exiting at once can cut the reply off.
+        # ponytail: fixed delay; a post-response hook in serve_safe_stop would be exact.
+        threading.Timer(0.5, stopped.set).start()
+        return 202, {"stopping": True}
+
+    # Reaches the registry row on the next heartbeat (within about 5 s).
+    handle.update_gateway_metadata({"safe_stop_url": serve_safe_stop(handle_stop)})
+
+
 def _run_server() -> None:
     event = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: event.set())
     if hasattr(signal, "SIGTERM"):
         signal.signal(signal.SIGTERM, lambda *_: event.set())
-    start_server()
+    _attach_safe_stop(start_server(), event)
     try:
         event.wait()
     finally:

@@ -60,14 +60,18 @@ def _validated_destination(raw):
     return path
 
 
-def write_model_source(output_path: str, source: str) -> dict:
+def write_model_source(output_path: str, source: str, *, self_contained: bool = True) -> dict:
+    """Publish a new ``.scad`` file. ``self_contained=False`` is for adapter-generated
+    source whose only references the adapter itself checked (``print_base``)."""
     if not isinstance(source, str) or not source.strip() or "\x00" in source:
         raise ValueError("source must be nonempty text without NUL")
     data = source.encode("utf-8")
     if len(data) > MAX_BYTES:
         raise ValueError("source exceeds 262144 UTF-8 bytes")
     # This deliberately conservative contract accepts only self-contained models.
-    if re.search(r"\b(include|use|import(?:_(?:stl|dxf|off))?|surface)\b", source, re.I):
+    if self_contained and re.search(
+        r"\b(include|use|import(?:_(?:stl|dxf|off))?|surface)\b", source, re.I
+    ):
         raise ValueError("external source and data references are not accepted")
     raw = Path(output_path).expanduser()
     if not raw.is_absolute() or raw.suffix.lower() != ".scad":
@@ -124,5 +128,10 @@ def write_model_source(output_path: str, source: str) -> dict:
         "path": str(path),
         "bytes": len(readback),
         "sha256": hashlib.sha256(readback).hexdigest(),
-        "verified": ["new_file_only", "workspace_root", "self_contained", "exact_utf8_readback"],
+        "verified": [
+            "new_file_only",
+            "workspace_root",
+            "self_contained" if self_contained else "adapter_checked_references",
+            "exact_utf8_readback",
+        ],
     }

@@ -1,5 +1,4 @@
-# CI scripts run on Linux runners: a CRLF shell script fails with
-# "bad interpreter", so the shell and Python helpers are stored with LF.
+# Shell and Python files keep LF line endings on every platform.
 *.sh text eol=lf
 *.py text eol=lf
 *.json text eol=lf
