@@ -1,0 +1,140 @@
+tools:
+  - name: import_to_scene
+    description: >-
+      Import an asset contract payload into the current 3ds Max scene using
+      the best supported file variant, then apply placement, target collection,
+      and material mode overrides.
+    source_file: action_import_to_scene.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [descriptor]
+      properties:
+        descriptor:
+          type: object
+          additionalProperties: false
+          required: [asset_id, variants]
+          properties:
+            asset_id:
+              type: string
+              minLength: 1
+            variants:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required: [local_path]
+                properties:
+                  local_path:
+                    type: string
+                    minLength: 1
+                  format:
+                    type: string
+                    enum: [unknown, fbx, obj, "3ds"]
+                  preferred:
+                    type: boolean
+                  mime:
+                    type: string
+                  file_ref:
+                    type: object
+            attribution:
+              type: object
+              additionalProperties: true
+            preview:
+              type: string
+            unit_hint:
+              type: string
+              enum: [meter, centimeter, inch, unitless]
+            meters_per_unit:
+              type: number
+            up_axis:
+              type: string
+              enum: [y, z]
+            scale_hint:
+              type: number
+            source_bbox:
+              type: object
+              additionalProperties: true
+            tags:
+              type: array
+              items:
+                type: string
+            extra:
+              type: object
+        material_mode:
+          type: string
+          enum: [as_authored, default_gray, skip]
+          default: as_authored
+        placement:
+          type: object
+          additionalProperties: false
+          properties:
+            translate:
+              type: array
+              minItems: 3
+              maxItems: 3
+              items:
+                type: number
+            rotate:
+              type: array
+              minItems: 3
+              maxItems: 3
+              items:
+                type: number
+            scale:
+              type: array
+              minItems: 3
+              maxItems: 3
+              items:
+                type: number
+            parent_name:
+              type: string
+        target_collection:
+          type: string
+        skip_existing:
+          type: boolean
+          default: false
+        extra:
+          type: object
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+        message:
+          type: string
+        data:
+          type: object
+    timeout_hint_secs: 60
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Import asset contracts into the current 3ds Max scene."
+    tool_role: action
+    risk: medium
+    search_aliases: ["import_to_scene", "import to scene", "asset import"]
+    side_effects:
+      creates: true
+      modifies: true
+      deletes: false
+      exports: false
+      imports: true
+      file_output: false
+      render: false
+      targets: ["scene_nodes", "layers"]
+    produces:
+      - "scene_node"
+      - "scene_layer"

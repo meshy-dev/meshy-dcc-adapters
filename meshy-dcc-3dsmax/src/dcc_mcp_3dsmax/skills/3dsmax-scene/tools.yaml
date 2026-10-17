@@ -1,0 +1,2954 @@
+tools:
+  - name: get_scene_info
+    description: >-
+      Get basic information about the current 3ds Max scene. Use when the user
+      asks about scene name, units, or node counts.
+    source_file: action_get_scene_info.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties: {}
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Get basic scene information like name, units, and node counts."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_scene_info", "get scene info", "scene info"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ['scene_info']
+  - name: get_scene_status
+    description: >-
+      Read the current scene file path, dirty state, object count, units, and
+      renderer for lifecycle post-condition checks.
+    source_file: action_get_scene_status.py
+    execution: sync
+    job_strategy: monolithic
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties: {}
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Read the scene lifecycle status before or after a file operation."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_scene_status", "scene status", "dirty scene"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["scene_status"]
+  - name: new_scene
+    description: >-
+      Reset to an empty scene. A dirty scene is rejected unless force is true.
+    source_file: action_new_scene.py
+    execution: sync
+    job_strategy: monolithic
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        force:
+          type: boolean
+          default: false
+          description: Explicitly discard unsaved scene changes when true.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 30
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+    intent: "Create a verified empty 3ds Max scene."
+    tool_role: destructive
+    risk: high
+    search_aliases: ["new_scene", "new scene", "reset scene"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: true
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene"]
+    produces: ["scene_status"]
+    undo:
+      supported: false
+      granularity: none
+      notes: >-
+        File > New resets the scene and clears the 3ds Max history stack; save the scene before calling it.
+
+  - name: open_scene
+    description: >-
+      Open an existing absolute .max file without dialogs. A dirty scene is
+      rejected unless force is true.
+    source_file: action_open_scene.py
+    execution: async
+    job_strategy: monolithic
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [file_path]
+      properties:
+        file_path:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Existing absolute .max scene path.
+        force:
+          type: boolean
+          default: false
+          description: Explicitly discard unsaved current-scene changes.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 120
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+      deferred_hint: true
+    intent: "Open and verify one typed 3ds Max scene path."
+    tool_role: destructive
+    risk: high
+    search_aliases: ["open_scene", "open max file", "load scene"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: true
+      exports: false
+      imports: true
+      file_output: false
+      render: false
+      targets: ["scene"]
+    produces: ["scene_status"]
+    undo:
+      supported: false
+      granularity: none
+      notes: >-
+        File > Open replaces the scene and clears the history stack; save the scene before calling it.
+
+  - name: save_scene
+    description: >-
+      Save the current scene to its existing path. The legacy explicit
+      file_path and overwrite parameters remain supported.
+    source_file: action_save_scene.py
+    execution: async
+    job_strategy: monolithic
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        file_path:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Optional legacy absolute .max output path.
+        overwrite:
+          type: boolean
+          default: false
+          description: Allow replacement when the legacy file_path exists.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 120
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+      deferred_hint: true
+    intent: "Save and verify the current 3ds Max scene file."
+    tool_role: destructive
+    risk: high
+    search_aliases: ["save_scene", "save scene", "save max file"]
+    side_effects:
+      creates: true
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: true
+      render: false
+      targets: ["scene_file"]
+    produces: ["scene_file", "scene_status"]
+    undo:
+      supported: false
+      granularity: none
+      notes: >-
+        Writing a file is outside the host undo stack; keep a backup copy before overwriting.
+
+  - name: save_scene_as
+    description: >-
+      Save the current scene to an explicit absolute .max path and make it the
+      verified current scene.
+    source_file: action_save_scene_as.py
+    execution: async
+    job_strategy: monolithic
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [file_path]
+      properties:
+        file_path:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Absolute .max output path.
+        overwrite:
+          type: boolean
+          default: false
+          description: Allow replacement when the output file exists.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 120
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+      deferred_hint: true
+    intent: "Save and verify the current scene under one explicit file path."
+    tool_role: destructive
+    risk: high
+    search_aliases: ["save_scene_as", "save scene as", "save as max file"]
+    side_effects:
+      creates: true
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: true
+      render: false
+      targets: ["scene_file"]
+    produces: ["scene_file", "scene_status"]
+    undo:
+      supported: false
+      granularity: none
+      notes: >-
+        Writing a file is outside the host undo stack; the previous file on disk is the only fallback.
+
+  - name: merge_file
+    description: >-
+      Merge all or selected nodes from an absolute .max file using fixed,
+      no-prompt duplicate, material, and reparent policies.
+    source_file: action_merge_file.py
+    execution: async
+    job_strategy: monolithic
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [file_path]
+      properties:
+        file_path:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Existing absolute .max source path.
+        node_names:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: {type: string, minLength: 1, maxLength: 256}
+          description: Optional exact source node names; omit to merge all nodes.
+        duplicate_names:
+          type: string
+          enum: [rename, skip, merge]
+          default: rename
+        material_duplicates:
+          type: string
+          enum: [rename, use_scene, use_merged]
+          default: rename
+        reparent:
+          type: string
+          enum: [never, always]
+          default: never
+        select_merged:
+          type: boolean
+          default: false
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 120
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+      deferred_hint: true
+    intent: "Merge and verify objects from one bounded 3ds Max scene file."
+    tool_role: action
+    risk: medium
+    search_aliases: ["merge_file", "merge max file", "merge scene objects"]
+    side_effects:
+      creates: true
+      modifies: true
+      deletes: false
+      exports: false
+      imports: true
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["scene_nodes", "scene_status"]
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Merges N nodes in one call. Undo once and re-check the node list; repeat while merged
+        nodes are still present, because 3ds Max may or may not group them into a single entry.
+  - name: list_scene_nodes
+    description: >-
+      List scene nodes with stable identity, class, parent, visibility, and
+      camera flags.
+    source_file: action_list_scene_nodes.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        name_filter:
+          type: string
+          description: Optional case-insensitive substring filter for node names.
+        include_hidden:
+          type: boolean
+          default: true
+          description: Include hidden nodes when true.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 200
+          description: Maximum number of nodes to return.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "List scene nodes with class, parent, visibility, and camera flags."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["list_scene_nodes", "list scene nodes", "scene nodes"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ['node_list']
+  - name: list_cameras
+    description: >-
+      List camera nodes in the current scene.
+    source_file: action_list_cameras.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties: {}
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "List camera nodes in the current scene."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["list_cameras", "list cameras", "cameras"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ['camera_list']
+  - name: get_selection
+    description: >-
+      Return the current 3ds Max selection.
+    source_file: action_get_selection.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties: {}
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Return the current 3ds Max selection."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_selection", "get selection", "selection"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ['selection_info']
+  - name: get_bounding_box
+    description: >-
+      Get a node bounding box by name or object handle.
+    source_file: action_get_bounding_box.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: Node name to inspect.
+        handle:
+          type: integer
+          description: Stable object handle to inspect.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Get a node bounding box by name or object handle."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_bounding_box", "get bounding box", "bounding box"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['bounding_box']
+  - name: get_node_visibility
+    description: >-
+      Get visibility for one node by name or object handle.
+    source_file: action_get_node_visibility.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: Node name to inspect.
+        handle:
+          type: integer
+          description: Stable object handle to inspect.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Get visibility state for one node."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_node_visibility", "get node visibility", "node visibility"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['visibility_state']
+  - name: get_scene_metadata
+    description: >-
+      Return session and scene metadata including scene path, units, version,
+      and node count.
+    source_file: action_get_scene_metadata.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties: {}
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Return session metadata including scene path, units, and version."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_scene_metadata", "get scene metadata", "scene metadata"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ['scene_metadata']
+  - name: set_selection
+    description: >-
+      Set or extend the active 3ds Max selection by node names or object
+      handles.
+    source_file: action_set_selection.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to select.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to select.
+        replace:
+          type: boolean
+          default: true
+          description: Replace selection when true; otherwise add to selection.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Set or extend the active selection by node names or handles."
+    tool_role: action
+    risk: medium
+    search_aliases: ["set_selection", "set selection", "selection"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['selection_state']
+    undo:
+      supported: false
+      granularity: none
+      notes: >-
+        Selection is editor state, not scene content, and 3ds Max does not reliably record it as
+        an undo entry. Re-apply the previous selection explicitly instead of calling undo_last.
+
+  - name: list_selection_sets
+    description: >-
+      List the named selection sets in the current scene.
+    source_file: action_list_selection_sets.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        include_nodes:
+          type: boolean
+          default: false
+          description: Include the member node identity of every set.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "List named selection sets and optionally their member nodes."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["list_selection_sets", "list selection sets", "named selection sets", "selection sets"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ['selection_set_list']
+
+  - name: create_selection_set
+    description: >-
+      Create a named selection set from explicit nodes or the current selection.
+    source_file: action_create_selection_set.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Name of the selection set to create.
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to store in the set.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to store in the set.
+        use_selection:
+          type: boolean
+          default: false
+          description: Store the current selection instead of explicit node references.
+        replace_existing:
+          type: boolean
+          default: false
+          description: Overwrite an existing set that already uses this name.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Create a named selection set."
+    tool_role: action
+    risk: medium
+    search_aliases: ["create_selection_set", "create selection set", "named selection set", "selection sets"]
+    side_effects:
+      creates: true
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['selection_sets']
+    produces: ['selection_set']
+    undo:
+      supported: true
+      granularity: script_defined
+      notes: >-
+        Undo coverage for named selection sets depends on the host; call delete_selection_set to undo
+        deterministically.
+
+  - name: replace_selection_set
+    description: >-
+      Replace the contents of an existing named selection set.
+    source_file: action_replace_selection_set.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Name of the selection set to replace.
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to store in the set.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to store in the set.
+        use_selection:
+          type: boolean
+          default: false
+          description: Store the current selection instead of explicit node references.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Replace the member nodes of an existing named selection set."
+    tool_role: action
+    risk: medium
+    search_aliases: ["replace_selection_set", "replace selection set", "update selection set", "selection sets"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['selection_sets']
+    produces: ['selection_set']
+    undo:
+      supported: true
+      granularity: script_defined
+      notes: >-
+        Undo coverage for named selection sets depends on the host; re-run the tool with the previous
+        node references to restore the contents deterministically.
+
+  - name: delete_selection_set
+    description: >-
+      Delete a named selection set by name.
+    source_file: action_delete_selection_set.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Name of the selection set to delete.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Delete one named selection set."
+    tool_role: destructive
+    risk: medium
+    search_aliases: ["delete_selection_set", "delete selection set", "remove selection set", "selection sets"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: true
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['selection_sets']
+    produces: ['deletion_result']
+    undo:
+      supported: true
+      granularity: script_defined
+      notes: >-
+        Undo coverage for named selection sets depends on the host; re-create the set with
+        create_selection_set to restore it deterministically.
+
+  - name: select_selection_set
+    description: >-
+      Select the nodes held by a named selection set.
+    source_file: action_select_selection_set.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Name of the selection set to select.
+        add:
+          type: boolean
+          default: false
+          description: Add the set members to the current selection instead of replacing it.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Select the member nodes of a named selection set."
+    tool_role: action
+    risk: medium
+    search_aliases: ["select_selection_set", "select selection set", "named selection sets", "selection sets"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['selection_state']
+    undo:
+      supported: false
+      granularity: none
+      notes: >-
+        Selection is editor state, not scene content; re-apply the previous selection explicitly
+        instead of calling undo_last.
+
+  - name: duplicate_nodes
+    description: >-
+      Duplicate nodes by node names or object handles.
+    source_file: action_duplicate_nodes.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to duplicate.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to duplicate.
+        name_suffix:
+          type: string
+          default: _copy
+          description: Suffix for duplicate node names.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Duplicate nodes by names or object handles."
+    tool_role: action
+    risk: medium
+    search_aliases: ["duplicate_nodes", "duplicate nodes", "duplicate nodes"]
+    side_effects:
+      creates: true
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces:
+      - "scene_nodes"
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Duplicates N nodes in one call. Undo once and re-check the node list; repeat while
+        duplicates are still present, because 3ds Max may or may not group them into a single entry.
+  - name: delete_nodes
+    description: >-
+      Delete scene nodes by node names or object handles.
+    source_file: action_delete_nodes.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to delete.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to delete.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Delete scene nodes by names or object handles."
+    tool_role: destructive
+    risk: high
+    search_aliases: ["delete_nodes", "delete nodes", "nodes"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: true
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['deletion_result']
+    undo:
+      supported: true
+      granularity: single_call
+      notes: >-
+        Deleted in one host call, so one undo entry; the per-node fallback used when the batch delete is rejected
+        leaves one entry per node.
+
+  - name: group_nodes
+    description: >-
+      Group nodes under a new group node.
+    source_file: action_group_nodes.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to group.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to group.
+        group_name:
+          type: string
+          minLength: 1
+          default: Group
+          description: Group node name.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Group nodes under a new group node."
+    tool_role: action
+    risk: medium
+    search_aliases: ["group_nodes", "group nodes", "group nodes"]
+    side_effects:
+      creates: true
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces:
+      - "scene_nodes"
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Groups N nodes under one new group node in one call. Undo once and re-check the hierarchy;
+        repeat while the group is still present, because 3ds Max may or may not group the writes.
+
+  - name: ungroup_nodes
+    description: >-
+      Dissolve group heads and keep their member nodes.
+    source_file: action_ungroup_nodes.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Names of the group head nodes to dissolve.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles of the group head nodes to dissolve.
+        use_selection:
+          type: boolean
+          default: false
+          description: Dissolve every selected group head.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: true
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Dissolve groups and keep their member nodes."
+    tool_role: destructive
+    risk: high
+    search_aliases: ["ungroup_nodes", "ungroup nodes", "ungroup", "dissolve group"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: true
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes', 'groups']
+    produces: ['scene_nodes']
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        One host undo entry per ungroup call. Undo once per reported group and re-check the
+        hierarchy, because 3ds Max may or may not group the writes.
+
+  - name: set_group_open
+    description: >-
+      Open a group for member editing, or close it again.
+    source_file: action_set_group_open.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      required: [open]
+      additionalProperties: false
+      properties:
+        open:
+          type: boolean
+          description: True opens the group, false closes it.
+        group_name:
+          type: string
+          minLength: 1
+          description: Name of the group head node.
+        handle:
+          type: integer
+          description: Object handle of the group head node.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Open or close one group head."
+    tool_role: action
+    risk: low
+    search_aliases: ["set_group_open", "set group open", "open group", "close group"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['groups']
+    produces: ['group_state']
+    undo:
+      supported: true
+      granularity: single_call
+      notes: >-
+        One host undo entry per call; re-run with the opposite value to restore the state without undo.
+
+  - name: attach_to_group
+    description: >-
+      Attach resolved nodes to an existing group head.
+    source_file: action_attach_to_group.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        group_name:
+          type: string
+          minLength: 1
+          description: Name of the group head node.
+        group_handle:
+          type: integer
+          description: Object handle of the group head node.
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Names of the nodes to attach.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles of the nodes to attach.
+        use_selection:
+          type: boolean
+          default: false
+          description: Attach the current selection instead of explicit node references.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Attach nodes to an existing group."
+    tool_role: action
+    risk: medium
+    search_aliases: ["attach_to_group", "attach to group", "add to group", "group"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes', 'groups']
+    produces: ['group_state']
+    undo:
+      supported: true
+      granularity: per_node
+      notes: >-
+        One host undo entry per attached node; pass the reported applied count to undo_last.
+
+  - name: detach_from_group
+    description: >-
+      Detach resolved nodes from the group they currently belong to.
+    source_file: action_detach_from_group.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Names of the nodes to detach.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles of the nodes to detach.
+        use_selection:
+          type: boolean
+          default: false
+          description: Detach the current selection instead of explicit node references.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Detach nodes from their group."
+    tool_role: action
+    risk: medium
+    search_aliases: ["detach_from_group", "detach from group", "remove from group", "group"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes', 'groups']
+    produces: ['group_state']
+    undo:
+      supported: true
+      granularity: per_node
+      notes: >-
+        One host undo entry per detached node; pass the reported applied count to undo_last.
+
+  - name: parent_node
+    description: >-
+      Parent one child node under another node.
+    source_file: action_parent_node.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        child_name:
+          type: string
+          minLength: 1
+          description: Child node name.
+        child_handle:
+          type: integer
+          description: Child object handle.
+        parent_name:
+          type: string
+          minLength: 1
+          description: Parent node name.
+        parent_handle:
+          type: integer
+          description: Parent object handle.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Parent one node under another."
+    tool_role: action
+    risk: medium
+    search_aliases: ["parent_node", "parent node", "parent node"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['scene_nodes']
+  - name: unparent_node
+    description: >-
+      Detach one node from its parent.
+    source_file: action_unparent_node.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: Node name to unparent.
+        handle:
+          type: integer
+          description: Object handle to unparent.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Detach a node from its parent."
+    tool_role: action
+    risk: medium
+    search_aliases: ["unparent_node", "unparent node", "unparent node"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['scene_nodes']
+  - name: set_visibility
+    description: >-
+      Show, hide, freeze, or unfreeze nodes by names or object handles. The
+      boolean visible parameter maps to show/hide and stays supported.
+    source_file: action_set_visibility.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        visible:
+          type: boolean
+          description: Legacy visibility flag; true maps to show, false to hide.
+        state:
+          type: string
+          enum: [show, hide, freeze, unfreeze]
+          description: Explicit visibility or freeze state.
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to update.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to update.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 10
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Set visibility state for nodes."
+    tool_role: action
+    risk: medium
+    search_aliases: ["set_visibility", "set visibility", "visibility"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['visibility_state']
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Sets visibility on N nodes in one call. Undo once and re-read the nodes; repeat while the
+        flags still differ, because 3ds Max may or may not group the writes.
+  - name: center_pivots
+    description: >-
+      Center pivots for nodes by names or object handles.
+    source_file: action_center_pivots.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to update.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to update.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Center pivots for target nodes."
+    tool_role: action
+    risk: medium
+    search_aliases: ["center_pivots", "center pivots", "center pivots"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['scene_nodes']
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Centres pivots on N nodes in one call. Undo once and re-read the pivots; repeat while they
+        still differ, because 3ds Max may or may not group the writes.
+  - name: freeze_transforms
+    description: >-
+      Freeze or reset transforms for nodes by names or object handles.
+    source_file: action_freeze_transforms.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to update.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to update.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        status: {type: string}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+
+    intent: "Freeze or reset transforms for target nodes."
+    tool_role: action
+    risk: medium
+    search_aliases: ["freeze_transforms", "freeze transforms", "freeze transforms"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ['scene_nodes']
+    produces: ['scene_nodes']
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Freezes transforms on N nodes in one call. Undo once and re-read the transforms; repeat
+        while they still differ, because 3ds Max may or may not group the writes.
+  - name: get_object_properties
+    description: >-
+      Read a compact property snapshot for one node. Unknown properties are
+      reported separately instead of being silently dropped.
+    source_file: action_get_object_properties.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: Node name to inspect.
+        handle:
+          type: integer
+          description: Stable object handle to inspect.
+        properties:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: {type: string, minLength: 1, maxLength: 256}
+          description: Optional property names; omit for the default compact set.
+        include_bounding_box:
+          type: boolean
+          default: true
+          description: Include the node bounding box when true.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Read a compact property snapshot for one node by name or handle."
+    tool_role: read_only
+    risk: low
+    search_aliases:
+      ["get_object_properties", "get object properties", "object properties"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["object_properties", "bounding_box"]
+  - name: set_object_property
+    description: >-
+      Write one property on a node and verify it by readback. Fails when the
+      property is missing, the value type is rejected, or the readback differs.
+    source_file: action_set_object_property.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [property, value]
+      properties:
+        property:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Property name to write, for example name, pos, or wirecolor.
+        value:
+          description: New property value; arrays or x/y/z objects become Point3 or Color.
+        node_name:
+          type: string
+          minLength: 1
+          description: Node name to update.
+        handle:
+          type: integer
+          description: Stable object handle to update.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: false
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Write one verified node property by name or handle."
+    tool_role: action
+    risk: medium
+    search_aliases:
+      ["set_object_property", "set object property", "set property"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["object_properties"]
+    undo:
+      supported: true
+      granularity: single_call
+      notes: >-
+        One property write on one node is one host undo entry; undo_last(count=1) reverses it.
+  - name: batch_rename_objects
+    description: >-
+      Rename many nodes with one prefix, suffix, replace, or numbered pattern
+      rule. New names are validated before any write, then read back.
+    source_file: action_batch_rename_objects.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to rename.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to rename.
+        mode:
+          type: string
+          enum: [suffix, prefix, replace, pattern]
+          default: suffix
+          description: Naming rule to apply.
+        base:
+          type: string
+          maxLength: 256
+          description: Prefix, suffix, replacement, or pattern text.
+        search:
+          type: string
+          maxLength: 256
+          description: Substring to replace when mode is replace.
+        start_index:
+          type: integer
+          minimum: 0
+          default: 1
+          description: First number used by pattern mode.
+        padding:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 3
+          description: Zero padding width for pattern mode numbering.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 20
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+    intent: "Rename nodes in one verified batch using a naming rule."
+    tool_role: action
+    risk: medium
+    search_aliases:
+      ["batch_rename_objects", "batch rename", "rename objects"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["scene_nodes"]
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Renames N nodes in one call. Undo once and re-read the renamed nodes; repeat while names still
+        differ, because 3ds Max may or may not group the per-node writes into a single entry.
+  - name: create_object
+    description: >-
+      Create one node from a creatable 3ds Max class and report its name,
+      transform, and bounding box as placement feedback. The symbol must
+      always be provable as a creatable class, so bare global functions are
+      rejected regardless of DCC_MCP_3DSMAX_DISABLE_ARBITRARY_SCRIPT; that
+      variable neither tightens nor loosens the check.
+    source_file: action_create_object.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [object_type]
+      properties:
+        object_type:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Creatable 3ds Max class name, for example Teapot or Tube.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Optional node name.
+        position:
+          description: Optional [x, y, z] or x/y/z object world position.
+        rotation:
+          description: Optional [x, y, z] euler rotation in degrees.
+        scale:
+          description: Optional [x, y, z] scale factor.
+        params:
+          type: object
+          maxProperties: 64
+          additionalProperties: true
+          description: Optional constructor keyword arguments for the class.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 20
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+    intent: "Create one object from a creatable class with placement readback."
+    tool_role: action
+    risk: medium
+    search_aliases: ["create_object", "create object", "create geometry"]
+    side_effects:
+      creates: true
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["scene_nodes", "bounding_box"]
+    undo:
+      supported: true
+      granularity: single_call
+      notes: >-
+        Creating one node is one host undo entry; undo_last(count=1) removes the node again.
+  - name: transform_object
+    description: >-
+      Move, rotate, and scale nodes in world or local space. Offsets are
+      relative by default; every write is confirmed by readback.
+    source_file: action_transform_object.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to transform.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to transform.
+        move:
+          description: Optional [x, y, z] or x/y/z object translation.
+        rotate:
+          description: Optional [x, y, z] euler rotation in degrees.
+        scale:
+          description: Optional [x, y, z] per-axis scale multiplier.
+        space:
+          type: string
+          enum: [world, local]
+          default: world
+          description: Coordinate space for move and rotate.
+        relative:
+          type: boolean
+          default: true
+          description: Treat move and rotate as offsets when true.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 20
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+    intent: "Apply a verified move, rotate, or scale transform to nodes."
+    tool_role: action
+    risk: medium
+    search_aliases: ["transform_object", "transform object", "rotate scale move"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["scene_nodes"]
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Transforms N nodes in one call. Undo once and re-read the transforms; repeat while the nodes
+        still differ, because 3ds Max may or may not group the per-node writes into a single entry.
+  - name: clone_objects
+    description: >-
+      Clone nodes as copies, instances, or references and verify the resulting
+      geometry sharing relationship.
+    source_file: action_clone_objects.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_names:
+          type: array
+          items: {type: string, minLength: 1}
+          description: Node names to clone.
+        handles:
+          type: array
+          items: {type: integer}
+          description: Object handles to clone.
+        mode:
+          type: string
+          enum: [copy, instance, reference]
+          default: copy
+          description: Clone relationship to create.
+        name_suffix:
+          type: string
+          default: _clone
+          description: Suffix applied to clone node names.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 20
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+    intent: "Clone nodes with a verified copy, instance, or reference mode."
+    tool_role: action
+    risk: medium
+    search_aliases: ["clone_objects", "clone objects", "instance reference clone"]
+    side_effects:
+      creates: true
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["scene_nodes"]
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Clones N nodes in one call. Undo once and re-check the node list; repeat while clones are still
+        present, because 3ds Max may or may not group the per-node writes into a single entry.
+  - name: analyze_node_orientation
+    description: >-
+      Report pivot, bounding box, local axis directions and drift, and the
+      world matrix for one node.
+    source_file: action_analyze_node_orientation.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: Node name to analyze.
+        handle:
+          type: integer
+          description: Stable object handle to analyze.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 15
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Analyze node orientation, pivot, local axes, and world transform."
+    tool_role: read_only
+    risk: low
+    search_aliases:
+      ["analyze_node_orientation", "node orientation", "orientation"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["orientation_report", "bounding_box"]
+  - name: inspect_max_file
+    description: >-
+      Read the objects and metadata stored in an external .max file without
+      opening it in the current scene. A missing, unreadable, or invalid file
+      is reported as an explicit failure instead of an empty object list.
+    source_file: action_inspect_max_file.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [file_path]
+      properties:
+        file_path:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Existing absolute .max path to inspect.
+        name_filter:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Optional case-insensitive substring filter for object names.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 200
+          description: Maximum number of object names to return.
+        include_object_names:
+          type: boolean
+          default: true
+          description: Return object names when true; else counts and metadata only.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 30
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Inspect the objects and metadata of an external 3ds Max file."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["inspect_max_file", "inspect max file", "external max objects"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["max_file_info", "object_names"]
+  - name: batch_file_info
+    description: >-
+      Read metadata for a batch of up to 20 external .max files in one call.
+      Every file gets a per-file status; a file that cannot be read is
+      reported as an explicit error and fails the call rather than being
+      skipped silently. Paths are read serially on the 3ds Max main thread,
+      so keep batches small: a batch above 10 paths returns a warning asking
+      for a smaller batch instead of one long call.
+    source_file: action_batch_file_info.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [file_paths]
+      properties:
+        file_paths:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: {type: string, minLength: 1, maxLength: 4096}
+          description: >-
+            Existing absolute .max paths to read, at most 20 per call. Paths are
+            read serially on the 3ds Max main thread.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 200
+          description: Maximum number of object names to return per file.
+        include_object_names:
+          type: boolean
+          default: false
+          description: Return object names per file when true.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 120
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Read metadata for several external 3ds Max files at once."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["batch_file_info", "batch max file info", "max file metadata"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["max_file_info"]
+  - name: search_max_files
+    description: >-
+      Search a batch of up to 20 external .max files for objects whose name
+      matches a substring or glob pattern. Files that cannot be read are
+      reported as explicit per-file errors and fail the call. Paths are read
+      serially on the 3ds Max main thread, so keep batches small: a batch
+      above 10 paths returns a warning asking for a smaller batch instead of
+      one long call.
+    source_file: action_search_max_files.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [file_paths, name_pattern]
+      properties:
+        file_paths:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: {type: string, minLength: 1, maxLength: 4096}
+          description: >-
+            Existing absolute .max paths to search, at most 20 per call. Paths
+            are read serially on the 3ds Max main thread.
+        name_pattern:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Substring or glob pattern to match against object names.
+        match_mode:
+          type: string
+          enum: [contains, glob]
+          default: contains
+          description: Match object names by substring or by glob wildcard.
+        case_sensitive:
+          type: boolean
+          default: false
+          description: Match case-sensitively when true.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 200
+          description: Maximum number of matches to return.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 120
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Find objects by name pattern across several 3ds Max files."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["search_max_files", "search max files", "find objects in max files"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["max_file_matches"]
+  - name: merge_from_file
+    description: >-
+      Merge objects selected by exact name or by name pattern from an external
+      .max file into the current scene, using fixed no-prompt duplicate,
+      material, and reparent policies. The selection is resolved against the
+      source file first: an unmatched name or pattern fails the call instead of
+      merging an arbitrary subset, and unresolved names are always reported.
+    source_file: action_merge_from_file.py
+    execution: async
+    job_strategy: monolithic
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      required: [file_path]
+      properties:
+        file_path:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: Existing absolute .max source path.
+        object_names:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: {type: string, minLength: 1, maxLength: 256}
+          description: >-
+            Exact source object names to merge. Mutually exclusive with
+            name_pattern; omit both to merge every object in the file.
+        name_pattern:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: >-
+            Substring or glob pattern selecting the source objects to merge.
+            Mutually exclusive with object_names.
+        match_mode:
+          type: string
+          enum: [contains, glob]
+          default: contains
+          description: Match source object names by substring or by glob wildcard.
+        case_sensitive:
+          type: boolean
+          default: false
+          description: Match source object names case-sensitively when true.
+        require_all:
+          type: boolean
+          default: false
+          description: >-
+            Fail without merging when any requested object name is missing from
+            the source file.
+        duplicate_names:
+          type: string
+          enum: [rename, skip, merge]
+          default: rename
+        material_duplicates:
+          type: string
+          enum: [rename, use_scene, use_merged]
+          default: rename
+        reparent:
+          type: string
+          enum: [never, always]
+          default: never
+        select_merged:
+          type: boolean
+          default: false
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 120
+    read_only: false
+    destructive: false
+    idempotent: false
+    annotations:
+      read_only_hint: false
+      destructive_hint: false
+      idempotent_hint: false
+      open_world_hint: false
+      deferred_hint: true
+    intent: "Merge named or pattern-matched objects from one 3ds Max file."
+    tool_role: action
+    risk: medium
+    search_aliases: ["merge_from_file", "merge objects from max file", "merge max objects"]
+    side_effects:
+      creates: true
+      modifies: true
+      deletes: false
+      exports: false
+      imports: true
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["scene_nodes", "scene_status"]
+    undo:
+      supported: true
+      granularity: batch_call
+      notes: >-
+        Merges N nodes in one call. Undo once and re-check the node list; repeat while merged
+        nodes are still present, because 3ds Max may or may not group them into a single entry.
+  - name: scene_patch
+    description: >-
+      Preflight and apply up to 256 mechanical node edits (set a property,
+      rename, set position, set visibility) as one atomic batch. Every edit is
+      resolved and validated before the first write, so a rejected batch leaves
+      the scene untouched; an accepted batch lands in a single native undo step
+      and is rolled back as a whole if any edit fails to verify.
+    source_file: action_scene_patch.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        edits:
+          type: array
+          minItems: 1
+          maxItems: 256
+          description: >-
+            Mechanical node edits to apply as one batch. Each entry targets one
+            node by node_name or handle and carries exactly one op.
+          items:
+            type: object
+            properties:
+              op:
+                type: string
+                enum: [set_property, rename, set_position, set_visibility]
+                description: Edit to apply.
+              node_name:
+                type: string
+                minLength: 1
+                description: Target node name. Required unless handle is given.
+              handle:
+                type: integer
+                description: Target object handle. Required unless node_name is given.
+              property:
+                type: string
+                minLength: 1
+                description: Node property to write for op set_property.
+              value:
+                description: >-
+                  Value for op set_property. Coerced to the type the property
+                  currently holds, so a type mismatch fails preflight.
+              name:
+                type: string
+                minLength: 1
+                maxLength: 256
+                description: New node name for op rename.
+              position:
+                description: World position [x, y, z] for op set_position.
+              visible:
+                type: boolean
+                description: Target visibility for op set_visibility.
+        dry_run:
+          type: boolean
+          default: false
+          description: >-
+            Run the preflight and report the planned change per edit without
+            writing anything.
+        allow_ungrouped:
+          type: boolean
+          default: false
+          description: >-
+            Apply the batch even when this host cannot group it into one undo
+            step, leaving one undo entry per edit. The result reports the
+            grouping either way.
+        label:
+          type: string
+          maxLength: 256
+          default: scene patch
+          description: Label used for the undo entry the batch creates.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 30
+    read_only: false
+    destructive: true
+    idempotent: true
+    annotations:
+      read_only_hint: false
+      destructive_hint: true
+      idempotent_hint: true
+      open_world_hint: false
+    intent: "Apply a preflighted batch of node edits atomically in one undo step."
+    tool_role: action
+    risk: medium
+    search_aliases:
+      ["scene_patch", "batch edit nodes", "atomic node edits", "patch scene"]
+    side_effects:
+      creates: false
+      modifies: true
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: ["scene_nodes"]
+    produces: ["scene_nodes", "undo_state"]
+    undo:
+      supported: true
+      granularity: single_call
+      notes: >-
+        The whole batch is written inside one host undo hold, so one call leaves one undo entry and one
+        undo_last call reverses it. A write that fails to verify cancels the hold, rolling every edit
+        back; the result reports undo.grouped, which is false only when the host could not open a hold.
+  - name: get_hierarchy
+    description: >-
+      Report the recursive parent/child tree of the current scene. Use when the
+      question is "what is under this node", which the flat list_scene_nodes
+      output cannot answer. Omit both node_name and handle to walk every
+      parentless node; a cycle in the parent links is reported, never dropped.
+    source_file: action_get_hierarchy.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: >-
+            Name of the subtree root. Required unless handle is given; when
+            neither is given every parentless node starts a tree.
+        handle:
+          type: integer
+          description: Object handle of the subtree root. Required unless node_name is given.
+        max_depth:
+          type: integer
+          minimum: 0
+          maximum: 32
+          description: >-
+            Deepest level to report. Level 0 is the root only. Omit for the
+            32-level cap; children below the cap are counted in
+            unlisted_children.
+        include_hidden:
+          type: boolean
+          default: true
+          description: >-
+            Include hidden nodes when true. When false a hidden node takes its
+            subtree with it, and the skipped count is reported.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 2000
+          default: 500
+          description: Maximum number of nodes to emit.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 20
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Report the recursive scene subtree under a node, or the whole tree."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_hierarchy", "scene hierarchy", "node tree", "subtree", "children"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["node_tree"]
+  - name: get_instances
+    description: >-
+      Group scene nodes into instance sets: nodes that derive from one shared
+      object, so editing one edits all of them. Pass node_name or handle for
+      the set one node belongs to, or omit both for every set with more than one
+      member. A host that cannot answer is refused rather than reported as
+      having no instances.
+    source_file: action_get_instances.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: Name of the node to look up. Required unless handle is given.
+        handle:
+          type: integer
+          description: Object handle of the node to look up. Required unless node_name is given.
+        include_unique:
+          type: boolean
+          default: false
+          description: >-
+            Also report groups with a single member when no node target is
+            given.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 2000
+          default: 200
+          description: Maximum number of nodes to list per group.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 20
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Report which scene nodes are instances of one shared object."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_instances", "instances", "instanced nodes", "shared object"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["instance_groups"]
+  - name: get_dependencies
+    description: >-
+      Report what a node depends on and what depends on it, read through the
+      MAXScript refs interface: refs.dependents for direct dependents,
+      refs.dependentnodes for dependent nodes followed recursively, and
+      refs.dependsOn for the reverse. A host without a working refs interface is
+      refused, because an empty graph is the answer to "nothing depends on
+      this", not to "I could not look".
+    source_file: action_get_dependencies.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        node_name:
+          type: string
+          minLength: 1
+          description: Target node name. Required unless handle is given.
+        handle:
+          type: integer
+          description: Target object handle. Required unless node_name is given.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 2000
+          default: 200
+          description: Maximum number of entries to list per section.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 20
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Report the dependency graph around one node through refs."
+    tool_role: read_only
+    risk: low
+    search_aliases: ["get_dependencies", "dependencies", "refs", "dependent nodes", "depends on"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["dependency_graph"]
+  - name: query_scene
+    description: >-
+      One entry point for the six read-side scene questions, selected by mode:
+      overview for counts and a per-class histogram, filter for the node list
+      narrowed by name, class for the node list narrowed by class name,
+      property for one property read per node narrowed by value, selection for
+      the selected nodes, and delta for what changed against a snapshot the
+      caller captured earlier. Overview and delta answer with counts rather than
+      a node list; every mode reports a warning instead of hiding a question the
+      host could not answer. Delta compares the whole scene: name_filter and
+      include_hidden do not narrow it, because a baseline captured without a
+      filter is a statement about the whole scene and narrowing only the current
+      side would report filtered-out nodes as removed.
+    source_file: action_query_scene.py
+    execution: sync
+    affinity: main
+    enforce_thread_affinity: true
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          enum: [overview, filter, class, property, selection, delta]
+          default: overview
+          description: Question to answer.
+        name_filter:
+          type: string
+          description: >-
+            Case-insensitive node-name substring applied in every mode. At most
+            256 characters.
+        class_name:
+          type: string
+          description: Class name to match in mode class. Required in that mode.
+        class_match:
+          type: string
+          enum: [exact, contains]
+          default: exact
+          description: >-
+            How class_name is compared in mode class: exact is case-insensitive
+            equality, contains is a case-insensitive substring.
+        property_name:
+          type: string
+          minLength: 1
+          description: >-
+            Property to read in mode property, or to compare in mode delta.
+            Refused when it starts with an underscore.
+        property_value:
+          description: >-
+            In mode property, keep only the nodes whose property matches this
+            value.
+        include_hidden:
+          type: boolean
+          default: true
+          description: Include hidden nodes when true.
+        baseline:
+          description: >-
+            Required in mode delta. A node snapshot to compare against: an array
+            of node names, or an array of objects carrying node_name, object_id,
+            and optionally value or values. Pass the snapshot field returned when
+            include_snapshot is true rather than the whole result object -
+            overview and delta return an empty nodes list, which is not a
+            baseline. Property comparison needs a baseline from property mode,
+            whose nodes carry a value.
+        include_snapshot:
+          type: boolean
+          default: false
+          description: >-
+            Return a snapshot of the matched nodes so it can be passed back as
+            the baseline of a later delta query.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 2000
+          default: 200
+          description: Maximum number of nodes to return or snapshot.
+    output_schema:
+      type: object
+      additionalProperties: true
+      properties:
+        success: {type: boolean}
+        message: {type: string}
+        data: {type: object}
+    timeout_hint_secs: 30
+    read_only: true
+    destructive: false
+    idempotent: true
+    annotations:
+      read_only_hint: true
+      destructive_hint: false
+      idempotent_hint: true
+      open_world_hint: false
+
+    intent: "Answer one scene question: overview, filter, class, property, selection, or delta."
+    tool_role: read_only
+    risk: low
+    search_aliases:
+      ["query_scene", "query scene", "scene query", "find nodes by class", "find nodes by property", "scene delta"]
+    side_effects:
+      creates: false
+      modifies: false
+      deletes: false
+      exports: false
+      imports: false
+      file_output: false
+      render: false
+      targets: []
+    produces: ["scene_nodes", "scene_summary", "scene_delta"]
