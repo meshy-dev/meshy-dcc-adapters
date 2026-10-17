@@ -9,7 +9,7 @@ Progressive loading stages for `meshy-dcc-zbrush`. Minimal mode loads **bootstra
 | `authoring` | `zbrush-subtool`, `zbrush-brush` | no |
 | `presentation` | `zbrush-viewport` | no |
 | `interchange` | `zbrush-interchange` | no |
-| `pipeline` | `zbrush-import-to-scene` | no |
+| `pipeline` | `zbrush-import-to-scene`, `zbrush-file` | no |
 
 ## Common chains
 
@@ -24,6 +24,7 @@ Progressive loading stages for `meshy-dcc-zbrush`. Minimal mode loads **bootstra
 | Capture turntable | `load_skill("zbrush-viewport")` → `zbrush_viewport__capture_turntable` |
 | Export to OBJ | `zbrush_subtool__select_subtool` → `load_skill("zbrush-interchange")` → `zbrush_interchange__export_active_subtool_obj` |
 | Import OBJ asset | `load_skill("zbrush-import-to-scene")` → `zbrush_import_to_scene__import_to_scene` → `zbrush_scene__list_subtools` |
+| Save and reopen | `load_skill("zbrush-file")` → `zbrush_file__save_project` → `zbrush_file__open_project` → `zbrush_scene__list_subtools` |
 | Escape hatch | `load_skill("zbrush-scripting")` → `zbrush_scripting__execute_python` (last resort) |
 
 ## Skill inventory
@@ -32,8 +33,9 @@ Progressive loading stages for `meshy-dcc-zbrush`. Minimal mode loads **bootstra
 |-------|-------|-------|
 | `zbrush-scripting` | `execute_python`, `get_session_info` | thin-harness |
 | `zbrush-scene` | `get_scene_info`, `list_subtools` | domain |
-| `zbrush-subtool` | `select_subtool`, `get_subtool_status`, `inspect_active_mesh`, `refine_active_subtool`, `bake_active_subtool_map` | domain |
+| `zbrush-subtool` | `select_subtool`, `get_subtool_status`, `inspect_active_mesh`, `refine_active_subtool`, `remesh_active_subtool`, `bake_active_subtool_map` | domain |
 | `zbrush-brush` | `create_wrinkle_brush`, `load_wrinkle_brush` | domain |
 | `zbrush-viewport` | `capture_turntable` | domain |
 | `zbrush-interchange` | `export_active_subtool_obj` | domain |
 | `zbrush-import-to-scene` | `import_to_scene` | domain |
+| `zbrush-file` | `save_project`, `save_tool`, `open_project` | domain |

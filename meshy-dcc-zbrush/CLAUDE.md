@@ -9,6 +9,11 @@ and shares no names with one. Keep `LICENSE` and `NOTICE` intact.
   ZBrush). The bridge ZBrush runs is `bridge/plugin/mcp_socket_bridge.py`;
   the wheel carries it as `meshy_dcc_zbrush/plugin/mcp_socket_bridge.py`. It
   is stdlib only: ZBrush's embedded Python cannot load Core.
+- Meshy DCC path: `setup-project` writes the project's launch plan
+  (`ZBrush -script <bridge>`); the bridge takes a free loopback port, starts
+  the sidecar from the package's Python with a per-launch token, and runs
+  SDK calls on the ZBrush main thread. Nothing is written into ZBrush's
+  installation or settings.
 - The sidecar runs on the `meshy_dcc_core` wheel; its range is in
   `pyproject.toml` and `install_lifecycle.MINIMUM_CORE`, and the Install SOP
   schema digest per Core release is in `install_contract.py`.

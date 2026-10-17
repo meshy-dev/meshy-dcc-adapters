@@ -1,0 +1,88 @@
+tools:
+  - name: save_project
+    description: >-
+      Save the open ZBrush project to a .zpr file at path. Refuses an existing
+      file unless overwrite is true; the parent directory must exist. Returns
+      the written path and size.
+    source_file: scripts/save_project.py
+    execution: sync
+    affinity: main
+    group: core
+    annotations:
+      destructive_hint: true
+      read_only_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [path]
+      additionalProperties: false
+      properties:
+        path:
+          type: string
+          description: Absolute path ending in .zpr.
+        overwrite:
+          type: boolean
+          default: false
+          description: Replace an existing file.
+    next-tools:
+      on-success:
+        - zbrush_file__open_project
+      on-failure:
+        - zbrush_scripting__get_session_info
+
+  - name: save_tool
+    description: >-
+      Save the active tool, with all its subtools, to a .ztl file at path.
+      Refuses an existing file unless overwrite is true; the parent directory
+      must exist. Returns the written path and size.
+    source_file: scripts/save_tool.py
+    execution: sync
+    affinity: main
+    group: core
+    annotations:
+      destructive_hint: true
+      read_only_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [path]
+      additionalProperties: false
+      properties:
+        path:
+          type: string
+          description: Absolute path ending in .ztl.
+        overwrite:
+          type: boolean
+          default: false
+          description: Replace an existing file.
+    next-tools:
+      on-success:
+        - zbrush_scene__list_subtools
+      on-failure:
+        - zbrush_scripting__get_session_info
+
+  - name: open_project
+    description: >-
+      Open a .zpr project, replacing what ZBrush has open without asking, and
+      return the active tool path and subtool count it loaded. Save first.
+    source_file: scripts/open_project.py
+    execution: sync
+    affinity: main
+    group: core
+    annotations:
+      destructive_hint: true
+      read_only_hint: false
+      idempotent_hint: true
+    input_schema:
+      type: object
+      required: [path]
+      additionalProperties: false
+      properties:
+        path:
+          type: string
+          description: Absolute path to an existing .zpr file.
+    next-tools:
+      on-success:
+        - zbrush_scene__list_subtools
+      on-failure:
+        - zbrush_scripting__get_session_info

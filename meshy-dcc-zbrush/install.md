@@ -1,144 +1,78 @@
-# Install and lifecycle operations
+# Install Meshy DCC for ZBrush
+
+Not verified on a real ZBrush yet; experimental.
 
 ## Requirements
 
-This is the canonical install SOP for `meshy-dcc-zbrush`. ZBrush 2026.1 or
-newer is required. The external sidecar requires Python 3.10 or newer and
-`meshy-dcc-core >= 0.2.0, < 0.3.0`.
+- ZBrush 2026.1 or newer on macOS arm64 or Windows x64. Installations are
+  found at `/Applications/Maxon ZBrush 20*/ZBrush.app` (also under
+  `~/Applications`) and `C:\Program Files\Maxon ZBrush 20*\ZBrush.exe`; pass
+  `--dcc-path` for any other location or when several versions are installed.
+- `meshy-dcc-core >= 0.2.0, < 0.3.0`. The Meshy DCC package carries CPython
+  3.11 with Core and this adapter; ZBrush's embedded Python cannot run the
+  sidecar (its interpreter is ZBrush itself).
 
-## Supported versions
-
-Supported host platforms are Windows and macOS. Linux can build the wheel and
-run contract tests, but it cannot authenticate, install, or verify a ZBrush
-host.
-
-## Agent quick path
-
-Use a fixed release version. The lifecycle intentionally rejects `latest`.
+## With Meshy DCC
 
 ```bash
-python -m pip install "meshy-dcc-zbrush==<version>"
+meshy-dcc install --dcc-type zbrush --project /path/to/folder --execute
+meshy-dcc start-instance --dcc-type zbrush --project /path/to/folder --wait-ready
 ```
 
-Identify the ZBrush executable/application and Asset Directory. Set the Asset
-Directory explicitly instead of guessing a shared startup location:
-
-```powershell
-$env:ZBRUSH_USER_ASSETS_DIR = "<ZBrush Asset Directory>"
-meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.exe>" --python python --dry-run --json
-meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.exe>" --python python --yes --json
-```
+`install` downloads and checks the package, extracts it into the Meshy DCC
+adapters directory and runs, with the package's own Python:
 
 ```bash
-export ZBRUSH_USER_ASSETS_DIR="<ZBrush Asset Directory>"
-meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.app>" --python python3 --dry-run --json
-meshy-dcc-zbrush install --version <version> --dcc-path "<ZBrush.app>" --python python3 --yes --json
+meshy-dcc-zbrush setup-project /path/to/folder --dcc-path <ZBrush> --json
 ```
+
+`setup-project` accepts only a ZBrush 2026.1+ application signed by Maxon and
+writes one file, `<folder>/.meshy-dcc/launch-plan.json` (the `.meshy-dcc`
+folder ignores itself for version control). The plan starts
+`ZBrush -script <package>/…/meshy_dcc_zbrush/plugin/mcp_socket_bridge.py`.
+Running it again rewrites the plan; to remove the setup, delete that file.
+
+When ZBrush runs the bridge, the bridge listens on a free loopback port and
+starts `python -m meshy_dcc_zbrush serve --watch-pid <ZBrush pid>
+--socket-port <port>` from the package with a per-launch token. The sidecar
+registers with `meshy-dcc`, exits when ZBrush exits, and for a
+`start-instance` launch offers a safe stop.
+
+Nothing is written into the ZBrush installation, its `ZData`, or ZBrush's user
+settings. A ZBrush opened by hand therefore has no bridge.
 
 ## Manual path
 
-The default `sidecar` mode installs a dedicated bridge module and appends one
-bounded managed import block to the shared `<AssetDir>/Python/init.py`. It
-never replaces that shared file. Existing bytes are backed up before the
-staged atomic replacement and recorded in
-`<AssetDir>/.meshy-dcc/receipts/zbrush.json`.
+To attach a ZBrush that is already open, run the packaged bridge from
+**ZScript > Python Scripting > Load**
+(`<package>/python/…/site-packages/meshy_dcc_zbrush/plugin/mcp_socket_bridge.py`).
+It starts the sidecar the same way. Untested; on macOS the bridge's request
+pump may keep the Load button busy. Without `start-instance` there is no safe
+stop; close ZBrush yourself.
 
-Preflight accepts only a native Maxon-signed ZBrush product with canonical
-2026.1+ version metadata; a path or filename alone is never treated as a host.
-The installer resolves only the fixed `v<version>` release asset, requires its
-GitHub SHA-256 provenance, verifies the bytes before they enter the cache, and
-rejects unsafe ZIP members. Invalid cached payloads are removed; obsolete
-version cache directories are pruned after a successful install.
-
-An applied install or upgrade returns exit `50` while the candidate is staged.
-The receipt retains immutable recovery snapshots until `verify` binds the
-exact ZBrush executable, PID/start identity, bridge instance, endpoint, loaded
-module origins, and version. Verification commits the candidate only after all
-bindings succeed; otherwise it restores the exact prior installation.
-
-## Verify
+## Stop
 
 ```bash
-meshy-dcc-zbrush status --version <version> --dcc-path "<ZBrush path>" --python python --json
+meshy-dcc stop-instance --operation-id <id>                    # refused: ZBrush cannot report unsaved work
+meshy-dcc stop-instance --operation-id <id> --discard-unsaved  # only after the user agreed
 ```
 
-Restart ZBrush so it loads the managed bootstrap, then run:
-
-```bash
-meshy-dcc-zbrush verify --version <version> --dcc-path "<ZBrush path>" --python python --json
-```
-
-For sidecar mode, `verify` checks receipt and payload hashes, reads captured
-bootstrap errors, connects to the in-process socket bridge, and calls the safe
-session-info probe. A valid install is not reported as directly usable until
-that host probe succeeds. Afterward start the external process:
-
-```bash
-meshy-dcc-zbrush --mode sidecar
-meshy-dcc list
-```
-
-Embedded mode is advanced and Python-only. It does not load the Core native
-wheel into ZBrush's embedded VM. Use `--mode embedded`; verification selects
-one registry instance and rejects a probe unless its PID/start identity,
-endpoint, product bytes, adapter module, and `zbrush.commands` origin all match
-the receipt.
-
-## Upgrade
-
-Review an upgrade plan before applying it:
-
-```bash
-meshy-dcc-zbrush upgrade --version <new-version> --dcc-path "<ZBrush path>" --python python --dry-run --json
-meshy-dcc-zbrush upgrade --version <new-version> --dcc-path "<ZBrush path>" --python python --yes --json
-```
-
-## Uninstall
-
-Uninstall is receipt-driven and transactional. It restores the exact
-pre-install `init.py` when unchanged; if another tool edited that file after
-installation, it removes only the unambiguous managed block and preserves the
-later edits. Embedded trees record typed file/directory/link ownership, so
-operator-created files remain in place. Any failed removal restores the
-receipt, payload, shared startup state, and backups before returning.
-
-```bash
-meshy-dcc-zbrush uninstall --version <version> --dcc-path "<ZBrush path>" --python python --dry-run --json
-meshy-dcc-zbrush uninstall --version <version> --dcc-path "<ZBrush path>" --python python --yes --json
-```
-
-## JSON and exit codes
-
-All lifecycle verbs accept `--json`, `--yes`, `--dry-run`, `--dcc-path`, and
-`--python`. JSON responses use Install SOP schema version `1`; every next step has `id`,
-`description`, `why`, and exactly one of `command` or `file_edit`.
-
-| Exit | Meaning |
-|---:|---|
-| `0` | Complete, planned, or already in the requested state |
-| `10` | Preflight, configuration, receipt, or partial-install failure |
-| `20` | Payload acquisition, provenance, or checksum failure |
-| `30` | Install, upgrade, uninstall, or filesystem failure |
-| `40` | Verification, host-readiness, or captured bootstrap failure |
-| `50` | A candidate needs exact host verification, or loaded files require restart |
+Save first with `zbrush_file__save_project` or `zbrush_file__save_tool`. An
+agreed stop ends the ZBrush process that `start-instance` launched.
 
 ## Troubleshooting
 
-- `partial`: managed files or markers exist without a valid receipt, or a
-  receipt-managed payload drifted. The command fails closed; do not delete the
-  shared `init.py`. Restore from the receipt backup or inspect the reported
-  path before retrying.
-- `locked_files`: close ZBrush, confirm no host process is loading the managed
-  files, then retry. The installer stages replacements and rolls back a failed
-  commit.
-- `bootstrap_failed`: inspect
-  `<AssetDir>/.meshy-dcc/bootstrap-errors.jsonl`; restart ZBrush after correcting
-  the reported SDK, import, or socket error.
-- `host_unavailable` / exit `40`: start or restart ZBrush and rerun `verify`.
-  Gateway health alone is not proof that the in-process ZBrush bridge is ready.
-- Checksum or provenance errors are not bypassable. Select an official fixed
-  release version and retry; never substitute a mutable CDN or an unverified
-  ZIP.
+- `start-instance` times out at registration: set
+  `MESHY_DCC_ZBRUSH_BRIDGE_LOG=<file>` before starting and read it; it records
+  the bridge port and the sidecar it started.
+- A call reports `ZBRUSH_BLOCKED`: ZBrush is inside a native call, possibly a
+  dialog that needs a person. Do not retry; ask the user.
+- `ZBRUSH_TIMEOUT_STILL_RUNNING`: the request is still running in ZBrush. Do
+  not repeat it; wait until `get_session_info` answers.
 
-Canonical raw URL:
-<https://raw.githubusercontent.com/meshy-dev/meshy-dcc-zbrush/main/install.md>
+## Earlier installer
+
+`meshy-dcc-zbrush install|status|verify|uninstall|upgrade --asset-dir <ZBrush
+Asset Directory>` is the fork source's receipt-driven installer into a shared
+ZBrush startup folder. It is not used by Meshy DCC, its online payload
+source does not exist under Meshy, and it is untested here.

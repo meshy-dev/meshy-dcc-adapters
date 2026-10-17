@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import socket
 import time
 from typing import Any, Dict, Optional
@@ -16,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 19876
+# The bridge that starts the sidecar hands it this per-launch token.
+TOKEN_ENV = "MESHY_DCC_ZBRUSH_BRIDGE_TOKEN"
 DEFAULT_TIMEOUT_SEC = 610.0
 PING_TIMEOUT_SEC = 3.0
 
@@ -85,8 +88,10 @@ class SocketBridge:
         busy_retries: int = DEFAULT_BUSY_RETRIES,
         busy_backoff_sec: float = DEFAULT_BUSY_BACKOFF_SEC,
         busy_backoff_max_sec: float = DEFAULT_BUSY_BACKOFF_MAX_SEC,
+        token: Optional[str] = None,
     ) -> None:
         self._host = host
+        self._token = token if token is not None else (os.environ.get(TOKEN_ENV, "").strip() or None)
         self._port = port
         self._timeout = timeout
         self._busy_retries = max(0, int(busy_retries))
@@ -128,7 +133,7 @@ class SocketBridge:
         * ``unreachable`` — nothing is listening. This is a plugin/installation
           problem, not a blocked main thread, and must not be reported as one.
         """
-        payload = {"jsonrpc": "2.0", "id": 1, "method": "ping", "params": {}}
+        payload = self._payload("ping", {})
         try:
             raw = self._send(json.dumps(payload).encode("utf-8"), timeout=timeout)
             message = json.loads(raw.decode("utf-8"))
@@ -137,7 +142,7 @@ class SocketBridge:
                 "status": STATUS_UNREACHABLE,
                 "message": (
                     f"No ZBrush socket plugin is listening at {self.endpoint}. "
-                    "Install bridge/plugin/mcp_socket_bridge.py in ZBrush and restart."
+                    "Start ZBrush with `meshy-dcc start-instance --dcc-type zbrush --project <folder>`."
                 ),
                 "endpoint": self.endpoint,
                 "timeout_sec": timeout,
@@ -160,6 +165,15 @@ class SocketBridge:
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
+        error = message.get("error")
+        if isinstance(error, dict) and error.get("code") == -32003:
+            return {
+                "status": STATUS_UNREACHABLE,
+                "message": f"The ZBrush bridge at {self.endpoint} refused this sidecar's token.",
+                "endpoint": self.endpoint,
+                "timeout_sec": timeout,
+                "error": str(error.get("message")),
+            }
         result = message.get("result")
         if not isinstance(result, dict):
             return {
@@ -212,7 +226,7 @@ class SocketBridge:
         raise AssertionError("unreachable")  # pragma: no cover
 
     def _call_once(self, method: str, **params: Any) -> Any:
-        payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+        payload = self._payload(method, params)
         try:
             raw = self._send(json.dumps(payload).encode("utf-8"))
         except OSError:
@@ -233,6 +247,12 @@ class SocketBridge:
                 data=err.get("data") if isinstance(err.get("data"), dict) else None,
             )
         return message.get("result")
+
+    def _payload(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+        if self._token:
+            payload["token"] = self._token
+        return payload
 
     def _is_retryable_busy(self, exc: ZBrushBridgeError) -> bool:
         """True only for a refused-but-servable host.

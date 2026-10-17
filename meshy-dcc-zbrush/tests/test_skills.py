@@ -20,6 +20,7 @@ _SKILL_DIRS = (
     "zbrush-viewport",
     "zbrush-interchange",
     "zbrush-import-to-scene",
+    "zbrush-file",
 )
 
 

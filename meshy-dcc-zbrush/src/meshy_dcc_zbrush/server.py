@@ -58,6 +58,10 @@ class ZBrushServerOptions:
             enable_telemetry=True,
             dcc_pid=self.dcc_pid,
             dcc_window_title=self.dcc_window_title or "ZBrush",
+            # The sidecar runs tools inline: the bridge inside ZBrush puts every
+            # SDK call on the ZBrush main thread, so this lane is main-thread safe.
+            standalone_main_thread=_env.resolve_mode(self.mode) == "sidecar",
+            instance_type="gui",
         )
 
 
@@ -77,6 +81,7 @@ class ZBrushMcpServer(DccServerBase):
         mode: Optional[str] = None,
         socket_host: str = "127.0.0.1",
         socket_port: int = 19876,
+        dcc_pid: Optional[int] = None,
         options: Optional[ZBrushServerOptions] = None,
     ) -> None:
         from meshy_dcc_zbrush import _env  # noqa: PLC0415
@@ -94,6 +99,7 @@ class ZBrushMcpServer(DccServerBase):
                 mode=mode,
                 socket_host=socket_host,
                 socket_port=socket_port,
+                dcc_pid=dcc_pid,
             )
 
         super().__init__(options=options.to_core_options())
@@ -154,7 +160,7 @@ class ZBrushMcpServer(DccServerBase):
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "SocketBridge could not connect (%s). "
-                "Install bridge/plugin/mcp_socket_bridge.py in ZBrush and restart.",
+                "Start ZBrush with `meshy-dcc start-instance --dcc-type zbrush --project <folder>`.",
                 exc,
             )
         self._install_readiness_probe()
@@ -208,6 +214,9 @@ class ZBrushMcpServer(DccServerBase):
     def start(self, *, install_atexit_hook: bool = True) -> "ZBrushMcpServer":
         self._init_sidecar_bridge()
         super().start(install_atexit_hook=install_atexit_hook)
+        from meshy_dcc_zbrush._safe_stop import attach_safe_stop  # noqa: PLC0415
+
+        attach_safe_stop(self)
         logger.info(
             "ZBrushMcpServer started (%s mode) at %s",
             self._mode,

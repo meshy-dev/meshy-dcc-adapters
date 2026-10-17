@@ -171,13 +171,14 @@ def test_bridge_bootstraps_when_loaded_by_zbrush(monkeypatch) -> None:
     monkeypatch.setattr(
         bridge,
         "_start_bridge",
-        lambda host, port: calls.append(("bridge", host, port)) or bridge_thread,
+        lambda host, port, python: calls.append(("bridge", host, port, python)) or bridge_thread,
     )
+    monkeypatch.setattr(bridge, "_package_python", lambda: None)
     monkeypatch.setenv("MESHY_DCC_ZBRUSH_SOCKET_HOST", "127.0.0.1")
     monkeypatch.setenv("MESHY_DCC_ZBRUSH_SOCKET_PORT", "9910")
 
     assert bridge.bootstrap_bridge() is bridge_thread
-    assert calls == ["menu", ("bridge", "127.0.0.1", 9910)]
+    assert calls == ["menu", ("bridge", "127.0.0.1", 9910, None)]
 
 
 def test_bridge_bootstrap_continues_when_menu_registration_fails(monkeypatch) -> None:

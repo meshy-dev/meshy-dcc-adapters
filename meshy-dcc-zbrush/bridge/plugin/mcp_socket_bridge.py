@@ -1,8 +1,13 @@
-"""ZBrush socket bridge plugin for sidecar MCP mode.
+"""ZBrush socket bridge for the Meshy DCC sidecar.
 
-Copy this file into ZStartup/ZPlugs64 or expose it via ZBRUSH_PLUGIN_PATH.
-It listens on TCP port 19876 (override with MESHY_DCC_ZBRUSH_SOCKET_PORT) and
-executes JSON-RPC requests against ``zbrush.commands``.
+``meshy-dcc start-instance`` runs this file with ``ZBrush -script <this file>``.
+It listens on a loopback TCP port, executes JSON-RPC requests against
+``zbrush.commands`` on the ZBrush main thread, and starts the sidecar from the
+Meshy DCC package it ships in: that package's Python runs ``meshy_dcc_zbrush
+serve`` with the port and a per-launch token. Without such a package next to
+this file (a hand-copied bridge), it listens on 19876 or
+``MESHY_DCC_ZBRUSH_SOCKET_PORT`` and leaves the sidecar to the operator.
+``MESHY_DCC_ZBRUSH_BRIDGE_TOKEN``, when set, is the token the bridge requires.
 
 Registers a top-level Meshy DCC palette with Copy Instance ID, Server Info, and
 About Meshy DCC actions through the official ZBrush Python SDK.
@@ -11,13 +16,16 @@ About Meshy DCC actions through the official ZBrush Python SDK.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import importlib
 import json
 import math
 import ntpath
 import os
 import queue
+import secrets
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -37,6 +45,11 @@ _ACTIVE_REQUEST: Optional[Dict[str, Any]] = None
 _PUMP_TIMER_ID = 0
 _PUMP_TIMER_CALLBACK: Any = None
 _BRIDGE_INSTANCE_ID = str(uuid.uuid4())
+_DEFAULT_SOCKET_PORT = 19876
+_TOKEN_ENV = "MESHY_DCC_ZBRUSH_BRIDGE_TOKEN"
+# Required in every request when set; only the sidecar this bridge starts learns it.
+_BRIDGE_TOKEN: Optional[str] = None
+_SIDECAR: Optional["subprocess.Popen[bytes]"] = None
 
 
 def _mark(message: str) -> None:
@@ -148,6 +161,14 @@ def _handle_zbrush_request(method: Any, params: Dict[str, Any], req_id: Any) -> 
             )
         elif method == "import_to_scene":
             result = _import_to_scene(str(params.get("file_path", "")))
+        elif method == "save_file":
+            result = _save_file(
+                str(params.get("kind", "")),
+                str(params.get("output_path", "")),
+                params.get("overwrite") is True,
+            )
+        elif method == "open_project":
+            result = _open_project(str(params.get("path", "")))
         else:
             return {
                 "jsonrpc": "2.0",
@@ -954,6 +975,102 @@ def _import_to_scene(file_path: str) -> Dict[str, Any]:
     }
 
 
+_SAVE_TARGETS = {"project": ("File:Save As", ".zpr"), "tool": ("Tool:Save As", ".ztl")}
+
+
+def _save_file(kind: str, output_path: str, overwrite: bool) -> Dict[str, Any]:
+    """Save the open project (.zpr) or the active tool (.ztl) to an exact path.
+
+    ZBrush never finds a file at the target, so it has no overwrite question to
+    ask: an existing file is moved aside first and put back if the save fails.
+    """
+    target = _SAVE_TARGETS.get(kind)
+    if target is None:
+        return {"success": False, "message": "kind must be project or tool", "error": "UNSUPPORTED_KIND"}
+    control, extension = target
+    if not output_path:
+        return {"success": False, "message": "output_path must not be empty", "error": "OUTPUT_PATH_MISSING"}
+    abs_path = os.path.abspath(output_path)
+    if os.path.splitext(abs_path)[1].lower() != extension:
+        return {
+            "success": False,
+            "message": f"A {kind} saves to a {extension} file",
+            "error": "UNSUPPORTED_FORMAT",
+            "output_path": abs_path,
+        }
+    directory = os.path.dirname(abs_path)
+    if not os.path.isdir(directory):
+        return {
+            "success": False,
+            "message": f"Output directory does not exist: {directory}",
+            "error": "OUTPUT_DIR_MISSING",
+            "output_path": abs_path,
+        }
+    if os.path.exists(abs_path) and not overwrite:
+        return {
+            "success": False,
+            "message": f"{abs_path} exists; pass overwrite to replace it",
+            "error": "FILE_EXISTS",
+            "output_path": abs_path,
+        }
+    zbc = _import_zbc()
+    _require_controls(zbc, control)
+    backup_path = ""
+    if os.path.exists(abs_path):
+        backup_path = f"{abs_path}.meshy-dcc-{os.getpid()}-{time.time_ns()}.bak"
+        os.replace(abs_path, backup_path)
+    try:
+
+        def save() -> None:
+            zbc.set_next_filename(abs_path)
+            zbc.press(control)
+
+        _run_quiet_ui(zbc, save)
+        if not os.path.isfile(abs_path) or os.path.getsize(abs_path) == 0:
+            raise RuntimeError(f"ZBrush did not write a non-empty {extension} file")
+    except Exception:
+        if os.path.isfile(abs_path):
+            os.remove(abs_path)
+        if backup_path:
+            os.replace(backup_path, abs_path)
+        raise
+    if backup_path:
+        os.remove(backup_path)
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "kind": kind,
+        "path": abs_path,
+        "bytes": os.path.getsize(abs_path),
+        "active_tool_path": path,
+        "subtool_count": int(zbc.get_subtool_count()),
+    }
+
+
+def _open_project(path: str) -> Dict[str, Any]:
+    """Open a .zpr project, replacing what ZBrush has open, and read it back."""
+    if not path:
+        return {"success": False, "message": "path must not be empty", "error": "FILE_PATH_MISSING"}
+    abs_path = os.path.abspath(path)
+    if os.path.splitext(abs_path)[1].lower() != ".zpr":
+        return {"success": False, "message": "Only .zpr projects can be opened", "error": "UNSUPPORTED_FORMAT"}
+    if not os.path.isfile(abs_path):
+        return {"success": False, "message": f"File does not exist: {abs_path}", "error": "FILE_NOT_FOUND"}
+    zbc = _import_zbc()
+    _require_controls(zbc, "File:Open")
+
+    def load() -> None:
+        zbc.set_next_filename(abs_path)
+        zbc.press("File:Open")
+
+    _run_quiet_ui(zbc, load)
+    active_path = str(zbc.get_active_tool_path() or "")
+    return {
+        "path": abs_path,
+        "active_tool_path": active_path,
+        "subtool_count": int(zbc.get_subtool_count()),
+    }
+
+
 def _execute_python(code: str, context: Dict[str, Any]) -> Dict[str, Any]:
     zbc = _import_zbc()
     namespace: Dict[str, Any] = {"zbc": zbc}
@@ -993,7 +1110,14 @@ def _serve_client(conn: socket.socket) -> None:
             data += chunk
         line = data.split(b"\n", 1)[0]
         payload = json.loads(line.decode("utf-8"))
-        response = _route_request(payload)
+        if _token_accepted(payload):
+            response = _route_request(payload)
+        else:
+            response = {
+                "jsonrpc": "2.0",
+                "id": payload.get("id", 0) if isinstance(payload, dict) else 0,
+                "error": {"code": -32003, "message": "Missing or wrong bridge token"},
+            }
         conn.sendall((json.dumps(response) + "\n").encode("utf-8"))
 
 
@@ -1047,21 +1171,85 @@ def _drain_request_queue() -> None:
             pending["event"].set()
 
 
-def _serve_forever(host: str, port: int) -> None:
+def _listen(host: str, port: int) -> socket.socket:
+    """Bind the loopback listener; port 0 lets the OS pick a free one."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if port:
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((host, port))
+        server.listen(5)
+    except BaseException:
+        server.close()
+        raise
+    _mark(f"listening {host}:{server.getsockname()[1]}")
+    print(f"[meshy-dcc-zbrush] socket bridge listening on {host}:{server.getsockname()[1]}")
+    return server
+
+
+def _serve_forever(server: socket.socket) -> None:
     """Accept socket clients on a background listener thread."""
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server.bind((host, port))
-            server.listen(5)
-            _mark(f"listening {host}:{port}")
-            print(f"[meshy-dcc-zbrush] socket bridge listening on {host}:{port}")
+        with server:
             while True:
                 conn, _addr = server.accept()
                 threading.Thread(target=_serve_client, args=(conn,), daemon=True).start()
     except BaseException:
         _mark("listener failed\n" + traceback.format_exc())
         raise
+
+
+def _token_accepted(payload: Any) -> bool:
+    if _BRIDGE_TOKEN is None:
+        return True
+    offered = payload.get("token") if isinstance(payload, dict) else None
+    return isinstance(offered, str) and hmac.compare_digest(offered.encode("utf-8"), _BRIDGE_TOKEN.encode("utf-8"))
+
+
+def _package_python() -> Optional[str]:
+    """The Python of the Meshy DCC package this file ships in, if any.
+
+    The package carries the bridge inside its site-packages, so the interpreter
+    is a few directories up: ``python/bin/python3`` (macOS) or
+    ``python/python.exe`` (Windows).
+    """
+    folder = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(6):
+        for candidate in (os.path.join(folder, "python.exe"), os.path.join(folder, "bin", "python3")):
+            if os.path.isfile(candidate):
+                return candidate
+        folder = os.path.dirname(folder)
+    return None
+
+
+def _start_sidecar(python: str, port: int, token: str) -> "subprocess.Popen[bytes]":
+    """Start ``meshy_dcc_zbrush serve`` for this ZBrush process, detached from it.
+
+    The child inherits ZBrush's environment, so a start-instance launch passes
+    its operation and project through; ZBrush's own Python settings are dropped.
+    """
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in ("PYTHONHOME", "PYTHONPATH", "PYTHONEXECUTABLE", "__PYVENV_LAUNCHER__")
+    }
+    env[_TOKEN_ENV] = token
+    argv = [python, "-m", "meshy_dcc_zbrush", "serve", "--watch-pid", str(os.getpid()), "--socket-port", str(port)]
+    options: Dict[str, Any] = {}
+    if sys.platform == "win32":
+        options["creationflags"] = 0x08000000 | 0x00000200  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+    else:
+        options["start_new_session"] = True
+    _mark(f"starting sidecar {python} on port {port}")
+    return subprocess.Popen(
+        argv,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        **options,
+    )
 
 
 def _run_main_thread_pump() -> None:
@@ -1106,18 +1294,24 @@ def _install_main_thread_pump() -> None:
     _PUMP_TIMER_ID = int(timer_id)
 
 
-def _start_bridge(host: str, port: int) -> threading.Thread:
-    """Start the listener and install the ZBrush main-thread request pump."""
-    global _BRIDGE_THREAD
+def _start_bridge(host: str, port: int, sidecar_python: Optional[str] = None) -> threading.Thread:
+    """Start the listener and the sidecar, then install the main-thread request pump.
+
+    The sidecar starts before the pump: on macOS the pump never returns.
+    """
+    global _BRIDGE_THREAD, _SIDECAR
 
     if _BRIDGE_THREAD is None or not _BRIDGE_THREAD.is_alive():
+        server = _listen(host, port)
         _BRIDGE_THREAD = threading.Thread(
             target=_serve_forever,
-            args=(host, port),
+            args=(server,),
             daemon=True,
             name="meshy-dcc-zbrush-socket-bridge",
         )
         _BRIDGE_THREAD.start()
+        if sidecar_python and _BRIDGE_TOKEN:
+            _SIDECAR = _start_sidecar(sidecar_python, server.getsockname()[1], _BRIDGE_TOKEN)
     _install_main_thread_pump()
     return _BRIDGE_THREAD
 
@@ -1131,19 +1325,24 @@ def _running_in_zbrush() -> bool:
 
 
 def bootstrap_bridge() -> Optional[threading.Thread]:
-    """Start the bridge when executed by ZBrush's plugin scan."""
+    """Start the bridge when ZBrush runs this file (``-script`` or a plugin scan)."""
+    global _BRIDGE_TOKEN
+
     _mark(f"bootstrap module={__name__} in_zbrush={_running_in_zbrush()}")
     if __name__ != "__main__" and not _running_in_zbrush():
         return None
     host = os.environ.get("MESHY_DCC_ZBRUSH_SOCKET_HOST", "127.0.0.1")
-    port = _env_int("MESHY_DCC_ZBRUSH_SOCKET_PORT", 19876)
+    sidecar_python = _package_python()
+    # The bridge that starts its own sidecar takes a free port and a fresh token.
+    port = _env_int("MESHY_DCC_ZBRUSH_SOCKET_PORT", 0 if sidecar_python else _DEFAULT_SOCKET_PORT)
+    _BRIDGE_TOKEN = os.environ.get(_TOKEN_ENV, "").strip() or (secrets.token_hex(16) if sidecar_python else None)
     try:
         if not _install_menu():
             _mark("menu registration returned false")
     except BaseException:
         _mark("menu registration failed\n" + traceback.format_exc())
     try:
-        bridge_thread = _start_bridge(host, port)
+        bridge_thread = _start_bridge(host, port, sidecar_python)
     except BaseException as exc:
         _mark("bootstrap failed\n" + traceback.format_exc())
         _capture_bootstrap_error("sidecar_bootstrap", exc)
@@ -1251,9 +1450,7 @@ def _fallback_server_info() -> None:
 
 def _fallback_about() -> None:
     """Fallback: show about dialog."""
-    msg = (
-        "meshy-dcc-zbrush\nMeshy DCC — shared infrastructure for DCC automation.\nhttps://github.com/meshy-dev/meshy-dcc-zbrush"
-    )
+    msg = "meshy-dcc-zbrush\nMeshy DCC — shared infrastructure for DCC automation.\nhttps://github.com/meshy-dev/meshy-dcc-zbrush"
     _show_message("About Meshy DCC", msg)
 
 

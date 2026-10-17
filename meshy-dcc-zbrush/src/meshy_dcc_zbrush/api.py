@@ -39,7 +39,7 @@ def get_bridge():
     if _bridge is None:
         raise ZBrushNotAvailableError(
             "ZBrush sidecar bridge is not connected. "
-            "Install bridge/plugin/mcp_socket_bridge.py in ZBrush or run embedded mode."
+            "Start ZBrush with `meshy-dcc start-instance --dcc-type zbrush --project <folder>`."
         )
     if not _bridge.is_connected():
         try:
@@ -101,10 +101,10 @@ def with_zbrush(func: _F) -> _F:
             return zb_error(
                 "ZBrush is not available in this environment",
                 repr(exc),
-                prompt="Start ZBrush 2026.1+ with the MCP plugin, or run sidecar mode.",
+                prompt="Start ZBrush 2026.1+ with `meshy-dcc start-instance --dcc-type zbrush --project <folder>`.",
                 possible_solutions=[
-                    "Install meshy-dcc-zbrush into ZBrush PYTHONPATH / ZBRUSH_PLUGIN_PATH",
-                    "Copy bridge/plugin/mcp_socket_bridge.py into ZStartup/ZPlugs64",
+                    "Set up the folder once: meshy-dcc install --dcc-type zbrush --project <folder> --execute",
+                    "Then start ZBrush: meshy-dcc start-instance --dcc-type zbrush --project <folder>",
                     "Set MESHY_DCC_ZBRUSH_MODE=embedded when running inside ZBrush",
                 ],
             )

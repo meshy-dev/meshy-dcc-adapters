@@ -6,8 +6,9 @@ import argparse
 import json
 import logging
 import os
+import signal
 import sys
-import time
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -85,11 +86,25 @@ def _lifecycle_main(argv: list[str]) -> int:
     return int(result["exit_code"])
 
 
+def _watch_host(pid: int, stopped: threading.Event) -> None:
+    from meshy_dcc_core._install_lifecycle_process import is_pid_alive  # noqa: PLC0415
+
+    while not stopped.wait(1.0):
+        if not is_pid_alive(pid):
+            stopped.set()
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     arguments = list(argv) if argv is not None else sys.argv[1:]
     if arguments and arguments[0] in LIFECYCLE_OPERATIONS:
         return _lifecycle_main(arguments)
-    parser = argparse.ArgumentParser(description="ZBrush MCP Server")
+    if arguments[:1] == ["setup-project"]:
+        from meshy_dcc_zbrush.project_setup import main as setup_main  # noqa: PLC0415
+
+        return setup_main(arguments[1:])
+    if arguments[:1] == ["serve"]:
+        arguments = arguments[1:]
+    parser = argparse.ArgumentParser(prog="meshy-dcc-zbrush serve", description="ZBrush MCP Server")
     parser.add_argument(
         "--port",
         type=int,
@@ -107,6 +122,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     parser.add_argument("--socket-host", default="127.0.0.1", help="ZBrush socket plugin host")
     parser.add_argument("--socket-port", type=int, default=19876, help="ZBrush socket plugin port")
+    parser.add_argument("--watch-pid", type=int, help="ZBrush process to bind to; exit when it exits")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args(arguments)
 
@@ -115,24 +131,26 @@ def main(argv: Optional[list[str]] = None) -> int:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    stopped = threading.Event()
+    signal.signal(signal.SIGINT, lambda *_: stopped.set())
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, lambda *_: stopped.set())
     server = start_server(
         port=args.port,
         gateway_port=args.gateway_port,
         mode=args.mode or "sidecar",
         socket_host=args.socket_host,
         socket_port=args.socket_port,
+        dcc_pid=args.watch_pid,
     )
 
     print(f"ZBrush MCP server started ({server.mode}): {server.mcp_url}")
-    print("Press Ctrl+C to stop...")
-
+    if args.watch_pid:
+        threading.Thread(target=_watch_host, args=(args.watch_pid, stopped), daemon=True).start()
     try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\nShutting down...")
+        stopped.wait()
+    finally:
         stop_server()
-
     return 0
 
 
