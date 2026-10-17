@@ -15,6 +15,10 @@ web-app results into a host and live elsewhere.
 | [`meshy-dcc-godot/`](meshy-dcc-godot/) | Godot (editor plugin + Python sidecar) | 0.1.0 |
 | [`meshy-dcc-unreal/`](meshy-dcc-unreal/) | Unreal Editor (plugin, Unreal's Python) | 0.1.0 |
 | [`meshy-dcc-openscad/`](meshy-dcc-openscad/) | OpenSCAD (per-project sidecar driving its command line) | 0.1.0 |
+| [`meshy-dcc-material-maker/`](meshy-dcc-material-maker/) | Material Maker (per-folder sidecar editing material graphs) | 0.1.0 |
+| [`meshy-dcc-freecad/`](meshy-dcc-freecad/) | FreeCAD (per-project service running FreeCADCmd) | 0.1.0 |
+| [`meshy-dcc-maya/`](meshy-dcc-maya/) | Maya (module file, Maya's Python), experimental | 0.1.0 |
+| [`meshy-dcc-zbrush/`](meshy-dcc-zbrush/) | ZBrush (started with -script, Python sidecar), experimental | 0.1.0 |
 | [`meshy-dcc-houdini/`](meshy-dcc-houdini/) | Houdini (package file, Houdini's Python), experimental | 0.1.0 |
 | [`meshy-dcc-substance3d-painter/`](meshy-dcc-substance3d-painter/) | Substance 3D Painter (startup plugin), experimental | 0.1.0 |
 | [`meshy-dcc-c4d/`](meshy-dcc-c4d/) | Cinema 4D (headless c4dpy on project files), experimental | 0.1.0 |
