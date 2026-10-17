@@ -99,7 +99,7 @@ def test_driver_python_requirement_is_declared(matrix) -> None:
 
 
 def test_supported_release_is_supported() -> None:
-    verdict = compat.classify_host(26000, "3.9.7")
+    verdict = compat.classify_host(2023000, "3.9.7")
 
     assert verdict["status"] == compat.SUPPORTED
     assert verdict["range"]["id"] == "2023"
@@ -114,7 +114,7 @@ def test_build_below_the_matrix_is_rejected() -> None:
 
 
 def test_build_above_the_matrix_is_rejected_not_assumed() -> None:
-    verdict = compat.classify_host(30000, "3.11.4")
+    verdict = compat.classify_host(2027000, "3.11.4")
 
     assert verdict["status"] == compat.TOO_NEW
     assert "refuses to run unverified" in compat.unsupported_reason(verdict)
@@ -158,7 +158,7 @@ def test_observed_interpreter_overrides_the_declared_mapping() -> None:
     host: if the runtime reports a usable interpreter, that is what decides.
     """
     # The matrix declares 3.11 for 2024, but the host reports 3.9.
-    verdict = compat.classify_host(27000, "3.9.7")
+    verdict = compat.classify_host(2024000, "3.9.7")
 
     assert verdict["status"] == compat.SUPPORTED
     drift = verdict["interpreter_drift"]
@@ -169,7 +169,7 @@ def test_observed_interpreter_overrides_the_declared_mapping() -> None:
 
 
 def test_drift_is_reported_not_swallowed() -> None:
-    verdict = compat.classify_host(27000, "3.11.9")
+    verdict = compat.classify_host(2024000, "3.11.9")
 
     assert verdict["interpreter_drift"] is None
     assert verdict["warnings"] == []
@@ -177,7 +177,7 @@ def test_drift_is_reported_not_swallowed() -> None:
 
 def test_drift_is_unknown_when_the_runtime_reports_nothing() -> None:
     """No observation is not agreement."""
-    verdict = compat.classify_host(27000, None)
+    verdict = compat.classify_host(2024000, None)
 
     assert verdict["interpreter_drift"] is None
     assert verdict["status"] == compat.SUPPORTED
@@ -191,7 +191,7 @@ def test_unsupported_verdict_carries_actionable_next_steps() -> None:
     assert steps[0]["id"] == "upgrade-cinema4d"
     assert "why" in steps[0]
 
-    assert compat.remediation_steps(compat.classify_host(26000, "3.9.7")) == []
+    assert compat.remediation_steps(compat.classify_host(2023000, "3.9.7")) == []
 
 
 def test_supported_range_labels_exclude_ranges_the_driver_cannot_run() -> None:
@@ -207,7 +207,18 @@ def test_supported_range_labels_exclude_ranges_the_driver_cannot_run() -> None:
 
 def test_verdict_is_json_serialisable() -> None:
     """The verdict is embedded verbatim in doctor/verify output."""
-    payload = json.dumps(compat.classify_host(27000, "3.9.7"))
+    payload = json.dumps(compat.classify_host(2024000, "3.9.7"))
 
     assert "interpreter_drift" in payload
 
+
+@pytest.mark.parametrize(
+    ("build", "range_id"),
+    [(2023000, "2023"), (2024400, "2024"), (2025200, "2025"), (2026100, "2026")],
+)
+def test_year_releases_use_year_based_builds(build, range_id) -> None:
+    """Cinema 4D 2023+ reports year * 1000 + minor * 100 + patch, not R26-R29."""
+    verdict = compat.classify_host(build, "3.11.4")
+
+    assert verdict["status"] == compat.SUPPORTED
+    assert verdict["range"]["id"] == range_id

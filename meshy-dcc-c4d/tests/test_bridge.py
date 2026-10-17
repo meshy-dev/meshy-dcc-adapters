@@ -151,15 +151,15 @@ class FakeBridge(Cinema4dBridge):
         document = params.get("document_path")
         if method == "system.status":
             return {
-                "cinema4d_version": 26000,
-                "api_version": 26000,
+                "cinema4d_version": 2023000,
+                "api_version": 2023000,
                 "python_version": "3.9.0",
                 "headless": True,
             }
         result = self._dispatch(method, params, output, document)
         # The real bridge stamps the build onto every result; read-back failures
         # are unreproducible without it, so the fake has to model that too.
-        result.setdefault("cinema4d_version", 26000)
+        result.setdefault("cinema4d_version", 2023000)
         return result
 
     def _dispatch(self, method, params, output, document):

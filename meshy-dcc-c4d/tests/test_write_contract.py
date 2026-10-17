@@ -184,7 +184,7 @@ def test_add_primitive_that_did_not_persist_is_rejected(tmp_path: Path) -> None:
     assert payload["expected"] == "Body"
     assert payload["actual"] == []
     # Without the build, a mismatch report cannot be reproduced.
-    assert payload["host_build"] == 26000
+    assert payload["host_build"] == 2023000
     assert payload["host_matrix"]["status"] == "supported"
     assert "Body" in str(caught.value)
 

@@ -173,11 +173,11 @@ def test_doctor_reports_the_actual_host_version_and_support_verdict(
     tmp_path: Path, monkeypatch
 ) -> None:
     result = _run_doctor_with_runtime(
-        {"cinema4d_version": 26000, "python_version": "3.9.7"}, monkeypatch, tmp_path
+        {"cinema4d_version": 2023000, "python_version": "3.9.7"}, monkeypatch, tmp_path
     )
 
     matrix = result["host_matrix"]
-    assert matrix["build"] == 26000
+    assert matrix["build"] == 2023000
     assert matrix["status"] == "supported"
     assert matrix["range"]["id"] == "2023"
     assert matrix["host_python_version"] == "3.9.7"
@@ -187,7 +187,7 @@ def test_doctor_reports_the_actual_host_version_and_support_verdict(
 
 def test_doctor_rejects_a_host_outside_the_matrix(tmp_path: Path, monkeypatch) -> None:
     result = _run_doctor_with_runtime(
-        {"cinema4d_version": 30000, "python_version": "3.11.4"}, monkeypatch, tmp_path
+        {"cinema4d_version": 2027000, "python_version": "3.11.4"}, monkeypatch, tmp_path
     )
 
     assert result["verify"]["directly_usable"] is False
@@ -220,7 +220,7 @@ def test_doctor_surfaces_interpreter_drift_without_blocking_a_working_host(
     the driver, so it is accepted — but the disagreement is in the report.
     """
     result = _run_doctor_with_runtime(
-        {"cinema4d_version": 27000, "python_version": "3.9.7"}, monkeypatch, tmp_path
+        {"cinema4d_version": 2024000, "python_version": "3.9.7"}, monkeypatch, tmp_path
     )
 
     drift = result["host_matrix"]["interpreter_drift"]

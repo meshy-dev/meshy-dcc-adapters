@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
   "host": "cinema4d",
-  "matrix_version": "2026-09-30",
-  "notes": "Single source of truth for Cinema 4D host support. Read by dcc_mcp_cinema4d.compat on the service side. A build outside `supported_ranges` is rejected explicitly; it is never silently downgraded.",
+  "matrix_version": "2026-10-17",
+  "notes": "Single source of truth for Cinema 4D host support. Read by meshy_dcc_c4d.compat on the service side. A build outside `supported_ranges` is rejected explicitly; it is never silently downgraded.",
   "version_source": {
     "field": "c4d.GetC4DVersion()",
     "type": "integer_build",
-    "notes": "The build is the integer returned by c4d.GetC4DVersion() inside c4dpy, for example 25000 for Cinema 4D R25.0 and 25117 for R25.117. It is NOT the product version string from the executable's file metadata: that string is formatted differently (for example '2026.1.0') and is only used by the install SOP as a coarse floor check. Mixing the two produces build numbers that are wrong by three orders of magnitude."
+    "notes": "The build is the integer returned by c4d.GetC4DVersion() inside c4dpy, for example 25000 for Cinema 4D R25.0 and 25117 for R25.117. From Cinema 4D 2023 on the build is year-based: year * 1000 + minor * 100 + patch, so 2024.4.0 is 2024400 and 2026.1.0 is 2026100 (plugins gate on values such as 2024000 and 2025200). It is NOT the product version string from the executable's file metadata: that string is formatted differently (for example '2026.1.0') and is only used by the install SOP as a coarse floor check. Mixing the two produces build numbers that are wrong by three orders of magnitude."
   },
   "executable_names": [
     "c4dpy",
@@ -83,8 +83,8 @@
     {
       "id": "2023",
       "label": "Cinema 4D 2023 (R26)",
-      "min_build": 26000,
-      "max_build": 26999,
+      "min_build": 2023000,
+      "max_build": 2023999,
       "status": "declared",
       "c4dpy_python": "3.9",
       "c4dpy_python_major": 3,
@@ -95,8 +95,8 @@
     {
       "id": "2024",
       "label": "Cinema 4D 2024 (R27)",
-      "min_build": 27000,
-      "max_build": 27999,
+      "min_build": 2024000,
+      "max_build": 2024999,
       "status": "declared",
       "c4dpy_python": "3.11",
       "c4dpy_python_major": 3,
@@ -107,8 +107,8 @@
     {
       "id": "2025",
       "label": "Cinema 4D 2025 (R28)",
-      "min_build": 28000,
-      "max_build": 28999,
+      "min_build": 2025000,
+      "max_build": 2025999,
       "status": "declared",
       "c4dpy_python": "3.11",
       "c4dpy_python_major": 3,
@@ -119,8 +119,8 @@
     {
       "id": "2026",
       "label": "Cinema 4D 2026 (R29)",
-      "min_build": 29000,
-      "max_build": 29999,
+      "min_build": 2026000,
+      "max_build": 2026999,
       "status": "declared",
       "c4dpy_python": "3.11",
       "c4dpy_python_major": 3,
