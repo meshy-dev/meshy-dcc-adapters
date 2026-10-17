@@ -470,7 +470,10 @@ class HoudiniMcpServer(DccServerBase):
 
     def start(self, *, install_atexit_hook: bool = True) -> HoudiniMcpServer:
         """Start the MCP HTTP server. Returns *self* for chaining."""
+        from meshy_dcc_houdini._safe_stop import attach_safe_stop  # noqa: PLC0415
+
         super().start(install_atexit_hook=install_atexit_hook)
+        attach_safe_stop(self)
         return self
 
     def discover_skills(self, extra_paths: Optional[List[str]] = None) -> int:
