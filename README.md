@@ -27,3 +27,15 @@ One adapter is released at a time, tagged `<host>-v<version>` (for example
 Silicon and Windows x64 to the GitHub Release and to the Meshy CDN
 (`meshy-dcc-core/adapters/<host>/v0-1-0/meshy-dcc-<host>-<macos-arm64|windows-x64>.zip`);
 the core catalog then pins their URLs and SHA-256 digests.
+
+To release: bump the adapter's `pyproject.toml` version and `CHANGELOG.md`,
+create the GitHub Release `<host>-v<version>` (a draft is fine), then run the
+`release` workflow from main with that tag and the meshy-dcc-core release
+whose wheels to bundle. Both platforms are built on macOS by
+`scripts/build_release.py`, which you can run locally the same way:
+
+```sh
+uv run --python 3.11 --no-project python scripts/build_release.py blender --core-wheel-dir <core wheels> --out out
+```
+
+The Release gets the zips under their CDN names plus `SHA256SUMS`.

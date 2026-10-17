@@ -1,0 +1,119 @@
+name: release
+
+# Publishes one adapter: its builds go to the GitHub Release tagged
+# <host>-v<version> and to the Meshy CDN at
+# meshy-dcc-core/adapters/<host>/<version dir>/, under the same names
+# (meshy-dcc-<host>-<macos-arm64|windows-x64>.zip). Afterwards the core catalog
+# pins their URLs and SHA-256 digests (SHA256SUMS is on the Release).
+#
+# Run it by hand from the Actions tab on main with the adapter tag of a GitHub
+# Release you already created (draft or published) and the meshy-dcc-core
+# release whose wheels the builds bundle.
+#
+# No credentials live in GitHub: the publish job assumes the AWS role
+# meshy-dcc-github-deploy through GitHub OIDC; its trust policy must name this
+# repository's main branch (see meshy-dcc-core scripts/release/aws/).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Adapter release tag, e.g. blender-v0.1.0"
+        required: true
+      core_tag:
+        description: "meshy-dcc-core release whose wheels to bundle, e.g. v0.2.0"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Both platforms build here: the Windows packages take a pinned Windows
+    # CPython and win_amd64 wheels, no Windows machine needed.
+    runs-on: macos-14
+    outputs:
+      host: ${{ steps.tag.outputs.host }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: astral-sh/setup-uv@v6
+
+      - name: The tag names an adapter whose version matches
+        id: tag
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          host="${TAG%-v*}"
+          version="${TAG##*-v}"
+          declared="$(sed -n 's/^version = "\(.*\)"$/\1/p' "meshy-dcc-$host/pyproject.toml" | head -1)"
+          if [ "$declared" != "$version" ]; then
+            echo "::error::meshy-dcc-$host/pyproject.toml says '$declared' but the tag is $TAG."
+            exit 1
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null
+          echo "host=$host" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # The core repository must be readable with this token (public, or a
+      # token with access to it).
+      - name: Core wheels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.core_tag }}" --repo meshy-dev/meshy-dcc-core --pattern 'meshy_dcc_core-*.whl' --dir core-wheels
+
+      - name: Build
+        run: uv run --python 3.11 --no-project python scripts/build_release.py "${{ steps.tag.outputs.host }}" --core-wheel-dir core-wheels --out out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: out/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: out
+
+      - name: Upload to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" out/* --repo "$GITHUB_REPOSITORY" --clobber
+
+      - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          aws-region: us-west-2
+          role-to-assume: arn:aws:iam::133081291590:role/meshy-dcc-github-deploy
+
+      # A version directory is never overwritten: each object is written only if
+      # absent, and a rerun that finds the same bytes there moves on.
+      - name: Copy to the Meshy CDN
+        env:
+          HOST: ${{ needs.build.outputs.host }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          dir="v$(echo "$VERSION" | tr 'A-Z' 'a-z' | sed 's/[^0-9a-z][^0-9a-z]*/-/g')"
+          for zip in out/*.zip; do
+            key="meshy-dcc-core/adapters/$HOST/$dir/$(basename "$zip")"
+            if aws s3api put-object --bucket meshy-cdn --key "$key" --body "$zip" \
+                --content-type application/zip --if-none-match '*' > /dev/null 2> err.txt; then
+              echo "uploaded s3://meshy-cdn/$key"
+            elif grep -q PreconditionFailed err.txt; then
+              aws s3 cp "s3://meshy-cdn/$key" existing.zip --quiet
+              cmp -s existing.zip "$zip" || { echo "::error::$key already exists with other bytes"; exit 1; }
+              echo "already there: $key"
+            else
+              cat err.txt; exit 1
+            fi
+          done
