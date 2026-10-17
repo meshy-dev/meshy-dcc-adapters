@@ -3,7 +3,8 @@
 
   build_release.py <host> --core-wheel-dir <dir> --out <dir>
 
-<dir> holds the meshy-dcc-core release wheels (macOS arm64 and win_amd64).
+<dir> holds the meshy-dcc-core release wheels (macOS arm64 and win_amd64; only
+the one --platform needs when it is given).
 Writes meshy-dcc-<host>-macos-arm64.zip and meshy-dcc-<host>-windows-x64.zip
 (only the platforms the host runs on) and SHA256SUMS to --out. The same
 names go to the GitHub Release and the CDN.
@@ -69,6 +70,7 @@ def main() -> None:
     parser.add_argument("host")
     parser.add_argument("--core-wheel-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--platform", choices=PLATFORMS, help="Build only this platform (default: all the host runs on)")
     args = parser.parse_args()
 
     adapter = ROOT / f"meshy-dcc-{args.host}"
@@ -77,7 +79,12 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
 
     sums = []
-    for platform in ONLY.get(args.host, PLATFORMS):
+    platforms = ONLY.get(args.host, PLATFORMS)
+    if args.platform:
+        if args.platform not in platforms:
+            sys.exit(f"{args.host} has no {args.platform} build")
+        platforms = (args.platform,)
+    for platform in platforms:
         wheels = sorted(args.core_wheel_dir.glob(WHEEL_GLOB[platform]))
         if len(wheels) != 1:
             sys.exit(f"expected one {WHEEL_GLOB[platform]} in {args.core_wheel_dir}, found {len(wheels)}")
