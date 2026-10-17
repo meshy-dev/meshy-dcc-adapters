@@ -1,0 +1,621 @@
+#!/usr/bin/env python3
+"""One-command bootstrap installer for dcc-mcp-zbrush.
+
+Turns "user says one sentence to Agent" into a deterministic, limited-step
+invocation — no path guessing, no directory spelunking.
+
+Usage::
+
+    # Embedded mode (recommended) — MCP server runs inside ZBrush
+    python tools/bootstrap_agent_install.py --mode embedded --version 0.2.24 --dcc-path <ZBrush>
+
+    # Sidecar mode — MCP server runs outside ZBrush via socket bridge
+    python tools/bootstrap_agent_install.py --mode sidecar --version 0.2.24 --dcc-path <ZBrush>
+
+    # Preview without making changes
+    python tools/bootstrap_agent_install.py --mode embedded --version 0.2.24 --dcc-path <ZBrush> --dry-run
+
+    # Pin a specific release version
+    python tools/bootstrap_agent_install.py --mode embedded --version 0.2.7 --dcc-path <ZBrush> --yes
+
+    # Target both Cursor and Claude Desktop config
+    python tools/bootstrap_agent_install.py --mode embedded --version 0.2.24 --dcc-path <ZBrush> --mcp-target both --yes
+
+Steps (each skippable via --skip-*)::
+
+    1. pip install dcc-mcp-zbrush==<version>
+    2. Download plugin ZIP from GitHub Releases + SHA256 verify
+    3. Install at the ZBrush Python plugin scan root (mode-aware)
+    4. Write MCP config (Cursor / Claude Desktop)
+    5. Print health check instructions
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import re
+import shutil
+import subprocess
+import sys
+import textwrap
+import urllib.request
+import zipfile
+from pathlib import Path
+from typing import Optional, Tuple
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+GITHUB_REPO = "dcc-mcp/dcc-mcp-zbrush"
+GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}"
+RELEASES_URL = f"{GITHUB_API}/releases"
+MCP_PORT = 0
+GATEWAY_PORT = 9765
+
+MCP_CONFIG_TEMPLATE = {
+    "mcpServers": {
+        "zbrush": {
+            "url": f"http://127.0.0.1:{GATEWAY_PORT}/mcp",
+        }
+    }
+}
+
+MCP_CONFIG_GATEWAY_TEMPLATE = {
+    "mcpServers": {
+        "zbrush": {
+            "url": f"http://127.0.0.1:{GATEWAY_PORT}/mcp",
+        }
+    }
+}
+
+
+# ---------------------------------------------------------------------------
+# Platform detection
+# ---------------------------------------------------------------------------
+
+
+def _get_zbrush_plugin_dir() -> Path:
+    """Return a plugin scan root explicitly exported by the ZBrush launcher.
+
+    Guessing the legacy ``ZPlugs64`` path can report a successful install that
+    ZBrush 2026.1+ never loads, so fail closed when no scan root is available.
+    """
+    asset_dir = os.environ.get("ZBRUSH_USER_ASSETS_DIR", "").strip()
+    if asset_dir:
+        return Path(asset_dir)
+
+    plugin_paths = os.environ.get("ZBRUSH_PLUGIN_PATH", "").strip()
+    if plugin_paths:
+        first_path = next((item.strip() for item in plugin_paths.split(os.pathsep) if item.strip()), "")
+        if first_path:
+            return Path(first_path)
+
+    raise RuntimeError(
+        "ZBrush plugin path is unknown; launch from an environment exporting "
+        "ZBRUSH_USER_ASSETS_DIR/ZBRUSH_PLUGIN_PATH or pass --plugin-dir"
+    )
+
+
+def _resolve_plugin_dir(configured: Optional[Path], dry_run: bool) -> Path:
+    """Resolve the scan root while keeping host-free previews portable."""
+    if configured is not None:
+        return configured
+    try:
+        return _get_zbrush_plugin_dir()
+    except RuntimeError:
+        if not dry_run:
+            raise
+        return Path("<ZBRUSH_PLUGIN_PATH>")
+
+
+def _get_cursor_config_path() -> Path:
+    """Return the Cursor MCP config path for the current platform."""
+    system = platform.system()
+    if system == "Windows":
+        return (
+            Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
+            / "Cursor"
+            / "User"
+            / "globalStorage"
+            / "saoudrizwan.claude-dev"
+            / "settings"
+            / "cline_mcp_settings.json"
+        )
+    elif system == "Darwin":
+        return (
+            Path.home()
+            / "Library"
+            / "Application Support"
+            / "Cursor"
+            / "User"
+            / "globalStorage"
+            / "saoudrizwan.claude-dev"
+            / "settings"
+            / "cline_mcp_settings.json"
+        )
+    else:
+        return (
+            Path.home()
+            / ".config"
+            / "Cursor"
+            / "User"
+            / "globalStorage"
+            / "saoudrizwan.claude-dev"
+            / "settings"
+            / "cline_mcp_settings.json"
+        )
+
+
+def _get_claude_config_path() -> Path:
+    """Return the Claude Desktop MCP config path for the current platform."""
+    system = platform.system()
+    if system == "Windows":
+        return (
+            Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
+            / "Claude"
+            / "claude_desktop_config.json"
+        )
+    elif system == "Darwin":
+        return Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+    else:
+        return Path.home() / ".config" / "Claude" / "claude_desktop_config.json"
+
+
+# ---------------------------------------------------------------------------
+# Version helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_version(version_str: str) -> Tuple[int, ...]:
+    """Parse a version string like '0.2.7' into a sortable tuple."""
+    # Strip leading 'v' if present
+    clean = version_str.lstrip("v")
+    parts = []
+    for part in clean.split("."):
+        try:
+            parts.append(int(part))
+        except ValueError:
+            # Non-numeric segment — treat as 0
+            parts.append(0)
+    return tuple(parts)
+
+
+# ---------------------------------------------------------------------------
+# Step 1: Install wheel
+# ---------------------------------------------------------------------------
+
+
+def install_wheel(version: str, dry_run: bool = False) -> None:
+    """``pip install dcc-mcp-zbrush==<version>``."""
+    pkg = f"dcc-mcp-zbrush=={version}"
+    cmd = [sys.executable, "-m", "pip", "install", pkg]
+    if dry_run:
+        print(f"[DRY RUN] Would run: {' '.join(cmd)}")
+        return
+    print(f"[1/5] Installing {pkg} ...")
+    subprocess.check_call(cmd)
+    print(f"       ✓ {pkg} installed")
+
+
+# ---------------------------------------------------------------------------
+# Step 2: Download + verify plugin ZIP
+# ---------------------------------------------------------------------------
+
+
+def _find_asset(release: dict, name_pattern: str) -> Optional[dict]:
+    """Find an asset in a GitHub release by name regex."""
+    for asset in release.get("assets", []):
+        if re.search(name_pattern, asset.get("name", "")):
+            return asset
+    return None
+
+
+def download_plugin_zip(version: str, output_dir: Path, dry_run: bool = False) -> Path:
+    """Download the plugin ZIP from GitHub Releases and verify SHA256.
+
+    Returns:
+        Path to the downloaded ZIP file.
+    """
+    if not re.fullmatch(r"\d+\.\d+\.\d+(?:[A-Za-z0-9.-]+)?", version):
+        raise ValueError("A fixed release version is required")
+    zip_name = f"dcc-mcp-zbrush-plugin-{version}.zip"
+    zip_path = output_dir / zip_name
+
+    # Fetch release info
+    tag = f"v{version}"
+    url = f"{RELEASES_URL}/tags/{tag}"
+    req = urllib.request.Request(url)
+    req.add_header("Accept", "application/vnd.github+json")
+    req.add_header("User-Agent", "dcc-mcp-zbrush-bootstrap/1.0")
+
+    if dry_run:
+        print(f"[DRY RUN] Would download {GITHUB_REPO} release {tag}")
+        print(f"[DRY RUN]   → {zip_path}")
+        return zip_path
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[2/5] Downloading {GITHUB_REPO} release {tag} ...")
+
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            release = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        print(f"       ✗ Failed to fetch release info: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    matches = [asset for asset in release.get("assets", []) if asset.get("name") == zip_name]
+    if len(matches) != 1:
+        print(f"       ✗ Release {tag} must contain exactly one {zip_name}", file=sys.stderr)
+        sys.exit(1)
+    asset = matches[0]
+    digest = str(asset.get("digest") or "")
+    if not digest.startswith("sha256:") or not re.fullmatch(r"[0-9a-fA-F]{64}", digest[7:]):
+        print("       ✗ Release asset has no immutable SHA256 provenance", file=sys.stderr)
+        sys.exit(1)
+    expected_hash = digest[7:].lower()
+
+    download_url = asset["browser_download_url"]
+    expected_url = f"https://github.com/{GITHUB_REPO}/releases/download/{tag}/{zip_name}"
+    if download_url != expected_url:
+        print("       ✗ Release asset URL is not the fixed official path", file=sys.stderr)
+        sys.exit(1)
+
+    if zip_path.is_file() and hashlib.sha256(zip_path.read_bytes()).hexdigest() == expected_hash:
+        print(f"       ✓ Reusing SHA256-verified {zip_path.name}")
+        return zip_path
+
+    print(f"       Downloading {asset['name']} ({asset['size']} bytes) ...")
+    staged = output_dir / f".{zip_name}.{os.getpid()}.download"
+    staged.unlink(missing_ok=True)
+    try:
+        urllib.request.urlretrieve(download_url, staged)
+        actual_hash = hashlib.sha256(staged.read_bytes()).hexdigest()
+        if actual_hash != expected_hash:
+            print("       ✗ SHA256 mismatch; payload was not cached", file=sys.stderr)
+            sys.exit(1)
+        os.replace(staged, zip_path)
+    finally:
+        staged.unlink(missing_ok=True)
+    print(f"       ✓ SHA256 verified: {expected_hash[:16]}...")
+
+    return zip_path
+
+
+# ---------------------------------------------------------------------------
+# Step 3: Extract plugin
+# ---------------------------------------------------------------------------
+
+
+def extract_plugin(
+    zip_path: Path,
+    plugin_dir: Path,
+    mode: str,
+    dry_run: bool = False,
+) -> None:
+    """Extract plugin ZIP into the ZBrush plugin directory.
+
+    Args:
+        zip_path: Path to the downloaded plugin ZIP.
+        plugin_dir: Target ZBrush Python plugin scan root.
+        mode: ``embedded`` or ``sidecar``.
+        dry_run: If True, preview only.
+    """
+    if dry_run:
+        print(f"[DRY RUN] Would extract {zip_path.name}")
+        print(f"[DRY RUN]   Mode: {mode}")
+        print(f"[DRY RUN]   Target: {plugin_dir}")
+        if zip_path.exists():
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                for name in sorted(zf.namelist()):
+                    # Show only mode-relevant files
+                    if mode == "embedded" and name.startswith("embedded/"):
+                        print(f"[DRY RUN]   → {name}")
+                    elif mode == "embedded" and name.startswith("sidecar/"):
+                        pass  # Skip sidecar in embedded mode
+                    elif name.startswith("install/") or name.startswith("README"):
+                        print(f"[DRY RUN]   → {name}")
+                    elif mode == "sidecar" and name.startswith("sidecar/"):
+                        print(f"[DRY RUN]   → {name}")
+        else:
+            print("[DRY RUN]   (ZIP not downloaded yet — cannot list contents)")
+        return
+
+    if mode == "sidecar":
+        raise RuntimeError(
+            "Direct sidecar extraction is disabled because Python/init.py is shared; "
+            "use `dcc-mcp-zbrush install` for receipt-backed installation"
+        )
+
+    print(f"[3/5] Extracting {zip_path.name} → {plugin_dir} (mode={mode}) ...")
+    plugin_dir.mkdir(parents=True, exist_ok=True)
+
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        all_names = zf.namelist()
+        installed_names = []
+        for name in all_names:
+            relative_name = None
+            if mode == "embedded" and name.startswith("embedded/"):
+                relative_name = name.removeprefix("embedded/")
+            if not relative_name:
+                continue
+
+            member = zf.getinfo(name)
+            target_path = plugin_dir / relative_name
+
+            if member.is_dir():
+                target_path.mkdir(parents=True, exist_ok=True)
+            else:
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(member) as src, open(target_path, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                # Preserve executable bits from ZIP external_attr
+                if member.external_attr & (0o755 << 16):
+                    target_path.chmod(target_path.stat().st_mode | 0o111)
+            installed_names.append(name)
+
+        extracted = sum(not zf.getinfo(name).is_dir() for name in installed_names)
+
+    print(f"       ✓ Extracted {extracted} files to {plugin_dir}")
+
+
+# ---------------------------------------------------------------------------
+# Step 4: Write MCP config
+# ---------------------------------------------------------------------------
+
+
+def _load_or_empty(path: Path) -> dict:
+    """Load a JSON file or return empty dict if not found."""
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def _merge_mcp_config(existing: dict, server_name: str, server_config: dict) -> dict:
+    """Merge MCP server config into existing config dict.
+
+    Preserves existing servers; overwrites the named server entry.
+    """
+    merged = dict(existing)
+    if "mcpServers" not in merged:
+        merged["mcpServers"] = {}
+    merged["mcpServers"][server_name] = server_config
+    return merged
+
+
+def write_mcp_config(
+    target: str,
+    dry_run: bool = False,
+) -> None:
+    """Write MCP server config for the given target(s).
+
+    Args:
+        target: ``cursor``, ``claude``, or ``both``.
+        dry_run: If True, preview only.
+    """
+    targets = []
+    if target in ("cursor", "both"):
+        targets.append(("Cursor", _get_cursor_config_path()))
+    if target in ("claude", "both"):
+        targets.append(("Claude Desktop", _get_claude_config_path()))
+
+    server_config = {"url": f"http://127.0.0.1:{GATEWAY_PORT}/mcp"}
+
+    print("[4/5] Writing MCP config ...")
+
+    for name, config_path in targets:
+        existing = _load_or_empty(config_path)
+        merged = _merge_mcp_config(existing, "zbrush", server_config)
+
+        if dry_run:
+            print(f"[DRY RUN] Would write {name} config to {config_path}")
+            # Show what would change
+            if "zbrush" in existing.get("mcpServers", {}):
+                print("[DRY RUN]   Update existing 'zbrush' entry")
+            else:
+                print("[DRY RUN]   Add new 'zbrush' entry")
+            continue
+
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+        action = "Updated" if "zbrush" in existing.get("mcpServers", {}) else "Created"
+        print(f"       ✓ {action} {name} config: {config_path}")
+
+
+# ---------------------------------------------------------------------------
+# Step 5: Health check
+# ---------------------------------------------------------------------------
+
+
+def print_health_check(mode: str, plugin_dir: Path) -> None:
+    """Print health check instructions."""
+    print("[5/5] Health check")
+    print()
+    print(
+        textwrap.dedent(f"""\
+        ┌─────────────────────────────────────────────────────────────┐
+        │  ✓ dcc-mcp-zbrush bootstrap complete ({mode} mode)           │
+        └─────────────────────────────────────────────────────────────┘
+    """)
+    )
+    print("  Verify the installation:")
+    print()
+    if mode == "embedded":
+        print("  1. Restart ZBrush — the plugin auto-starts the MCP server.")
+        print("     Plugin location:", plugin_dir)
+        print()
+        print("  2. Discover the running instance:")
+        print("     dcc-mcp-cli list")
+        print()
+        print("  3. Expected response: MCP endpoint info or SSE stream.")
+    else:
+        print("  1. Ensure the receipt-managed import is present in the shared startup entry:")
+        print(f"     {plugin_dir / 'Python' / 'init.py'}")
+        print()
+        print("  2. Start ZBrush (the socket bridge auto-starts and listens).")
+        print()
+        print("  3. Start the sidecar MCP server:")
+        print("     dcc-mcp-zbrush --mode sidecar")
+        print()
+        print("  4. Discover the running instance:")
+        print("     dcc-mcp-cli list")
+        print()
+        print("  Both modes support the same skills and tools.")
+
+    print()
+    print("  Troubleshooting:")
+    print("  - Connection refused → ZBrush not running or port blocked")
+    print("  - Plugin not loading → check the ZBrush Asset Directory/plugin scan root above")
+    print("  - Fixed-port conflict → unset DCC_MCP_ZBRUSH_PORT or choose another value")
+    print()
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="One-command bootstrap installer for dcc-mcp-zbrush.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""\
+            Examples:
+              %(prog)s --mode embedded --version 0.2.24 --dcc-path <ZBrush> --dry-run
+              %(prog)s --mode sidecar --version 0.2.24 --dcc-path <ZBrush> --yes
+              %(prog)s --mode embedded --version 0.2.24 --skip-plugin --skip-config
+        """),
+    )
+    parser.add_argument(
+        "--mode",
+        required=True,
+        choices=("embedded", "sidecar"),
+        help="Installation mode: embedded (MCP in ZBrush) or sidecar (socket bridge)",
+    )
+    parser.add_argument(
+        "--version",
+        required=True,
+        help="Fixed release version to install; 'latest' is not accepted",
+    )
+    parser.add_argument(
+        "--plugin-dir",
+        type=Path,
+        default=None,
+        help="ZBrush plugin directory (default: auto-detect per platform)",
+    )
+    parser.add_argument(
+        "--mcp-target",
+        choices=("cursor", "claude", "both"),
+        default="cursor",
+        help="Which MCP client config to write (default: cursor)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview operations without making changes",
+    )
+    parser.add_argument(
+        "--skip-wheel",
+        action="store_true",
+        help="Skip pip install step",
+    )
+    parser.add_argument(
+        "--skip-plugin",
+        action="store_true",
+        help="Skip plugin ZIP download + extract",
+    )
+    parser.add_argument(
+        "--skip-config",
+        action="store_true",
+        help="Skip MCP config write",
+    )
+    parser.add_argument(
+        "--dcc-path",
+        type=Path,
+        default=os.environ.get("ZBRUSH_EXECUTABLE"),
+        help="ZBrush executable or application path",
+    )
+    parser.add_argument("--python", type=Path, default=Path(sys.executable), dest="python_path")
+    parser.add_argument("--yes", action="store_true", help="Confirm plugin lifecycle mutation")
+    parser.add_argument("--json", action="store_true", dest="json_output")
+
+    args = parser.parse_args(argv)
+
+    version = args.version
+    if not re.fullmatch(r"\d+\.\d+\.\d+(?:[A-Za-z0-9.-]+)?", version):
+        print("✗ A fixed semantic release version is required", file=sys.stderr)
+        return 10
+    if not args.skip_plugin and args.dcc_path is None:
+        print("✗ Pass --dcc-path or set ZBRUSH_EXECUTABLE", file=sys.stderr)
+        return 10
+    if not args.skip_plugin and not args.dry_run and not args.yes:
+        print("✗ Review --dry-run first, then pass --yes", file=sys.stderr)
+        return 10
+
+    print("dcc-mcp-zbrush bootstrap installer")
+    print(f"  Mode:     {args.mode}")
+    print(f"  Version:  {version}")
+    print(f"  Target:   {args.mcp_target}")
+    if args.dry_run:
+        print("  Dry run:  YES (no changes will be made)")
+    print()
+
+    plugin_dir = _resolve_plugin_dir(args.plugin_dir, args.dry_run)
+
+    # Step 1: Install wheel
+    if not args.skip_wheel:
+        install_wheel(version, dry_run=args.dry_run)
+    else:
+        print("[1/5] Skipped (--skip-wheel)")
+
+    # Step 2-3: fixed release resolution, verification, and receipt-backed install
+    if not args.skip_plugin:
+        from dcc_mcp_zbrush.cli import main as lifecycle_main
+
+        lifecycle_args = [
+            "install",
+            "--mode",
+            args.mode,
+            "--version",
+            version,
+            "--dcc-path",
+            str(args.dcc_path),
+            "--python",
+            str(args.python_path),
+            "--asset-dir",
+            str(plugin_dir),
+        ]
+        if args.dry_run:
+            lifecycle_args.append("--dry-run")
+        if args.yes:
+            lifecycle_args.append("--yes")
+        if args.json_output:
+            lifecycle_args.append("--json")
+        exit_code = lifecycle_main(lifecycle_args)
+        if exit_code != 0:
+            return exit_code
+    else:
+        print("[2/5] Skipped (--skip-plugin)")
+        print("[3/5] Skipped (--skip-plugin)")
+
+    # Step 4: Write MCP config
+    if not args.skip_config:
+        write_mcp_config(args.mcp_target, dry_run=args.dry_run)
+    else:
+        print("[4/5] Skipped (--skip-config)")
+
+    # Step 5: Health check
+    print_health_check(args.mode, plugin_dir)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
