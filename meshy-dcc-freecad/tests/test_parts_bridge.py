@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad.bridge import FreecadBridge
-from dcc_mcp_freecad.parts_library import ENV_LIBRARY_ROOTS, PartLibraryError
+from meshy_dcc_freecad.bridge import FreecadBridge
+from meshy_dcc_freecad.parts_library import ENV_LIBRARY_ROOTS, PartLibraryError
 
 
 class FakeFreecad(FreecadBridge):

@@ -3,13 +3,13 @@ requires=["hatchling>=1.17"]
 build-backend="hatchling.build"
 
 [project]
-name="dcc-mcp-freecad"
-version="0.11.0"
-description="Production FreeCAD adapter for typed parametric modeling, document validation, and CAD exchange"
+name="meshy-dcc-freecad"
+version="0.1.0"
+description="Meshy DCC adapter for FreeCAD: typed parametric modeling, document validation and CAD exchange"
 readme="README.md"
 requires-python=">=3.7"
 license={text="MIT"}
-authors=[{name="loonghao",email="hal.long@outlook.com"}]
+authors=[{name="Meshy",email="support@meshy.ai"}]
 keywords=["freecad","cad","parametric-modeling","dcc","mcp","automation"]
 classifiers=[
   "Development Status :: 4 - Beta",
@@ -23,12 +23,12 @@ classifiers=[
   "Programming Language :: Python :: 3.12",
   "Operating System :: OS Independent",
 ]
-dependencies=["dcc-mcp-core>=0.20.36,<1.0.0"]
+dependencies=["meshy-dcc-core>=0.2.0,<0.3.0"]
 
 [project.urls]
-Homepage="https://github.com/dcc-mcp/dcc-mcp-freecad"
-Repository="https://github.com/dcc-mcp/dcc-mcp-freecad"
-Issues="https://github.com/dcc-mcp/dcc-mcp-freecad/issues"
+Homepage="https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-freecad"
+Repository="https://github.com/meshy-dev/meshy-dcc-adapters"
+Issues="https://github.com/meshy-dev/meshy-dcc-adapters/issues"
 
 [project.optional-dependencies]
 test=[
@@ -49,17 +49,14 @@ dev=[
 ]
 
 [project.scripts]
-dcc-mcp-freecad="dcc_mcp_freecad.cli:main"
+meshy-dcc-freecad="meshy_dcc_freecad.cli:main"
 
-[project.entry-points."dcc_mcp.adapters"]
-freecad="dcc_mcp_freecad:FreecadMcpServer"
+[project.entry-points."meshy_dcc.adapters"]
+freecad="meshy_dcc_freecad:FreecadMcpServer"
 
 [tool.hatch.build.targets.wheel]
-packages=["src/dcc_mcp_freecad"]
-artifacts=["src/dcc_mcp_freecad/skills/**"]
-
-[tool.hatch.build.targets.sdist]
-exclude=["docs/**/*.png", "docs/**/*.svg", "docs/**/*.webp"]
+packages=["src/meshy_dcc_freecad"]
+artifacts=["src/meshy_dcc_freecad/skills/**"]
 
 [tool.pytest.ini_options]
 testpaths=["tests"]

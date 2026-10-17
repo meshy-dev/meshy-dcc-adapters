@@ -24,10 +24,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from dcc_mcp_freecad import bridge as bridge_module  # noqa: E402
-from dcc_mcp_freecad import snapshots as snapshots_module  # noqa: E402
-from dcc_mcp_freecad.bridge import FreecadBridge  # noqa: E402
-from dcc_mcp_freecad.snapshots import (  # noqa: E402
+from meshy_dcc_freecad import bridge as bridge_module  # noqa: E402
+from meshy_dcc_freecad import snapshots as snapshots_module  # noqa: E402
+from meshy_dcc_freecad.bridge import FreecadBridge  # noqa: E402
+from meshy_dcc_freecad.snapshots import (  # noqa: E402
     ERROR_CONFLICT,
     ERROR_CONTENT_MISMATCH,
     ERROR_COPY_TIMEOUT,
@@ -82,7 +82,7 @@ def test_default_store_lives_inside_the_first_allowed_root(workspace):
     root, _ = workspace
     bridge = make_bridge(root)
 
-    assert bridge.snapshot_directory == root / ".dcc-mcp-freecad" / "snapshots"
+    assert bridge.snapshot_directory == root / ".meshy-dcc-freecad" / "snapshots"
     assert str(root) in str(bridge.snapshot_directory)
 
 
@@ -401,7 +401,7 @@ def test_restore_refuses_when_there_is_no_capacity_for_the_undo_snapshot(workspa
     # copy of the document, so a refusal must not leave it behind -- and this
     # refusal is on the path the design creates itself (restore always needs
     # room for one undo snapshot), so repeated refusals would leak repeatedly.
-    assert _leftover_names(root) == {"part.FCStd", ".dcc-mcp-freecad"}
+    assert _leftover_names(root) == {"part.FCStd", ".meshy-dcc-freecad"}
 
 
 def test_every_refusal_path_leaves_no_stage_in_the_document_directory(
@@ -457,7 +457,7 @@ def test_every_refusal_path_leaves_no_stage_in_the_document_directory(
             bridge.restore_snapshot(str(document), snapshot["snapshot_id"], expected)
 
         assert document.read_bytes() == MODIFIED_BYTES, name
-        assert _leftover_names(root) == {"part.FCStd", ".dcc-mcp-freecad"}, name
+        assert _leftover_names(root) == {"part.FCStd", ".meshy-dcc-freecad"}, name
         monkeypatch.undo()
         # Reset for the next arm: the snapshot store persists across cases.
         for entry in bridge.list_snapshots()["snapshots"]:
@@ -513,8 +513,8 @@ def test_restoring_a_deleted_document_refuses_a_stale_expected_sha256(workspace)
     assert caught.value.error_code == ERROR_CONFLICT
     assert caught.value.details["conflict"] == "document_missing"
     assert not document.exists()
-    assert _leftover_names(root) == {"part.FCStd", ".dcc-mcp-freecad"} or {
-        ".dcc-mcp-freecad"
+    assert _leftover_names(root) == {"part.FCStd", ".meshy-dcc-freecad"} or {
+        ".meshy-dcc-freecad"
     } == _leftover_names(root)
 
 

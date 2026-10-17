@@ -15,8 +15,8 @@ from pathlib import Path
 import capability_checks
 import pytest
 
-from dcc_mcp_freecad import compat
-from dcc_mcp_freecad.bridge import FreecadBridge
+from meshy_dcc_freecad import compat
+from meshy_dcc_freecad.bridge import FreecadBridge
 
 # The one guarded break in the matrix applies from 1.1 and limits the STL/OBJ
 # tessellation path, so the same tool is limited on 1.1 and clean on 1.0.

@@ -33,7 +33,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad.bridge import BridgeError, BridgeTimeoutError, FreecadBridge
+from meshy_dcc_freecad.bridge import BridgeError, BridgeTimeoutError, FreecadBridge
 
 # A planar box needs 12 triangles. A genuinely tessellated curved surface needs
 # far more, so this doubles as the "the curvature was actually meshed" bound.

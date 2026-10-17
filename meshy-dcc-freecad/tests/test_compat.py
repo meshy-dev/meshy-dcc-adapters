@@ -18,7 +18,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from dcc_mcp_freecad import (
+from meshy_dcc_freecad import (
     compat,  # noqa: E402
     freecad_driver,  # noqa: E402
 )
@@ -160,7 +160,7 @@ def test_breaking_changes_are_reportable_without_internal_fields(matrix):
 
 
 def _doctor_report(monkeypatch, capsys, version):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = Path(monkeypatch.getattr("os", "name", os.name) and "")  # placeholder
     monkeypatch.setattr(doctor, "runtime_core_version", lambda: doctor.MIN_CORE_VERSION)
@@ -179,7 +179,7 @@ def _doctor_report(monkeypatch, capsys, version):
 
 
 def test_doctor_reports_the_detected_version_and_matrix_verdict(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = tmp_path / "FreeCAD 1.1" / "bin" / "FreeCADCmd.exe"
     executable.parent.mkdir(parents=True)
@@ -219,7 +219,7 @@ def test_doctor_reports_the_detected_version_and_matrix_verdict(tmp_path, monkey
 
 
 def test_doctor_rejects_a_version_above_the_matrix_with_a_next_step(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = tmp_path / "FreeCADCmd.exe"
     executable.write_bytes(b"")
@@ -482,7 +482,7 @@ class _EmptyMesh:
 
 
 class _FakeDocument:
-    Name = "DccMcpExportDoc"
+    Name = "MeshyDccExportDoc"
 
     def __init__(self, objects):
         self._objects = objects
@@ -545,7 +545,7 @@ def test_export_refuses_an_empty_tessellation_instead_of_writing_a_file(monkeypa
     assert "empty mesh" in str(error.value)
     assert not output.exists()
     # The throwaway mesh object is cleaned up even when the export is refused.
-    assert document.removed == ["DccMcpExportMesh0"]
+    assert document.removed == ["MeshyDccExportMesh0"]
 
 
 def test_the_api_probe_reads_module_level_symbols(monkeypatch):
@@ -670,7 +670,7 @@ def test_a_live_property_probe_uses_a_throwaway_document(monkeypatch):
         Symmetric = True
 
     class _Document:
-        Name = "DccMcpCompatProbe"
+        Name = "MeshyDccCompatProbe"
 
         def addObject(self, type_id, name):
             created.append((type_id, name))
@@ -684,9 +684,9 @@ def test_a_live_property_probe_uses_a_throwaway_document(monkeypatch):
     assert freecad_driver._probe_instance_property("Sketcher::SketchObject", "Symmetric") == (
         "present"
     )
-    assert created == [("Sketcher::SketchObject", "DccMcpProbeObject")]
+    assert created == [("Sketcher::SketchObject", "MeshyDccProbeObject")]
     # The probe document is always closed, even though nothing was saved.
-    assert closed == ["DccMcpCompatProbe"]
+    assert closed == ["MeshyDccCompatProbe"]
 
 
 # --------------------------------------------------------------------------
@@ -702,7 +702,7 @@ def _real_freecad() -> str:
 @pytest.mark.skipif(not _real_freecad(), reason="FREECAD_TEST_EXECUTABLE is not set")
 def test_real_freecad_version_is_covered_by_the_compatibility_matrix(tmp_path):
     """Runs on every real CI leg (1.0.x and 1.1.x) as matrix evidence."""
-    from dcc_mcp_freecad.bridge import FreecadBridge
+    from meshy_dcc_freecad.bridge import FreecadBridge
 
     bridge = FreecadBridge(_real_freecad(), allowed_roots=[tmp_path])
     status = bridge.status()

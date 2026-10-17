@@ -24,7 +24,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from dcc_mcp_freecad import (  # noqa: E402
+from meshy_dcc_freecad import (  # noqa: E402
     MUTATING_TOOLS,
     READ_ONLY_TOOLS,
     SERVICE_READ_ONLY_TOOLS,
@@ -463,7 +463,7 @@ def host(monkeypatch):
     makes them the same object, which is what lets a test catch the exact error
     type the driver raises.
     """
-    freecad_driver._SIBLING_MODULES["dcc_mcp_freecad_write_contract"] = write_contract
+    freecad_driver._SIBLING_MODULES["meshy_dcc_freecad_write_contract"] = write_contract
     app = _App()
     monkeypatch.setitem(sys.modules, "FreeCAD", app)
     part = FakePart()

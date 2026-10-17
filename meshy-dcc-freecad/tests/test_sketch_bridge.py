@@ -20,8 +20,8 @@ from pathlib import Path
 import pytest
 from test_bridge import FakeFreecad
 
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge, SketchStateError
-from dcc_mcp_freecad.sketch_rules import CONSTRAINT_TYPES, GEOMETRY_TYPES, PLANES
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, SketchStateError
+from meshy_dcc_freecad.sketch_rules import CONSTRAINT_TYPES, GEOMETRY_TYPES, PLANES
 
 
 class RejectingSketch(FakeFreecad):

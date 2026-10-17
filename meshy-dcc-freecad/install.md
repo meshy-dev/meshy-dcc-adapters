@@ -1,7 +1,7 @@
-# Installing dcc-mcp-freecad
+# Installing meshy-dcc-freecad
 
 This is the canonical standalone adapter runbook. Agents should read the
-[raw file](https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-freecad/main/install.md)
+[raw file](https://raw.githubusercontent.com/meshy-dev/meshy-dcc-adapters/main/meshy-dcc-freecad/install.md)
 before changing an installation.
 
 ## Requirements
@@ -9,10 +9,10 @@ before changing an installation.
 - Python 3.7 or newer for the adapter service. This is the **wrapper** side
   only; FreeCAD runs its own, newer interpreter — see
   [Host Python interpreter](#host-python-interpreter).
-- `dcc-mcp-core>=0.20.36` in the same Python environment.
+- `meshy-dcc-core>=0.2.0,<0.3.0` in the same Python environment.
 - A FreeCAD version listed in the compatibility matrix below, with a working
   `FreeCADCmd`/`freecadcmd` executable.
-- Existing directories for every entry in `DCC_MCP_FREECAD_ALLOWED_ROOTS`.
+- Existing directories for every entry in `MESHY_DCC_FREECAD_ALLOWED_ROOTS`.
 
 FreeCAD is an external OS-managed application. The adapter invokes only its
 packaged typed driver and does not accept inline Python, module paths, or
@@ -20,18 +20,18 @@ additional FreeCAD command-line flags.
 
 The one escape hatch is `run_script`, which executes a caller-named `.py` file
 in a disposable child process. It takes a path, never source text, and requires
-that path to resolve inside `DCC_MCP_FREECAD_ALLOWED_ROOTS`. **It is not a
+that path to resolve inside `MESHY_DCC_FREECAD_ALLOWED_ROOTS`. **It is not a
 sandbox** — the script runs as the operator's account with that account's full
 privileges, so allowed roots limit which script can be named, not what it can
-do. Keep `DCC_MCP_FREECAD_ALLOWED_ROOTS` confined to the task's workspace.
-Scripts are bounded by `DCC_MCP_FREECAD_MAX_SCRIPT_TIMEOUT_SECS` (300s by
+do. Keep `MESHY_DCC_FREECAD_ALLOWED_ROOTS` confined to the task's workspace.
+Scripts are bounded by `MESHY_DCC_FREECAD_MAX_SCRIPT_TIMEOUT_SECS` (300s by
 default), well under the 1800s document ceiling, so a hanging script is killed
 in minutes.
 
 ## Supported versions
 
 Host support is declared in the machine-readable matrix at
-[`src/dcc_mcp_freecad/compat_matrix.json`](src/dcc_mcp_freecad/compat_matrix.json),
+[`src/meshy_dcc_freecad/compat_matrix.json`](src/meshy_dcc_freecad/compat_matrix.json),
 which the service and the in-FreeCAD driver both read:
 
 | FreeCAD | Status | Real-machine evidence |
@@ -84,11 +84,11 @@ host records `api_probe` evidence next to them.
 
 ## Host Python interpreter
 
-`dcc-mcp-freecad` runs in two separate Python interpreters:
+`meshy-dcc-freecad` runs in two separate Python interpreters:
 
 | Side | Runs | Python version |
 | --- | --- | --- |
-| Wrapper | the `dcc-mcp-freecad` CLI, server, and `doctor`, plus the process that launches `FreeCADCmd` | 3.7 or newer, from the environment the wheel was installed into |
+| Wrapper | the `meshy-dcc-freecad` CLI, server, and `doctor`, plus the process that launches `FreeCADCmd` | 3.7 or newer, from the environment the wheel was installed into |
 | Host | `freecad_driver.py` and every skill script, inside FreeCAD | the interpreter FreeCAD ships: 3.10 or newer (3.11 in the verified CI runs) |
 
 They do not share `sys.path` or site-packages. Installing the wheel into the
@@ -103,7 +103,7 @@ The authoritative value is what FreeCAD itself reports. `doctor` reads it from
 inside FreeCAD, so one call gives you both host versions:
 
 ```text
-dcc-mcp-freecad doctor --json
+meshy-dcc-freecad doctor --json
 ```
 
 Read `checks.runtime.python_version` for the host interpreter and
@@ -123,8 +123,8 @@ FreeCADCmd -c "import sys; print(sys.version)"
 ```
 
 For the wrapper side, run `python -V` in the environment that owns the
-`dcc-mcp-freecad` command. Confirm the host interpreter whenever
-`DCC_MCP_FREECAD_EXECUTABLE` or `--dcc-path` points at a non-default install, or
+`meshy-dcc-freecad` command. Confirm the host interpreter whenever
+`MESHY_DCC_FREECAD_EXECUTABLE` or `--dcc-path` points at a non-default install, or
 when several FreeCAD builds are installed side by side.
 
 ### Version mismatch symptoms
@@ -137,7 +137,7 @@ looks like a wrapper/host version mismatch is therefore one of these:
 | --- | --- | --- |
 | `ModuleNotFoundError: No module named 'FreeCAD'` in the wrapper environment | importing FreeCAD from the wrapper, which never has it | drive FreeCAD through the adapter instead of importing it |
 | the driver fails on a package that is installed in the wrapper | the host interpreter cannot see the wrapper's site-packages | the driver uses only FreeCAD's own modules; remove that dependency from the driver path |
-| `checks.runtime.python_version` is older than expected | discovery selected a different FreeCAD build than intended | look for an earlier executable ahead on `PATH`, then pin with `DCC_MCP_FREECAD_EXECUTABLE` or `--dcc-path` and re-run `doctor --json` |
+| `checks.runtime.python_version` is older than expected | discovery selected a different FreeCAD build than intended | look for an earlier executable ahead on `PATH`, then pin with `MESHY_DCC_FREECAD_EXECUTABLE` or `--dcc-path` and re-run `doctor --json` |
 | syntax or stdlib errors raised inside the driver | the host interpreter is older than the driver assumes | upgrade FreeCAD to a version declared in `compat_matrix.json` |
 
 `failure_stage` remains the routing key, and the two host-version shapes route
@@ -157,10 +157,10 @@ Install the published wheel, then run the standalone preflight before starting
 the service:
 
 ```text
-python -m pip install --upgrade dcc-mcp-freecad
-dcc-mcp-freecad doctor --json
-dcc-mcp-freecad verify --json
-dcc-mcp-freecad
+python -m pip install --upgrade meshy-dcc-freecad
+meshy-dcc-freecad doctor --json
+meshy-dcc-freecad verify --json
+meshy-dcc-freecad
 ```
 
 Use `--dcc-path PATH` when discovery does not select the intended executable,
@@ -182,13 +182,13 @@ Every failure includes `failure_stage`, `failure_reason`, and a structured
 1. Install FreeCAD through the operating system, an operator-owned package
    manager, or a version-pinned official artifact whose checksum the operator
    verifies.
-2. Install the `dcc-mcp-freecad` wheel into the service environment with pip.
-3. Set `DCC_MCP_FREECAD_EXECUTABLE` or pass `--dcc-path` if `FreeCADCmd` is not
+2. Install the `meshy-dcc-freecad` wheel into the service environment with pip.
+3. Set `MESHY_DCC_FREECAD_EXECUTABLE` or pass `--dcc-path` if `FreeCADCmd` is not
    on `PATH`.
-4. Set `DCC_MCP_FREECAD_ALLOWED_ROOTS` to an `os.pathsep`-separated list of
+4. Set `MESHY_DCC_FREECAD_ALLOWED_ROOTS` to an `os.pathsep`-separated list of
    existing document/import/export roots when the working directory default is
    too narrow.
-5. Optional: set `DCC_MCP_FREECAD_PARTS_LIBRARY` to an `os.pathsep`-separated
+5. Optional: set `MESHY_DCC_FREECAD_PARTS_LIBRARY` to an `os.pathsep`-separated
    list of local directories that already hold standard parts (STEP, IGES,
    BREP, STL, OBJ) to enable `list_parts` and `insert_part`.
 6. Run doctor and verify before starting the service.
@@ -199,24 +199,24 @@ owner; the wheel contains only the bounded Python bridge and typed driver.
 
 The parts library follows the same rule: the adapter reads the directories the
 operator named and downloads nothing. A URL in
-`DCC_MCP_FREECAD_PARTS_LIBRARY` is refused with `remote_library_unsupported`
+`MESHY_DCC_FREECAD_PARTS_LIBRARY` is refused with `remote_library_unsupported`
 rather than fetched, so the library stays operator-owned and auditable. Its
 roots are deliberately not required to sit inside
-`DCC_MCP_FREECAD_ALLOWED_ROOTS` — a shared, read-only library normally lives
+`MESHY_DCC_FREECAD_ALLOWED_ROOTS` — a shared, read-only library normally lives
 outside a project sandbox — because what the caller can never do is name a
 file: only a relative path `list_parts` returned is accepted.
 
 ## Verify
 
 ```text
-dcc-mcp-freecad doctor --json
-dcc-mcp-freecad verify --json
+meshy-dcc-freecad doctor --json
+meshy-dcc-freecad verify --json
 ```
 
 A successful response reports the resolved executable, actual FreeCAD and
 embedded Python versions, Core floor, configuration limits, and
 `directly_usable: true`. This is a real `FreeCADCmd` status invocation, not a
-path-only health claim. Start the DCC-MCP service only after exit `0`.
+path-only health claim. Start the Meshy DCC service only after exit `0`.
 
 For release acceptance, a runner with an operator-provided
 `FREECAD_TEST_EXECUTABLE` can additionally run the existing `freecad`-marked
@@ -228,21 +228,21 @@ binary is unavailable.
 Upgrade the adapter wheel and re-run verification:
 
 ```text
-python -m pip install --upgrade dcc-mcp-freecad
-dcc-mcp-freecad doctor --json
+python -m pip install --upgrade meshy-dcc-freecad
+meshy-dcc-freecad doctor --json
 ```
 
 Upgrade FreeCAD separately with the same OS/package-manager owner used to
 install it. Do not replace an externally managed executable from the adapter.
-If multiple versions exist, pin discovery with `DCC_MCP_FREECAD_EXECUTABLE` or
+If multiple versions exist, pin discovery with `MESHY_DCC_FREECAD_EXECUTABLE` or
 `--dcc-path` and verify the reported runtime version.
 
 ## Uninstall
 
-Stop the standalone `dcc-mcp-freecad` process, then remove the wheel:
+Stop the standalone `meshy-dcc-freecad` process, then remove the wheel:
 
 ```text
-python -m pip uninstall dcc-mcp-freecad
+python -m pip uninstall meshy-dcc-freecad
 ```
 
 There is no plugin, daemon registration, receipt, or adapter cache to remove.
@@ -258,19 +258,19 @@ adapter uninstall.
   compatibility matrix. Read `error_code` and
   `checks.runtime.host_matrix.supported_ranges`, then install or pin a covered
   version and check for a stale earlier executable on `PATH`.
-- `failure_stage: core`: upgrade `dcc-mcp-core` in the same environment that
-  provides the `dcc-mcp-freecad` command.
+- `failure_stage: core`: upgrade `meshy-dcc-core` in the same environment that
+  provides the `meshy-dcc-freecad` command.
 - `failure_stage: configuration`: ensure allowed roots exist and the document
   size/timeout environment variables contain positive numbers.
 - `failure_stage: runtime`: run the emitted retry command and inspect the
   bounded reason. FreeCAD licensing/startup errors and a broken Python runtime
   must be repaired in the owning FreeCAD installation.
 - Host interpreter looks wrong: compare `checks.runtime.python_version` from
-  `dcc-mcp-freecad doctor --json` with the `FreeCADCmd -c "import sys; ..."`
+  `meshy-dcc-freecad doctor --json` with the `FreeCADCmd -c "import sys; ..."`
   one-liner in [Host Python interpreter](#host-python-interpreter). If they
   disagree, discovery is picking a different build than you tested — pin it with
-  `DCC_MCP_FREECAD_EXECUTABLE` or `--dcc-path`.
+  `MESHY_DCC_FREECAD_EXECUTABLE` or `--dcc-path`.
 - Documents rejected as outside the workspace: add only the required existing
-  root to `DCC_MCP_FREECAD_ALLOWED_ROOTS`; do not broaden it to an entire drive.
-- Timeouts: raise `DCC_MCP_FREECAD_MAX_TIMEOUT_SECS` deliberately, then pass a
+  root to `MESHY_DCC_FREECAD_ALLOWED_ROOTS`; do not broaden it to an entire drive.
+- Timeouts: raise `MESHY_DCC_FREECAD_MAX_TIMEOUT_SECS` deliberately, then pass a
   bounded tool timeout. Cancellation terminates the adapter-owned process.

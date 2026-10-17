@@ -22,7 +22,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from dcc_mcp_freecad import freecad_driver, write_contract  # noqa: E402
+from meshy_dcc_freecad import freecad_driver, write_contract  # noqa: E402
 
 HOST_VERSION = "1.1.4"
 
@@ -333,7 +333,7 @@ def host(monkeypatch):
     ``hooks`` are callbacks the fake document runs on every recompute, which is
     how a test makes the host silently drop a change after accepting it.
     """
-    freecad_driver._SIBLING_MODULES["dcc_mcp_freecad_write_contract"] = write_contract
+    freecad_driver._SIBLING_MODULES["meshy_dcc_freecad_write_contract"] = write_contract
     app = _App()
     part = _Part()
     monkeypatch.setitem(sys.modules, "FreeCAD", app)

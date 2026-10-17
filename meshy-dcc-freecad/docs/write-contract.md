@@ -126,10 +126,10 @@ lives in the one call whose job is to answer "is this finished?":
 verdict through `sketch_rules.assert_feature_ready` and raises instead of
 returning.
 
-The refusal is `dcc_mcp_freecad.sketch_rules.SketchStateError`. It crosses the
+The refusal is `meshy_dcc_freecad.sketch_rules.SketchStateError`. It crosses the
 process boundary under its own `sketch_state` key -- so a caller can branch on
 the `code` rather than parse a sentence that differs between host versions -- and
-the bridge re-raises it as `dcc_mcp_freecad.SketchStateError`, a `BridgeError`,
+the bridge re-raises it as `meshy_dcc_freecad.SketchStateError`, a `BridgeError`,
 so an existing `except BridgeError` handler keeps working.
 
 ```json
@@ -173,7 +173,7 @@ none of the three attributes the driver forwards across the process boundary
 process arrives at the caller as a plain `BridgeError` with the message and no
 code.
 
-`dcc_mcp_freecad.SketchSpecError` is therefore exported for the **local** path:
+`meshy_dcc_freecad.SketchSpecError` is therefore exported for the **local** path:
 `sketch_rules` is pure Python, so a caller can validate a spec before spending a
 host round-trip and catch exactly this type. An `except` written against it does
 not fire on a refusal that came back from the host; catch `BridgeError` for that,
@@ -196,10 +196,10 @@ move every probe point to the same place are the same placement.
 
 ## The error
 
-`dcc_mcp_freecad.write_contract.WriteVerificationError` carries a structured
+`meshy_dcc_freecad.write_contract.WriteVerificationError` carries a structured
 payload that survives the process boundary between the adapter and the FreeCAD
 host, and is re-raised on the caller's side as
-`dcc_mcp_freecad.WriteVerificationError` (a `BridgeError`, so existing
+`meshy_dcc_freecad.WriteVerificationError` (a `BridgeError`, so existing
 `except BridgeError` handlers keep working).
 
 ```json
@@ -240,7 +240,7 @@ value, so the geometry is not the geometry that was asked for.
 
 ## Porting this to another adapter
 
-`src/dcc_mcp_freecad/write_contract.py` is plain stdlib and knows nothing about
+`src/meshy_dcc_freecad/write_contract.py` is plain stdlib and knows nothing about
 FreeCAD. Copy it unchanged and supply two things:
 
 1. **A classification of your method table** into `MUTATING_TOOLS` and

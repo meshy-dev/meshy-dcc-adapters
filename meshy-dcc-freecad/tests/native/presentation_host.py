@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 def _driver():
-    path = Path(__file__).resolve().parents[2] / "src/dcc_mcp_freecad/freecad_driver.py"
+    path = Path(__file__).resolve().parents[2] / "src/meshy_dcc_freecad/freecad_driver.py"
     spec = importlib.util.spec_from_file_location("native_presentation_driver", str(path))
     module = importlib.util.module_from_spec(spec)
     arguments = sys.argv
@@ -222,9 +222,9 @@ def _container(params):
 
 
 def _save_with_fault(driver):
-    fault = os.environ.get("DCC_MCP_FREECAD_TEST_PRESENTATION_FAULT")
+    fault = os.environ.get("MESHY_DCC_FREECAD_TEST_PRESENTATION_FAULT")
     assert fault in ("visibility", "camera"), "Unknown repository-owned native fault"
-    presentation = driver._load_sibling_module("presentation.py", "dcc_mcp_freecad_presentation")
+    presentation = driver._load_sibling_module("presentation.py", "meshy_dcc_freecad_presentation")
     original = presentation.apply
 
     def faulty_apply(doc, gui, names, view, appearances=None, frame_margin=None):
@@ -263,9 +263,9 @@ def _render_with_fault(driver):
     path -- capture, measurement, refusal, no publication -- on real hardware
     instead of proving a mock.
     """
-    fault = os.environ.get("DCC_MCP_FREECAD_TEST_RENDER_FAULT")
+    fault = os.environ.get("MESHY_DCC_FREECAD_TEST_RENDER_FAULT")
     assert fault in ("flat", "baseline_copy"), "Unknown repository-owned render fault"
-    presentation = driver._load_sibling_module("presentation.py", "dcc_mcp_freecad_presentation")
+    presentation = driver._load_sibling_module("presentation.py", "meshy_dcc_freecad_presentation")
     original = presentation.capture
     captured = []
 
@@ -292,7 +292,7 @@ def main():
         _save_with_fault(driver)
         return
     if request["method"] == "document.render_view" and os.environ.get(
-        "DCC_MCP_FREECAD_TEST_RENDER_FAULT"
+        "MESHY_DCC_FREECAD_TEST_RENDER_FAULT"
     ):
         _render_with_fault(driver)
         return

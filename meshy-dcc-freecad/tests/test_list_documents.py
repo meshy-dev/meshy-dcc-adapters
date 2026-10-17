@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad import bridge as bridge_module
-from dcc_mcp_freecad.bridge import AllowedRootsError, BridgeError, FreecadBridge
+from meshy_dcc_freecad import bridge as bridge_module
+from meshy_dcc_freecad.bridge import AllowedRootsError, BridgeError, FreecadBridge
 
 
 class FakeFreecad(FreecadBridge):
@@ -115,7 +115,7 @@ def test_root_outside_the_allowed_roots_is_refused(tmp_path: Path):
     outside.mkdir()
     _write(outside, "secret.FCStd")
 
-    with pytest.raises(AllowedRootsError, match="outside DCC_MCP_FREECAD_ALLOWED_ROOTS"):
+    with pytest.raises(AllowedRootsError, match="outside MESHY_DCC_FREECAD_ALLOWED_ROOTS"):
         FakeFreecad(allowed).list_documents(root=str(outside))
 
 

@@ -13,7 +13,7 @@ import math
 
 import pytest
 
-from dcc_mcp_freecad import sketch_rules as rules
+from meshy_dcc_freecad import sketch_rules as rules
 
 # ---------------------------------------------------------------------------
 # Planes

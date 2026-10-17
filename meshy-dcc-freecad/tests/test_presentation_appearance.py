@@ -7,11 +7,11 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
-from dcc_mcp_core import validate_skill
+from meshy_dcc_core import validate_skill
 from jsonschema import Draft7Validator
 
-from dcc_mcp_freecad import freecad_driver, presentation, write_contract
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge
+from meshy_dcc_freecad import freecad_driver, presentation, write_contract
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge
 
 
 @pytest.fixture(autouse=True)
@@ -333,10 +333,10 @@ def test_driver_reopen_mismatch_cannot_publish(tmp_path, monkeypatch, changed):
 
     monkeypatch.setitem(sys.modules, "FreeCAD", SimpleNamespace(openDocument=reopen))
     monkeypatch.setitem(
-        freecad_driver._SIBLING_MODULES, "dcc_mcp_freecad_presentation", presentation
+        freecad_driver._SIBLING_MODULES, "meshy_dcc_freecad_presentation", presentation
     )
     monkeypatch.setitem(
-        freecad_driver._SIBLING_MODULES, "dcc_mcp_freecad_write_contract", write_contract
+        freecad_driver._SIBLING_MODULES, "meshy_dcc_freecad_write_contract", write_contract
     )
     monkeypatch.setattr(presentation, "initialize", lambda: gui)
     monkeypatch.setattr(freecad_driver, "_host_version", lambda: "1.0.0")
@@ -380,7 +380,7 @@ def test_driver_reopen_mismatch_cannot_publish(tmp_path, monkeypatch, changed):
 
 
 def test_schema_and_skill_validate_closed_appearance_contract():
-    skill = Path(__file__).parents[1] / "src/dcc_mcp_freecad/skills/freecad-session"
+    skill = Path(__file__).parents[1] / "src/meshy_dcc_freecad/skills/freecad-session"
     report = validate_skill(str(skill))
     assert [item.message for item in report.issues if item.severity == "error"] == []
     tools = yaml.safe_load((skill / "tools.yaml").read_text())["tools"]

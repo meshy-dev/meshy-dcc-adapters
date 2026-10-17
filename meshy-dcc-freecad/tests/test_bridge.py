@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge, WriteVerificationError
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, WriteVerificationError
 
 
 class FakeFreecad(FreecadBridge):
@@ -652,7 +652,7 @@ def test_real_freecad_scale_copy_and_mirror(tmp_path: Path):
 @pytest.mark.freecad
 @pytest.mark.skipif(not _real_freecad(), reason="FREECAD_TEST_EXECUTABLE is not set")
 def test_real_freecad_mirror_keeps_an_object_named_like_its_staging(tmp_path: Path):
-    """A caller's own DccMcpMirrorStage must survive a mirror that stages one.
+    """A caller's own MeshyDccMirrorStage must survive a mirror that stages one.
 
     Dropping the source builds the mirror under a fixed staging name and then
     removes it. FreeCAD renames a feature created under a name that is already
@@ -664,7 +664,7 @@ def test_real_freecad_mirror_keeps_an_object_named_like_its_staging(tmp_path: Pa
     document = tmp_path / "staging.FCStd"
     bridge.create_document(str(document))
     bridge.add_primitive(
-        str(document), "cylinder", "DccMcpMirrorStage", dimensions={"radius": 2, "height": 6}
+        str(document), "cylinder", "MeshyDccMirrorStage", dimensions={"radius": 2, "height": 6}
     )
     bridge.add_primitive(
         str(document), "cylinder", "Source", dimensions={"radius": 4, "height": 12}
@@ -676,7 +676,7 @@ def test_real_freecad_mirror_keeps_an_object_named_like_its_staging(tmp_path: Pa
     assert mirrored["object"]["type_id"] == "Part::Feature"
 
     names = {obj["name"] for obj in bridge.inspect_document(str(document))["objects"]}
-    assert "DccMcpMirrorStage" in names, "the caller's own object must survive"
+    assert "MeshyDccMirrorStage" in names, "the caller's own object must survive"
     assert "Source" not in names and "SourceMirror" in names
     assert bridge.validate_document(str(document))["valid"] is True
 

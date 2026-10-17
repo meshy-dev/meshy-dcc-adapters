@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from dcc_mcp_freecad import freecad_driver, presentation, write_contract
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge
+from meshy_dcc_freecad import freecad_driver, presentation, write_contract
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge
 
 
 @pytest.mark.parametrize(
@@ -95,7 +95,7 @@ def test_cancel_after_native_staging_keeps_original_and_destination(tmp_path, mo
         raise InterruptedError("cancelled before publication")
 
     monkeypatch.setattr(bridge, "_invoke", native)
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.check_dcc_cancelled", cancelled)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.check_dcc_cancelled", cancelled)
     with pytest.raises(InterruptedError, match="before publication"):
         bridge.save_copy(str(source), str(target), overwrite=True, visible_objects=["A"])
     assert source.read_bytes() == b"source"
@@ -171,10 +171,10 @@ def test_driver_rejects_a_dropped_requested_effect_before_save(tmp_path, monkeyp
         actual["camera_orientation"] = [0.5, 0.5, 0.5, 0.5]
     monkeypatch.setitem(sys.modules, "FreeCAD", SimpleNamespace())
     monkeypatch.setitem(
-        freecad_driver._SIBLING_MODULES, "dcc_mcp_freecad_write_contract", write_contract
+        freecad_driver._SIBLING_MODULES, "meshy_dcc_freecad_write_contract", write_contract
     )
     monkeypatch.setitem(
-        freecad_driver._SIBLING_MODULES, "dcc_mcp_freecad_presentation", presentation
+        freecad_driver._SIBLING_MODULES, "meshy_dcc_freecad_presentation", presentation
     )
     monkeypatch.setattr(freecad_driver, "_host_version", lambda: "1.1.4")
     monkeypatch.setattr(freecad_driver, "host_matrix", lambda version: {"status": "supported"})
@@ -245,7 +245,7 @@ def test_copy_metadata_failure_is_before_publication(tmp_path, monkeypatch, exis
         raise PermissionError("stage metadata unavailable")
 
     monkeypatch.setattr(bridge, "_invoke", native)
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.sha256_file", unreadable)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.sha256_file", unreadable)
     with pytest.raises(PermissionError, match="stage metadata"):
         bridge.save_copy(str(source), str(target), overwrite=existing, visible_objects=["A"])
     assert source.read_bytes() == b"original"
@@ -293,7 +293,7 @@ def test_copy_cleanup_error_preserves_publication_or_native_failure(
             monkeypatch.setattr(Path, "unlink", failed_unlink)
         else:
             monkeypatch.setattr(
-                "dcc_mcp_freecad.bridge._remove_staged_backups", failed_backup_cleanup
+                "meshy_dcc_freecad.bridge._remove_staged_backups", failed_backup_cleanup
             )
         if failure:
             raise native_error

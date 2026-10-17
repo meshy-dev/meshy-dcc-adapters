@@ -25,9 +25,9 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from dcc_mcp_freecad import fem_contract, freecad_driver, write_contract  # noqa: E402
+from meshy_dcc_freecad import fem_contract, freecad_driver, write_contract  # noqa: E402
 
-SKILLS = Path(__file__).parents[1] / "src" / "dcc_mcp_freecad" / "skills"
+SKILLS = Path(__file__).parents[1] / "src" / "meshy_dcc_freecad" / "skills"
 TESTS = Path(__file__).parent
 
 # A 100 x 10 x 10 mm cantilever, tip-loaded with 100 N downward. Analytic
@@ -266,7 +266,7 @@ _INP_AS_UPSTREAM_WRITES_IT = """*NODE, NSET=Nall
 *ELEMENT, TYPE=C3D10
 1, 1, 2, 3, 4
 *CLOAD
-** DccMcpConstraintForce
+** MeshyDccConstraintForce
 ** node loads on shape: Beam:Face2
 12, 3, -25.0
 13, 3, -50.0
@@ -374,10 +374,10 @@ def test_solver_output_is_carried_into_the_failure(tmp_path: Path):
     """
     workdir = tmp_path / "work"
     workdir.mkdir()
-    (workdir / "dcc-mcp-ccx.stderr.log").write_text(
+    (workdir / "meshy-dcc-ccx.stderr.log").write_text(
         "*ERROR: nonpositive jacobian determinant in element 12\n", encoding="utf-8"
     )
-    (workdir / "dcc-mcp-ccx.stdout.log").write_text("job finished\n", encoding="utf-8")
+    (workdir / "meshy-dcc-ccx.stdout.log").write_text("job finished\n", encoding="utf-8")
 
     evidence = freecad_driver._solver_evidence(
         workdir, {"exit_code": 0, "duration_secs": 1.5, "stderr_tail": "*ERROR: in ccx\n"}

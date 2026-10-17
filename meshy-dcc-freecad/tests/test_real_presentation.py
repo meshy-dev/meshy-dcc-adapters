@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge, WriteVerificationError
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, WriteVerificationError
 
 pytestmark = [pytest.mark.freecad, pytest.mark.freecad_gui]
 HOST_SCRIPT = Path(__file__).parent / "native/presentation_host.py"
@@ -315,7 +315,7 @@ def test_real_gui_post_apply_fault_reopens_and_refuses_publication(
     if existing:
         target.write_bytes(b"existing synthetic destination")
     before = _files(tmp_path)
-    monkeypatch.setenv("DCC_MCP_FREECAD_TEST_PRESENTATION_FAULT", fault)
+    monkeypatch.setenv("MESHY_DCC_FREECAD_TEST_PRESENTATION_FAULT", fault)
     bridge = _bridge(executable, [source.parent, tmp_path], fixture=True)
     with pytest.raises(WriteVerificationError) as caught:
         bridge.save_copy(

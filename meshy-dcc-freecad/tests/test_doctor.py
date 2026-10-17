@@ -5,7 +5,7 @@ import pytest
 
 def _published_schema_const():
     """The ``schema_version`` value the published Install SOP schema pins."""
-    from dcc_mcp_core.deployment import load_install_sop_schema
+    from meshy_dcc_core.deployment import load_install_sop_schema
 
     return load_install_sop_schema()["properties"]["schema_version"]["const"]
 
@@ -17,7 +17,7 @@ def test_report_schema_version_matches_the_published_schema_const():
     # deliberately not asserted here: the adapter no longer mirrors it, and
     # comparing a re-export against Core's own copy of the same constant proved
     # nothing either way.
-    from dcc_mcp_freecad.install_contract import SCHEMA_VERSION
+    from meshy_dcc_freecad.install_contract import SCHEMA_VERSION
 
     assert SCHEMA_VERSION == _published_schema_const()
 
@@ -32,10 +32,10 @@ def _freecad_executable(tmp_path):
 def test_public_doctor_reports_missing_freecad_as_structured_preflight(
     tmp_path, monkeypatch, capsys
 ):
-    from dcc_mcp_freecad import cli
-    from dcc_mcp_freecad.__version__ import __version__
+    from meshy_dcc_freecad import cli
+    from meshy_dcc_freecad.__version__ import __version__
 
-    monkeypatch.delenv("DCC_MCP_FREECAD_EXECUTABLE", raising=False)
+    monkeypatch.delenv("MESHY_DCC_FREECAD_EXECUTABLE", raising=False)
     monkeypatch.setenv("PATH", "")
     monkeypatch.setenv("ProgramFiles", str(tmp_path / "Program Files"))
 
@@ -66,16 +66,16 @@ def test_public_doctor_reports_missing_freecad_as_structured_preflight(
 
 
 def test_doctor_and_verify_reports_satisfy_the_published_schema(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_core.deployment import validate_install_sop_report
+    from meshy_dcc_core.deployment import validate_install_sop_report
 
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     # The validator runs through the native ABI, which a pure-Python core build
     # does not ship. The const assertion above stays unconditional; only this
     # whole-document check is allowed to stand down.
-    native_core = pytest.importorskip("dcc_mcp_core._core")
+    native_core = pytest.importorskip("meshy_dcc_core._core")
     if not callable(getattr(native_core, "_validate_install_sop_report_json", None)):
-        pytest.skip("resolved dcc-mcp-core has no Install SOP validator ABI")
+        pytest.skip("resolved meshy-dcc-core has no Install SOP validator ABI")
 
     executable = _freecad_executable(tmp_path)
     monkeypatch.setattr(
@@ -96,7 +96,7 @@ def test_doctor_and_verify_reports_satisfy_the_published_schema(tmp_path, monkey
     assert cli.main(["verify", "--json", "--dcc-path", str(executable)]) == 0
     validate_install_sop_report(json.loads(capsys.readouterr().out))
 
-    monkeypatch.delenv("DCC_MCP_FREECAD_EXECUTABLE", raising=False)
+    monkeypatch.delenv("MESHY_DCC_FREECAD_EXECUTABLE", raising=False)
     monkeypatch.setenv("PATH", "")
     monkeypatch.setenv("ProgramFiles", str(tmp_path / "Program Files"))
     assert cli.main(["doctor", "--json"]) == 10
@@ -104,7 +104,7 @@ def test_doctor_and_verify_reports_satisfy_the_published_schema(tmp_path, monkey
 
 
 def test_no_verb_preserves_the_existing_server_entrypoint(monkeypatch):
-    from dcc_mcp_freecad import cli, server
+    from meshy_dcc_freecad import cli, server
 
     calls = []
     monkeypatch.setattr(server, "main", lambda: calls.append("server"))
@@ -114,7 +114,7 @@ def test_no_verb_preserves_the_existing_server_entrypoint(monkeypatch):
 
 
 def test_public_doctor_verifies_the_discovered_freecad_runtime(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
     runtime_calls = []
@@ -158,7 +158,7 @@ def test_public_doctor_verifies_the_discovered_freecad_runtime(tmp_path, monkeyp
 
 
 def test_doctor_rejects_legacy_freecad_before_claiming_usability(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
     monkeypatch.setattr(
@@ -191,8 +191,8 @@ def test_doctor_rejects_legacy_freecad_before_claiming_usability(tmp_path, monke
 
 
 def test_doctor_runtime_failure_uses_verify_exit(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
-    from dcc_mcp_freecad.bridge import BridgeError
+    from meshy_dcc_freecad import cli, doctor
+    from meshy_dcc_freecad.bridge import BridgeError
 
     executable = _freecad_executable(tmp_path)
 
@@ -211,7 +211,7 @@ def test_doctor_runtime_failure_uses_verify_exit(tmp_path, monkeypatch, capsys):
 
 
 def test_doctor_fails_closed_when_runtime_does_not_report_ready(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
     monkeypatch.setattr(
@@ -233,7 +233,7 @@ def test_doctor_fails_closed_when_runtime_does_not_report_ready(tmp_path, monkey
 
 
 def test_doctor_rejects_old_core_before_launching_freecad(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
 
@@ -241,7 +241,7 @@ def test_doctor_rejects_old_core_before_launching_freecad(tmp_path, monkeypatch,
         raise AssertionError("FreeCAD must not launch before Core preflight passes")
 
     monkeypatch.setattr(doctor.FreecadBridge, "status", unexpected_status)
-    monkeypatch.setattr(doctor, "runtime_core_version", lambda: "0.19.90")
+    monkeypatch.setattr(doctor, "runtime_core_version", lambda: "0.1.9")
 
     assert cli.main(["doctor", "--json", "--dcc-path", str(executable)]) == 10
 
@@ -249,17 +249,17 @@ def test_doctor_rejects_old_core_before_launching_freecad(tmp_path, monkeypatch,
     assert report["verify"]["failure_stage"] == "core"
     assert report["checks"]["core"] == {
         "success": False,
-        "version": "0.19.90",
+        "version": "0.1.9",
         "minimum": doctor.MIN_CORE_VERSION,
     }
-    assert report["next_steps"][0]["command"][-1] == "dcc-mcp-core>=%s" % doctor.MIN_CORE_VERSION
+    assert report["next_steps"][0]["command"][-1] == "meshy-dcc-core>=%s" % doctor.MIN_CORE_VERSION
 
 
 def test_doctor_reports_invalid_environment_configuration(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
-    monkeypatch.setenv("DCC_MCP_FREECAD_MAX_TIMEOUT_SECS", "not-a-number")
+    monkeypatch.setenv("MESHY_DCC_FREECAD_MAX_TIMEOUT_SECS", "not-a-number")
     monkeypatch.setattr(doctor, "runtime_core_version", lambda: doctor.MIN_CORE_VERSION)
 
     assert cli.main(["doctor", "--json", "--dcc-path", str(executable)]) == 10
@@ -267,14 +267,14 @@ def test_doctor_reports_invalid_environment_configuration(tmp_path, monkeypatch,
     report = json.loads(capsys.readouterr().out)
     assert report["verify"]["failure_stage"] == "configuration"
     assert report["checks"]["configuration"]["success"] is False
-    assert report["next_steps"][0]["command"] == ["dcc-mcp-freecad", "doctor", "--json"]
+    assert report["next_steps"][0]["command"] == ["meshy-dcc-freecad", "doctor", "--json"]
 
 
 def test_doctor_rejects_non_positive_document_limit(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
-    monkeypatch.setenv("DCC_MCP_FREECAD_MAX_DOCUMENT_BYTES", "0")
+    monkeypatch.setenv("MESHY_DCC_FREECAD_MAX_DOCUMENT_BYTES", "0")
     monkeypatch.setattr(
         doctor.FreecadBridge,
         "status",
@@ -294,10 +294,10 @@ def test_doctor_rejects_non_positive_document_limit(tmp_path, monkeypatch, capsy
 
 
 def test_doctor_rejects_invalid_server_port_before_launch(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
-    monkeypatch.setenv("DCC_MCP_FREECAD_PORT", "invalid")
+    monkeypatch.setenv("MESHY_DCC_FREECAD_PORT", "invalid")
 
     def unexpected_status(self, timeout_secs=30):
         raise AssertionError("invalid port must fail before FreeCAD launch")
@@ -313,7 +313,7 @@ def test_doctor_rejects_invalid_server_port_before_launch(tmp_path, monkeypatch,
 
 
 def test_verify_uses_the_same_standalone_runtime_contract(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
     monkeypatch.setattr(
@@ -335,7 +335,7 @@ def test_verify_uses_the_same_standalone_runtime_contract(tmp_path, monkeypatch,
 
 
 def test_doctor_rejects_invalid_probe_timeout_before_launch(tmp_path, monkeypatch, capsys):
-    from dcc_mcp_freecad import cli, doctor
+    from meshy_dcc_freecad import cli, doctor
 
     executable = _freecad_executable(tmp_path)
 

@@ -13,16 +13,16 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad.parts_library import ENV_LIBRARY_ROOTS, PartLibraryError
+from meshy_dcc_freecad.parts_library import ENV_LIBRARY_ROOTS, PartLibraryError
 
 SCRIPTS = (
-    Path(__file__).parents[1] / "src" / "dcc_mcp_freecad" / "skills" / "freecad-parts" / "scripts"
+    Path(__file__).parents[1] / "src" / "meshy_dcc_freecad" / "skills" / "freecad-parts" / "scripts"
 )
 
 
 def _load(name: str):
     path = SCRIPTS / ("%s.py" % name)
-    spec = importlib.util.spec_from_file_location("dcc_mcp_freecad_parts_%s" % name, path)
+    spec = importlib.util.spec_from_file_location("meshy_dcc_freecad_parts_%s" % name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

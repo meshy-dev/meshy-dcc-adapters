@@ -22,11 +22,11 @@ from pathlib import Path
 
 import pytest
 import yaml
-from dcc_mcp_core import validate_skill
-from dcc_mcp_core.recipes import load_recipe_pack, validate_recipe_inputs
+from meshy_dcc_core import validate_skill
+from meshy_dcc_core.recipes import load_recipe_pack, validate_recipe_inputs
 from jsonschema import Draft202012Validator
 
-SKILLS = Path(__file__).parents[1] / "src" / "dcc_mcp_freecad" / "skills"
+SKILLS = Path(__file__).parents[1] / "src" / "meshy_dcc_freecad" / "skills"
 SKILL_DIR = SKILLS / "freecad-fem-review"
 RECIPES = SKILL_DIR / "RECIPES.yaml"
 
@@ -77,7 +77,7 @@ ASSUMPTIONS = [
         "topic": "material_provenance",
         "statement": (
             "Yield strength 250 MPa from the built-in generic table for "
-            "DccMcpStructuralSteel. Confirm against the mill certificate."
+            "MeshyDccStructuralSteel. Confirm against the mill certificate."
         ),
     },
     {
@@ -102,7 +102,7 @@ GOOD = {
     "yield_strength": {
         "value": YIELD_MPA,
         "unit": "MPa",
-        "source": "built-in generic table for DccMcpStructuralSteel",
+        "source": "built-in generic table for MeshyDccStructuralSteel",
     },
     "allowable_stress": {
         "value": ALLOWABLE_MPA,
@@ -170,9 +170,9 @@ def test_frontmatter_declares_the_recipe_and_its_dependency():
     frontmatter = yaml.safe_load(
         (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8").split("---")[1]
     )
-    dcc_mcp = frontmatter["metadata"]["dcc-mcp"]
-    assert dcc_mcp["recipes"] == "RECIPES.yaml"
-    assert dcc_mcp["depends"] == ["freecad-analysis"]
+    meshy_dcc = frontmatter["metadata"]["meshy-dcc"]
+    assert meshy_dcc["recipes"] == "RECIPES.yaml"
+    assert meshy_dcc["depends"] == ["freecad-analysis"]
 
 
 # ── Acceptance 5: the marketplace three-field contract ─────────────────────
@@ -182,21 +182,21 @@ def test_marketplace_contract_fields_are_declared():
     frontmatter = yaml.safe_load(
         (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8").split("---")[1]
     )
-    dcc_mcp = frontmatter["metadata"]["dcc-mcp"]
+    meshy_dcc = frontmatter["metadata"]["meshy-dcc"]
 
-    prompts = dcc_mcp["examplePrompts"]
+    prompts = meshy_dcc["examplePrompts"]
     assert len(prompts) >= 1
     for prompt in prompts:
         assert len(prompt) >= 8, "an example prompt shorter than this is not a request"
         assert "run_fem_analysis" not in prompt, "prompts are user language, not tool names"
 
-    recovery = dcc_mcp["recovery"]
+    recovery = meshy_dcc["recovery"]
     assert len(recovery) >= 1
     for entry in recovery:
         assert entry["next"], "a recovery step with no next action is a dead end"
         assert entry["note"]
 
-    assert dcc_mcp["undo"] == "none", "the recipe is read-only; see SKILL.md for why that is safe"
+    assert meshy_dcc["undo"] == "none", "the recipe is read-only; see SKILL.md for why that is safe"
 
 
 def test_undo_none_is_justified_in_the_body():
@@ -214,7 +214,7 @@ def test_a_solve_payload_is_accepted():
             "max_von_mises": {"value": 60.0, "unit": "MPa"},
             "max_displacement": {"value": 0.190476, "unit": "mm"},
             "axis_displacement": {"value": -0.190476, "unit": "mm"},
-            "material": {"name": "DccMcpStructuralSteel"},
+            "material": {"name": "MeshyDccStructuralSteel"},
             "fixed_faces": ["Beam:Face3"],
             "node_count": 4000,
         }
@@ -607,7 +607,7 @@ def test_the_built_in_material_table_declares_its_own_uncertainty():
     reader cannot tell a datasheet value from a textbook minimum.
     """
     body = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-    assert "DccMcpStructuralSteel" in body
+    assert "MeshyDccStructuralSteel" in body
     assert "generic" in body.lower() or "textbook" in body.lower()
     assert "certificate" in body.lower() or "datasheet" in body.lower()
 

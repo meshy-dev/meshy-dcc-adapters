@@ -29,8 +29,8 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad import bridge as bridge_module
-from dcc_mcp_freecad.bridge import (
+from meshy_dcc_freecad import bridge as bridge_module
+from meshy_dcc_freecad.bridge import (
     DEFAULT_MAX_SCRIPT_TIMEOUT_SECS,
     BridgeError,
     BridgeTimeoutError,
@@ -79,8 +79,8 @@ class FakeProcess:
 
 
 def install(monkeypatch, process) -> None:
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.subprocess.Popen", process)
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.time.sleep", lambda _seconds: None)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.subprocess.Popen", process)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.time.sleep", lambda _seconds: None)
 
 
 def write_script(root: Path, name="task.py", body="print('ran')\n") -> Path:
@@ -143,7 +143,7 @@ def test_run_script_refuses_a_path_outside_allowed_roots(tmp_path):
     outside = tmp_path / "outside.py"
     outside.write_text("print('nope')\n", encoding="utf-8")
 
-    with pytest.raises(BridgeError, match="outside DCC_MCP_FREECAD_ALLOWED_ROOTS"):
+    with pytest.raises(BridgeError, match="outside MESHY_DCC_FREECAD_ALLOWED_ROOTS"):
         make_bridge(allowed).run_script(str(outside))
 
 
@@ -164,7 +164,7 @@ def test_run_script_refuses_a_symlink_that_escapes_the_roots(tmp_path, monkeypat
     except (OSError, NotImplementedError):
         pytest.skip("symlinks are unavailable on this filesystem or for this user")
 
-    with pytest.raises(BridgeError, match="outside DCC_MCP_FREECAD_ALLOWED_ROOTS"):
+    with pytest.raises(BridgeError, match="outside MESHY_DCC_FREECAD_ALLOWED_ROOTS"):
         make_bridge(allowed).run_script(str(link))
 
 
@@ -193,8 +193,8 @@ def test_script_timeout_is_capped_below_the_document_ceiling(tmp_path, monkeypat
 
 
 def test_script_timeout_env_var_widens_the_ceiling(tmp_path, monkeypatch):
-    monkeypatch.setenv("DCC_MCP_FREECAD_MAX_SCRIPT_TIMEOUT_SECS", "600")
-    monkeypatch.setenv("DCC_MCP_FREECAD_ALLOWED_ROOTS", str(tmp_path))
+    monkeypatch.setenv("MESHY_DCC_FREECAD_MAX_SCRIPT_TIMEOUT_SECS", "600")
+    monkeypatch.setenv("MESHY_DCC_FREECAD_ALLOWED_ROOTS", str(tmp_path))
     bridge = FreecadBridge.from_env()
     assert bridge.max_script_timeout_secs == 600
 
@@ -226,7 +226,7 @@ def test_a_hanging_script_is_killed_and_reported_as_a_timeout(tmp_path, monkeypa
             cls.calls += 1
             return 0.0 if cls.calls < 3 else 10_000.0
 
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.time.monotonic", Clock.monotonic)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.time.monotonic", Clock.monotonic)
 
     with pytest.raises(BridgeTimeoutError, match="exceeded"):
         make_bridge(tmp_path).run_script(str(script), timeout_secs=1)
@@ -259,7 +259,7 @@ def test_a_timeout_carries_what_the_script_printed_before_it_was_killed(tmp_path
             cls.calls += 1
             return 0.0 if cls.calls < 3 else 10_000.0
 
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.time.monotonic", Clock.monotonic)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.time.monotonic", Clock.monotonic)
 
     with pytest.raises(BridgeTimeoutError) as raised:
         make_bridge(tmp_path).run_script(str(script), timeout_secs=1)
@@ -285,7 +285,7 @@ def test_the_skill_layer_reports_a_timeout_as_an_error_not_a_success(monkeypatch
     error carrying the partial payload, with a stable ``error_code`` so the
     caller branches on a key instead of matching prose.
     """
-    import dcc_mcp_freecad.skill_tools as skill_tools
+    import meshy_dcc_freecad.skill_tools as skill_tools
 
     class TimedOutBridge:
         def run_script(self, **_kwargs):
@@ -312,7 +312,7 @@ def test_a_non_zero_exit_is_still_a_result_not_an_error(monkeypatch):
     status is reported the same way a successful one is, so the caller reads
     ``exit_code`` and decides.
     """
-    import dcc_mcp_freecad.skill_tools as skill_tools
+    import meshy_dcc_freecad.skill_tools as skill_tools
 
     class FailingBridge:
         def run_script(self, **_kwargs):
@@ -702,7 +702,7 @@ def test_script_execution_is_declared_and_not_advertised_as_a_sandbox():
     containment is stronger than it is, which is the single most dangerous thing
     this declaration could do.
     """
-    from dcc_mcp_freecad.capabilities import (
+    from meshy_dcc_freecad.capabilities import (
         SCRIPT_EXECUTION,
         SCRIPT_EXECUTION_BOUNDS,
         build_capabilities,
@@ -743,7 +743,7 @@ def test_typed_calls_also_report_exit_code_on_success(tmp_path, monkeypatch):
         def poll(self):
             return 0
 
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.subprocess.Popen", Process)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.subprocess.Popen", Process)
 
     result = bridge.status()
 

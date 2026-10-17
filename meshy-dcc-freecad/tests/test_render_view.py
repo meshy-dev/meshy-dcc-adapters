@@ -13,8 +13,8 @@ from types import SimpleNamespace
 import pytest
 from png_fixture import checker, png, ramp, solid
 
-from dcc_mcp_freecad import freecad_driver, presentation, raster, write_contract
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge, RenderVerificationError
+from meshy_dcc_freecad import freecad_driver, presentation, raster, write_contract
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, RenderVerificationError
 
 
 def _bridge(tmp_path):
@@ -270,7 +270,7 @@ def test_include_image_attaches_the_rendered_bytes(tmp_path, monkeypatch):
 
 
 def test_an_oversized_inline_image_is_refused_with_a_pointer_to_output_path(tmp_path, monkeypatch):
-    from dcc_mcp_freecad import bridge as bridge_module
+    from meshy_dcc_freecad import bridge as bridge_module
 
     source = tmp_path / "document.FCStd"
     source.write_bytes(b"original")
@@ -621,7 +621,7 @@ def test_a_host_without_the_gui_library_is_marked_limited():
 def test_a_host_with_no_backend_at_all_is_marked_limited():
     report = FreecadBridge._render_capability({"ready": False})
     assert report["status"] == "host_limited"
-    assert "DCC_MCP_FREECAD_EXECUTABLE" in report["remediation"]
+    assert "MESHY_DCC_FREECAD_EXECUTABLE" in report["remediation"]
 
 
 def test_a_host_with_the_gui_library_is_reported_available():

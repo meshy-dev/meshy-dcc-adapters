@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad.bridge import FreecadBridge
+from meshy_dcc_freecad.bridge import FreecadBridge
 
 
 def module_dir(tmp_path):
@@ -47,7 +47,7 @@ def test_module_backend_rejects_invalid_interpreter(tmp_path, kind):
     interpreter = tmp_path / "interpreter"
     if kind == "directory":
         interpreter.mkdir()
-    with pytest.raises(ValueError, match="python-module.*DCC_MCP_FREECAD_PYTHON"):
+    with pytest.raises(ValueError, match="python-module.*MESHY_DCC_FREECAD_PYTHON"):
         FreecadBridge(
             executable=str(interpreter),
             module_directory=str(module_dir(tmp_path)),
@@ -60,7 +60,7 @@ def test_module_backend_rejects_nonexecutable_interpreter(tmp_path):
     interpreter = tmp_path / "interpreter"
     interpreter.write_bytes(b"synthetic nonexecutable file")
     interpreter.chmod(0o600)
-    with pytest.raises(ValueError, match="python-module.*DCC_MCP_FREECAD_PYTHON"):
+    with pytest.raises(ValueError, match="python-module.*MESHY_DCC_FREECAD_PYTHON"):
         FreecadBridge(
             executable=str(interpreter),
             module_directory=str(module_dir(tmp_path)),
@@ -70,10 +70,10 @@ def test_module_backend_rejects_nonexecutable_interpreter(tmp_path):
 
 def test_environment_selects_only_explicit_backend(tmp_path, monkeypatch):
     directory = module_dir(tmp_path)
-    monkeypatch.setenv("DCC_MCP_FREECAD_BACKEND", "python-module")
-    monkeypatch.setenv("DCC_MCP_FREECAD_PYTHON", sys.executable)
-    monkeypatch.setenv("DCC_MCP_FREECAD_MODULE_DIRECTORY", str(directory))
-    monkeypatch.setenv("DCC_MCP_FREECAD_ALLOWED_ROOTS", str(tmp_path))
+    monkeypatch.setenv("MESHY_DCC_FREECAD_BACKEND", "python-module")
+    monkeypatch.setenv("MESHY_DCC_FREECAD_PYTHON", sys.executable)
+    monkeypatch.setenv("MESHY_DCC_FREECAD_MODULE_DIRECTORY", str(directory))
+    monkeypatch.setenv("MESHY_DCC_FREECAD_ALLOWED_ROOTS", str(tmp_path))
     bridge = FreecadBridge.from_env()
     assert bridge.executable == str(Path(sys.executable).resolve())
     assert bridge.module_directory == directory
@@ -101,7 +101,7 @@ def test_module_command_is_package_owned_and_preferences_are_temporary(tmp_path,
 
     monkeypatch.setenv("PYTHONPATH", "/not-inherited")
     monkeypatch.setenv("PYTHONHOME", "/not-inherited")
-    monkeypatch.setattr("dcc_mcp_freecad.bridge.subprocess.Popen", Process)
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.subprocess.Popen", Process)
     result = bridge.status()
     command = observed["command"]
     assert command[:2] == [str(Path(sys.executable).resolve()), "-I"]

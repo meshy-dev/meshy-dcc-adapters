@@ -4,15 +4,15 @@ from pathlib import Path
 import capability_checks
 import pytest
 import yaml
-from dcc_mcp_core import validate_skill
+from meshy_dcc_core import validate_skill
 
-import dcc_mcp_freecad
-from dcc_mcp_freecad import SketchSpecError, SketchStateError, capabilities, compat
-from dcc_mcp_freecad.bridge import BridgeError
-from dcc_mcp_freecad.server import FreecadMcpServer
+import meshy_dcc_freecad
+from meshy_dcc_freecad import SketchSpecError, SketchStateError, capabilities, compat
+from meshy_dcc_freecad.bridge import BridgeError
+from meshy_dcc_freecad.server import FreecadMcpServer
 
 ROOT = Path(__file__).parents[1]
-SKILLS = ROOT / "src" / "dcc_mcp_freecad" / "skills"
+SKILLS = ROOT / "src" / "meshy_dcc_freecad" / "skills"
 
 
 SKILL_NAMES = (
@@ -65,7 +65,7 @@ def test_geometry_bounds_in_the_skill_match_the_driver():
     another. The constants live in the driver because that is what enforces
     them, and this test is what keeps the advertised copy honest.
     """
-    driver = (ROOT / "src" / "dcc_mcp_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
+    driver = (ROOT / "src" / "meshy_dcc_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
     payload = yaml.safe_load((SKILLS / "freecad-modify" / "tools.yaml").read_text(encoding="utf-8"))
     tools = dict((tool["name"], tool) for tool in payload["tools"])
 
@@ -87,7 +87,7 @@ def test_geometry_bounds_in_the_skill_match_the_driver():
 
 
 def test_declared_primitives_match_the_driver_table():
-    from dcc_mcp_freecad import freecad_driver
+    from meshy_dcc_freecad import freecad_driver
 
     payload = yaml.safe_load(
         (SKILLS / "freecad-modeling" / "tools.yaml").read_text(encoding="utf-8")
@@ -101,7 +101,7 @@ def test_declared_primitives_match_the_driver_table():
 
 def test_declared_dimensions_cover_every_primitive_property():
     """A primitive property with no schema entry is a dimension nobody can pass."""
-    from dcc_mcp_freecad import freecad_driver
+    from meshy_dcc_freecad import freecad_driver
 
     payload = yaml.safe_load(
         (SKILLS / "freecad-modeling" / "tools.yaml").read_text(encoding="utf-8")
@@ -127,7 +127,7 @@ def test_sketch_declares_document_dependency():
 
 def test_sketch_tools_accept_only_declared_union_members():
     """A discriminated union is only real if a wrong member is rejected."""
-    from dcc_mcp_core.skills_helper import ToolValidator
+    from meshy_dcc_core.skills_helper import ToolValidator
 
     payload = yaml.safe_load((SKILLS / "freecad-sketch" / "tools.yaml").read_text(encoding="utf-8"))
     tools = {tool["name"]: tool for tool in payload["tools"]}
@@ -180,7 +180,7 @@ def test_sketch_tools_accept_only_declared_union_members():
 
 
 def test_driver_exposes_only_a_method_whitelist():
-    driver = (ROOT / "src" / "dcc_mcp_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
+    driver = (ROOT / "src" / "meshy_dcc_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
     assert "_METHODS = {" in driver
     assert "eval(" not in driver
     assert "exec(" not in driver
@@ -221,8 +221,8 @@ def _host_status():
 
 
 def _served_capabilities(skills_dir=None):
-    from dcc_mcp_freecad import parts_library
-    from dcc_mcp_freecad.bridge import _EXPORT_SUFFIXES, _IMPORT_SUFFIXES
+    from meshy_dcc_freecad import parts_library
+    from meshy_dcc_freecad.bridge import _EXPORT_SUFFIXES, _IMPORT_SUFFIXES
 
     return capabilities.build_capabilities(
         host_status=_host_status(),
@@ -252,7 +252,7 @@ def test_advertised_limits_match_what_the_driver_enforces():
     driver is held to, and derived independently of the driver constants so a
     change on either side has to show up here.
     """
-    driver = (ROOT / "src" / "dcc_mcp_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
+    driver = (ROOT / "src" / "meshy_dcc_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
     payload = _served_capabilities()
 
     assert "MAX_EDGE_REFS = %d" % payload["max_edge_refs"] in driver
@@ -274,8 +274,8 @@ def test_import_and_export_mesh_suffix_sets_are_kept_apart():
     without a FreeCAD host: the driver imports FreeCAD lazily inside each
     function, so the module itself imports cleanly anywhere.
     """
-    from dcc_mcp_freecad import freecad_driver
-    from dcc_mcp_freecad.bridge import _EXPORT_SUFFIXES, _IMPORT_SUFFIXES
+    from meshy_dcc_freecad import freecad_driver
+    from meshy_dcc_freecad.bridge import _EXPORT_SUFFIXES, _IMPORT_SUFFIXES
 
     driver_import = set(freecad_driver._IMPORT_MESH_SUFFIXES)
     driver_export = set(freecad_driver._EXPORT_MESH_SUFFIXES)
@@ -307,7 +307,7 @@ def test_import_and_export_mesh_suffix_sets_are_kept_apart():
 
     # The sibling import path (model.insert_part) used to restate the narrow set
     # as a literal; keep both on the same constant so they cannot drift again.
-    source = (ROOT / "src" / "dcc_mcp_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "meshy_dcc_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
     import_callers = [
         line for line in source.splitlines() if "suffix in _IMPORT_MESH_SUFFIXES" in line
     ]
@@ -329,7 +329,7 @@ def test_the_driver_entry_point_is_the_last_statement():
     Pinning the entry to the last statement makes the order a property of the
     file rather than of whatever happens to be appended below it.
     """
-    driver = (ROOT / "src" / "dcc_mcp_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
+    driver = (ROOT / "src" / "meshy_dcc_freecad" / "freecad_driver.py").read_text(encoding="utf-8")
     tree = ast.parse(driver)
 
     last = tree.body[-1]
@@ -438,10 +438,10 @@ def test_the_sketch_errors_are_exported_and_state_error_is_the_callers_one():
     ``docs/write-contract.md`` are stale and this fails.
     """
     for name in ("SketchStateError", "SketchSpecError"):
-        assert name in dcc_mcp_freecad.__all__, "%s is not exported from the package root" % name
+        assert name in meshy_dcc_freecad.__all__, "%s is not exported from the package root" % name
 
-    assert SketchStateError is dcc_mcp_freecad.bridge.SketchStateError
-    assert SketchStateError is not dcc_mcp_freecad.sketch_rules.SketchStateError
+    assert SketchStateError is meshy_dcc_freecad.bridge.SketchStateError
+    assert SketchStateError is not meshy_dcc_freecad.sketch_rules.SketchStateError
     assert issubclass(SketchStateError, BridgeError)
     # The refusal is only branchable if the code and the measured state survive
     # the trip, so the exported class must carry both.
@@ -451,7 +451,7 @@ def test_the_sketch_errors_are_exported_and_state_error_is_the_callers_one():
 
     # Usable locally: ``sketch_rules`` is pure Python, so a caller can validate a
     # spec before spending a host round-trip and catch exactly this type.
-    assert SketchSpecError is dcc_mcp_freecad.sketch_rules.SketchSpecError
+    assert SketchSpecError is meshy_dcc_freecad.sketch_rules.SketchSpecError
     assert issubclass(SketchSpecError, ValueError)
     # ...but not across the boundary. These are the keys the driver reads in
     # ``main()``; none of them is present, so nothing but the message survives.

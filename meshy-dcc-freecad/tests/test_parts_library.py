@@ -24,7 +24,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from dcc_mcp_freecad import parts_library  # noqa: E402
+from meshy_dcc_freecad import parts_library  # noqa: E402
 
 
 @pytest.fixture

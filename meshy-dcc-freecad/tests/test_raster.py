@@ -18,7 +18,7 @@ from png_fixture import png as _png
 from png_fixture import ramp as _ramp
 from png_fixture import solid as _solid
 
-from dcc_mcp_freecad import raster
+from meshy_dcc_freecad import raster
 
 
 def _summary(data, **kwargs):

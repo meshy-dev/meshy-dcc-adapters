@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad import FemAnalysisError
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge
-from dcc_mcp_freecad.fem_contract import FemError
+from meshy_dcc_freecad import FemAnalysisError
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge
+from meshy_dcc_freecad.fem_contract import FemError
 
 
 def _bridge(tmp_path: Path) -> FreecadBridge:

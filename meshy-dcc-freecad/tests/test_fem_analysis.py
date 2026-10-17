@@ -26,9 +26,9 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad import FemAnalysisError
-from dcc_mcp_freecad.bridge import FreecadBridge
-from dcc_mcp_freecad.fem_contract import (
+from meshy_dcc_freecad import FemAnalysisError
+from meshy_dcc_freecad.bridge import FreecadBridge
+from meshy_dcc_freecad.fem_contract import (
     FemError,
     cantilever_root_stress,
     cantilever_second_moment,

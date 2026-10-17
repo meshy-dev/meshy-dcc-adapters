@@ -1,35 +1,7 @@
-# dcc-mcp-freecad
+# meshy-dcc-freecad
 
-<p align="center">
-  <img src="docs/assets/dcc-mcp-freecad.svg" alt="DCC-MCP · FREECAD" width="600">
-</p>
-
-Production FreeCAD adapter for typed, durable parametric modeling and CAD
-exchange through DCC-MCP.
-
-![Parametric bracket moving through FreeCAD topology validation to a game-ready mesh](docs/images/dcc-mcp-freecad-showcase.webp)
-
-_Illustrative workflow based on the live OpenSCAD → FreeCAD → Blender/Godot acceptance run; generated source is retained in `docs/images/dcc-mcp-freecad-showcase-source.png`._
-
-<!-- dcc-mcp-coverage-pointer:start -->
-<!-- Generated from dcc-mcp-catalog.yml by scripts/generate_adapter_pointer.py in dcc-mcp/dcc-mcp-core. Do not edit by hand. -->
-## Part of the DCC-MCP host matrix
-
-**dcc-mcp-freecad** — FreeCAD adapter for typed parametric modeling, document
-validation, and CAD exchange.
-
-It is one of **47 host adapters** in the DCC-MCP catalog. Every adapter speaks the same
-MCP protocol and builds on the same core runtime contract; each one exposes the tools
-its own host needs on top of that.
-
-- [All host adapters and install metadata](https://dcc-mcp.github.io/ecosystem)
-- [Host matrix on the core README](https://github.com/dcc-mcp/dcc-mcp-core#readme)
-- [Showcase](https://dcc-mcp.github.io/showcase)
-
-This block is generated from the catalog entry in
-[`dcc-mcp-catalog.yml`](https://github.com/dcc-mcp/dcc-mcp-core/blob/main/dcc-mcp-catalog.yml).
-Re-run the generator after changing the catalog.
-<!-- dcc-mcp-coverage-pointer:end -->
+Meshy DCC adapter for FreeCAD: typed, durable parametric modeling and CAD
+exchange.
 
 ## Capabilities
 
@@ -58,12 +30,12 @@ the typed tools dispatch only through the packaged method-dispatch driver.
 
 The single exception is `run_script`, an escape hatch for work no typed tool
 covers. It accepts a **path to a `.py` file** — never source text — resolves it,
-requires it to lie inside `DCC_MCP_FREECAD_ALLOWED_ROOTS`, and runs it in a
+requires it to lie inside `MESHY_DCC_FREECAD_ALLOWED_ROOTS`, and runs it in a
 disposable FreeCADCmd child started with `--safe-mode` and a throwaway user
 config, so no user workbench, plugin, or macro is loaded. **It is not a
 sandbox**: the script runs as the operator's account with that account's full
 privileges, and allowed roots constrain only which file may be named. Its own
-timeout ceiling (`DCC_MCP_FREECAD_MAX_SCRIPT_TIMEOUT_SECS`, 300s by default) is
+timeout ceiling (`MESHY_DCC_FREECAD_MAX_SCRIPT_TIMEOUT_SECS`, 300s by default) is
 far below the 1800s document ceiling, so a script that hangs is killed in
 minutes. There is no script management surface.
 
@@ -74,10 +46,10 @@ versions, different `sys.path`, and different site-packages:
 
 | Side | What runs there | Python version | Who owns that version |
 | --- | --- | --- | --- |
-| Wrapper (service side) | the `dcc-mcp-freecad` CLI, server, and `doctor`, plus the process that launches `FreeCADCmd` | **3.7+** (`requires-python = ">=3.7"`) | the environment you `pip install dcc-mcp-freecad` into |
-| Host (FreeCAD side) | `src/dcc_mcp_freecad/freecad_driver.py` and every skill script | **3.10+** — the interpreter FreeCAD is built against and ships (3.11 in both release lines CI exercises) | your FreeCAD installation |
+| Wrapper (service side) | the `meshy-dcc-freecad` CLI, server, and `doctor`, plus the process that launches `FreeCADCmd` | **3.7+** (`requires-python = ">=3.7"`) | the environment you `pip install meshy-dcc-freecad` into |
+| Host (FreeCAD side) | `src/meshy_dcc_freecad/freecad_driver.py` and every skill script | **3.10+** — the interpreter FreeCAD is built against and ships (3.11 in both release lines CI exercises) | your FreeCAD installation |
 
-- `dcc-mcp-core` 0.20.36+ in the **wrapper** environment.
+- `meshy-dcc-core` 0.20.36+ in the **wrapper** environment.
 - A FreeCAD version covered by the compatibility matrix below, with either a working
   `FreeCADCmd`/`freecadcmd` or an explicitly configured compatible executable Python
   interpreter and installed native FreeCAD library for the opt-in `python-module`
@@ -91,7 +63,7 @@ Because the two interpreters are separate:
 - Installing the wheel into FreeCAD's interpreter is neither required nor
   supported; the wrapper drives the host by launching `FreeCADCmd` with the
   packaged driver.
-- `dcc-mcp-freecad doctor --json` reports the host interpreter as
+- `meshy-dcc-freecad doctor --json` reports the host interpreter as
   `checks.runtime.python_version`, next to `checks.runtime.freecad_version`. See
   [install.md](install.md#host-python-interpreter) for how to read and
   cross-check both.
@@ -99,7 +71,7 @@ Because the two interpreters are separate:
 ### FreeCAD compatibility matrix
 
 Supported host versions are declared in
-[`compat_matrix.json`](src/dcc_mcp_freecad/compat_matrix.json) — that file is the
+[`compat_matrix.json`](src/meshy_dcc_freecad/compat_matrix.json) — that file is the
 contract, this section only points at it:
 
 | FreeCAD | Status |
@@ -113,7 +85,7 @@ Both supported lines are exercised end-to-end on real FreeCAD in CI —
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — and both ship Python
 3.11 as the host interpreter. A version outside the matrix is **not** silently
 downgraded to "probably fine":
-`dcc-mcp-freecad doctor --json` fails with an `error_code`
+`meshy-dcc-freecad doctor --json` fails with an `error_code`
 (`freecad_host_version_unsupported`, `freecad_host_version_unverified`,
 `freecad_host_version_unlisted`, or `freecad_host_version_unparsable`), the
 supported ranges, and the command that pins a supported one. The same matrix is
@@ -126,10 +98,10 @@ Install the published wheel, prove the standalone FreeCAD runtime, then start
 the service:
 
 ```text
-python -m pip install --upgrade dcc-mcp-freecad
-dcc-mcp-freecad doctor --json
-dcc-mcp-freecad verify --json
-dcc-mcp-freecad
+python -m pip install --upgrade meshy-dcc-freecad
+meshy-dcc-freecad doctor --json
+meshy-dcc-freecad verify --json
+meshy-dcc-freecad
 ```
 
 See [install.md](install.md) for Windows, macOS, and Linux discovery, stable
@@ -141,17 +113,17 @@ cache external binaries.
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `DCC_MCP_FREECAD_EXECUTABLE` | Exact FreeCADCmd executable or install directory | `PATH` and standard locations |
-| `DCC_MCP_FREECAD_ALLOWED_ROOTS` | `os.pathsep`-separated document/import/export roots | server working directory |
-| `DCC_MCP_FREECAD_MAX_DOCUMENT_BYTES` | Maximum FCStd input size | 2 GiB |
-| `DCC_MCP_FREECAD_MAX_TIMEOUT_SECS` | Maximum per-call deadline | 1800 seconds |
-| `DCC_MCP_FREECAD_SNAPSHOT_DIR` | Snapshot store; must resolve inside allowed roots | `<first allowed root>/.dcc-mcp-freecad/snapshots` |
-| `DCC_MCP_FREECAD_MAX_SNAPSHOTS` | Maximum stored snapshots | 50 |
-| `DCC_MCP_FREECAD_MAX_SNAPSHOT_BYTES` | Maximum total snapshot store size | 1 GiB |
-| `DCC_MCP_FREECAD_PORT` | Fixed adapter port when direct addressing is required | OS-assigned |
-| `DCC_MCP_FREECAD_PARTS_LIBRARY` | `os.pathsep`-separated local standard-parts library directories | none — `list_parts` reports `parts_library_unavailable` |
+| `MESHY_DCC_FREECAD_EXECUTABLE` | Exact FreeCADCmd executable or install directory | `PATH` and standard locations |
+| `MESHY_DCC_FREECAD_ALLOWED_ROOTS` | `os.pathsep`-separated document/import/export roots | server working directory |
+| `MESHY_DCC_FREECAD_MAX_DOCUMENT_BYTES` | Maximum FCStd input size | 2 GiB |
+| `MESHY_DCC_FREECAD_MAX_TIMEOUT_SECS` | Maximum per-call deadline | 1800 seconds |
+| `MESHY_DCC_FREECAD_SNAPSHOT_DIR` | Snapshot store; must resolve inside allowed roots | `<first allowed root>/.meshy-dcc-freecad/snapshots` |
+| `MESHY_DCC_FREECAD_MAX_SNAPSHOTS` | Maximum stored snapshots | 50 |
+| `MESHY_DCC_FREECAD_MAX_SNAPSHOT_BYTES` | Maximum total snapshot store size | 1 GiB |
+| `MESHY_DCC_FREECAD_PORT` | Fixed adapter port when direct addressing is required | OS-assigned |
+| `MESHY_DCC_FREECAD_PARTS_LIBRARY` | `os.pathsep`-separated local standard-parts library directories | none — `list_parts` reports `parts_library_unavailable` |
 
-The service is a standalone DCC-MCP instance with no GUI PID. Every operation
+The service is a standalone Meshy DCC instance with no GUI PID. Every operation
 launches a clean FreeCADCmd process in safe mode with a temporary user config.
 
 ## Recoverability
@@ -174,20 +146,20 @@ rather than overwrite work done after the caller read the document, and a
 restore always snapshots the state it replaces — so a mistaken restore is just
 another restore. A deleted document is recreated from a snapshot rather than
 refused, with `undo_snapshot_id` null because there was no state to preserve.
-The store lives inside `DCC_MCP_FREECAD_ALLOWED_ROOTS` and is capped; when it
+The store lives inside `MESHY_DCC_FREECAD_ALLOWED_ROOTS` and is capped; when it
 is full the call fails with `snapshot_limit_exceeded` and cleanup guidance
 instead of evicting anything. See [docs/snapshots.md](docs/snapshots.md).
 
 ## Agent workflow
 
 ```bash
-dcc-mcp-cli list
-dcc-mcp-cli search --query "FreeCAD create boolean export STEP"
-dcc-mcp-cli load-skill freecad-session --dcc-type freecad --instance-id <instance-short>
-dcc-mcp-cli load-skill freecad-sketch --dcc-type freecad --instance-id <instance-short>
-dcc-mcp-cli load-skill freecad-modeling --dcc-type freecad --instance-id <instance-short>
-dcc-mcp-cli load-skill freecad-modify --dcc-type freecad --instance-id <instance-short>
-dcc-mcp-cli load-skill freecad-parts --dcc-type freecad --instance-id <instance-short>
+meshy-dcc list
+meshy-dcc search --query "FreeCAD create boolean export STEP"
+meshy-dcc load-skill freecad-session --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-sketch --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-modeling --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-modify --dcc-type freecad --instance-id <instance-short>
+meshy-dcc load-skill freecad-parts --dcc-type freecad --instance-id <instance-short>
 ```
 
 Typical sequence: `list_documents` → `create_document` → `add_primitive` →
@@ -197,11 +169,11 @@ Typical sequence: `list_documents` → `create_document` → `add_primitive` →
 ### Standard parts
 
 `freecad-parts` adds `list_parts` and `insert_part`. The library is a set of
-local directories configured through `DCC_MCP_FREECAD_PARTS_LIBRARY`:
+local directories configured through `MESHY_DCC_FREECAD_PARTS_LIBRARY`:
 
 ```bash
-dcc-mcp-cli call list_parts --category Fasteners --query M8
-dcc-mcp-cli call insert_part --document_path projects/enclosure.FCStd \
+meshy-dcc call list_parts --category Fasteners --query M8
+meshy-dcc call insert_part --document_path projects/enclosure.FCStd \
   --part_ref fasteners/iso4014-m8x40.step --object_name BoltM8x40 \
   --translation '[10, 20, 0]'
 ```

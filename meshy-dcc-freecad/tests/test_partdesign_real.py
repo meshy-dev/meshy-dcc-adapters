@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 from test_bridge import FakeFreecad
 
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge, SketchStateError
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, SketchStateError
 
 # The profile: a 40 x 10 mm rectangle on the XY plane, fully constrained.
 PROFILE_WIDTH = 40.0

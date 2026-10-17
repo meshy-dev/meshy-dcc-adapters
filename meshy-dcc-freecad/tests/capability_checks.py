@@ -21,10 +21,10 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import jsonschema
 
-from dcc_mcp_freecad import capabilities
+from meshy_dcc_freecad import capabilities
 
 ROOT = Path(__file__).parents[1]
-SKILLS = ROOT / "src" / "dcc_mcp_freecad" / "skills"
+SKILLS = ROOT / "src" / "meshy_dcc_freecad" / "skills"
 
 _ACCEPTED_KINDS = (
     inspect.Parameter.POSITIONAL_OR_KEYWORD,
@@ -68,7 +68,7 @@ def capability_problems(payload: Mapping[str, Any], skills_dir: Optional[Path] =
     accept or reject a path, so a capability list that advertises a format the
     bridge would refuse is drift.
     """
-    from dcc_mcp_freecad.bridge import _EXPORT_SUFFIXES, _IMPORT_SUFFIXES
+    from meshy_dcc_freecad.bridge import _EXPORT_SUFFIXES, _IMPORT_SUFFIXES
 
     return capabilities.capability_drift(
         payload,
@@ -173,7 +173,7 @@ def declaration_problems(
     false`` already stops a caller passing an undeclared argument, so a
     parameter the schema omits is unreachable rather than a false promise.
     """
-    from dcc_mcp_freecad.bridge import FreecadBridge
+    from meshy_dcc_freecad.bridge import FreecadBridge
 
     root = Path(skills_dir) if skills_dir is not None else SKILLS
     problems: List[str] = []

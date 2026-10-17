@@ -19,13 +19,13 @@ def test_install_runbook_is_wheel_first_and_platform_complete():
     for platform in ("Windows", "macOS", "Linux"):
         assert platform in text
     for command in (
-        "python -m pip install --upgrade dcc-mcp-freecad",
-        "dcc-mcp-freecad doctor --json",
-        "dcc-mcp-freecad verify --json",
-        "python -m pip uninstall dcc-mcp-freecad",
+        "python -m pip install --upgrade meshy-dcc-freecad",
+        "meshy-dcc-freecad doctor --json",
+        "meshy-dcc-freecad verify --json",
+        "python -m pip uninstall meshy-dcc-freecad",
     ):
         assert command in text
-    assert "https://raw.githubusercontent.com/dcc-mcp/dcc-mcp-freecad/main/install.md" in text
+    assert "https://raw.githubusercontent.com/meshy-dev/meshy-dcc-adapters/main/meshy-dcc-freecad/install.md" in text
     assert "no adapter-managed binary cache" in text
     assert 'pip install -e ".[dev]"' not in text
 
@@ -33,6 +33,6 @@ def test_install_runbook_is_wheel_first_and_platform_complete():
 def test_readme_routes_agents_to_public_doctor():
     readme = (Path(__file__).parents[1] / "README.md").read_text(encoding="utf-8")
 
-    assert "dcc-mcp-freecad doctor --json" in readme
-    assert "dcc-mcp-freecad verify --json" in readme
+    assert "meshy-dcc-freecad doctor --json" in readme
+    assert "meshy-dcc-freecad verify --json" in readme
     assert "install.md" in readme

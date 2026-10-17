@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge
 
 # The test solid.
 LENGTH = 40.0

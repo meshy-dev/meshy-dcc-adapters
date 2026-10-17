@@ -1,9 +1,9 @@
 {
   "runtime": {
     "versions": {
-      "dcc-mcp-core": "0.20.41",
-      "dcc-mcp-server": "0.20.41",
-      "dcc-mcp-cli": "0.20.41"
+      "meshy-dcc-core": "0.20.41",
+      "meshy-dcc-server": "0.20.41",
+      "meshy-dcc": "0.20.41"
     },
     "gateway_port": 0,
     "enable_gateway_failover": false

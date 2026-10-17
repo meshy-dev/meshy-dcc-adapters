@@ -53,12 +53,12 @@ a report that disagrees with reality. **Both halves must exist for an entry to
 be listed**, so an interrupted write leaves a visible orphan instead of a
 snapshot that restores nothing.
 
-The store lives inside `DCC_MCP_FREECAD_ALLOWED_ROOTS`. It holds verbatim
+The store lives inside `MESHY_DCC_FREECAD_ALLOWED_ROOTS`. It holds verbatim
 copies of the user's documents, so it is gated by the same `_within` check every
 other path uses — a snapshot is a readable copy of the work, and writing it
 somewhere the operator did not sanction would be an exfiltration path. The
-default is `<first allowed root>/.dcc-mcp-freecad/snapshots`; override with
-`DCC_MCP_FREECAD_SNAPSHOT_DIR`, which must also resolve inside allowed roots.
+default is `<first allowed root>/.meshy-dcc-freecad/snapshots`; override with
+`MESHY_DCC_FREECAD_SNAPSHOT_DIR`, which must also resolve inside allowed roots.
 
 ## Optimistic concurrency
 
@@ -125,8 +125,8 @@ like A" is a real workflow — and reported as `cross_document: true` with
 
 | Variable | Default | Refusal |
 | --- | --- | --- |
-| `DCC_MCP_FREECAD_MAX_SNAPSHOTS` | 50 | `snapshot_limit_exceeded` |
-| `DCC_MCP_FREECAD_MAX_SNAPSHOT_BYTES` | 1 GiB | `snapshot_limit_exceeded` |
+| `MESHY_DCC_FREECAD_MAX_SNAPSHOTS` | 50 | `snapshot_limit_exceeded` |
+| `MESHY_DCC_FREECAD_MAX_SNAPSHOT_BYTES` | 1 GiB | `snapshot_limit_exceeded` |
 
 A full store is **refused, never evicted**. Auto-deleting the oldest snapshot
 would be the convenient choice and the wrong one: the oldest snapshot is often
@@ -142,7 +142,7 @@ directory.
 
 `list_snapshots` returns two byte figures on purpose: `snapshot_bytes` is the
 snapshots themselves, and `total_bytes` is what
-`DCC_MCP_FREECAD_MAX_SNAPSHOT_BYTES` is actually charged against — orphan bytes
+`MESHY_DCC_FREECAD_MAX_SNAPSHOT_BYTES` is actually charged against — orphan bytes
 included. Reporting only the former would show a total under the limit while
 the next call is still refused for exceeding it.
 
@@ -166,7 +166,7 @@ repeatedly leak hidden copies into the user's workspace.
 | `snapshot_not_found` | Unknown or malformed id (including traversal attempts) |
 | `snapshot_content_mismatch` | Stored bytes no longer match the recorded SHA-256 |
 | `snapshot_copy_timeout` | The copy exceeded the call deadline |
-| `snapshot_store_outside_allowed_roots` | `DCC_MCP_FREECAD_SNAPSHOT_DIR` escapes allowed roots |
+| `snapshot_store_outside_allowed_roots` | `MESHY_DCC_FREECAD_SNAPSHOT_DIR` escapes allowed roots |
 
 No refusal of these kinds modifies the document. Both conflict paths leave the
 document byte-for-byte unchanged and discard the untrustworthy pre-restore copy.

@@ -24,7 +24,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
-from dcc_mcp_freecad import (  # noqa: E402
+from meshy_dcc_freecad import (  # noqa: E402
     freecad_driver,
     sketch_rules,
     write_contract,
@@ -353,8 +353,8 @@ class FakePart(types.ModuleType):
 @pytest.fixture()
 def host(monkeypatch):
     """Install a fake FreeCAD and return the harness."""
-    freecad_driver._SIBLING_MODULES["dcc_mcp_freecad_write_contract"] = write_contract
-    freecad_driver._SIBLING_MODULES["dcc_mcp_freecad_sketch_rules"] = sketch_rules
+    freecad_driver._SIBLING_MODULES["meshy_dcc_freecad_write_contract"] = write_contract
+    freecad_driver._SIBLING_MODULES["meshy_dcc_freecad_sketch_rules"] = sketch_rules
     app = _App()
     monkeypatch.setitem(sys.modules, "FreeCAD", app)
     monkeypatch.setitem(sys.modules, "Part", FakePart())

@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
-from dcc_mcp_freecad import raster
-from dcc_mcp_freecad.bridge import BridgeError, FreecadBridge, RenderVerificationError
-from dcc_mcp_freecad.presentation import MAX_RENDER_HEIGHT, MAX_RENDER_WIDTH
+from meshy_dcc_freecad import raster
+from meshy_dcc_freecad.bridge import BridgeError, FreecadBridge, RenderVerificationError
+from meshy_dcc_freecad.presentation import MAX_RENDER_HEIGHT, MAX_RENDER_WIDTH
 
 pytestmark = [pytest.mark.freecad, pytest.mark.freecad_gui]
 HOST_SCRIPT = Path(__file__).parent / "native/presentation_host.py"
@@ -237,7 +237,7 @@ def test_real_waste_frame_is_refused_and_never_published(
     executable, _version = real_host
     source = rendered_document[0]
     output = tmp_path / "refused.png"
-    monkeypatch.setenv("DCC_MCP_FREECAD_TEST_RENDER_FAULT", fault)
+    monkeypatch.setenv("MESHY_DCC_FREECAD_TEST_RENDER_FAULT", fault)
     with pytest.raises(RenderVerificationError) as caught:
         _bridge(executable, [source.parent, tmp_path], fixture=True).render_view(
             str(source),
