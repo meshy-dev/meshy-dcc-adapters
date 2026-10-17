@@ -105,14 +105,17 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
         stage = Path(temp) / "package"
         shutil.copytree(python_home, stage / "python", symlinks=False, ignore=EXCLUDED)
         neutralize_python_prefix(stage / "python", python_home)
-        python = stage / "python" / "bin" / f"python{PYTHON_VERSION}"
+        site = stage / "python" / "lib" / f"python{PYTHON_VERSION}" / "site-packages"
+        # By target, so no console script lands in python/bin with a shebang naming this stage.
         subprocess.run(
             [
                 "uv",
                 "pip",
                 "install",
-                "--python",
-                str(python),
+                "--target",
+                str(site),
+                "--python-version",
+                PYTHON_VERSION,
                 "--no-deps",
                 str(core_wheel),
                 str(ROOT),
@@ -120,7 +123,9 @@ def build(core_wheel: Path, python_home: Path, output_dir: Path) -> Path:
             ],
             check=True,
         )
-        strip_build_paths(stage / "python" / "lib" / f"python{PYTHON_VERSION}" / "site-packages")
+        shutil.rmtree(site / "bin", ignore_errors=True)
+        (site / ".lock").unlink(missing_ok=True)
+        strip_build_paths(site)
         for cache in stage.rglob("__pycache__"):
             shutil.rmtree(cache)
         sidecar = stage / "bin" / "meshy-dcc-godot-sidecar"
@@ -192,14 +197,19 @@ def build_windows(core_wheel: Path, python_archive: Path | None, output_dir: Pat
 
 
 def strip_build_paths(site: Path) -> None:
-    """Drop ``direct_url.json``: it records the local paths the wheels were installed from."""
+    """Drop what records the build machine: ``direct_url.json`` (local wheel paths),
+    uv's ``uv_cache.json`` (a timestamp) and the RECORD lines of the removed console
+    scripts (their shebangs name the build interpreter)."""
     for record in site.glob("*.dist-info/RECORD"):
-        direct_url = record.with_name("direct_url.json")
-        if direct_url.exists():
-            direct_url.unlink()
-            prefix = f"{record.parent.name}/direct_url.json,"
-            lines = record.read_text(encoding="utf-8").splitlines(keepends=True)
-            record.write_text("".join(line for line in lines if not line.startswith(prefix)), encoding="utf-8")
+        dropped = []
+        for name in ("direct_url.json", "uv_cache.json"):
+            path = record.with_name(name)
+            if path.exists():
+                path.unlink()
+                dropped.append(f"{record.parent.name}/{name},")
+        lines = record.read_text(encoding="utf-8").splitlines(keepends=True)
+        drop = (*dropped, "bin/", "Scripts/", "../")
+        record.write_text("".join(x for x in lines if not x.startswith(drop)), encoding="utf-8")
 
 
 def neutralize_python_prefix(python: Path, python_home: Path) -> None:
@@ -209,6 +219,9 @@ def neutralize_python_prefix(python: Path, python_home: Path) -> None:
         sysconfig.write_text(text.replace(str(python_home), "/install"), encoding="utf-8")
     for dylib in python.glob("lib/libpython*.dylib"):
         # The interpreter is linked statically; only the library's own id names the path.
+        # A pristine build still names /install: keep its bytes as published.
+        if str(python_home).encode() not in dylib.read_bytes():
+            continue
         subprocess.run(["install_name_tool", "-id", f"@rpath/{dylib.name}", str(dylib)], check=True)
         subprocess.run(["codesign", "--force", "--sign", "-", str(dylib)], check=True, capture_output=True)
 

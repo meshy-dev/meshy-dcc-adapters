@@ -49,4 +49,7 @@ whose wheels to bundle. Both platforms are built on macOS by
 uv run --python 3.11 --no-project python scripts/build_release.py blender --core-wheel-dir <core wheels> --out out
 ```
 
-The Release gets the zips under their CDN names plus `SHA256SUMS`.
+The Release gets the zips under their CDN names plus `SHA256SUMS`. Builds are
+reproducible (the CPython and PyPI packages they take are pinned in
+`build_release.py`), so a local run of the same tag with the same core wheels
+should give the Release's `SHA256SUMS`.

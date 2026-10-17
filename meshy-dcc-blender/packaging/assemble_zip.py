@@ -33,6 +33,7 @@ import hashlib
 import pathlib
 import re
 import shutil
+import stat
 import tempfile
 import urllib.request
 import zipfile
@@ -335,12 +336,16 @@ def assemble(platform: str, output_dir: pathlib.Path, core_wheel: pathlib.Path |
 
         # 4) Zip the extension package contents at archive root. Blender's
         # extension installer expects ``blender_manifest.toml`` at ZIP root.
+        # Sorted entries, fixed timestamps and modes: the same sources give the same zip.
         print(f"Creating {zip_name}...")
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file in addon_dir.rglob("*"):
+            for file in sorted(addon_dir.rglob("*")):
                 if file.is_file() and "__pycache__" not in str(file):
-                    arcname = file.relative_to(addon_dir)
-                    zf.write(file, arcname)
+                    info = zipfile.ZipInfo(file.relative_to(addon_dir).as_posix(), (1980, 1, 1, 0, 0, 0))
+                    mode = 0o755 if file.stat().st_mode & stat.S_IXUSR else 0o644
+                    info.external_attr = (stat.S_IFREG | mode) << 16
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    zf.writestr(info, file.read_bytes())
 
     print(f"Created: {zip_path}")
     return zip_path

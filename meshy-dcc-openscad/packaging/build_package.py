@@ -134,13 +134,7 @@ def build(core_wheel: Path, platform: str, output_dir: Path, archive: "Path | No
         for leftover in ("bin", "Scripts"):
             shutil.rmtree(site / leftover, ignore_errors=True)
         (site / ".lock").unlink(missing_ok=True)
-        for direct_url in site.glob("*.dist-info/direct_url.json"):
-            # It records the local paths the wheels were installed from.
-            direct_url.unlink()
-            record = direct_url.with_name("RECORD")
-            lines = record.read_text(encoding="utf-8").splitlines(keepends=True)
-            prefix = f"{direct_url.parent.name}/direct_url.json,"
-            record.write_text("".join(x for x in lines if not x.startswith(prefix)), "utf-8")
+        strip_build_paths(site)
         for cache in list(stage.rglob("__pycache__")):
             shutil.rmtree(cache)
         launcher = stage / spec["launcher"]
@@ -154,6 +148,22 @@ def build(core_wheel: Path, platform: str, output_dir: Path, archive: "Path | No
         zip_path = output_dir / f"meshy-dcc-openscad-{platform}.zip"
         write_zip(stage, zip_path)
     return zip_path
+
+
+def strip_build_paths(site: Path) -> None:
+    """Drop what records the build machine: ``direct_url.json`` (local wheel paths),
+    uv's ``uv_cache.json`` (a timestamp) and the RECORD lines of the removed console
+    scripts (their shebangs name the build interpreter)."""
+    for record in site.glob("*.dist-info/RECORD"):
+        dropped = []
+        for name in ("direct_url.json", "uv_cache.json"):
+            path = record.with_name(name)
+            if path.exists():
+                path.unlink()
+                dropped.append(f"{record.parent.name}/{name},")
+        lines = record.read_text(encoding="utf-8").splitlines(keepends=True)
+        drop = (*dropped, "bin/", "Scripts/", "../")
+        record.write_text("".join(x for x in lines if not x.startswith(drop)), encoding="utf-8")
 
 
 def write_zip(root: Path, archive: Path) -> None:
