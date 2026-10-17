@@ -1,0 +1,469 @@
+"""Smoke tests for the bootstrap installer, CLI entry point and plugin ZIP.
+
+Covers:
+- Bootstrap unit tests (platform paths, MCP config, ZIP extraction, dry-run, versioning)
+- CLI entry point
+- Plugin ZIP structure validation
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import platform
+import sys
+import zipfile
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+_TOOLS_DIR = _PROJECT_ROOT / "tools"
+_SRC_DIR = _PROJECT_ROOT / "src" / "meshy_dcc_zbrush"
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_tool_module(name: str):
+    """Load a tool script as a module via importlib."""
+    path = _TOOLS_DIR / name
+    spec = importlib.util.spec_from_file_location(name.replace(".py", ""), path)
+    assert spec and spec.loader, f"Could not load spec for {path}"
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestPlatformPaths:
+    """Platform-specific path detection for ZBrush plugin and MCP config."""
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only path test")
+    def test_zbrush_plugin_dir_uses_asset_directory(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.object(platform, "system", return_value="Windows"):
+            with patch.dict(os.environ, {"ZBRUSH_USER_ASSETS_DIR": r"D:\ZBrushAssets"}):
+                result = mod._get_zbrush_plugin_dir()
+            assert result == Path(r"D:\ZBrushAssets")
+
+    def test_zbrush_plugin_dir_uses_first_configured_plugin_path(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.dict(
+            os.environ,
+            {"ZBRUSH_USER_ASSETS_DIR": "", "ZBRUSH_PLUGIN_PATH": os.pathsep.join(("/plugins/one", "/plugins/two"))},
+        ):
+            result = mod._get_zbrush_plugin_dir()
+        assert result == Path("/plugins/one")
+
+    def test_zbrush_plugin_dir_requires_discoverable_path(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.dict(os.environ, {"ZBRUSH_USER_ASSETS_DIR": "", "ZBRUSH_PLUGIN_PATH": ""}):
+            with pytest.raises(RuntimeError, match="ZBRUSH_USER_ASSETS_DIR"):
+                mod._get_zbrush_plugin_dir()
+
+    def test_cursor_config_path_windows(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.object(platform, "system", return_value="Windows"):
+            with patch.dict(os.environ, {"APPDATA": r"C:\Users\testuser\AppData\Roaming"}):
+                result = mod._get_cursor_config_path()
+            assert "Cursor" in str(result)
+            assert "cline_mcp_settings.json" in str(result)
+
+    def test_cursor_config_path_macos(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.object(platform, "system", return_value="Darwin"):
+            with patch.object(Path, "home", return_value=Path("/Users/testuser")):
+                result = mod._get_cursor_config_path()
+            parts = result.parts
+            assert "Cursor" in parts
+            assert "cline_mcp_settings.json" in parts
+
+    def test_claude_config_path_windows(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.object(platform, "system", return_value="Windows"):
+            with patch.dict(os.environ, {"APPDATA": r"C:\Users\testuser\AppData\Roaming"}):
+                result = mod._get_claude_config_path()
+            assert "Claude" in str(result)
+            assert "claude_desktop_config.json" in str(result)
+
+    def test_claude_config_path_macos(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.object(platform, "system", return_value="Darwin"):
+            with patch.object(Path, "home", return_value=Path("/Users/testuser")):
+                result = mod._get_claude_config_path()
+            parts = result.parts
+            assert "Claude" in parts
+            assert "claude_desktop_config.json" in parts
+
+
+class TestMCPConfig:
+    """MCP config generation and merging."""
+
+    def test_merge_into_empty(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        server_config = {"url": "http://127.0.0.1:8765/mcp"}
+        result = mod._merge_mcp_config({}, "zbrush", server_config)
+        assert result == {"mcpServers": {"zbrush": {"url": "http://127.0.0.1:8765/mcp"}}}
+
+    def test_merge_preserves_existing_servers(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        existing = {"mcpServers": {"other": {"command": "foo"}}}
+        server_config = {"url": "http://127.0.0.1:8765/mcp"}
+        result = mod._merge_mcp_config(existing, "zbrush", server_config)
+        assert "other" in result["mcpServers"]
+        assert result["mcpServers"]["other"] == {"command": "foo"}
+        assert "zbrush" in result["mcpServers"]
+
+    def test_merge_overwrites_existing_zbrush_entry(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        existing = {"mcpServers": {"zbrush": {"url": "http://old-url"}}}
+        server_config = {"url": "http://127.0.0.1:8765/mcp"}
+        result = mod._merge_mcp_config(existing, "zbrush", server_config)
+        assert result["mcpServers"]["zbrush"] == {"url": "http://127.0.0.1:8765/mcp"}
+
+    def test_merge_no_mcp_servers_key(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        existing = {"someOtherKey": "value"}
+        server_config = {"url": "http://127.0.0.1:8765/mcp"}
+        result = mod._merge_mcp_config(existing, "zbrush", server_config)
+        assert "someOtherKey" in result
+        assert "zbrush" in result["mcpServers"]
+
+    def test_write_config_dry_run_no_file_write(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        config_path = tmp_path / "claude_desktop_config.json"
+        with patch.object(mod, "_get_claude_config_path", return_value=config_path):
+            mod.write_mcp_config("claude", dry_run=True)
+        assert not config_path.exists()
+
+    def test_write_config_creates_file(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        config_path = tmp_path / "claude_desktop_config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        with patch.object(mod, "_get_claude_config_path", return_value=config_path):
+            mod.write_mcp_config("claude", dry_run=False)
+        assert config_path.exists()
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        assert data["mcpServers"]["zbrush"]["url"] == "http://127.0.0.1:19765/mcp"
+
+    def test_write_config_updates_existing(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        config_path = tmp_path / "claude_desktop_config.json"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(
+            json.dumps({"mcpServers": {"zbrush": {"url": "http://old"}}}),
+            encoding="utf-8",
+        )
+        with patch.object(mod, "_get_claude_config_path", return_value=config_path):
+            mod.write_mcp_config("claude", dry_run=False)
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        assert data["mcpServers"]["zbrush"]["url"] == "http://127.0.0.1:19765/mcp"
+
+    def test_write_config_both_targets(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        cursor_path = tmp_path / "cursor_config.json"
+        claude_path = tmp_path / "claude_config.json"
+        cursor_path.parent.mkdir(parents=True, exist_ok=True)
+        claude_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with patch.object(mod, "_get_cursor_config_path", return_value=cursor_path):
+            with patch.object(mod, "_get_claude_config_path", return_value=claude_path):
+                mod.write_mcp_config("both", dry_run=False)
+
+        for p in (cursor_path, claude_path):
+            assert p.exists()
+            data = json.loads(p.read_text(encoding="utf-8"))
+            assert data["mcpServers"]["zbrush"]["url"] == "http://127.0.0.1:19765/mcp"
+
+
+class TestVersionSorting:
+    """Version string parsing and comparison."""
+
+    def test_parse_simple_version(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        assert mod._parse_version("0.2.7") == (0, 2, 7)
+
+    def test_parse_v_prefix(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        assert mod._parse_version("v0.2.7") == (0, 2, 7)
+
+    def test_parse_version_sorting(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        versions = ["0.2.7", "0.2.6", "0.3.0", "0.1.9", "1.0.0"]
+        sorted_versions = sorted(versions, key=mod._parse_version)
+        assert sorted_versions == ["0.1.9", "0.2.6", "0.2.7", "0.3.0", "1.0.0"]
+
+    def test_parse_version_non_numeric(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        # "0.2.7-alpha" splits to ["0", "2", "7-alpha"]
+        # int("7-alpha") fails → 0, so result is (0, 2, 0)
+        result = mod._parse_version("0.2.7-alpha")
+        assert result[:2] == (0, 2)
+        assert len(result) >= 3
+
+
+class TestPluginExtraction:
+    """Plugin ZIP extraction and mode-aware file selection."""
+
+    def _make_test_zip(self, tmp_path: Path, version: str = "0.2.0") -> Path:
+        """Create a minimal test plugin ZIP."""
+        zip_path = tmp_path / f"meshy-dcc-zbrush-plugin-{version}.zip"
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("embedded/meshy_dcc_zbrush/__init__.py", "# embedded plugin")
+            zf.writestr("embedded/meshy_dcc_zbrush/core.py", "# core module")
+            zf.writestr("embedded/meshy_dcc_zbrush_plugin.py", "# autostart plugin")
+            zf.writestr("sidecar/mcp_socket_bridge.py", "# socket bridge")
+            zf.writestr("install/install-windows.ps1", "# windows installer")
+            zf.writestr("install/install-macos.sh", "#!/bin/sh\necho ok")
+            zf.writestr("README-INSTALL.txt", "readme")
+        return zip_path
+
+    def test_embedded_mode_skips_sidecar_files(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        zip_path = self._make_test_zip(tmp_path)
+        target = tmp_path / "ZBrushAssets"
+
+        mod.extract_plugin(zip_path, target, "embedded", dry_run=False)
+
+        assert (target / "meshy_dcc_zbrush" / "__init__.py").exists()
+        assert (target / "meshy_dcc_zbrush" / "core.py").exists()
+        assert (target / "meshy_dcc_zbrush_plugin.py").exists()
+        assert not (target / "mcp_socket_bridge.py").exists()
+
+    def test_sidecar_direct_extraction_cannot_overwrite_shared_init(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        zip_path = self._make_test_zip(tmp_path)
+        target = tmp_path / "ZBrushAssets"
+        shared_init = target / "Python" / "init.py"
+        shared_init.parent.mkdir(parents=True)
+        shared_init.write_text("# studio startup\n", encoding="utf-8")
+
+        with pytest.raises(RuntimeError, match="lifecycle|meshy-dcc-zbrush install"):
+            mod.extract_plugin(zip_path, target, "sidecar", dry_run=False)
+
+        assert shared_init.read_text(encoding="utf-8") == "# studio startup\n"
+
+    def test_extract_creates_target_directory(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        zip_path = self._make_test_zip(tmp_path)
+        target = tmp_path / "nonexistent" / "ZBrushAssets"
+
+        mod.extract_plugin(zip_path, target, "embedded", dry_run=False)
+        assert target.exists()
+
+    def test_dry_run_extract_no_files_written(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        zip_path = self._make_test_zip(tmp_path)
+        target = tmp_path / "ZBrushAssets"
+
+        # Ensure target does not exist before
+        if target.exists():
+            import shutil
+
+            shutil.rmtree(target)
+
+        mod.extract_plugin(zip_path, target, "embedded", dry_run=True)
+        assert not target.exists()
+
+
+class TestDryRun:
+    """Dry-run mode tests — verify no side effects."""
+
+    def test_dry_run_uses_placeholder_when_plugin_path_is_unknown(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.dict(os.environ, {"ZBRUSH_USER_ASSETS_DIR": "", "ZBRUSH_PLUGIN_PATH": ""}):
+            result = mod._resolve_plugin_dir(None, dry_run=True)
+
+        assert result == Path("<ZBRUSH_PLUGIN_PATH>")
+
+    def test_real_install_still_requires_discoverable_plugin_path(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch.dict(os.environ, {"ZBRUSH_USER_ASSETS_DIR": "", "ZBRUSH_PLUGIN_PATH": ""}):
+            with pytest.raises(RuntimeError, match="ZBRUSH_USER_ASSETS_DIR"):
+                mod._resolve_plugin_dir(None, dry_run=False)
+
+    def test_dry_run_wheel_no_pip_call(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch("subprocess.check_call") as mock_check_call:
+            mod.install_wheel("0.2.7", dry_run=True)
+            mock_check_call.assert_not_called()
+
+    def test_dry_run_plugin_download_no_file(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        result = mod.download_plugin_zip("0.2.7", tmp_path, dry_run=True)
+
+        assert not result.exists()
+
+    def test_legacy_download_checksum_mismatch_never_enters_cache(self, tmp_path: Path) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        release = {
+            "assets": [
+                {
+                    "name": "meshy-dcc-zbrush-plugin-0.2.7.zip",
+                    "size": 7,
+                    "digest": f"sha256:{'0' * 64}",
+                    "browser_download_url": (
+                        "https://github.com/meshy-dev/meshy-dcc-zbrush/releases/download/"
+                        "v0.2.7/meshy-dcc-zbrush-plugin-0.2.7.zip"
+                    ),
+                }
+            ]
+        }
+        response = patch.object(mod.urllib.request, "urlopen")
+        download = patch.object(
+            mod.urllib.request,
+            "urlretrieve",
+            side_effect=lambda _url, path: Path(path).write_bytes(b"payload"),
+        )
+        with response as mocked_response, download:
+            mocked_response.return_value.__enter__.return_value.read.return_value = json.dumps(release).encode()
+            with pytest.raises(SystemExit):
+                mod.download_plugin_zip("0.2.7", tmp_path)
+
+        assert not (tmp_path / "meshy-dcc-zbrush-plugin-0.2.7.zip").exists()
+        assert not list(tmp_path.glob("*.download"))
+
+    def test_wheel_install_called_when_not_dry_run(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        with patch("subprocess.check_call") as mock_check_call:
+            mod.install_wheel("0.2.7", dry_run=False)
+            mock_check_call.assert_called_once()
+            # Verify the command includes the right package
+            cmd_args = mock_check_call.call_args[0][0]
+            assert "meshy-dcc-zbrush==0.2.7" in cmd_args
+
+
+class TestBootstrapConstants:
+    """Verify bootstrap constants match project defaults."""
+
+    def test_mcp_port_matches_project(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        assert mod.MCP_PORT == 0
+
+    def test_gateway_port_matches_project(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        assert mod.GATEWAY_PORT == 19765
+
+    def test_github_repo_correct(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        assert "meshy-dcc/meshy-dcc-zbrush" in mod.GITHUB_REPO
+
+    def test_mcp_config_template_has_correct_url(self) -> None:
+        mod = _load_tool_module("bootstrap_agent_install.py")
+        url = mod.MCP_CONFIG_TEMPLATE["mcpServers"]["zbrush"]["url"]
+        assert f"127.0.0.1:{mod.GATEWAY_PORT}/mcp" in url
+
+
+# ---------------------------------------------------------------------------
+# Clean-venv smoke test
+# ---------------------------------------------------------------------------
+
+
+class TestCleanVenvSmoke:
+    """Verify wheel build + install + import + CLI entry point from source checkout."""
+
+    def test_cli_entry_point_exists(self) -> None:
+        """Verify the CLI entry point meshy-dcc-zbrush is registered."""
+        # Even if import fails (no core installed),
+        # the module should be importable and have a main
+        # If meshy-dcc-core is installed, --help should work
+        # We check that at minimum the module can be loaded
+        try:
+            import meshy_dcc_zbrush.cli
+
+            assert hasattr(meshy_dcc_zbrush.cli, "main")
+        except ImportError:
+            pytest.skip("meshy-dcc-core not installed — cannot fully test CLI")
+
+
+# ---------------------------------------------------------------------------
+# Plugin ZIP structure validation
+# ---------------------------------------------------------------------------
+
+
+class TestPluginZipStructure:
+    """Validate that the packed plugin ZIP contains all required components."""
+
+    def test_pack_plugin_contains_required_dirs(self, tmp_path: Path) -> None:
+        """Build a plugin ZIP and verify its internal structure."""
+        # Import pack_plugin module
+        pack_path = _TOOLS_DIR / "pack_plugin.py"
+        spec = importlib.util.spec_from_file_location("pack_plugin", pack_path)
+        assert spec and spec.loader
+        pack_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pack_mod)
+
+        output = pack_mod.pack_plugin(tmp_path, "0.2.0")
+        assert output.is_file()
+        assert output.name == "meshy-dcc-zbrush-plugin-0.2.0.zip"
+
+        with zipfile.ZipFile(output, "r") as zf:
+            names = sorted(zf.namelist())
+
+        # Required directories / prefixes
+        has_embedded = any(n.startswith("embedded/") for n in names)
+        has_sidecar = any(n.startswith("sidecar/") for n in names)
+        has_install = any(n.startswith("install/") for n in names)
+        has_readme = any(n == "README-INSTALL.txt" for n in names)
+
+        assert has_embedded, f"Missing embedded/ in {names}"
+        assert has_sidecar, f"Missing sidecar/ in {names}"
+        assert has_install, f"Missing install/ in {names}"
+        assert has_readme, f"Missing README-INSTALL.txt in {names}"
+
+    def test_pack_plugin_contains_socket_bridge(self, tmp_path: Path) -> None:
+        pack_path = _TOOLS_DIR / "pack_plugin.py"
+        spec = importlib.util.spec_from_file_location("pack_plugin", pack_path)
+        assert spec and spec.loader
+        pack_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pack_mod)
+
+        output = pack_mod.pack_plugin(tmp_path, "0.2.0")
+        with zipfile.ZipFile(output, "r") as zf:
+            names = zf.namelist()
+
+        assert "sidecar/mcp_socket_bridge.py" in names
+
+    def test_pack_plugin_contains_autostart_entry(self, tmp_path: Path) -> None:
+        pack_path = _TOOLS_DIR / "pack_plugin.py"
+        spec = importlib.util.spec_from_file_location("pack_plugin", pack_path)
+        assert spec and spec.loader
+        pack_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pack_mod)
+
+        output = pack_mod.pack_plugin(tmp_path, "0.2.0")
+        with zipfile.ZipFile(output, "r") as zf:
+            names = zf.namelist()
+
+        assert "embedded/meshy_dcc_zbrush_plugin.py" in names
+
+    def test_pack_plugin_contains_install_scripts(self, tmp_path: Path) -> None:
+        pack_path = _TOOLS_DIR / "pack_plugin.py"
+        spec = importlib.util.spec_from_file_location("pack_plugin", pack_path)
+        assert spec and spec.loader
+        pack_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pack_mod)
+
+        output = pack_mod.pack_plugin(tmp_path, "0.2.0")
+        with zipfile.ZipFile(output, "r") as zf:
+            names = zf.namelist()
+            windows = zf.read("install/install-windows.ps1").decode("utf-8")
+            macos = zf.read("install/install-macos.sh").decode("utf-8")
+            readme = zf.read("README-INSTALL.txt").decode("utf-8")
+
+        assert "install/install-windows.ps1" in names
+        assert "install/install-macos.sh" in names
+        assert "meshy-dcc-zbrush install" in windows
+        assert "meshy-dcc-zbrush install" in macos
+        assert "Copy-Item" not in windows
+        assert "sidecar/mcp_socket_bridge.py" not in macos
+        assert "raw.githubusercontent.com/meshy-dev/meshy-dcc-zbrush/main/install.md" in readme

@@ -1,0 +1,1486 @@
+"""ZBrush socket bridge for the Meshy DCC sidecar.
+
+``meshy-dcc start-instance`` runs this file with ``ZBrush -script <this file>``.
+It listens on a loopback TCP port, executes JSON-RPC requests against
+``zbrush.commands`` on the ZBrush main thread, and starts the sidecar from the
+Meshy DCC package it ships in: that package's Python runs ``meshy_dcc_zbrush
+serve`` with the port and a per-launch token. Without such a package next to
+this file (a hand-copied bridge), it listens on 19876 or
+``MESHY_DCC_ZBRUSH_SOCKET_PORT`` and leaves the sidecar to the operator.
+``MESHY_DCC_ZBRUSH_BRIDGE_TOKEN``, when set, is the token the bridge requires.
+
+Registers a top-level Meshy DCC palette with Copy Instance ID, Server Info, and
+About Meshy DCC actions through the official ZBrush Python SDK.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import importlib
+import json
+import math
+import ntpath
+import os
+import queue
+import secrets
+import socket
+import subprocess
+import sys
+import threading
+import time
+import traceback
+import uuid
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, Iterator, Optional
+
+_ZBRUSH_REQUEST_LOCK = threading.Lock()
+_CLIENT_READ_SECONDS = 1.0
+_UI_POLL_SECONDS = 0.02
+_REQUEST_TIMEOUT_SECONDS = 600.0
+_REQUEST_QUEUE: "queue.Queue[Dict[str, Any]]" = queue.Queue()
+_BRIDGE_THREAD: Optional[threading.Thread] = None
+_REQUEST_STATE_LOCK = threading.Lock()
+_ACTIVE_REQUEST: Optional[Dict[str, Any]] = None
+_PUMP_TIMER_ID = 0
+_PUMP_TIMER_CALLBACK: Any = None
+_BRIDGE_INSTANCE_ID = str(uuid.uuid4())
+_DEFAULT_SOCKET_PORT = 19876
+_TOKEN_ENV = "MESHY_DCC_ZBRUSH_BRIDGE_TOKEN"
+# Required in every request when set; only the sidecar this bridge starts learns it.
+_BRIDGE_TOKEN: Optional[str] = None
+_SIDECAR: Optional["subprocess.Popen[bytes]"] = None
+
+
+def _mark(message: str) -> None:
+    """Append optional startup diagnostics without depending on host logging."""
+    log_path = os.environ.get("MESHY_DCC_ZBRUSH_BRIDGE_LOG", "").strip()
+    if not log_path:
+        return
+    with open(log_path, "a", encoding="utf-8") as stream:
+        stream.write(message + "\n")
+
+
+def _capture_bootstrap_error(stage: str, error: BaseException) -> None:
+    """Persist a bounded JSONL startup error for ``meshy-dcc-zbrush verify``."""
+    configured = os.environ.get("MESHY_DCC_ZBRUSH_BOOTSTRAP_ERRORS", "").strip()
+    default_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    path = configured or os.path.join(default_root, ".meshy-dcc", "bootstrap-errors.jsonl")
+    payload = {
+        "timestamp": time.time(),
+        "stage": stage,
+        "reason": str(error),
+        "exception_type": type(error).__name__,
+    }
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        with open(path, "a", encoding="utf-8") as stream:
+            stream.write(json.dumps(payload, sort_keys=True) + "\n")
+    except BaseException:
+        # Startup error reporting must not hide the original bootstrap failure.
+        pass
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, str(default)).strip()
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _handle_request(payload: Dict[str, Any]) -> Dict[str, Any]:
+    method = payload.get("method")
+    params = payload.get("params") or {}
+    req_id = payload.get("id", 0)
+
+    if method == "ping":
+        with _REQUEST_STATE_LOCK:
+            active = _ACTIVE_REQUEST
+            active_method = active["payload"].get("method") if active else None
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {"ok": True, "busy": active is not None, "active_method": active_method},
+        }
+
+    with _ZBRUSH_REQUEST_LOCK:
+        return _handle_zbrush_request(method, params, req_id)
+
+
+def _handle_zbrush_request(method: Any, params: Dict[str, Any], req_id: Any) -> Dict[str, Any]:
+    try:
+        if method == "get_session_info":
+            result = _get_session_info()
+        elif method == "get_scene_info":
+            result = _get_scene_info()
+        elif method == "list_subtools":
+            result = _list_subtools()
+        elif method == "execute_python":
+            result = _execute_python(params.get("code", ""), params.get("context") or {})
+        elif method == "select_subtool":
+            result = _select_subtool(int(params.get("index", -1)))
+        elif method == "get_subtool_status":
+            index = params.get("index")
+            result = _get_subtool_status(None if index is None else int(index))
+        elif method == "refine_active_subtool":
+            result = _refine_active_subtool(
+                int(params.get("subdivision_levels", 1)),
+                float(params.get("polish", 0)),
+                float(params.get("inflate", 0)),
+            )
+        elif method == "remesh_active_subtool":
+            result = _remesh_active_subtool(
+                int(params.get("target_face_count", 100_000)),
+                bool(params.get("duplicate", True)),
+            )
+        elif method == "inspect_active_mesh":
+            result = _inspect_active_mesh()
+        elif method == "bake_active_subtool_map":
+            result = _bake_active_subtool_map(
+                str(params.get("map_type", "")),
+                str(params.get("output_path", "")),
+                int(params.get("width", 2048)),
+                int(params.get("height", 2048)),
+                bool(params.get("smooth", True)),
+                int(params.get("border", 8)),
+            )
+        elif method == "create_wrinkle_brush":
+            result = _create_wrinkle_brush(str(params.get("output_path", "")))
+        elif method == "load_wrinkle_brush":
+            result = _load_wrinkle_brush(str(params.get("brush_path", "")))
+        elif method == "export_active_subtool_obj":
+            result = _export_active_subtool_obj(str(params.get("output_path", "")))
+        elif method == "capture_turntable":
+            result = _capture_turntable(
+                str(params.get("output_dir", "")),
+                params.get("angles"),
+                str(params.get("prefix", "zbrush-turntable")),
+                bool(params.get("bpr_render", True)),
+                bool(params.get("polyframe", False)),
+            )
+        elif method == "import_to_scene":
+            result = _import_to_scene(str(params.get("file_path", "")))
+        elif method == "save_file":
+            result = _save_file(
+                str(params.get("kind", "")),
+                str(params.get("output_path", "")),
+                params.get("overwrite") is True,
+            )
+        elif method == "open_project":
+            result = _open_project(str(params.get("path", "")))
+        else:
+            return {
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "error": {"code": -32601, "message": f"Unknown method: {method}"},
+            }
+        return {"jsonrpc": "2.0", "id": req_id, "result": result}
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": -32000, "message": str(exc), "data": traceback.format_exc()},
+        }
+
+
+def _import_zbc():
+    import zbrush.commands as zbc  # noqa: PLC0415
+
+    return zbc
+
+
+# ── OBJ face-size preflight ──────────────────────────────────────────────
+# Mirrors meshy_dcc_zbrush._obj_preflight. This plugin is vendored into ZBrush
+# and may run without meshy-dcc-zbrush importable, so the logic is duplicated
+# here rather than imported. Keep the two copies in step.
+
+_MAX_FACE_VERTICES = 4
+_PREFLIGHT_MAX_FACES = 8
+_PREFLIGHT_MAX_BYTES = 256 * 1024 * 1024
+
+
+def _iter_obj_lines(stream):
+    """Yield ``(line_number, content)`` with BOM, comments and continuations resolved.
+
+    Mirrors ``meshy_dcc_zbrush._obj_preflight._iter_obj_lines``. A UTF-8 BOM
+    would otherwise hide a leading ``f`` record, and a trailing backslash
+    continues a face onto the next line — counting per line under-counts it.
+    Both cases would let an over-large face through to Tool:Import.
+    """
+    pending = ""
+    pending_start = 0
+    for line_number, raw_line in enumerate(stream, start=1):
+        line = raw_line.lstrip("\ufeff").rstrip("\n").rstrip("\r")
+        if not pending:
+            pending_start = line_number
+        comment = line.find("#")
+        if comment != -1:
+            line = line[:comment]
+        stripped = line.strip()
+        if stripped.endswith("\\"):
+            pending += stripped[:-1] + " "
+            continue
+        combined = pending + stripped
+        pending = ""
+        if combined:
+            yield pending_start, combined
+    if pending.strip():
+        yield pending_start, pending.strip()
+
+
+def _scan_obj_oversized_faces(path, max_faces=_PREFLIGHT_MAX_FACES, max_bytes=_PREFLIGHT_MAX_BYTES):
+    """Stream an OBJ and report faces with more than ``_MAX_FACE_VERTICES`` vertices.
+
+    ZBrush's OBJ importer triangulates on load; an over-large face makes it raise
+    a blocking Note. While that Note is open the main thread sits in a native
+    ``GetSystemInput`` loop holding the GIL, so the bridge cannot answer or
+    dismiss it. Validating here keeps the Note from ever opening.
+
+    ``ok=False`` means "could not verify"; callers must refuse the import rather
+    than fail open.
+    """
+    result = {
+        "ok": False,
+        "faces_checked": 0,
+        "oversized": [],
+        "truncated": False,
+        "max_face_vertices": _MAX_FACE_VERTICES,
+        "size_bytes": None,
+        "reason": None,
+    }
+    try:
+        size_bytes = os.path.getsize(path)
+    except OSError:
+        result["reason"] = "UNREADABLE"
+        return result
+
+    result["size_bytes"] = size_bytes
+    if size_bytes > max_bytes:
+        result["reason"] = "FILE_TOO_LARGE"
+        return result
+
+    oversized = []
+    faces_checked = 0
+    try:
+        with open(path, "r", encoding="utf-8", errors="strict") as stream:
+            for line_number, line in _iter_obj_lines(stream):
+                tokens = line.split()
+                if not tokens or tokens[0] != "f":
+                    continue
+
+                faces_checked += 1
+                vertex_count = len([token for token in tokens[1:] if token])
+                if vertex_count > _MAX_FACE_VERTICES:
+                    oversized.append({"line": line_number, "vertex_count": vertex_count})
+                    if len(oversized) >= max_faces:
+                        result["truncated"] = True
+                        break
+    except (OSError, UnicodeDecodeError):
+        result["reason"] = "UNREADABLE"
+        return result
+
+    result["ok"] = True
+    result["faces_checked"] = faces_checked
+    result["oversized"] = oversized
+    return result
+
+
+def _obj_preflight_error(preflight):
+    faces = preflight.get("oversized") or []
+    count = len(faces)
+    plural = "face" if count == 1 else "faces"
+    return {
+        "success": False,
+        "message": (
+            "OBJ has {} {} with more than {} vertices; ZBrush would open a "
+            "blocking Note. Triangulate or quadrangulate the mesh first "
+            "(ZRemesher or an external DCC) and retry."
+        ).format(count, plural, _MAX_FACE_VERTICES),
+        "error": "OBJ_FACE_TOO_LARGE",
+        "imported_nodes": [],
+        "preflight": preflight,
+    }
+
+
+def _obj_preflight_unverifiable_error(preflight):
+    reason = preflight.get("reason") or "UNREADABLE"
+    return {
+        "success": False,
+        "message": (
+            "OBJ could not be validated before import ({}); refusing to press "
+            "Tool:Import because an unreadable or oversized mesh may open a "
+            "blocking Note. Verify the file and retry."
+        ).format(reason),
+        "error": "OBJ_PREFLIGHT_FAILED",
+        "imported_nodes": [],
+        "preflight": preflight,
+    }
+
+
+def _subtool_status_flags(status: int) -> Dict[str, bool]:
+    return {"visible": bool(status & 0x01), "locked": bool(status & 0x02)}
+
+
+@contextmanager
+def _quiet_ui_actions(zbc: Any) -> Iterator[None]:
+    zbc.show_actions(0)
+    try:
+        yield
+    finally:
+        zbc.show_actions(1)
+
+
+def _run_quiet_ui(zbc: Any, action: Callable[[], None]) -> None:
+    with _quiet_ui_actions(zbc):
+        action()
+
+
+def _subtool_name(path: str) -> str:
+    return ntpath.basename(path)
+
+
+def _get_session_info() -> Dict[str, Any]:
+    zbc = _import_zbc()
+    identity_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meshy_dcc_zbrush_install_identity.json")
+    try:
+        with open(identity_path, "r", encoding="utf-8") as stream:
+            install_identity = json.load(stream)
+    except (OSError, ValueError):
+        install_identity = {}
+    try:
+        with open(__file__, "rb") as stream:
+            bridge_digest = hashlib.sha256(stream.read()).hexdigest()
+    except OSError:
+        bridge_digest = ""
+    return {
+        "adapter_version": install_identity.get("adapter_version"),
+        "bridge_instance_id": _BRIDGE_INSTANCE_ID,
+        "bridge_module_path": os.path.abspath(__file__),
+        "bridge_module_sha256": bridge_digest,
+        "install_id": install_identity.get("install_id"),
+        "pid": os.getpid(),
+        "socket_endpoint": install_identity.get("socket_endpoint"),
+        "selected_dcc_path": install_identity.get("dcc_path"),
+        "selected_dcc_sha256": install_identity.get("dcc_sha256"),
+        "zbrush_version": f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}",
+        "zbrush_commands_origin": os.path.abspath(getattr(zbc, "__file__", "")),
+        "active_tool_path": str(zbc.get_active_tool_path() or ""),
+        "subtool_count": int(zbc.get_subtool_count()),
+        "embedded_python": True,
+    }
+
+
+def _get_scene_info() -> Dict[str, Any]:
+    zbc = _import_zbc()
+    try:
+        active_index = int(zbc.get_active_subtool_index())
+    except Exception:
+        active_index = None
+    return {
+        "active_tool_path": str(zbc.get_active_tool_path() or ""),
+        "subtool_count": int(zbc.get_subtool_count()),
+        "active_subtool_index": active_index,
+    }
+
+
+def _list_subtools() -> Dict[str, Any]:
+    zbc = _import_zbc()
+    count = int(zbc.get_subtool_count())
+    subtools = []
+    for index in range(count):
+        raw_status = int(zbc.get_subtool_status(index))
+        subtools.append(
+            {
+                "index": index,
+                "raw_status": raw_status,
+                "flags": _subtool_status_flags(raw_status),
+            }
+        )
+    return {"count": count, "subtools": subtools}
+
+
+def _select_subtool(index: int) -> Dict[str, Any]:
+    zbc = _import_zbc()
+    count = int(zbc.get_subtool_count())
+    if index < 0 or index >= count:
+        return {
+            "success": False,
+            "message": f"Subtool index {index} out of range",
+            "error": "INVALID_SUBTOOL_INDEX",
+            "count": count,
+            "index": index,
+        }
+    zbc.select_subtool(index)
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "index": index,
+        "active_tool_path": path,
+        "subtool_name": _subtool_name(path),
+    }
+
+
+def _get_subtool_status(index: Optional[int]) -> Dict[str, Any]:
+    zbc = _import_zbc()
+    resolved_index = int(zbc.get_active_subtool_index()) if index is None else index
+    raw_status = int(zbc.get_subtool_status(resolved_index))
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "index": resolved_index,
+        "raw_status": raw_status,
+        "flags": _subtool_status_flags(raw_status),
+        "active_tool_path": path,
+    }
+
+
+def _refine_active_subtool(
+    subdivision_levels: int,
+    polish: float,
+    inflate: float,
+) -> Dict[str, Any]:
+    zbc = _import_zbc()
+    for _ in range(subdivision_levels):
+        zbc.press("Tool:Geometry:Divide")
+    if polish:
+        zbc.set("Tool:Deformation:Polish", polish)
+    if inflate:
+        zbc.set("Tool:Deformation:Inflate", inflate)
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "active_tool_path": path,
+        "subtool_name": _subtool_name(path),
+        "subdivision_levels": subdivision_levels,
+        "polish": polish,
+        "inflate": inflate,
+    }
+
+
+def _remesh_active_subtool(target_face_count: int, duplicate: bool) -> Dict[str, Any]:
+    if not 1_000 <= target_face_count <= 100_000:
+        return {
+            "success": False,
+            "message": "target_face_count must be between 1000 and 100000",
+            "error": "INVALID_TARGET_FACE_COUNT",
+        }
+
+    zbc = _import_zbc()
+    target_control = "Tool:Geometry:ZRemesher:Target Polygons Count"
+    remesh_control = "Tool:Geometry:ZRemesher"
+    duplicate_control = "Tool:SubTool:Duplicate"
+    required = [target_control, remesh_control]
+    if duplicate:
+        required.append(duplicate_control)
+    _require_controls(zbc, *required)
+
+    face_count_before = int(zbc.query_mesh3d(1)[0])
+    started = time.perf_counter()
+    with _quiet_ui_actions(zbc):
+        if duplicate:
+            zbc.press(duplicate_control)
+        zbc.set(target_control, target_face_count / 1000.0)
+        zbc.press(remesh_control)
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "active_tool_path": path,
+        "subtool_name": _subtool_name(path),
+        "target_face_count": target_face_count,
+        "face_count_before": face_count_before,
+        "face_count_after": int(zbc.query_mesh3d(1)[0]),
+        "duplicate": duplicate,
+        "elapsed_seconds": round(time.perf_counter() - started, 3),
+    }
+
+
+def _inspect_active_mesh() -> Dict[str, Any]:
+    zbc = _import_zbc()
+    uv_bounds = [float(value) for value in zbc.query_mesh3d(3)]
+    has_uvs = len(uv_bounds) == 4 and uv_bounds[2] > uv_bounds[0] and uv_bounds[3] > uv_bounds[1]
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "active_tool_path": path,
+        "subtool_name": _subtool_name(path),
+        "point_count": int(zbc.query_mesh3d(0)[0]),
+        "face_count": int(zbc.query_mesh3d(1)[0]),
+        "bounds": [float(value) for value in zbc.query_mesh3d(2)],
+        "uv_bounds": uv_bounds,
+        "has_uvs": has_uvs,
+        "mesh_area": float(zbc.query_mesh3d(8)[0]),
+        "solid": bool(zbc.is_polymesh3d_solid()),
+    }
+
+
+def _bake_active_subtool_map(
+    map_type: str,
+    output_path: str,
+    width: int,
+    height: int,
+    smooth: bool,
+    border: int,
+) -> Dict[str, Any]:
+    normalized_type = map_type.strip().lower()
+    if normalized_type not in {"normal", "displacement"}:
+        return {
+            "success": False,
+            "message": "map_type must be normal or displacement",
+            "error": "UNSUPPORTED_MAP_TYPE",
+            "map_type": normalized_type,
+            "output_path": output_path,
+        }
+    if not output_path:
+        return {"success": False, "message": "output_path must not be empty", "error": "OUTPUT_PATH_MISSING"}
+    abs_path = os.path.abspath(output_path)
+    if os.path.splitext(abs_path)[1].lower() not in {".tif", ".tiff"}:
+        return {
+            "success": False,
+            "message": "Baked maps must use a .tif or .tiff output path",
+            "error": "UNSUPPORTED_FORMAT",
+            "output_path": abs_path,
+        }
+    directory = os.path.dirname(abs_path)
+    if directory and not os.path.isdir(directory):
+        return {
+            "success": False,
+            "message": f"Output directory does not exist: {directory}",
+            "error": "OUTPUT_DIR_MISSING",
+            "output_path": abs_path,
+        }
+    if width != height:
+        return {
+            "success": False,
+            "message": "ZBrush native map baking requires equal width and height",
+            "error": "NON_SQUARE_MAP",
+            "output_path": abs_path,
+        }
+    if not (256 <= width <= 8192) or width & (width - 1):
+        return {
+            "success": False,
+            "message": "width and height must be the same power of two between 256 and 8192",
+            "error": "INVALID_MAP_SIZE",
+            "output_path": abs_path,
+        }
+    if not 0 <= border <= 16:
+        return {
+            "success": False,
+            "message": "border must be between 0 and 16",
+            "error": "INVALID_BORDER",
+            "output_path": abs_path,
+        }
+
+    zbc = _import_zbc()
+    uv_bounds = [float(value) for value in zbc.query_mesh3d(3)]
+    if len(uv_bounds) != 4 or uv_bounds[2] <= uv_bounds[0] or uv_bounds[3] <= uv_bounds[1]:
+        return {
+            "success": False,
+            "message": "The active subtool has no usable UVs",
+            "error": "UVS_MISSING",
+            "map_type": normalized_type,
+            "output_path": abs_path,
+            "uv_bounds": uv_bounds,
+        }
+
+    map_size_control = "Tool:UV Map:UV Map Size"
+    map_border_control = "Tool:UV Map:UV Map Border"
+    controls = (
+        {
+            "create": "Tool:Normal Map:Create NormalMap",
+            "clone": "Tool:Normal Map:Clone NM",
+            "export": "Texture:Export",
+            "smooth": "Tool:Normal Map:SmoothUV",
+            "tangent": "Tool:Normal Map:Tangent",
+        }
+        if normalized_type == "normal"
+        else {
+            "create": "Tool:Displacement Map:Create DispMap",
+            "clone": "Tool:Displacement Map:Clone Disp",
+            "export": "Alpha:Export",
+            "smooth": "Tool:Displacement Map:SmoothUV",
+        }
+    )
+    setting_controls = [map_size_control, map_border_control, controls["smooth"]]
+    tangent_control = controls.get("tangent")
+    if tangent_control:
+        setting_controls.append(tangent_control)
+    _require_controls(zbc, controls["create"], controls["clone"], controls["export"], *setting_controls)
+    saved_settings = {path: zbc.get(path) for path in setting_controls}
+    stem, extension = os.path.splitext(os.path.basename(abs_path))
+    stage_path = os.path.join(directory, f".{stem}-{os.getpid()}-{time.time_ns()}{extension}")
+    map_created = False
+
+    def bake_and_export() -> None:
+        nonlocal map_created
+        lowered = 0
+        try:
+            zbc.set(map_size_control, width)
+            zbc.set(map_border_control, border)
+            zbc.set(controls["smooth"], int(smooth))
+            if tangent_control:
+                zbc.set(tangent_control, 1)
+            while zbc.exists("Tool:Geometry:Lower Res") and zbc.is_enabled("Tool:Geometry:Lower Res"):
+                zbc.press("Tool:Geometry:Lower Res")
+                lowered += 1
+            zbc.press(controls["create"])
+            if not zbc.is_enabled(controls["clone"]):
+                return
+            zbc.press(controls["clone"])
+            zbc.set_next_filename(stage_path)
+            zbc.press(controls["export"])
+            map_created = True
+        finally:
+            try:
+                for _ in range(lowered):
+                    if not zbc.exists("Tool:Geometry:Higher Res") or not zbc.is_enabled("Tool:Geometry:Higher Res"):
+                        raise RuntimeError("ZBrush could not restore the original subdivision level")
+                    zbc.press("Tool:Geometry:Higher Res")
+            finally:
+                for item_path, value in saved_settings.items():
+                    zbc.set(item_path, value)
+
+    try:
+        _run_quiet_ui(zbc, bake_and_export)
+        if not map_created:
+            return {
+                "success": False,
+                "message": "ZBrush did not create a baked map from the active subdivision stack",
+                "error": "MAP_NOT_CREATED",
+                "map_type": normalized_type,
+                "output_path": abs_path,
+                "uv_bounds": uv_bounds,
+            }
+        if not os.path.isfile(stage_path) or os.path.getsize(stage_path) == 0:
+            raise RuntimeError("ZBrush did not export a non-empty baked map")
+        os.replace(stage_path, abs_path)
+        return {
+            "map_type": normalized_type,
+            "output_path": abs_path,
+            "bytes": os.path.getsize(abs_path),
+            "width": width,
+            "height": height,
+            "smooth": smooth,
+            "border": border,
+            "uv_bounds": uv_bounds,
+        }
+    finally:
+        if os.path.isfile(stage_path):
+            os.remove(stage_path)
+
+
+_WRINKLE_SETTINGS = {
+    "Stroke:Lazy Mouse": 1.0,
+    "Stroke:Lazy Mouse:LazyStep": 0.05,
+    "Stroke:Lazy Mouse:LazySmooth": 3.0,
+    "Stroke:Lazy Mouse:LazyRadius": 12.0,
+    "Draw:Z Intensity": 18.0,
+    "Draw:Focal Shift": -70.0,
+    "Draw:Draw Size": 18.0,
+    "Draw:Zsub": 1.0,
+}
+
+
+def _brush_error(path: str, *, must_exist: bool) -> Optional[Dict[str, Any]]:
+    if not path:
+        return {"success": False, "message": "Brush path must not be empty", "error": "BRUSH_PATH_MISSING"}
+    if os.path.splitext(path)[1].lower() != ".zbp":
+        return {
+            "success": False,
+            "message": "Brush path must end in .ZBP",
+            "error": "UNSUPPORTED_FORMAT",
+            "brush_path": path,
+        }
+    if must_exist and not os.path.isfile(path):
+        return {
+            "success": False,
+            "message": f"Brush file does not exist: {path}",
+            "error": "FILE_NOT_FOUND",
+            "brush_path": path,
+        }
+    directory = os.path.dirname(path)
+    if not must_exist and directory and not os.path.isdir(directory):
+        return {
+            "success": False,
+            "message": f"Output directory does not exist: {directory}",
+            "error": "OUTPUT_DIR_MISSING",
+            "brush_path": path,
+        }
+    return None
+
+
+def _require_controls(zbc: Any, *controls: str) -> None:
+    missing = [control for control in controls if not zbc.exists(control)]
+    if missing:
+        raise RuntimeError(f"Missing required ZBrush controls: {', '.join(missing)}")
+
+
+def _apply_wrinkle_settings(zbc: Any) -> None:
+    _require_controls(zbc, "Stroke:FreeHand", "Alpha:Alpha 01", *_WRINKLE_SETTINGS)
+    zbc.press("Stroke:FreeHand")
+    zbc.press("Alpha:Alpha 01")
+    for item_path, value in _WRINKLE_SETTINGS.items():
+        zbc.set(item_path, value)
+    if zbc.exists("Draw:Rgb"):
+        zbc.set("Draw:Rgb", 0.0)
+
+
+def _current_wrinkle_settings(zbc: Any) -> Dict[str, float]:
+    return {
+        "lazy_mouse": float(zbc.get("Stroke:Lazy Mouse")),
+        "lazy_step": float(zbc.get("Stroke:Lazy Mouse:LazyStep")),
+        "lazy_smooth": float(zbc.get("Stroke:Lazy Mouse:LazySmooth")),
+        "lazy_radius": float(zbc.get("Stroke:Lazy Mouse:LazyRadius")),
+        "z_intensity": float(zbc.get("Draw:Z Intensity")),
+        "focal_shift": float(zbc.get("Draw:Focal Shift")),
+        "draw_size": float(zbc.get("Draw:Draw Size")),
+        "zsub": float(zbc.get("Draw:Zsub")),
+    }
+
+
+def _create_wrinkle_brush(output_path: str) -> Dict[str, Any]:
+    error = _brush_error(output_path, must_exist=False)
+    if error:
+        return error
+    abs_path = os.path.abspath(output_path)
+    zbc = _import_zbc()
+    _require_controls(zbc, "Brush:DamStandard", "Brush:Clone", "Brush:Save As")
+    backup_path = ""
+    if os.path.isfile(abs_path):
+        backup_path = f"{abs_path}.meshy-dcc-{os.getpid()}-{time.time_ns()}.bak"
+        os.replace(abs_path, backup_path)
+    try:
+        with _quiet_ui_actions(zbc):
+            zbc.press("Brush:DamStandard")
+            zbc.press("Brush:Clone")
+            _apply_wrinkle_settings(zbc)
+            zbc.set_next_filename(abs_path)
+            zbc.press("Brush:Save As")
+        if not os.path.isfile(abs_path) or os.path.getsize(abs_path) == 0:
+            raise RuntimeError("ZBrush did not save a non-empty brush file")
+    except Exception:
+        if os.path.isfile(abs_path):
+            os.remove(abs_path)
+        if backup_path:
+            os.replace(backup_path, abs_path)
+        raise
+    if backup_path:
+        os.remove(backup_path)
+    return {
+        "brush_path": abs_path,
+        "bytes": os.path.getsize(abs_path),
+        "base_brush": "DamStandard",
+        "settings": _current_wrinkle_settings(zbc),
+    }
+
+
+def _load_wrinkle_brush(brush_path: str) -> Dict[str, Any]:
+    error = _brush_error(brush_path, must_exist=True)
+    if error:
+        return error
+    abs_path = os.path.abspath(brush_path)
+    zbc = _import_zbc()
+    _require_controls(zbc, "Brush:Load Brush")
+    with _quiet_ui_actions(zbc):
+        zbc.set_next_filename(abs_path)
+        zbc.press("Brush:Load Brush")
+        _apply_wrinkle_settings(zbc)
+    return {
+        "brush_path": abs_path,
+        "bytes": os.path.getsize(abs_path),
+        "settings": _current_wrinkle_settings(zbc),
+    }
+
+
+def _export_active_subtool_obj(output_path: str) -> Dict[str, Any]:
+    zbc = _import_zbc()
+    directory = os.path.dirname(os.path.abspath(output_path))
+    if directory and not os.path.isdir(directory):
+        return {
+            "success": False,
+            "message": f"Output directory does not exist: {directory}",
+            "error": "OUTPUT_DIR_MISSING",
+            "output_path": output_path,
+        }
+    abs_path = os.path.abspath(output_path)
+
+    def export_obj() -> None:
+        zbc.set_next_filename(abs_path)
+        zbc.press("Tool:Export")
+
+    _run_quiet_ui(zbc, export_obj)
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "output_path": abs_path,
+        "active_tool_path": path,
+        "subtool_name": _subtool_name(path),
+    }
+
+
+def _capture_turntable(
+    output_dir: str,
+    angles: Any,
+    prefix: str,
+    bpr_render: bool,
+    polyframe: bool,
+) -> Dict[str, Any]:
+    if not output_dir:
+        return {"success": False, "message": "output_dir must not be empty", "error": "OUTPUT_DIR_MISSING"}
+    abs_dir = os.path.abspath(output_dir)
+    if not os.path.isdir(abs_dir):
+        return {
+            "success": False,
+            "message": f"Output directory does not exist: {abs_dir}",
+            "error": "OUTPUT_DIR_MISSING",
+            "output_dir": abs_dir,
+        }
+    if not prefix or os.path.basename(prefix) != prefix:
+        return {"success": False, "message": "prefix must be a file name", "error": "INVALID_PREFIX"}
+    try:
+        normalized_angles = [float(angle) for angle in angles]
+    except (TypeError, ValueError):
+        return {"success": False, "message": "angles must be a list of numbers", "error": "INVALID_ANGLES"}
+    if not normalized_angles or len(normalized_angles) > 72 or any(not math.isfinite(a) for a in normalized_angles):
+        return {"success": False, "message": "angles must contain 1 to 72 finite values", "error": "INVALID_ANGLES"}
+
+    zbc = _import_zbc()
+    required = ["Document:Export", "Transform:Edit"]
+    if bpr_render:
+        required.append("Render:BPR")
+    _require_controls(zbc, *required)
+    if not bool(zbc.get("Transform:Edit")):
+        return {
+            "success": False,
+            "message": "The active tool is not drawn in 3D Edit mode",
+            "error": "EDIT_MODE_REQUIRED",
+        }
+    base_transform = [float(value) for value in zbc.get_transform()]
+    if len(base_transform) != 9:
+        raise RuntimeError("ZBrush returned an invalid tool transform")
+
+    staged: list[tuple[str, str, float]] = []
+    polyframe_toggled = False
+    try:
+        with _quiet_ui_actions(zbc):
+            try:
+                if polyframe:
+                    zbc.press_key("SHIFT+F", lambda: None)
+                    polyframe_toggled = True
+                for index, angle in enumerate(normalized_angles):
+                    zbc.set_transform(
+                        x_rotate=base_transform[6],
+                        y_rotate=angle,
+                        z_rotate=base_transform[8],
+                    )
+                    zbc.update(redraw_ui=True)
+                    if bpr_render:
+                        zbc.press("Render:BPR")
+                    final_path = os.path.join(abs_dir, f"{prefix}-{index:03d}.psd")
+                    stage_path = os.path.join(
+                        abs_dir,
+                        f".{prefix}-{index:03d}-{os.getpid()}-{time.time_ns()}.psd",
+                    )
+                    staged.append((stage_path, final_path, angle))
+                    zbc.set_next_filename(stage_path)
+                    zbc.press("Document:Export")
+                    if not os.path.isfile(stage_path) or os.path.getsize(stage_path) == 0:
+                        raise RuntimeError(f"ZBrush did not export a non-empty document frame: {final_path}")
+            finally:
+                try:
+                    zbc.set_transform(*base_transform)
+                finally:
+                    if polyframe_toggled:
+                        zbc.press_key("SHIFT+F", lambda: None)
+                zbc.update(redraw_ui=True)
+
+        frames = []
+        for stage_path, final_path, angle in staged:
+            os.replace(stage_path, final_path)
+            frames.append({"angle": angle, "path": final_path, "bytes": os.path.getsize(final_path)})
+        return {
+            "output_dir": abs_dir,
+            "frames": frames,
+            "base_transform": base_transform,
+            "bpr_render": bpr_render,
+            "polyframe": polyframe,
+        }
+    finally:
+        for stage_path, _final_path, _angle in staged:
+            if os.path.isfile(stage_path):
+                os.remove(stage_path)
+
+
+def _import_to_scene(file_path: str) -> Dict[str, Any]:
+    if not file_path:
+        return {
+            "success": False,
+            "message": "file_path must not be empty",
+            "error": "FILE_PATH_MISSING",
+            "imported_nodes": [],
+        }
+    abs_path = os.path.abspath(file_path)
+    if os.path.splitext(abs_path)[1].lower() != ".obj":
+        return {
+            "success": False,
+            "message": "Only OBJ files can be imported without opening an interactive ZBrush dialog.",
+            "error": "UNSUPPORTED_FORMAT",
+            "imported_nodes": [],
+        }
+    if not os.path.isfile(abs_path):
+        return {
+            "success": False,
+            "message": f"File does not exist: {abs_path}",
+            "error": "FILE_NOT_FOUND",
+            "imported_nodes": [],
+        }
+    # Refuse faces ZBrush cannot triangulate: they raise a blocking Note that
+    # the bridge cannot observe or dismiss while the GIL is held.
+    preflight = _scan_obj_oversized_faces(abs_path)
+    if not preflight["ok"]:
+        return _obj_preflight_unverifiable_error(preflight)
+    if preflight["oversized"]:
+        return _obj_preflight_error(preflight)
+    zbc = _import_zbc()
+    subtool_count_before = int(zbc.get_subtool_count())
+    duplicate_failed = False
+
+    def import_obj() -> None:
+        nonlocal duplicate_failed
+        if zbc.exists("Tool:SubTool:Duplicate") and zbc.is_enabled("Tool:SubTool:Duplicate"):
+            zbc.press("Tool:SubTool:Duplicate")
+            if int(zbc.get_subtool_count()) != subtool_count_before + 1:
+                duplicate_failed = True
+                return
+            while zbc.exists("Tool:Geometry:Lower Res") and zbc.is_enabled("Tool:Geometry:Lower Res"):
+                zbc.press("Tool:Geometry:Lower Res")
+            if zbc.exists("Tool:Geometry:Del Higher") and zbc.is_enabled("Tool:Geometry:Del Higher"):
+                zbc.press("Tool:Geometry:Del Higher")
+        zbc.set_next_filename(abs_path)
+        zbc.press("Tool:Import")
+
+    _run_quiet_ui(zbc, import_obj)
+    if duplicate_failed:
+        return {
+            "success": False,
+            "message": "ZBrush did not create an import target subtool",
+            "error": "SUBTOOL_CREATE_FAILED",
+            "imported_nodes": [],
+        }
+    subtool_count_after = int(zbc.get_subtool_count())
+    active_path = str(zbc.get_active_tool_path() or "")
+    subtool_name = _subtool_name(active_path)
+    imported_nodes = [subtool_name] if subtool_name else []
+    return {
+        "success": True,
+        "file_path": abs_path,
+        "imported_nodes": imported_nodes,
+        "subtool_count_before": subtool_count_before,
+        "subtool_count_after": subtool_count_after,
+        "active_tool_path": active_path,
+    }
+
+
+_SAVE_TARGETS = {"project": ("File:Save As", ".zpr"), "tool": ("Tool:Save As", ".ztl")}
+
+
+def _save_file(kind: str, output_path: str, overwrite: bool) -> Dict[str, Any]:
+    """Save the open project (.zpr) or the active tool (.ztl) to an exact path.
+
+    ZBrush never finds a file at the target, so it has no overwrite question to
+    ask: an existing file is moved aside first and put back if the save fails.
+    """
+    target = _SAVE_TARGETS.get(kind)
+    if target is None:
+        return {"success": False, "message": "kind must be project or tool", "error": "UNSUPPORTED_KIND"}
+    control, extension = target
+    if not output_path:
+        return {"success": False, "message": "output_path must not be empty", "error": "OUTPUT_PATH_MISSING"}
+    abs_path = os.path.abspath(output_path)
+    if os.path.splitext(abs_path)[1].lower() != extension:
+        return {
+            "success": False,
+            "message": f"A {kind} saves to a {extension} file",
+            "error": "UNSUPPORTED_FORMAT",
+            "output_path": abs_path,
+        }
+    directory = os.path.dirname(abs_path)
+    if not os.path.isdir(directory):
+        return {
+            "success": False,
+            "message": f"Output directory does not exist: {directory}",
+            "error": "OUTPUT_DIR_MISSING",
+            "output_path": abs_path,
+        }
+    if os.path.exists(abs_path) and not overwrite:
+        return {
+            "success": False,
+            "message": f"{abs_path} exists; pass overwrite to replace it",
+            "error": "FILE_EXISTS",
+            "output_path": abs_path,
+        }
+    zbc = _import_zbc()
+    _require_controls(zbc, control)
+    backup_path = ""
+    if os.path.exists(abs_path):
+        backup_path = f"{abs_path}.meshy-dcc-{os.getpid()}-{time.time_ns()}.bak"
+        os.replace(abs_path, backup_path)
+    try:
+
+        def save() -> None:
+            zbc.set_next_filename(abs_path)
+            zbc.press(control)
+
+        _run_quiet_ui(zbc, save)
+        if not os.path.isfile(abs_path) or os.path.getsize(abs_path) == 0:
+            raise RuntimeError(f"ZBrush did not write a non-empty {extension} file")
+    except Exception:
+        if os.path.isfile(abs_path):
+            os.remove(abs_path)
+        if backup_path:
+            os.replace(backup_path, abs_path)
+        raise
+    if backup_path:
+        os.remove(backup_path)
+    path = str(zbc.get_active_tool_path() or "")
+    return {
+        "kind": kind,
+        "path": abs_path,
+        "bytes": os.path.getsize(abs_path),
+        "active_tool_path": path,
+        "subtool_count": int(zbc.get_subtool_count()),
+    }
+
+
+def _open_project(path: str) -> Dict[str, Any]:
+    """Open a .zpr project, replacing what ZBrush has open, and read it back."""
+    if not path:
+        return {"success": False, "message": "path must not be empty", "error": "FILE_PATH_MISSING"}
+    abs_path = os.path.abspath(path)
+    if os.path.splitext(abs_path)[1].lower() != ".zpr":
+        return {"success": False, "message": "Only .zpr projects can be opened", "error": "UNSUPPORTED_FORMAT"}
+    if not os.path.isfile(abs_path):
+        return {"success": False, "message": f"File does not exist: {abs_path}", "error": "FILE_NOT_FOUND"}
+    zbc = _import_zbc()
+    _require_controls(zbc, "File:Open")
+
+    def load() -> None:
+        zbc.set_next_filename(abs_path)
+        zbc.press("File:Open")
+
+    _run_quiet_ui(zbc, load)
+    active_path = str(zbc.get_active_tool_path() or "")
+    return {
+        "path": abs_path,
+        "active_tool_path": active_path,
+        "subtool_count": int(zbc.get_subtool_count()),
+    }
+
+
+def _execute_python(code: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    zbc = _import_zbc()
+    namespace: Dict[str, Any] = {"zbc": zbc}
+    namespace.update(context)
+    try:
+        exec(compile(code, "<mcp-bridge>", "exec"), namespace)  # noqa: S102
+    except Exception:
+        return {
+            "success": False,
+            "message": "Script execution failed",
+            "error": traceback.format_exc(),
+            "context": {},
+        }
+    result = namespace.get("result")
+    return {
+        "success": True,
+        "message": "Script executed successfully",
+        "context": {"result": str(result) if result is not None else None},
+    }
+
+
+def _route_request(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep bridge health responsive without touching the ZBrush SDK."""
+    if payload.get("method") == "ping":
+        return _handle_request(payload)
+    return _dispatch_request(payload)
+
+
+def _serve_client(conn: socket.socket) -> None:
+    with conn:
+        conn.settimeout(_CLIENT_READ_SECONDS)
+        data = b""
+        while b"\n" not in data:
+            chunk = conn.recv(65536)
+            if not chunk:
+                return
+            data += chunk
+        line = data.split(b"\n", 1)[0]
+        payload = json.loads(line.decode("utf-8"))
+        if _token_accepted(payload):
+            response = _route_request(payload)
+        else:
+            response = {
+                "jsonrpc": "2.0",
+                "id": payload.get("id", 0) if isinstance(payload, dict) else 0,
+                "error": {"code": -32003, "message": "Missing or wrong bridge token"},
+            }
+        conn.sendall((json.dumps(response) + "\n").encode("utf-8"))
+
+
+def _dispatch_request(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Queue host API work for the ZBrush main thread and await its response."""
+    global _ACTIVE_REQUEST
+
+    pending: Dict[str, Any] = {"payload": payload, "event": threading.Event()}
+    with _REQUEST_STATE_LOCK:
+        if _ACTIVE_REQUEST is not None:
+            active_method = _ACTIVE_REQUEST["payload"].get("method")
+            return {
+                "jsonrpc": "2.0",
+                "id": payload.get("id", 0),
+                "error": {
+                    "code": -32001,
+                    "message": f"ZBrush bridge is busy with {active_method}",
+                    "data": {"retryable": True, "active_method": active_method},
+                },
+            }
+        _ACTIVE_REQUEST = pending
+    _REQUEST_QUEUE.put(pending)
+    if not pending["event"].wait(_REQUEST_TIMEOUT_SECONDS):
+        return {
+            "jsonrpc": "2.0",
+            "id": payload.get("id", 0),
+            "error": {
+                "code": -32002,
+                "message": "Timed out waiting for ZBrush; the accepted request may still be running",
+                "data": {"retryable": False, "still_running": True, "active_method": payload.get("method")},
+            },
+        }
+    return pending["response"]
+
+
+def _drain_request_queue() -> None:
+    """Run queued ZBrush SDK calls from the host's main-thread pump."""
+    global _ACTIVE_REQUEST
+
+    while True:
+        try:
+            pending = _REQUEST_QUEUE.get_nowait()
+        except queue.Empty:
+            return
+        try:
+            pending["response"] = _handle_request(pending["payload"])
+        finally:
+            with _REQUEST_STATE_LOCK:
+                if _ACTIVE_REQUEST is pending:
+                    _ACTIVE_REQUEST = None
+            pending["event"].set()
+
+
+def _listen(host: str, port: int) -> socket.socket:
+    """Bind the loopback listener; port 0 lets the OS pick a free one."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if port:
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((host, port))
+        server.listen(5)
+    except BaseException:
+        server.close()
+        raise
+    _mark(f"listening {host}:{server.getsockname()[1]}")
+    print(f"[meshy-dcc-zbrush] socket bridge listening on {host}:{server.getsockname()[1]}")
+    return server
+
+
+def _serve_forever(server: socket.socket) -> None:
+    """Accept socket clients on a background listener thread."""
+    try:
+        with server:
+            while True:
+                conn, _addr = server.accept()
+                threading.Thread(target=_serve_client, args=(conn,), daemon=True).start()
+    except BaseException:
+        _mark("listener failed\n" + traceback.format_exc())
+        raise
+
+
+def _token_accepted(payload: Any) -> bool:
+    if _BRIDGE_TOKEN is None:
+        return True
+    offered = payload.get("token") if isinstance(payload, dict) else None
+    return isinstance(offered, str) and hmac.compare_digest(offered.encode("utf-8"), _BRIDGE_TOKEN.encode("utf-8"))
+
+
+def _package_python() -> Optional[str]:
+    """The Python of the Meshy DCC package this file ships in, if any.
+
+    The package carries the bridge inside its site-packages, so the interpreter
+    is a few directories up: ``python/bin/python3`` (macOS) or
+    ``python/python.exe`` (Windows).
+    """
+    folder = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(6):
+        for candidate in (os.path.join(folder, "python.exe"), os.path.join(folder, "bin", "python3")):
+            if os.path.isfile(candidate):
+                return candidate
+        folder = os.path.dirname(folder)
+    return None
+
+
+def _start_sidecar(python: str, port: int, token: str) -> "subprocess.Popen[bytes]":
+    """Start ``meshy_dcc_zbrush serve`` for this ZBrush process, detached from it.
+
+    The child inherits ZBrush's environment, so a start-instance launch passes
+    its operation and project through; ZBrush's own Python settings are dropped.
+    """
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in ("PYTHONHOME", "PYTHONPATH", "PYTHONEXECUTABLE", "__PYVENV_LAUNCHER__")
+    }
+    env[_TOKEN_ENV] = token
+    argv = [python, "-m", "meshy_dcc_zbrush", "serve", "--watch-pid", str(os.getpid()), "--socket-port", str(port)]
+    options: Dict[str, Any] = {}
+    if sys.platform == "win32":
+        options["creationflags"] = 0x08000000 | 0x00000200  # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
+    else:
+        options["start_new_session"] = True
+    _mark(f"starting sidecar {python} on port {port}")
+    return subprocess.Popen(
+        argv,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        close_fds=True,
+        **options,
+    )
+
+
+def _run_main_thread_pump() -> None:
+    """Dispatch queued SDK work while yielding to ZBrush's native UI pump."""
+    zbc = _import_zbc()
+    while True:
+        _drain_request_queue()
+        zbc.update(redraw_ui=True)
+        time.sleep(_UI_POLL_SECONDS)
+
+
+def _install_main_thread_pump() -> None:
+    """Drain SDK work from ZBrush's Windows UI thread without blocking it."""
+    global _PUMP_TIMER_CALLBACK, _PUMP_TIMER_ID
+
+    if _PUMP_TIMER_ID:
+        return
+    if sys.platform != "win32":
+        _run_main_thread_pump()
+        return
+
+    import ctypes  # noqa: PLC0415
+
+    def on_timer(_window: Any, _message: int, _timer_id: int, _tick: int) -> None:
+        try:
+            _drain_request_queue()
+        except BaseException:
+            _mark("main-thread timer failed\n" + traceback.format_exc())
+
+    callback_type = ctypes.WINFUNCTYPE(
+        None,
+        ctypes.c_void_p,
+        ctypes.c_uint,
+        ctypes.c_size_t,
+        ctypes.c_ulong,
+    )
+    callback = callback_type(on_timer)
+    timer_id = ctypes.windll.user32.SetTimer(None, 0, max(1, round(_UI_POLL_SECONDS * 1000)), callback)
+    if not timer_id:
+        raise OSError("ZBrush main-thread timer registration failed")
+    _PUMP_TIMER_CALLBACK = callback
+    _PUMP_TIMER_ID = int(timer_id)
+
+
+def _start_bridge(host: str, port: int, sidecar_python: Optional[str] = None) -> threading.Thread:
+    """Start the listener and the sidecar, then install the main-thread request pump.
+
+    The sidecar starts before the pump: on macOS the pump never returns.
+    """
+    global _BRIDGE_THREAD, _SIDECAR
+
+    if _BRIDGE_THREAD is None or not _BRIDGE_THREAD.is_alive():
+        server = _listen(host, port)
+        _BRIDGE_THREAD = threading.Thread(
+            target=_serve_forever,
+            args=(server,),
+            daemon=True,
+            name="meshy-dcc-zbrush-socket-bridge",
+        )
+        _BRIDGE_THREAD.start()
+        if sidecar_python and _BRIDGE_TOKEN:
+            _SIDECAR = _start_sidecar(sidecar_python, server.getsockname()[1], _BRIDGE_TOKEN)
+    _install_main_thread_pump()
+    return _BRIDGE_THREAD
+
+
+def _running_in_zbrush() -> bool:
+    try:
+        import zbrush.commands  # noqa: F401, PLC0415
+    except ImportError:
+        return False
+    return True
+
+
+def bootstrap_bridge() -> Optional[threading.Thread]:
+    """Start the bridge when ZBrush runs this file (``-script`` or a plugin scan)."""
+    global _BRIDGE_TOKEN
+
+    _mark(f"bootstrap module={__name__} in_zbrush={_running_in_zbrush()}")
+    if __name__ != "__main__" and not _running_in_zbrush():
+        return None
+    host = os.environ.get("MESHY_DCC_ZBRUSH_SOCKET_HOST", "127.0.0.1")
+    sidecar_python = _package_python()
+    # The bridge that starts its own sidecar takes a free port and a fresh token.
+    port = _env_int("MESHY_DCC_ZBRUSH_SOCKET_PORT", 0 if sidecar_python else _DEFAULT_SOCKET_PORT)
+    _BRIDGE_TOKEN = os.environ.get(_TOKEN_ENV, "").strip() or (secrets.token_hex(16) if sidecar_python else None)
+    try:
+        if not _install_menu():
+            _mark("menu registration returned false")
+    except BaseException:
+        _mark("menu registration failed\n" + traceback.format_exc())
+    try:
+        bridge_thread = _start_bridge(host, port, sidecar_python)
+    except BaseException as exc:
+        _mark("bootstrap failed\n" + traceback.format_exc())
+        _capture_bootstrap_error("sidecar_bootstrap", exc)
+        raise
+    _mark(f"bootstrap started {host}:{port}")
+    return bridge_thread
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Unified Meshy DCC menu actions (PIP-2905)
+# ──────────────────────────────────────────────────────────────────────────────
+# The sidecar plugin must remain self-contained because meshy-dcc-zbrush runs in
+# an external process and may not be importable in ZBrush's embedded VM.
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def meshy_dcc_copy_instance_id() -> None:
+    """Copy the Meshy DCC instance UUID to the system clipboard."""
+    try:
+        from meshy_dcc_zbrush._menu import copy_instance_id
+
+        copy_instance_id()
+    except ImportError:
+        _fallback_copy_instance_id()
+
+
+def meshy_dcc_show_server_info() -> None:
+    """Show Meshy DCC server information."""
+    try:
+        from meshy_dcc_zbrush._menu import show_server_info
+
+        show_server_info()
+    except ImportError:
+        _fallback_server_info()
+
+
+def meshy_dcc_show_about() -> None:
+    """Show About Meshy DCC dialog."""
+    try:
+        from meshy_dcc_zbrush._menu import show_about
+
+        show_about()
+    except ImportError:
+        _fallback_about()
+
+
+def _qt_widgets_modules() -> Iterator[Any]:
+    for binding in ("PySide2", "PySide6"):
+        try:
+            yield importlib.import_module(f"{binding}.QtWidgets")
+        except Exception:
+            continue
+
+
+def _show_message(title: str, message: str) -> None:
+    try:
+        _import_zbc().message_ok(message, title)
+        return
+    except Exception:
+        pass
+    for widgets in _qt_widgets_modules():
+        try:
+            widgets.QMessageBox.information(None, title, message)
+            return
+        except Exception:
+            continue
+    print(f"[meshy-dcc-zbrush] {title}\n{message}")  # noqa: T201
+
+
+# ── fallback implementations when meshy-dcc-zbrush is not importable ────────
+
+
+def _fallback_copy_instance_id() -> None:
+    """Fail closed when the external sidecar identity is unavailable."""
+    _show_message(
+        "Meshy DCC — Copy Instance ID",
+        "Instance ID is owned by the external MCP server and is unavailable "
+        "inside this standalone plugin. Run `meshy-dcc list` from a terminal.",
+    )
+
+
+def _fallback_server_info() -> None:
+    """Fallback: show server info using available tools."""
+    import sys
+
+    gateway_port = os.environ.get("MESHY_DCC_GATEWAY_PORT", "19765")
+
+    try:
+        import zbrush.commands as zbc  # noqa: PLC0415
+
+        zb_version = f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}"
+    except Exception:
+        zb_version = "unknown"
+
+    msg = (
+        "Instance UUID: unavailable in standalone plugin\n"
+        f"DCC: ZBrush {zb_version}\n"
+        f"ZBrush PID: {os.getpid()}\n"
+        f"Gateway Port: {gateway_port}\n"
+        f"Python: {sys.version.split()[0]}\n\n"
+        "Run `meshy-dcc list` for the external server identity and URL."
+    )
+    _show_message("Meshy DCC — Server Info", msg)
+
+
+def _fallback_about() -> None:
+    """Fallback: show about dialog."""
+    msg = "meshy-dcc-zbrush\nMeshy DCC — shared infrastructure for DCC automation.\nhttps://github.com/meshy-dev/meshy-dcc-zbrush"
+    _show_message("About Meshy DCC", msg)
+
+
+def _on_copy_instance_id(_sender: str) -> None:
+    meshy_dcc_copy_instance_id()
+
+
+def _on_show_server_info(_sender: str) -> None:
+    meshy_dcc_show_server_info()
+
+
+def _on_show_about(_sender: str) -> None:
+    meshy_dcc_show_about()
+
+
+def _install_menu(zbc: Any = None) -> bool:
+    """Install the top-level Meshy DCC palette before entering the host pump."""
+    zbc = zbc or _import_zbc()
+    if not zbc.exists("Meshy DCC") and not zbc.add_palette("Meshy DCC", docking_bar=1):
+        return False
+    actions = (
+        ("Copy Instance ID", "Copy the Meshy DCC instance UUID to the clipboard.", _on_copy_instance_id),
+        ("Server Info", "Show Meshy DCC server and runtime information.", _on_show_server_info),
+        ("About Meshy DCC", "Show adapter and ZBrush version information.", _on_show_about),
+    )
+    for label, info, callback in actions:
+        item_path = f"Meshy DCC:{label}"
+        if not zbc.exists(item_path) and not zbc.add_button(item_path, info, callback):
+            return False
+    return True
+
+
+_BRIDGE_BOOTSTRAP = bootstrap_bridge()
