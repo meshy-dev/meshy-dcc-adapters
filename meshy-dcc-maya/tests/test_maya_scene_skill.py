@@ -46,6 +46,22 @@ def test_save_scene_without_path_rejects_unnamed_scene_before_prompt():
     cmds.file.assert_called_once_with(query=True, sceneName=True)
 
 
+def test_save_scene_keeps_the_type_the_extension_names():
+    # Maya 2027: a .ma path was saved as mayaBinary and Maya renamed it to .mb.
+    cmds = MagicMock()
+    cmds.file.return_value = "D:/work/scene.ma"
+
+    result = load_and_call("maya-scene/scripts/save_scene.py", cmds, "main", file_path="D:/work/scene.ma")
+
+    assert result["success"] is True
+    cmds.file.assert_any_call(save=True, type="mayaAscii")
+
+    cmds = MagicMock()
+    cmds.file.side_effect = lambda **kwargs: "D:/work/scene.ma"
+    load_and_call("maya-scene/scripts/save_scene.py", cmds, "main")  # in place: still ASCII
+    cmds.file.assert_any_call(save=True, type="mayaAscii")
+
+
 def test_get_scene_info_includes_node_refs():
     cmds = MagicMock()
 
