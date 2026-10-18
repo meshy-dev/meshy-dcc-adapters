@@ -1,10 +1,10 @@
 """Safe stop for 3ds Max sessions launched by ``meshy-dcc start-instance``.
 
-``quitMax #noPrompt`` exits without asking to save. Whether 3ds Max's own
-dirty flag (``getSaveRequired()``) sees every edit made through ``pymxs`` has
-not been checked on a real host, so the stop is refused unless the caller
-passes ``discard_unsaved``, which the CLI sends only after the user agreed to
-lose unsaved changes. Only a start-instance launch advertises
+``quitMax #noPrompt`` exits without asking to save. 3ds Max's own dirty flag
+(``getSaveRequired()``) misses ``pymxs`` edits made with undo off; the
+executor records writing tools in undo, but other Python in the session may
+not, so the stop is refused unless the caller passes ``discard_unsaved``,
+which the CLI sends only after the user agreed to lose unsaved changes. Only a start-instance launch advertises
 ``safe_stop_url``; a 3ds Max the user opened themselves is never stopped this
 way.
 """

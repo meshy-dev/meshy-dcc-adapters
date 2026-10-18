@@ -397,6 +397,27 @@ def test_merge_file_rejects_string_select_flag_before_native_call(monkeypatch, t
     assert runtime.merged == []
 
 
+def test_writing_tools_run_inside_a_3dsmax_undo_record_and_read_only_tools_do_not(monkeypatch, tmp_path):
+    import contextlib
+
+    runtime = _FakeRuntime()
+    records = []
+
+    @contextlib.contextmanager
+    def undo(enabled, label):
+        records.append((enabled, label))
+        yield
+
+    monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime, undo=undo))
+
+    assert run_skill_script(str(SKILL_DIR / "action_get_scene_status.py"), {})["success"] is True
+    assert records == []
+
+    result = run_skill_script(str(SKILL_DIR / "action_save_scene_as.py"), {"file_path": str(tmp_path / "out.max")})
+    assert result["success"] is True
+    assert records == [(True, "Meshy: action_save_scene_as")]
+
+
 class _MaxName(str):
     """A pymxs name: callable like every pymxs value, but calling it raises."""
 
