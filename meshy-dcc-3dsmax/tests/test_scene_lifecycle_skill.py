@@ -395,3 +395,22 @@ def test_merge_file_rejects_string_select_flag_before_native_call(monkeypatch, t
     assert result["success"] is False
     assert result["data"]["failure_reason"] == "invalid_merge_options"
     assert runtime.merged == []
+
+
+class _MaxName(str):
+    """A pymxs name: callable like every pymxs value, but calling it raises."""
+
+    def __call__(self):
+        raise RuntimeError("MAXScript exception raised.\n-- Type error: Call needs function or class, got: #inches")
+
+
+def test_scene_status_reads_unit_names_that_pymxs_reports_as_callable():
+    from meshy_dcc_3dsmax._scene_lifecycle import scene_status
+
+    runtime = _FakeRuntime()
+    runtime.units = types.SimpleNamespace(SystemType=_MaxName("#inches"), DisplayType=_MaxName("#generic"))
+
+    status = scene_status(runtime)
+
+    assert status["system_units"] == "inches"
+    assert status["display_units"] == "generic"
