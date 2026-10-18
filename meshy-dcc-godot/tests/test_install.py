@@ -455,6 +455,7 @@ def test_preflight_checks_the_selected_python_floor_before_writing(
     payload = json.loads(capsys.readouterr().out)
     assert payload["verify"]["failure_reason"] == "preflight_failed"
     assert payload["steps"][0]["error_type"] == "ValueError"
+    assert "Python 3.9 or newer is required" in payload["steps"][0]["message"]
     assert not (tmp_path / "addons" / "meshy_dcc_godot").exists()
 
 
