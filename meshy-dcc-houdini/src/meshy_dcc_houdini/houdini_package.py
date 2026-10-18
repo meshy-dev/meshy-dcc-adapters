@@ -15,9 +15,9 @@ The user preferences directory follows Houdini's own rule for the Houdini
 version: ``HOUDINI_USER_PREF_DIR`` (``__HVER__`` replaced by ``X.Y``), else
 ``~/Library/Preferences/houdini/X.Y`` on macOS and ``$HOME/houdiniX.Y`` on
 Windows, where Houdini's ``$HOME`` is the ``HOME`` variable when set and the
-Documents folder otherwise. The version comes from the executable's path
-(``Houdini21.0.440``, ``Houdini 21.0.440``, ``Versions/21.0``), or from
-``MESHY_DCC_HOUDINI_VERSION`` when the path does not name one.
+Documents folder otherwise. The version comes from ``MESHY_DCC_HOUDINI_VERSION``,
+else the executable's path (``Houdini21.0.440``, ``Houdini 21.0.440``,
+``Versions/21.0``), else on Windows the executable's version resource.
 
 This module uses only the standard library: it runs on the package's own
 CPython before Houdini is involved.
@@ -51,7 +51,7 @@ def package_root() -> Path:
 
 
 def houdini_version(dcc_path: str, environ: Mapping[str, str] = os.environ) -> str:
-    """``X.Y`` of the Houdini at ``dcc_path``, from its install path or ``MESHY_DCC_HOUDINI_VERSION``."""
+    """``X.Y`` of the Houdini at ``dcc_path``: the override, its install path, or its file version."""
     override = environ.get(VERSION_ENV, "").strip()
     if override:
         if not _SHORT_VERSION.match(override):
@@ -62,11 +62,43 @@ def houdini_version(dcc_path: str, environ: Mapping[str, str] = os.environ) -> s
         match = _PATH_VERSION.search(path) or _FRAMEWORK_VERSION.search(path)
         if match:
             return "{}.{}".format(match.group(1), match.group(2))
+    # Windows installs can go anywhere (D:\houdini); houdini.exe carries its version.
+    file_version = _windows_file_version(dcc_path) if sys.platform == "win32" else None
+    if file_version:
+        return file_version
     raise PackageError(
         "Cannot tell the Houdini version from {}; set {}=MAJOR.MINOR (for example 21.0) and rerun".format(
             dcc_path, VERSION_ENV
         )
     )
+
+
+def _windows_file_version(path: str) -> Optional[str]:
+    """``X.Y`` from an executable's fixed file version (houdini.exe: 21.0.0.440)."""
+    import ctypes  # noqa: PLC0415
+    from ctypes import wintypes  # noqa: PLC0415
+
+    version = ctypes.WinDLL("version")
+    version.GetFileVersionInfoSizeW.argtypes = [wintypes.LPCWSTR, wintypes.LPDWORD]
+    version.GetFileVersionInfoW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID]
+    version.VerQueryValueW.argtypes = [
+        wintypes.LPCVOID,
+        wintypes.LPCWSTR,
+        ctypes.POINTER(wintypes.LPVOID),
+        wintypes.PUINT,
+    ]
+    size = version.GetFileVersionInfoSizeW(path, None)
+    if not size:
+        return None
+    buffer = ctypes.create_string_buffer(size)
+    pointer, length = wintypes.LPVOID(), wintypes.UINT(0)
+    if not version.GetFileVersionInfoW(path, 0, size, buffer) or not version.VerQueryValueW(
+        buffer, "\\", ctypes.byref(pointer), ctypes.byref(length)
+    ):
+        return None
+    # VS_FIXEDFILEINFO: signature, struct version, file version MS, file version LS, ...
+    file_version_ms = ctypes.cast(pointer, ctypes.POINTER(wintypes.DWORD * 4)).contents[2]
+    return "{}.{}".format(file_version_ms >> 16, file_version_ms & 0xFFFF)
 
 
 def _documents_dir(environ: Mapping[str, str]) -> Path:

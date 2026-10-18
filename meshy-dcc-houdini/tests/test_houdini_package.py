@@ -47,6 +47,16 @@ def test_version_override_and_unknown_path():
         hp.houdini_version(MAC_HOUDINI, {hp.VERSION_ENV: "21"})
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows executables carry a version resource")
+def test_windows_version_comes_from_the_executable(tmp_path):
+    # An install outside Program Files, like D:\houdini\bin\houdini.exe, names no version.
+    assert hp.houdini_version(sys.executable, {}) == "%d.%d" % sys.version_info[:2]
+    plain = tmp_path / "houdini.exe"
+    plain.write_bytes(b"not a PE file")
+    with pytest.raises(hp.PackageError, match=hp.VERSION_ENV):
+        hp.houdini_version(str(plain), {})
+
+
 def test_user_pref_dir_follows_houdini_rules(tmp_path):
     home = str(tmp_path)
     assert hp.user_pref_dir("21.0", {"HOME": home}, "darwin") == tmp_path / "Library/Preferences/houdini/21.0"
