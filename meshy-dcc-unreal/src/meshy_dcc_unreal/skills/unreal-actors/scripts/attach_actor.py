@@ -43,6 +43,8 @@ def attach_actor(
         )
 
     rule = unreal.AttachmentRule.KEEP_WORLD if keep_world_transform else unreal.AttachmentRule.KEEP_RELATIVE
+    # Attaching from Python does not dirty the level on its own (see set_actor_transform).
+    child.modify()
     attached = child.attach_to_actor(parent, "", rule, rule, rule, False)
     if attached is False:
         return skill_error(

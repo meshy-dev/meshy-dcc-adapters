@@ -101,6 +101,9 @@ def test_attach_actor_preserves_world_transform(monkeypatch):
         "keep_world",
         False,
     )
+    # Unreal 5.7: without modify() the level stayed clean and safe stop lost the change.
+    calls = [call[0] for call in child.mock_calls]
+    assert calls.index("modify") < calls.index("attach_to_actor")
 
 
 def test_get_actor_transform_reports_bounds(monkeypatch):
@@ -146,6 +149,9 @@ def test_set_actor_transform_accepts_spawned_actor_label(monkeypatch):
     assert result["success"] is True
     assert result["context"]["rotation"] == [-8.4, 90.0, 0.0]
     actor.set_actor_transform.assert_called_once()
+    # Unreal 5.7: without modify() the level stayed clean and safe stop lost the move.
+    calls = [call[0] for call in actor.mock_calls]
+    assert calls.index("modify") < calls.index("set_actor_transform")
 
 
 def test_configure_sky_light_assigns_hdr_texture_cube(monkeypatch):

@@ -88,6 +88,9 @@ def set_actor_transform(
     )
 
     new_transform = unreal.Transform(new_loc, new_rot, new_scale)
+    # A transform set from Python does not dirty the level on its own; without
+    # this, safe stop and the save prompt treat the move as saved.
+    target.modify()
     target.set_actor_transform(new_transform, sweep=False, teleport=True)
 
     return skill_success(
