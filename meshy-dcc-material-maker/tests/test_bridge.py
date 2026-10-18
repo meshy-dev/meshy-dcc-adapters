@@ -475,3 +475,12 @@ def test_completed_root_cannot_release_group_identity_before_descendant_cleanup(
 
     assert result["returncode"] == 0
     _assert_tree_dead(identities)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows executables carry a version resource")
+def test_windows_version_comes_from_the_executable(tmp_path):
+    version = bridge._windows_product_version(sys.executable)
+    assert version.startswith("%d.%d." % sys.version_info[:2])
+    plain = tmp_path / "material_maker.exe"
+    plain.write_bytes(b"not a PE file")
+    assert bridge._windows_product_version(str(plain)) is None
