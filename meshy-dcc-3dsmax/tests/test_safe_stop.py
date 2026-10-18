@@ -40,3 +40,22 @@ def test_only_a_start_instance_launch_advertises_and_quits_through_the_main_thre
     assert published == [{"safe_stop_url": "http://127.0.0.1:1/safe-stop"}]
     assert handlers[0]({"instance_id": "inst-1", "discard_unsaved": True})[0] == 202
     assert posted == [_safe_stop._quit_max] and pokes == [1]
+
+
+def test_pump_is_poked_only_from_the_thread_that_owns_its_timer():
+    import threading
+
+    from meshy_dcc_3dsmax.dispatcher.ui import MaxUiDispatcher
+
+    pokes = []
+    dispatcher = MaxUiDispatcher()
+    dispatcher.attach_pump_controller(SimpleNamespace(schedule_soon=lambda: pokes.append(1)))
+
+    # The safe-stop request arrives on a server thread.
+    other = threading.Thread(target=dispatcher.poke_host_pump)
+    other.start()
+    other.join()
+    assert pokes == []
+
+    dispatcher.poke_host_pump()
+    assert pokes == [1]
