@@ -253,3 +253,23 @@ def test_verify_failure_emits_machine_executable_next_steps(
     assert report["verify"]["directly_usable"] is False
     assert report["verify"]["failure_stage"] == "readiness"
     assert all("command" in step or "file_edit" in step for step in report["next_steps"])
+
+
+def test_editor_comes_from_unity_hub_records(tmp_path, monkeypatch):
+    # Hub installs and located editors live anywhere, e.g. F:\Unity\Editor on Windows.
+    monkeypatch.delenv("UNITY_EDITOR_PATH", raising=False)
+    hub = tmp_path / "UnityHub"
+    hub.mkdir()
+    located = tmp_path / "F" / "Unity" / "2022.3.55f1c1" / "Unity.exe"
+    located.parent.mkdir(parents=True)
+    located.write_bytes(b"")
+    editors = [{"version": "2022.3.55f1c1", "location": [str(located)]}]
+    (hub / "editors-v2.json").write_text(
+        json.dumps({"schema_version": "2", "data": editors}), encoding="utf-8"
+    )
+    install_root = json.dumps(str(tmp_path / "D"))
+    (hub / "secondaryInstallPath.json").write_text(install_root, encoding="utf-8")
+    monkeypatch.setattr(installer, "_unity_hub_dir", lambda: hub)
+
+    assert installer._resolve_editor(None, "2022.3.55f1c1") == located.resolve()
+    assert installer._resolve_editor(None, "2021.3.45f1") is None

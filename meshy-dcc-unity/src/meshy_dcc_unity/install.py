@@ -193,7 +193,40 @@ def _resolve_editor(value: Path | None, version: str) -> Path | None:
         )
     else:
         candidates.extend([Path("/usr/bin/unity-editor"), Path("/usr/local/bin/unity-editor")])
+    candidates.extend(_hub_editors(version))
     return next((path.resolve() for path in candidates if path.is_file()), None)
+
+
+def _unity_hub_dir() -> Path | None:
+    if os.name == "nt":
+        return Path(os.environ["APPDATA"]) / "UnityHub" if os.environ.get("APPDATA") else None
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "UnityHub"
+    return None
+
+
+def _hub_editors(version: str) -> list[Path]:
+    """Editors Unity Hub knows of: its install folder, and the ones it installed or
+    was pointed at anywhere else (editors-v2.json), as on a D: drive on Windows."""
+    hub = _unity_hub_dir()
+    if hub is None:
+        return []
+    binary = Path("Editor/Unity.exe") if os.name == "nt" else Path("Unity.app/Contents/MacOS/Unity")
+    found: list[Path] = []
+    try:
+        install_root = json.loads((hub / "secondaryInstallPath.json").read_text(encoding="utf-8"))
+        if isinstance(install_root, str) and install_root:
+            found.append(Path(install_root) / version / binary)
+    except (OSError, ValueError):
+        pass
+    try:
+        editors = json.loads((hub / "editors-v2.json").read_text(encoding="utf-8")).get("data", [])
+        for editor in editors:
+            if isinstance(editor, dict) and editor.get("version") == version:
+                found.extend(Path(location) for location in editor.get("location", []))
+    except (OSError, ValueError, AttributeError):
+        pass
+    return found
 
 
 def _source_package() -> Path:
