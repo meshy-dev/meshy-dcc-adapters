@@ -128,6 +128,9 @@ func _start_meshy_sidecar() -> void:
 	args.append_array([
 		"serve", "--watch-pid", str(OS.get_process_id()), "--bridge-port", str(port),
 	])
+	# The sidecar registers this as the instance's version (`list`: godot@4.7.2).
+	var version := Engine.get_version_info()
+	OS.set_environment("MESHY_DCC_GODOT_VERSION", "%d.%d.%d" % [version.major, version.minor, version.patch])
 	var pid := OS.create_process(program, args)
 	if pid <= 0:
 		push_error("Meshy DCC: the sidecar could not be started: %s" % sidecar)
