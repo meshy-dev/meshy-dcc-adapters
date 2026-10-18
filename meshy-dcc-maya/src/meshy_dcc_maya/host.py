@@ -32,13 +32,28 @@ class MayaCallableDispatcher:
         return self._dispatcher.shutdown()
 
 
+def _qtimer_class() -> Any:
+    try:
+        from PySide6.QtCore import QTimer  # noqa: PLC0415
+    except ImportError:
+        from PySide2.QtCore import QTimer  # noqa: PLC0415
+    return QTimer
+
+
 class MayaHost(HostAdapter):
-    """Drive a core host dispatcher from Maya's native idle loop."""
+    """Drive a core host dispatcher from a Qt timer on Maya's main thread.
+
+    The timer honours the interval each tick returns (0 s with work queued,
+    the idle interval otherwise). An ``idleEvent`` scriptJob fired on every
+    idle pass instead: one core stayed busy for as long as Maya ran, and Maya
+    never went idle, so ``evalDeferred(..., lowestPriority=True)`` work, safe
+    stop's quit among it, never ran (Maya 2027).
+    """
 
     def __init__(self, dispatcher: Any, **kwargs: Any) -> None:
         kwargs.setdefault("name", "maya-host")
         super().__init__(dispatcher, **kwargs)
-        self._script_job: Optional[int] = None
+        self._timer: Any = None
 
     @require_main_thread
     def is_background(self) -> bool:
@@ -51,20 +66,26 @@ class MayaHost(HostAdapter):
 
     @require_main_thread
     def attach_tick(self, tick_fn: Callable[[], Optional[float]]) -> None:
-        import maya.cmds as cmds  # noqa: PLC0415
-
-        if self._script_job is not None:
+        if self._timer is not None:
             return
-        self._script_job = cmds.scriptJob(idleEvent=lambda: tick_fn(), protected=True)
+        timer = _qtimer_class()()
+        timer.setSingleShot(True)
+
+        def _fire() -> None:
+            if self._timer is not timer:
+                return
+            interval = tick_fn()
+            if interval is None:
+                self._timer = None
+                return
+            timer.start(max(0, int(interval * 1000)))
+
+        timer.timeout.connect(_fire)
+        self._timer = timer
+        timer.start(0)
 
     @require_main_thread
     def detach_tick(self) -> None:
-        if self._script_job is None:
-            return
-        try:
-            import maya.cmds as cmds  # noqa: PLC0415
-
-            if cmds.scriptJob(exists=self._script_job):
-                cmds.scriptJob(kill=self._script_job)
-        finally:
-            self._script_job = None
+        timer, self._timer = self._timer, None
+        if timer is not None:
+            timer.stop()
