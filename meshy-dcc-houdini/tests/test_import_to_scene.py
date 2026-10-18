@@ -63,6 +63,7 @@ _NODE_PARM_TUPLES = {"principledshader::2.0": {"basecolor": 3}, "principledshade
 _NODE_PARMS = {
     "geo": {"scale": 1.0, "shop_materialpath": ""},
     "file": {"file": ""},
+    "gltf": {"filename": ""},
     "principledshader::2.0": {"metallic": 0.0, "rough": 1.0, "opacity": 1.0, "emitcolor": 0.0},
     "principledshader": {"metallic": 0.0, "rough": 1.0, "opacity": 1.0, "emitcolor": 0.0},
     "matnet": {},
@@ -505,7 +506,8 @@ class TestMaterialModeIsNotSilent:
         assert result["success"] is True
         assert _extra(result)["materials_imported"] == 1
         assert _warnings(result) == []
-        assert hou.registry["/obj/showcase_gltf/file1"].parms["file"].value == str(carrier)
+        # The File SOP cannot parse glTF (Houdini 21: "Expected array object"); the GLTF SOP reads it.
+        assert hou.registry["/obj/showcase_gltf/gltf1"].parms["filename"].value == str(carrier)
 
     def test_missing_base_color_parm_warns_instead_of_reporting_success(
         self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -600,3 +602,21 @@ class TestGeometryImportUnchanged:
         result = script.import_to_scene(_descriptor(carrier, "bgeo"))
 
         assert result["success"] is False
+
+    def test_unreadable_file_fails_and_leaves_no_container(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A cook error used to be a warning on a success with an empty geo node."""
+        carrier = tmp_path / "showcase.fbx"
+        carrier.write_bytes(b"x")
+
+        def _fail(self: FakeNode, force: bool = False) -> None:
+            raise RuntimeError("Error while cooking.")
+
+        monkeypatch.setattr(FakeNode, "cook", _fail)
+
+        result = script.import_to_scene(_descriptor(carrier, "fbx"), material_mode="skip")
+
+        assert result["success"] is False
+        assert "Error while cooking" in json.dumps(result)
+        assert hou.node("/obj/showcase_gltf") is None
