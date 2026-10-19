@@ -397,10 +397,10 @@ tools:
         description: Optional absolute or workspace-relative .ma/.mb destination path.
       file_type:
         type: string
+        description: Defaults to the file's extension (.ma ASCII, .mb binary), mayaBinary otherwise.
         enum:
         - mayaAscii
         - mayaBinary
-        default: mayaBinary
 - name: select_by_type
   execution: sync
   affinity: main

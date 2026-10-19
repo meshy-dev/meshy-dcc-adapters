@@ -324,6 +324,38 @@ def test_watchdog_give_up_retires_the_marker(monkeypatch, tmp_path) -> None:
     assert watch.detect_bootstrap_hang() == []
 
 
+def test_watchdog_is_killed_outside_its_own_callback(monkeypatch, tmp_path) -> None:
+    """Maya refuses to kill a running scriptJob; a kill from inside the idle
+    callback left the job firing forever (Maya 2027: CPU pinned, the plug-in's
+    lowest-priority server start starved)."""
+    _isolate(monkeypatch, tmp_path)
+    cmds_module, scheduled, _ = _stub_cmds(plugin_loaded=True)
+    jobs = {}
+    running = []
+
+    def script_job(**kwargs):
+        if "kill" in kwargs:
+            if kwargs["kill"] in running:
+                raise RuntimeError("A scriptJob cannot be killed while it is running.")
+            jobs.pop(kwargs["kill"], None)
+            return None
+        jobs[len(jobs) + 1] = kwargs["event"][1]
+        return len(jobs)
+
+    cmds_module.scriptJob = script_job
+    _install_adapter_stub(monkeypatch)
+    _exec_user_setup(monkeypatch, cmds_module)
+    job_id, callback = next(iter(jobs.items()))
+
+    running.append(job_id)
+    callback()  # the plug-in is loaded: the watchdog disarms itself
+    running.remove(job_id)
+    for deferred, _ in list(scheduled):
+        deferred()
+
+    assert jobs == {}, "the idle watchdog must be gone once the plug-in is loaded"
+
+
 def test_healthy_retry_chain_is_never_reported_as_a_hang(monkeypatch, tmp_path) -> None:
     """PM condition 3: 60s must strictly exceed the worst-case retry window.
 

@@ -522,11 +522,24 @@ def _arm_autoload_watchdog() -> None:
     def _disarm() -> None:
         job = state.get("job")
         state["job"] = None
-        if job is not None:
+        if job is None:
+            return
+
+        def _kill() -> None:
             try:
                 cmds.scriptJob(kill=job, force=True)
             except Exception:
                 pass
+
+        # _disarm runs inside the job's own idle callback, and Maya refuses that
+        # kill ("A scriptJob cannot be killed while it is running"): the job then
+        # ran on every idle tick for good, Maya never went idle, and the plug-in's
+        # lowest-priority server start never ran (Maya 2027). Kill it from the
+        # deferred queue, outside the callback.
+        try:
+            cmds.evalDeferred(_kill)
+        except Exception:
+            _kill()
 
     def _on_idle() -> None:
         if _plugin_loaded():

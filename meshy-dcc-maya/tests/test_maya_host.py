@@ -43,41 +43,68 @@ def test_is_background_uses_maya_batch_flag():
     cmds.about.assert_called_once_with(batch=True)
 
 
-def test_attach_tick_registers_idle_script_job_and_invokes_tick():
-    from meshy_dcc_maya.host import MayaHost
+class _FakeTimer:
+    """Stand-in for QTimer: records start() intervals; fire() delivers timeout."""
 
-    cmds = MagicMock()
-    callbacks = []
+    def __init__(self):
+        self.started = []
+        self.stopped = False
+        self.single_shot = None
+        self._slots = []
+        self.timeout = self
 
-    def script_job(**kwargs):
-        callbacks.append(kwargs["idleEvent"])
-        return 42
+    def connect(self, slot):
+        self._slots.append(slot)
 
-    cmds.scriptJob.side_effect = script_job
-    with _install_maya(cmds):
-        host = MayaHost(_Dispatcher())
-        tick = MagicMock(return_value=0.5)
-        host.attach_tick(tick)
-        callbacks[0]()
+    def setSingleShot(self, value):
+        self.single_shot = value
 
-    tick.assert_called_once_with()
-    assert host._script_job == 42
+    def start(self, msec):
+        self.started.append(msec)
+
+    def stop(self):
+        self.stopped = True
+
+    def fire(self):
+        for slot in self._slots:
+            slot()
 
 
-def test_detach_tick_kills_existing_script_job_and_is_idempotent():
-    from meshy_dcc_maya.host import MayaHost
+def test_attach_tick_runs_the_tick_at_the_interval_it_returns(monkeypatch):
+    # An idleEvent scriptJob ran the tick on every idle pass instead: Maya 2027
+    # kept a core busy and never ran lowest-priority deferred work.
+    from meshy_dcc_maya import host as host_module
 
-    cmds = MagicMock()
-    cmds.scriptJob.side_effect = lambda **kwargs: True if kwargs.get("exists") == 42 else None
-    with _install_maya(cmds):
-        host = MayaHost(_Dispatcher())
-        host._script_job = 42
-        host.detach_tick()
-        host.detach_tick()
+    timer = _FakeTimer()
+    monkeypatch.setattr(host_module, "_qtimer_class", lambda: lambda: timer)
+    host = host_module.MayaHost(_Dispatcher())
+    tick = MagicMock(side_effect=[0.0, 0.5, None])
+    host.attach_tick(tick)
+    host.attach_tick(tick)  # already attached: no second timer
+    for _ in range(3):
+        timer.fire()
 
-    cmds.scriptJob.assert_any_call(exists=42)
-    cmds.scriptJob.assert_any_call(kill=42)
-    assert host._script_job is None
+    assert timer.single_shot is True
+    assert timer.started == [0, 0, 500]  # first run, then each returned interval
+    assert tick.call_count == 3
+    assert host._timer is None  # None stops the timer
+
+
+def test_detach_tick_stops_the_timer_and_is_idempotent(monkeypatch):
+    from meshy_dcc_maya import host as host_module
+
+    timer = _FakeTimer()
+    monkeypatch.setattr(host_module, "_qtimer_class", lambda: lambda: timer)
+    host = host_module.MayaHost(_Dispatcher())
+    tick = MagicMock(return_value=0.5)
+    host.attach_tick(tick)
+    host.detach_tick()
+    host.detach_tick()
+    timer.fire()  # a timeout already queued at detach does nothing
+
+    assert timer.stopped is True
+    tick.assert_not_called()
+    assert host._timer is None
 
 
 def test_callable_dispatcher_forwards_core_metadata():

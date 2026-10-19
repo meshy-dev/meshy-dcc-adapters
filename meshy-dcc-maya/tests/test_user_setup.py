@@ -373,6 +373,10 @@ def test_watchdog_disarms_when_the_plugin_registers(monkeypatch, tmp_path) -> No
 
     cmds_module._state["loaded"] = True  # plug-in finished loading after arming
     callback()
+    # The kill is deferred: Maya refuses it from inside the job's own callback.
+    assert not any("kill" in kwargs for kwargs in cmds_module._script_jobs[1:])
+    for deferred, _ in list(cmds_module._scheduled):
+        deferred()
 
     assert any("kill" in kwargs for kwargs in cmds_module._script_jobs[1:])
     assert not cmds_module._warnings

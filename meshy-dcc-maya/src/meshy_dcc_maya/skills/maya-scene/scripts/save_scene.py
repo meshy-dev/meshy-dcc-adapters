@@ -12,12 +12,13 @@ from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skil
 _VALID_FILE_TYPES = {"mayaAscii", "mayaBinary"}
 
 
-def save_scene(file_path: Optional[str] = None, file_type: str = "mayaBinary") -> dict:
+def save_scene(file_path: Optional[str] = None, file_type: Optional[str] = None) -> dict:
     """Save the current Maya scene.
 
     Args:
         file_path: Destination path.  If None, saves to the current file path.
-        file_type: ``"mayaBinary"`` (default) or ``"mayaAscii"``.
+        file_type: ``"mayaAscii"`` or ``"mayaBinary"``.  By default the type the
+            file's extension names, so ``x.ma`` is not saved as ``x.mb``.
 
     Returns:
         ToolResult dict.
@@ -26,11 +27,15 @@ def save_scene(file_path: Optional[str] = None, file_type: str = "mayaBinary") -
     try:
         import maya.cmds as cmds  # noqa: PLC0415
 
+        scene_name = None if file_path else cmds.file(query=True, sceneName=True)
+        if file_type is None:
+            name = file_path or scene_name or ""
+            file_type = "mayaAscii" if name.lower().endswith(".ma") else "mayaBinary"
         if file_type not in _VALID_FILE_TYPES:
             return skill_error("Invalid file_type", "file_type must be mayaAscii or mayaBinary")
         if file_path:
             cmds.file(rename=file_path)
-        elif not cmds.file(query=True, sceneName=True):
+        elif not scene_name:
             return skill_error(
                 "Missing file_path",
                 "Pass file_path when saving an unnamed scene so Maya does not open a Save As prompt.",

@@ -26,7 +26,8 @@ upstream and shares no names with one. Keep `LICENSE` and `NOTICE` intact.
   (`MESHY_DCC_MAYA_COMMANDPORT_HYGIENE=1`).
 - Host-specific behavior belongs here, not in meshy-dcc-core.
 
-Not verified on a real Maya yet. Tests run against stand-ins for `maya.cmds`:
+Checked in one real Maya, 2027 on Windows: install, start, Meshy FBX import,
+save, safe stop, reopen, uninstall. Tests run against stand-ins for `maya.cmds`:
 install the `meshy_dcc_core` wheel and this package (`pip install --no-deps
 -e .`) into a venv, then `python -m pytest tests` and
 `python tools/lint_skills.py`. Point `HOME`, `MESHY_DCC_REGISTRY_DIR`,
