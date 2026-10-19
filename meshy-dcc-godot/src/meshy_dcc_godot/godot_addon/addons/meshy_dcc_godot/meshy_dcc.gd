@@ -30,8 +30,8 @@ func _is_importing() -> bool:
 func session(params: Dictionary = {}) -> Dictionary:
 	var workspace := ProjectSettings.globalize_path("res://").trim_suffix("/")
 	# Set by `meshy-dcc start-instance` for the project it opened.
-	var configured_workspace := OS.get_environment("MESHY_DCC_START_PROJECT").trim_suffix("/")
-	if not configured_workspace.is_empty() and configured_workspace != workspace:
+	var configured_workspace := OS.get_environment("MESHY_DCC_START_PROJECT")
+	if not configured_workspace.is_empty() and not _same_path(configured_workspace, workspace):
 		return _error("The start-instance project does not match the open Godot project")
 	var scene := EditorInterface.get_edited_scene_root()
 	var unsaved := _unsaved()
@@ -52,6 +52,13 @@ func session(params: Dictionary = {}) -> Dictionary:
 			return checked
 		result["asset_ready"] = _asset_ready(checked.path)
 	return result
+
+
+# Godot spells Windows paths with forward slashes (D:/x/y); start-instance passes D:\x\y.
+func _same_path(a: String, b: String) -> bool:
+	a = a.replace("\\", "/").simplify_path().trim_suffix("/")
+	b = b.replace("\\", "/").simplify_path().trim_suffix("/")
+	return a.nocasecmp_to(b) == 0 if OS.get_name() == "Windows" else a == b
 
 
 func _asset_ready(asset_path: String) -> bool:

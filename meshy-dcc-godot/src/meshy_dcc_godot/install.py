@@ -736,7 +736,7 @@ def _run_dry_run(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
                 {
                     "id": "preflight",
                     "status": "failed",
-                    "message": "Install preflight failed.",
+                    "message": f"Install preflight failed: {exc}",
                     "error_type": type(exc).__name__,
                 }
             ]
@@ -859,7 +859,7 @@ def _run_install(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         result["steps"][0] = {
             "id": "preflight",
             "status": "failed",
-            "message": "Install preflight failed.",
+            "message": f"Install preflight failed: {exc}",
             "error_type": type(exc).__name__,
         }
         result["verify"] = {
