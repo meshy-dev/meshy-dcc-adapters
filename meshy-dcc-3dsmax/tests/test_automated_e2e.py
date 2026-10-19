@@ -395,6 +395,24 @@ class TestApiHelpers:
         _install_fake_pymxs(monkeypatch)
         assert f()["status"] == "success"
 
+    def test_with_max_drops_request_metadata_a_tool_does_not_take(self, monkeypatch):
+        # 3ds Max 2027: every gateway call failed with
+        # "main() got an unexpected keyword argument '_meta'".
+        from meshy_dcc_3dsmax.api import with_max
+
+        @with_max
+        def strict(radius=1.0):
+            return {"status": "success", "radius": radius}
+
+        @with_max
+        def open_ended(**kwargs):
+            return {"status": "success", "keys": sorted(kwargs)}
+
+        _install_fake_pymxs(monkeypatch)
+        meta = {"agent_context": {"session_id": "s"}}
+        assert strict(radius=2.0, _meta=meta) == {"status": "success", "radius": 2.0}
+        assert open_ended(radius=2.0, _meta=meta)["keys"] == ["_meta", "radius"]
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 6. Sidecar Bridge

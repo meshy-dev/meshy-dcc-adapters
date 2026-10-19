@@ -105,6 +105,10 @@ def with_max(func: Callable) -> Callable:
             return max_success("Created sphere", object=str(sphere_obj))
     """
     import functools
+    import inspect
+
+    parameters = inspect.signature(func).parameters
+    takes_any = any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values())
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -115,6 +119,10 @@ def with_max(func: Callable) -> Callable:
         if getattr(pymxs, "runtime", None) is None:
             return max_error("pymxs runtime not available - not running inside 3ds Max")
 
+        if not takes_any:
+            # Core adds request metadata (`_meta`) to every call's arguments; a
+            # tool that does not declare it would fail with a TypeError.
+            kwargs = {key: value for key, value in kwargs.items() if not key.startswith("_") or key in parameters}
         try:
             return func(*args, **kwargs)
         except Exception as exc:  # noqa: BLE001

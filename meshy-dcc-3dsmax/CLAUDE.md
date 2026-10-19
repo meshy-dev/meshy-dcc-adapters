@@ -25,8 +25,9 @@ shares no names with one. Keep `LICENSE` and `NOTICE` intact.
 - The core range is declared in `pyproject.toml`, `install_cli.py` and the
   MAXScript templates; keep them in step.
 - Host-specific behavior belongs here, not in meshy-dcc-core.
-- Nothing here has run in a real 3ds Max yet. Say so when describing behavior,
-  and mark what was only read from source.
+- Checked in one real 3ds Max, 2027: install, start, Meshy FBX import with a
+  Physical material, save, safe stop, reopen, uninstall. 3ds Max 2027 uses
+  OCIO colour management by default. Mark anything else as read from source.
 
 Tests: install the `meshy_dcc_core` wheel (`--no-deps`) and `pytest
 pytest-xdist pytest-mock packaging pyyaml jsonschema build hatchling pip` into

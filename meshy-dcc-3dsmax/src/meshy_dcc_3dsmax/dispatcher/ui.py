@@ -43,6 +43,11 @@ class MaxUiDispatcher(HostUiDispatcherBase):
 
     def poke_host_pump(self) -> None:
         """Ask the 3ds Max pump controller to drain queued UI work soon."""
+        if threading.get_ident() != self._owner_thread_ident:
+            # The pump's QTimer belongs to the main thread. Restarted from another
+            # thread it never fires again, so the pump stops for good; the next
+            # scheduled tick picks the work up instead.
+            return
         controller = self._pump_controller
         schedule_soon = getattr(controller, "schedule_soon", None)
         if callable(schedule_soon):

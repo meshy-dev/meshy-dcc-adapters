@@ -225,6 +225,10 @@ COLOR_PLANS: Dict[str, Dict[str, Tuple[str, ...]]] = {
 # Slots whose bitmap must be wrapped in a native Normal Bump texmap first.
 NORMAL_WRAPPED_SLOTS = ("normal",)
 
+# Slots whose texture holds colour. The others hold data (normals, roughness,
+# masks): 3ds Max would read a PNG or JPEG there as sRGB colour.
+COLOR_MAP_SLOTS = ("diffuse", "base_color", "emission", "specular", "reflection", "refraction")
+
 
 # Candidate resolution always tries the historical generic spellings first so
 # existing scenes and host doubles keep their behaviour, then appends the
@@ -699,6 +703,10 @@ def set_material_map(
         if not _is_same_map(readback, payload):
             warnings.append("{} did not retain the assigned {} map".format(attribute, slot))
             continue
+        if slot in NORMAL_WRAPPED_SLOTS and family == "physical" and attribute == "bump_map":
+            # Physical Material scales its bump slot to 0.3 by default; Meshy's Send To
+            # plugin applies the normal map at full strength.
+            material.bump_map_amt = 1.0
         return {
             "applied": True,
             "slot": slot,
@@ -817,7 +825,7 @@ def build_material_from_texture_set(
         if slot not in supported:
             warnings.append("No native {} slot exists on {} materials".format(slot, family))
             continue
-        bitmap = _create_bitmap(runtime, str(path))
+        bitmap = create_texture_bitmap(runtime, str(path), slot)
         result = set_material_map(material, slot, bitmap, runtime=runtime, renderer=family)
         result["path"] = str(path)
         warnings.extend(result.get("warnings", []))
@@ -991,8 +999,22 @@ def rollback_material(runtime: Any, material: Any) -> Dict[str, Any]:
     }
 
 
-def _create_bitmap(runtime: Any, texture_path: str) -> Any:
+def create_texture_bitmap(runtime: Any, texture_path: str, slot: str) -> Any:
+    """Create a native bitmap texture for one map slot; data maps are read as data, not colour."""
     constructor = getattr(runtime, "Bitmaptexture", None) or getattr(runtime, "BitmapTexture", None)
+    open_bitmap = getattr(runtime, "openBitmap", None)
+    if slot not in COLOR_MAP_SLOTS and callable(constructor) and callable(open_bitmap):
+        # OCIO colour management (3ds Max 2024+) reads colorSpace, the older gamma
+        # workflow reads gamma. Setting either on a loaded bitmap has no effect.
+        options: Dict[str, Any] = {"gamma": 1.0}
+        data_space = getattr(getattr(runtime, "ColorPipelineMgr", None), "DataColorSpace", None)
+        if data_space:
+            options["colorSpace"] = str(data_space)
+        image = open_bitmap(texture_path, **options)
+        if image is not None:
+            texture = constructor()
+            texture.bitmap = image
+            return texture
     if callable(constructor):
         try:
             return constructor(filename=texture_path)

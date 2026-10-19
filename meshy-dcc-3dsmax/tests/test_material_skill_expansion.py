@@ -243,6 +243,52 @@ def test_physical_normal_map_survives_other_pbr_map_assignments(monkeypatch, tmp
     assert material.bump_map.normal_map.filename == str(paths["normal"])
 
 
+class _LoadingBitmapTexture(_BitmapTexture):
+    """A Bitmaptexture whose ``bitmap`` setter takes the file name from the image."""
+
+    @property
+    def bitmap(self):
+        return self._bitmap
+
+    @bitmap.setter
+    def bitmap(self, image):
+        self._bitmap = image
+        self.filename = image.filename
+
+
+def test_data_maps_load_as_data_and_color_maps_keep_the_file_rules(monkeypatch, tmp_path):
+    runtime = _install_fake_pymxs(monkeypatch)
+    runtime.Bitmaptexture = lambda filename="": _LoadingBitmapTexture(filename)
+    runtime.openBitmap = lambda path, **options: types.SimpleNamespace(filename=path, options=options)
+    runtime.ColorPipelineMgr = types.SimpleNamespace(DataColorSpace="raw")
+    color, normal = tmp_path / "color.png", tmp_path / "normal.png"
+    color.write_text("png", encoding="utf-8")
+    normal.write_text("png", encoding="utf-8")
+
+    action = _load_action("action_assign_bitmap_texture.py")
+    assigned = action.main("Physical", "base_color", str(color))
+    assert assigned["success"] is True
+    assert action.main("Physical", "normal", str(normal))["success"] is True
+
+    color_map = getattr(runtime.physical, assigned["data"]["attribute"])
+    assert color_map.filename == str(color) and not hasattr(color_map, "_bitmap")
+    normal_map = runtime.physical.bump_map.normal_map
+    assert normal_map.filename == str(normal)
+    assert normal_map.bitmap.options == {"gamma": 1.0, "colorSpace": "raw"}
+
+
+def test_a_normal_map_on_a_physical_material_gets_the_full_bump_amount(monkeypatch, tmp_path):
+    runtime = _install_fake_pymxs(monkeypatch)
+    runtime.physical.bump_map_amt = 0.3
+    normal = tmp_path / "normal.png"
+    normal.write_text("png", encoding="utf-8")
+
+    result = _load_action("action_assign_bitmap_texture.py").main("Physical", "normal", str(normal), renderer="physical")
+
+    assert result["success"] is True
+    assert runtime.physical.bump_map_amt == 1.0
+
+
 def test_physical_normal_map_prefers_native_pymxs_bump_property(monkeypatch, tmp_path):
     runtime = _install_fake_pymxs(monkeypatch)
     runtime.physical = _PermissivePhysicalMaterial()

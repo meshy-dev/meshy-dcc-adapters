@@ -10,7 +10,7 @@ from typing import Any, Dict
 from meshy_dcc_3dsmax.api import max_error
 
 
-def main(module_name: str) -> Dict[str, Any]:
+def main(module_name: str, **_kwargs: Any) -> Dict[str, Any]:
     """Reload one ``meshy_dcc_3dsmax`` module by name."""
     if not isinstance(module_name, str) or not module_name.strip():
         return max_error("module_name must be a non-empty string")

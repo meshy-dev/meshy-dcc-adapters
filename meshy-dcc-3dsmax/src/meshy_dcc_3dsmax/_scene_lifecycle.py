@@ -27,7 +27,12 @@ def normalize_scene_path(file_path: Any, *, must_exist: bool) -> Tuple[Optional[
 
 def _string_value(value: Any) -> str:
     if callable(value):
-        value = value()
+        # Every pymxs value is callable, including a name such as #inches;
+        # calling one that is not a function raises a MAXScript type error.
+        try:
+            value = value()
+        except Exception:  # noqa: BLE001
+            pass
     return str(value).lstrip("#").strip() or "unknown"
 
 
