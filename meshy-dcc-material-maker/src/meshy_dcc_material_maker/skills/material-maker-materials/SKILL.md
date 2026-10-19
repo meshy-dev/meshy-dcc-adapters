@@ -5,7 +5,9 @@ description: >-
   project folder, then render them through Material Maker into PBR texture
   sets (albedo, normal, roughness/metallic/AO, height) and engine materials
   for Blender, Godot, Unity, Unreal or glTF. Use it to make tileable
-  materials for Meshy models. It edits the files, not the visible editor.
+  materials for Meshy models. It edits the files, not an open Material Maker
+  window: before editing a graph, ask whether it is open in Material Maker
+  and have the user close it; open_in_material_maker shows the result.
 license: MIT
 compatibility: "Python 3.9+; Material Maker 1.7.0+; meshy-dcc-core>=0.2.0,<0.3.0"
 allowed-tools: "python"
@@ -22,8 +24,19 @@ metadata:
 # Material Maker Materials
 
 Each instance serves one project folder. Paths are relative to it, and no
-tool reads or writes outside it. Material Maker itself only runs to render an
-export; graphs are edited as files.
+tool reads or writes outside it. Graphs are edited as files; Material Maker
+itself only runs to render an export, or when `open_in_material_maker` shows a
+graph to the user.
+
+**A Material Maker window does not see these edits.** It does not reload a
+file changed on disk, and saving there overwrites the file. So:
+
+- Before changing a graph, ask the user whether it is open in Material Maker.
+  If it is, ask them to close it (saving what they want to keep) and wait.
+- Never edit a graph the user is still editing.
+- After editing and exporting, `open_in_material_maker` opens the graph in a
+  new Material Maker window for the user. To change it again, ask them to
+  close that window first, then open it again when done.
 
 1. `get_status` lists the example materials, the export targets and the
    Material Maker in use.
@@ -39,12 +52,11 @@ export; graphs are edited as files.
 5. `get_graph` reads the nodes, parameters and connections back.
 6. `export_material` renders into a new folder and reads back each file's size,
    SHA-256 and PNG dimensions. Look at the albedo PNG to judge the result.
+7. `open_in_material_maker` opens the graph in Material Maker for the user and
+   returns at once; the window is theirs and stays open after the instance stops.
 
 An `image` node (`parameters: {"image": "textures/base.png"}`) brings a texture
 from the project into the graph, for example a Meshy model's base color to
 derive a normal or height map from.
 
-Every edit is saved at once, so there is no unsaved state. Material Maker does
-not reload a file changed on disk: if the user has the same `.ptex` open in
-Material Maker, ask them to close it first, or their next save overwrites the
-edit.
+Every edit is saved at once, so the instance never has unsaved work.

@@ -207,3 +207,44 @@ def test_app_bundle_path_resolves_to_its_executable(tmp_path):
     (macos / "Material Maker").write_bytes(b"fixture")
     cli = MaterialMakerCli(str(app), allowed_roots=[tmp_path])
     assert Path(cli.executable) == (macos / "Material Maker").resolve()
+
+
+def test_open_in_material_maker_starts_a_detached_window_on_the_graph(cli, monkeypatch):
+    from meshy_dcc_material_maker import bridge
+
+    launched = []
+
+    class FakePopen:
+        def __init__(self, command, **options):
+            launched.append((command, options))
+            self.pid = 4242
+
+    monkeypatch.setattr(bridge.subprocess, "Popen", FakePopen)
+    created = cli.create_material("materials/m.ptex")
+    opened = cli.open_in_material_maker("materials/m.ptex")
+    (command, options), = launched
+    # Material Maker opens a .ptex passed as an absolute path.
+    assert command == [cli.executable, str(cli.project_root / "materials" / "m.ptex")]
+    assert options["stdout"] is bridge.subprocess.DEVNULL
+    assert options["stderr"] is bridge.subprocess.DEVNULL
+    if bridge.os.name == "nt":
+        assert options["creationflags"]
+    else:
+        assert options["start_new_session"] is True
+    assert opened["pid"] == 4242 and opened["sha256"] == created["sha256"]
+    assert "close" in opened["note"]
+
+
+def test_open_in_material_maker_refuses_what_it_would_not_export(cli, monkeypatch):
+    from meshy_dcc_material_maker import bridge
+
+    monkeypatch.setattr(bridge.subprocess, "Popen", lambda *a, **k: pytest.fail("launched"))
+    graph = {"type": "graph", "nodes": [{"name": "Cam", "type": "webcam"}], "connections": []}
+    (cli.project_root / "cam.ptex").write_text(json.dumps(graph), encoding="utf-8")
+    with pytest.raises(MaterialMakerError, match="failed validation"):
+        cli.open_in_material_maker("cam.ptex")
+    with pytest.raises(MaterialMakerError, match="does not exist|outside"):
+        cli.open_in_material_maker("../elsewhere.ptex")
+    cli.executable = None
+    with pytest.raises(MaterialMakerError, match="not found"):
+        cli.open_in_material_maker("cam.ptex")
