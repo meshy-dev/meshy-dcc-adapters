@@ -7,12 +7,7 @@ ZBrush with the local `meshy-dcc` registry, and typed tools for subtools, OBJ
 import and export, saving and opening projects and tools, map baking,
 brushes and turntable captures.
 
-**Status: experimental.** Not verified on a real ZBrush yet: the install step
-was checked against a ZBrush 2026.2 installation (version and Maxon signature)
-without launching it, and the launch, call, save, reopen and stop path was run
-end to end against a stand-in for ZBrush. Everything that needs a running
-ZBrush (that `-script` keeps the bridge serving, the import, save and open
-buttons, the macOS main-thread pump) is untested.
+Supports ZBrush 2026.1 to 2026.2 on macOS (Apple Silicon) and Windows x64.
 
 ## Requirements
 

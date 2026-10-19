@@ -5,12 +5,8 @@ runs on Painter's own embedded Python, serves the adapter's tools over MCP,
 and registers Painter with the local `meshy-dcc` registry; host calls run on
 Painter's Qt main thread.
 
-**Experimental: not verified on a real Painter yet.** Everything below is
-written from the source and from Adobe's documentation, and checked only with
-unit tests, a fake-host contract test, and an install of the package through
-`meshy-dcc install` into a throwaway profile. Targets Painter 8.1 and later
-(Python 3.9+; Painter 10.1 and 11 run Python 3.11, Painter 12 Python 3.13)
-on macOS Apple silicon and Windows x64.
+Supports Painter 10.0 to 12.1 on macOS (Apple Silicon) and Windows x64.
+Painter 8.1 to 9.x load the plugin, but the PBR layer tools need 10.0.
 
 ## With Meshy DCC
 

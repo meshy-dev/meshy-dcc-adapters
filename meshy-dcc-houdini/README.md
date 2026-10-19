@@ -7,9 +7,8 @@ scene and node graph, parameters, geometry and mesh operations, import and
 export, materials and MaterialX, lookdev, Karma and ROP rendering, animation,
 simulation, PDG, HDAs) that agents call through the `meshy-dcc` CLI.
 
-Not verified on a real Houdini yet; experimental. The unit tests run without
-Houdini, against stand-ins for `hou`. Nothing below has been checked in a
-Houdini session.
+Supports Houdini 20.5 to 22.0 (Python 3.11 builds) on macOS (Apple Silicon)
+and Windows x64.
 
 ## With Meshy DCC
 

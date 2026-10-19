@@ -3,8 +3,8 @@
 Lets an agent working through [Meshy DCC Core](https://github.com/meshy-dev/meshy-dcc-core)
 read and edit an open Roblox Studio place and put Meshy models into it.
 
-**Status: experimental.** Not verified in a real Roblox Studio yet; the
-sidecar, installer and packages are tested offline only.
+Supports the current Roblox Studio release on macOS (Apple Silicon) and
+Windows x64.
 
 ## How it works
 

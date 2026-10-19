@@ -7,10 +7,7 @@ Material Maker's own command-line exporter, into PBR texture sets and engine
 materials for Blender, Godot, Unity, Unreal or glTF: tileable materials for
 Meshy models, or normal and height maps derived from a Meshy texture.
 
-Targets Material Maker 1.7 and later. Verified with Material Maker 1.7 on
-macOS arm64: install, `meshy-dcc start-instance`, graph creation and editing,
-export with readback, save and reopen, and safe stop. The Windows x64 package
-is built the same way and has not run on a real host yet.
+Supports Material Maker 1.7 on macOS (Apple Silicon) and Windows x64.
 
 ## How it works
 

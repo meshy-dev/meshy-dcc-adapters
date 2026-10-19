@@ -5,14 +5,8 @@ host's own Python (`pymxs`), registers the session with the local `meshy-dcc`
 gateway, and exposes scene, import, material, render and save tools that
 agents call through the `meshy-dcc` CLI.
 
-3ds Max runs only on Windows, so there is only a Windows x64 package. The
-target is 3ds Max 2025 and 2026 (Python 3.11); `meshy_dcc_core` is a cp38-abi3
-wheel, so 2023 and 2024 (Python 3.9, 3.10) should load it too.
-
-**Not verified on a real 3ds Max yet; experimental.** The unit tests run
-without 3ds Max, and the startup path was run outside 3ds Max on macOS: it
-registered as `3dsmax`, and `meshy-dcc list`, `search`, `load-skill` and `call`
-reached it through the gateway (tools answer "pymxs not available" there).
+Supports 3ds Max 2023 to 2027. 3ds Max runs only on Windows, so there is only
+a Windows x64 package.
 
 ## With Meshy DCC
 

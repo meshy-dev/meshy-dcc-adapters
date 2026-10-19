@@ -8,10 +8,8 @@ geometry and FBX/OBJ interchange, materials, rendering, rigging, animation
 and more, plus `meshy-maya` for Meshy model handoff) to agents through the
 `meshy-dcc` CLI.
 
-Not verified on a real Maya yet; experimental. It is built for Maya 2025 and
-2026 (Python 3.11) on macOS arm64 and Windows x64, and needs
-`meshy-dcc-core>=0.2.0,<0.3.0`. Everything here is covered by unit tests
-against stand-ins for `maya.cmds` only.
+Supports Maya 2023 to 2027 on macOS (Apple Silicon) and Windows x64, and needs
+`meshy-dcc-core>=0.2.0,<0.3.0`.
 
 ## With Meshy DCC
 

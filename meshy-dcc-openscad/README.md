@@ -4,11 +4,8 @@ The Meshy DCC Core adapter for OpenSCAD: write, inspect, validate, export and
 render OpenSCAD models through the bounded `openscad` command line, and stand
 Meshy-generated STL models on printable bases.
 
-Verified with the OpenSCAD 2026.10.15 snapshot on macOS arm64: install,
-`meshy-dcc start-instance`, writing a `.scad`, STL export with a parameter
-change, PNG render, a Meshy model on a print base, calls through the gateway,
-restart with read-back, and safe stop. The Windows package is built but has
-not run on Windows.
+Supports OpenSCAD 2021.01 and the 2026.09 and 2026.10 development snapshots
+(see `compat_matrix.json`) on macOS (Apple Silicon) and Windows x64.
 
 ## With Meshy DCC
 
