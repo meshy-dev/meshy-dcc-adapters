@@ -100,7 +100,7 @@ def _import_file_to_houdini(
     node_name: str,
     parent_path: str = "/obj",
 ) -> tuple[list[str], list[ImportWarning]]:
-    """Import a file into a Houdini geo container via a File SOP.
+    """Import a file into a Houdini geo container via a File SOP (glTF: GLTF SOP).
 
     *filepath* must already be user- and variable-expanded (see
     :func:`_expand_path`) so the geometry import and the material decode agree
@@ -123,20 +123,22 @@ def _import_file_to_houdini(
     container = parent.createNode("geo", node_name=node_name)
     container_path = container.path()
 
-    # Create a File SOP inside the container to read the asset file
-    file_sop = container.createNode("file")
-    file_sop.parm("file").set(expanded)
+    # Read the asset inside the container: the File SOP cannot parse glTF,
+    # Houdini reads it with its GLTF SOP.
+    if expanded.lower().endswith((".glb", ".gltf")):
+        reader = container.createNode("gltf")
+        reader.parm("filename").set(expanded)
+    else:
+        reader = container.createNode("file")
+        reader.parm("file").set(expanded)
 
-    # Cook to load geometry
+    # A file Houdini cannot read is a failed import, not an empty container.
     try:
-        file_sop.cook(force=True)
+        reader.cook(force=True)
     except Exception as exc:
-        warnings.append(
-            ImportWarning(
-                code=ImportWarningCode.UNKNOWN,
-                message=f"Cook warning: {exc}",
-            )
-        )
+        errors = "; ".join(getattr(reader, "errors", list)()) or str(exc)
+        container.destroy()
+        raise RuntimeError(f"Houdini could not read {expanded}: {errors}") from exc
 
     # Collect imported node names
     imported_nodes = [container_path]
