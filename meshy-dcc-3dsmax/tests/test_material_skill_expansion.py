@@ -277,6 +277,18 @@ def test_data_maps_load_as_data_and_color_maps_keep_the_file_rules(monkeypatch, 
     assert normal_map.bitmap.options == {"gamma": 1.0, "colorSpace": "raw"}
 
 
+def test_a_normal_map_on_a_physical_material_gets_the_full_bump_amount(monkeypatch, tmp_path):
+    runtime = _install_fake_pymxs(monkeypatch)
+    runtime.physical.bump_map_amt = 0.3
+    normal = tmp_path / "normal.png"
+    normal.write_text("png", encoding="utf-8")
+
+    result = _load_action("action_assign_bitmap_texture.py").main("Physical", "normal", str(normal), renderer="physical")
+
+    assert result["success"] is True
+    assert runtime.physical.bump_map_amt == 1.0
+
+
 def test_physical_normal_map_prefers_native_pymxs_bump_property(monkeypatch, tmp_path):
     runtime = _install_fake_pymxs(monkeypatch)
     runtime.physical = _PermissivePhysicalMaterial()

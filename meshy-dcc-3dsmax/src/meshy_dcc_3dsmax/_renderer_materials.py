@@ -703,6 +703,10 @@ def set_material_map(
         if not _is_same_map(readback, payload):
             warnings.append("{} did not retain the assigned {} map".format(attribute, slot))
             continue
+        if slot in NORMAL_WRAPPED_SLOTS and family == "physical" and attribute == "bump_map":
+            # Physical Material scales its bump slot to 0.3 by default; Meshy's Send To
+            # plugin applies the normal map at full strength.
+            material.bump_map_amt = 1.0
         return {
             "applied": True,
             "slot": slot,
