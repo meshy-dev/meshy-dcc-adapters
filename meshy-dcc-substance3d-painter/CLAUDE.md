@@ -19,11 +19,16 @@ diverged from it. It tracks no upstream and shares no names with one. Keep
   from `substance_painter.project.needs_saving()`; `_safe_stop` refuses while
   it is true or unknown.
 - Host-specific behavior belongs here, not in meshy-dcc-core.
-- Not verified on a real Painter yet. Say so in docs, and only document
-  behavior that a test or the source confirms. Real-host checks must point
+- Checked on a real Painter only on Windows (12.1.5): install, start, a
+  project from a Meshy GLB, a five-map PBR layer, save, safe stop, reopen,
+  export, uninstall. Other versions and macOS are unverified; say so in docs,
+  and only document behavior that a test or the source confirms. Real-host checks must point
   `MESHY_DCC_SUBSTANCE3D_PAINTER_PROFILE`, `MESHY_DCC_REGISTRY_DIR` and
   `MESHY_DCC_DATA_DIR` at test-owned folders and never touch the user's
-  Documents profile.
+  Documents profile. Start Painter with `SUBSTANCE_PAINTER_PLUGINS_PATH` set
+  to `<test profile>/python` so it loads the loader from there (checked on
+  Painter 12.1 for Windows). Painter still writes its bytecode cache to the
+  real `<Documents profile>/pycache`; list it as test residue.
 
 Tests: install the `meshy_dcc_core` wheel (`--no-deps`), `pytest pytest-xdist
 pyyaml jsonschema` into a venv, then `PYTHONPATH=src python -m pytest tests`
