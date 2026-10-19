@@ -101,7 +101,7 @@ def test_bridge_finds_the_package_python(tmp_path: Path, monkeypatch: pytest.Mon
     interpreter = tmp_path / "python" / "bin" / "python3"
     interpreter.parent.mkdir(parents=True)
     interpreter.write_text("", encoding="utf-8")
-    monkeypatch.setattr(bridge, "__file__", str(plugin / "mcp_socket_bridge.py"))
+    monkeypatch.setattr(bridge, "_BRIDGE_FILE", str(plugin / "mcp_socket_bridge.py"))
 
     assert bridge._package_python() == str(interpreter)
 
@@ -264,3 +264,21 @@ def test_sidecar_runs_main_thread_tools_inline() -> None:
     assert sidecar.execution.mode == StandaloneMainThreadExecution
     assert embedded.execution.mode != StandaloneMainThreadExecution
     assert sidecar.instance_type == "gui"
+
+
+def test_bridge_hands_the_zbrush_version_to_its_sidecar(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The sidecar cannot import zbrush.commands, so `list` showed zbrush@unknown.
+    bridge = _load_bridge_plugin()
+    zbc = MagicMock()
+    zbc.zbrush_info.side_effect = [2026, 2]
+    monkeypatch.setattr(bridge, "_import_zbc", lambda: zbc)
+    popen = MagicMock()
+    monkeypatch.setattr(bridge.subprocess, "Popen", popen)
+
+    bridge._start_sidecar("/pkg/python/bin/python3", 1234, "secret")
+
+    assert popen.call_args.kwargs["env"]["MESHY_DCC_ZBRUSH_VERSION"] == "2026.2"
+    from meshy_dcc_zbrush._version_probe import get_zbrush_version_string
+
+    monkeypatch.setenv("MESHY_DCC_ZBRUSH_VERSION", "2026.2")
+    assert get_zbrush_version_string() == "2026.2"

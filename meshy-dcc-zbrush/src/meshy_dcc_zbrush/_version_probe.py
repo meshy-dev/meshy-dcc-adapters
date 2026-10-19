@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Optional, Tuple
 
 
@@ -15,7 +16,11 @@ def is_zbrush_available() -> bool:
 
 
 def get_zbrush_version_string() -> str:
-    """Return a human-readable ZBrush version or ``unknown``."""
+    """Return a human-readable ZBrush version or ``unknown``.
+
+    Inside ZBrush it comes from the SDK; the sidecar gets it from the bridge
+    that started it (``MESHY_DCC_ZBRUSH_VERSION``).
+    """
     try:
         import zbrush.commands as zbc  # noqa: PLC0415
 
@@ -23,7 +28,7 @@ def get_zbrush_version_string() -> str:
         minor = int(zbc.zbrush_info(1))
         return f"{major}.{minor}"
     except Exception:
-        return "unknown"
+        return os.environ.get("MESHY_DCC_ZBRUSH_VERSION") or "unknown"
 
 
 def get_zbrush_version_tuple() -> Tuple[int, int]:

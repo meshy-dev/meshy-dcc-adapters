@@ -34,6 +34,11 @@ import uuid
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Iterator, Optional
 
+# ZBrush runs this file with -script and removes `__file__` from its globals
+# once the script returns, while requests are still served from a UI timer
+# (Windows); read it while it is there.
+_BRIDGE_FILE = os.path.abspath(__file__)
+
 _ZBRUSH_REQUEST_LOCK = threading.Lock()
 _CLIENT_READ_SECONDS = 1.0
 _UI_POLL_SECONDS = 0.02
@@ -64,7 +69,7 @@ def _mark(message: str) -> None:
 def _capture_bootstrap_error(stage: str, error: BaseException) -> None:
     """Persist a bounded JSONL startup error for ``meshy-dcc-zbrush verify``."""
     configured = os.environ.get("MESHY_DCC_ZBRUSH_BOOTSTRAP_ERRORS", "").strip()
-    default_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    default_root = os.path.dirname(os.path.dirname(_BRIDGE_FILE))
     path = configured or os.path.join(default_root, ".meshy-dcc", "bootstrap-errors.jsonl")
     payload = {
         "timestamp": time.time(),
@@ -342,21 +347,21 @@ def _subtool_name(path: str) -> str:
 
 def _get_session_info() -> Dict[str, Any]:
     zbc = _import_zbc()
-    identity_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "meshy_dcc_zbrush_install_identity.json")
+    identity_path = os.path.join(os.path.dirname(_BRIDGE_FILE), "meshy_dcc_zbrush_install_identity.json")
     try:
         with open(identity_path, "r", encoding="utf-8") as stream:
             install_identity = json.load(stream)
     except (OSError, ValueError):
         install_identity = {}
     try:
-        with open(__file__, "rb") as stream:
+        with open(_BRIDGE_FILE, "rb") as stream:
             bridge_digest = hashlib.sha256(stream.read()).hexdigest()
     except OSError:
         bridge_digest = ""
     return {
         "adapter_version": install_identity.get("adapter_version"),
         "bridge_instance_id": _BRIDGE_INSTANCE_ID,
-        "bridge_module_path": os.path.abspath(__file__),
+        "bridge_module_path": _BRIDGE_FILE,
         "bridge_module_sha256": bridge_digest,
         "install_id": install_identity.get("install_id"),
         "pid": os.getpid(),
@@ -1213,7 +1218,7 @@ def _package_python() -> Optional[str]:
     is a few directories up: ``python/bin/python3`` (macOS) or
     ``python/python.exe`` (Windows).
     """
-    folder = os.path.dirname(os.path.abspath(__file__))
+    folder = os.path.dirname(_BRIDGE_FILE)
     for _ in range(6):
         for candidate in (os.path.join(folder, "python.exe"), os.path.join(folder, "bin", "python3")):
             if os.path.isfile(candidate):
@@ -1234,6 +1239,12 @@ def _start_sidecar(python: str, port: int, token: str) -> "subprocess.Popen[byte
         if key not in ("PYTHONHOME", "PYTHONPATH", "PYTHONEXECUTABLE", "__PYVENV_LAUNCHER__")
     }
     env[_TOKEN_ENV] = token
+    # The sidecar cannot import zbrush.commands; it registers this version.
+    try:
+        zbc = _import_zbc()
+        env["MESHY_DCC_ZBRUSH_VERSION"] = f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}"
+    except Exception:  # noqa: BLE001 - the sidecar then reports "unknown"
+        pass
     argv = [python, "-m", "meshy_dcc_zbrush", "serve", "--watch-pid", str(os.getpid()), "--socket-port", str(port)]
     options: Dict[str, Any] = {}
     if sys.platform == "win32":

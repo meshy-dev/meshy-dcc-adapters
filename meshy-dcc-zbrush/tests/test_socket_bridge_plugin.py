@@ -269,6 +269,24 @@ def test_bridge_qt_fallback_imports_pyside6_qtwidgets(monkeypatch) -> None:
     qt6_widgets.QMessageBox.information.assert_called_once_with(None, "Title", "Body")
 
 
+def test_session_info_works_after_zbrush_drops_the_script_file(monkeypatch) -> None:
+    # ZBrush 2026.2 on Windows: requests served after the -script returned
+    # failed with "name '__file__' is not defined".
+    bridge = _load_bridge_plugin()
+    path = bridge.__file__
+    del bridge.__dict__["__file__"]
+    zbc = MagicMock()
+    zbc.zbrush_info.side_effect = [2026, 2]
+    zbc.get_active_tool_path.return_value = "SimpleBrush"
+    zbc.get_subtool_count.return_value = 1
+    monkeypatch.setattr(bridge, "_import_zbc", lambda: zbc)
+
+    info = bridge._get_session_info()
+
+    assert Path(info["bridge_module_path"]) == Path(path)
+    assert info["zbrush_version"] == "2026.2"
+
+
 def test_standalone_plugin_instance_id_fails_closed(monkeypatch) -> None:
     bridge = _load_bridge_plugin()
     show_message = MagicMock()
