@@ -7,18 +7,18 @@ inside one app. Install them with `meshy-dcc install --dcc-type <app>` or from
 
 | Directory | App | Versions |
 |---|---|---|
-| [`meshy-dcc-blender/`](meshy-dcc-blender/) | Blender | 4.5 – 5.1 |
-| [`meshy-dcc-unity/`](meshy-dcc-unity/) | Unity | 2018.4 – 6000.4 |
+| [`meshy-dcc-blender/`](meshy-dcc-blender/) | Blender | 4.5 – 5.2 |
+| [`meshy-dcc-unity/`](meshy-dcc-unity/) | Unity | 2018.4 – 6000.5 |
 | [`meshy-dcc-godot/`](meshy-dcc-godot/) | Godot | 4.4 – 4.7 |
-| [`meshy-dcc-unreal/`](meshy-dcc-unreal/) | Unreal Engine | 5.0 – 5.7 |
-| [`meshy-dcc-maya/`](meshy-dcc-maya/) | Maya | 2025 – 2027 |
-| [`meshy-dcc-3dsmax/`](meshy-dcc-3dsmax/) | 3ds Max (Windows) | 2025 – 2027 |
-| [`meshy-dcc-houdini/`](meshy-dcc-houdini/) | Houdini | 20.5 – 21.0 |
-| [`meshy-dcc-substance3d-painter/`](meshy-dcc-substance3d-painter/) | Substance 3D Painter | 8.1 – 12.1 |
+| [`meshy-dcc-unreal/`](meshy-dcc-unreal/) | Unreal Engine | 5.0 – 5.8 |
+| [`meshy-dcc-maya/`](meshy-dcc-maya/) | Maya | 2023 – 2027 |
+| [`meshy-dcc-3dsmax/`](meshy-dcc-3dsmax/) | 3ds Max (Windows) | 2023 – 2027 |
+| [`meshy-dcc-houdini/`](meshy-dcc-houdini/) | Houdini | 20.5 – 22.0 |
+| [`meshy-dcc-substance3d-painter/`](meshy-dcc-substance3d-painter/) | Substance 3D Painter | 10.0 – 12.1 |
 | [`meshy-dcc-zbrush/`](meshy-dcc-zbrush/) | ZBrush | 2026.1 – 2026.2 |
 | [`meshy-dcc-roblox/`](meshy-dcc-roblox/) | Roblox Studio | current release |
 | [`meshy-dcc-freecad/`](meshy-dcc-freecad/) | FreeCAD | 1.0 – 1.1 |
-| [`meshy-dcc-openscad/`](meshy-dcc-openscad/) | OpenSCAD | 2021.01 – 2026.10 |
+| [`meshy-dcc-openscad/`](meshy-dcc-openscad/) | OpenSCAD | 2021.01; 2026.09 – 2026.10 snapshots |
 | [`meshy-dcc-material-maker/`](meshy-dcc-material-maker/) | Material Maker | 1.7 |
 
 On macOS (Apple Silicon) and Windows x64. `meshy-dcc-c4d/` (Cinema 4D) is not
