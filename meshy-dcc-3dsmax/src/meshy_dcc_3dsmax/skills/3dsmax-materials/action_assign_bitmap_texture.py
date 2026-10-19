@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 from meshy_dcc_3dsmax._material_utils import find_material, material_error, material_success
 from meshy_dcc_3dsmax._renderer_materials import (
+    create_texture_bitmap,
     detect_renderer_family,
     renderer_bitmap_connections,
     set_material_map,
@@ -37,7 +38,7 @@ def main(
     result = set_material_map(
         material,
         slot,
-        _create_bitmap(runtime, str(path)),
+        create_texture_bitmap(runtime, str(path), slot),
         runtime=runtime,
         renderer=family,
         wrap_normal=bool(wrap_normal),
@@ -56,17 +57,3 @@ def main(
         data["failure_reason"] = result.get("error", "map_slot_not_applied")
         return material_error("Could not wire the texture into the material slot", **data)
     return material_success("Assigned bitmap texture", **data)
-
-
-def _create_bitmap(runtime: Any, texture_path: str) -> Any:
-    constructor = getattr(runtime, "Bitmaptexture", None) or getattr(runtime, "BitmapTexture", None)
-    if callable(constructor):
-        try:
-            return constructor(filename=texture_path)
-        except TypeError:
-            bitmap = constructor()
-            bitmap.filename = texture_path
-            return bitmap
-    bitmap = type("BitmapTexture", (), {})()
-    bitmap.filename = texture_path
-    return bitmap
