@@ -345,6 +345,42 @@ def _within(path: Path, roots: Sequence[Path]) -> bool:
     return False
 
 
+def _windows_product_version(path: str) -> Optional[str]:
+    """An executable's fixed product version, trailing zero parts dropped (1.7.0.0 -> 1.7)."""
+    import ctypes
+    from ctypes import wintypes
+
+    version = ctypes.WinDLL("version")
+    version.GetFileVersionInfoSizeW.argtypes = [wintypes.LPCWSTR, wintypes.LPDWORD]
+    version.GetFileVersionInfoW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+    ]
+    version.VerQueryValueW.argtypes = [
+        wintypes.LPCVOID,
+        wintypes.LPCWSTR,
+        ctypes.POINTER(wintypes.LPVOID),
+        wintypes.PUINT,
+    ]
+    size = version.GetFileVersionInfoSizeW(path, None)
+    if not size:
+        return None
+    buffer = ctypes.create_string_buffer(size)
+    pointer, length = wintypes.LPVOID(), wintypes.UINT(0)
+    if not version.GetFileVersionInfoW(path, 0, size, buffer) or not version.VerQueryValueW(
+        buffer, "\\", ctypes.byref(pointer), ctypes.byref(length)
+    ):
+        return None
+    # VS_FIXEDFILEINFO: signature, struct version, file version MS/LS, product version MS/LS, ...
+    fixed = ctypes.cast(pointer, ctypes.POINTER(wintypes.DWORD * 6)).contents
+    parts = [fixed[4] >> 16, fixed[4] & 0xFFFF, fixed[5] >> 16, fixed[5] & 0xFFFF]
+    while len(parts) > 2 and parts[-1] == 0:
+        parts.pop()
+    return ".".join(str(part) for part in parts)
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -487,10 +523,12 @@ class MaterialMakerCli:
         return None
 
     def version(self) -> Optional[str]:
-        """Material Maker's release: the operator's word, else the macOS bundle's."""
+        """Material Maker's release: the operator's word, else the executable's."""
         configured = os.environ.get("MESHY_DCC_MATERIAL_MAKER_VERSION")
         if configured:
             return configured
+        if self.executable and os.name == "nt":
+            return _windows_product_version(self.executable)
         if self.executable:
             plist = Path(self.executable).parent.parent / "Info.plist"
             try:
@@ -776,7 +814,10 @@ class MaterialMakerCli:
         payload = (json.dumps(data, indent="\t", sort_keys=True) + "\n").encode("utf-8")
         if len(payload) > self.max_project_bytes:
             raise MaterialMakerError("Project exceeds the configured size limit")
-        staged = Path(tempfile.mkstemp(prefix=".%s." % path.name, dir=str(path.parent))[1])
+        descriptor, staged_name = tempfile.mkstemp(prefix=".%s." % path.name, dir=str(path.parent))
+        # An open handle keeps Windows from linking over, replacing or deleting the file.
+        os.close(descriptor)
+        staged = Path(staged_name)
         try:
             staged.write_bytes(payload)
             if new:
