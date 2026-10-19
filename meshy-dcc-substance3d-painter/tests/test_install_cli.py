@@ -60,6 +60,29 @@ def test_uninstall_removes_only_the_loader(tmp_path, monkeypatch, capsys):
     assert (code, again["status"]) == (0, "not_installed")
 
 
+def test_uninstall_removes_the_bytecode_painter_cached_under_its_pycache_prefix(tmp_path, monkeypatch, capsys):
+    _run(tmp_path, monkeypatch, capsys, "install", "--yes")
+    profile = tmp_path / "profile"
+    startup_cache = install_cli.bytecode_dir(profile, profile / "python" / "startup")
+    payload_cache = install_cli.bytecode_dir(profile, tmp_path / "package" / "plugin" / "python")
+    stdlib_cache = profile / "pycache" / "Program Files" / "Painter" / "lib"
+    (payload_cache / "meshy_dcc_core").mkdir(parents=True)
+    (payload_cache / "meshy_dcc_core" / "__init__.cpython-313.pyc").write_bytes(b"")
+    startup_cache.mkdir(parents=True)
+    (startup_cache / "meshy_dcc_substance3d_painter_plugin.cpython-313.pyc").write_bytes(b"")
+    (startup_cache / "someone_elses_plugin.cpython-313.pyc").write_bytes(b"")
+    stdlib_cache.mkdir(parents=True)
+    (stdlib_cache / "socket.cpython-313.pyc").write_bytes(b"")
+
+    code, done = _run(tmp_path, monkeypatch, capsys, "uninstall", "--yes")
+
+    assert (code, done["status"]) == (0, "uninstalled")
+    assert sorted(p.name for p in startup_cache.iterdir()) == ["someone_elses_plugin.cpython-313.pyc"]
+    assert not install_cli.bytecode_dir(profile, tmp_path / "package").exists()
+    assert (stdlib_cache / "socket.cpython-313.pyc").exists()
+    assert (profile / "python" / "startup").is_dir()
+
+
 def test_an_incomplete_payload_is_refused(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv(install_cli.PROFILE_ENV, str(tmp_path / "profile"))
     monkeypatch.setattr(install_cli, "payload_dir", lambda: tmp_path / "empty")

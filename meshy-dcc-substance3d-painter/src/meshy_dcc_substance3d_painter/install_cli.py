@@ -21,6 +21,7 @@ import argparse
 import ast
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
@@ -82,6 +83,39 @@ def payload_dir() -> Path:
 
 def loader_path(environ: Mapping[str, str] = os.environ) -> Path:
     return profile_dir(environ) / "python" / "startup" / LOADER_NAME
+
+
+def bytecode_dir(profile: Path, source_dir: Path) -> Path:
+    """Where Painter 12 caches bytecode for modules in ``source_dir``.
+
+    Painter sets ``sys.pycache_prefix`` to ``<profile>/pycache``, so Python
+    mirrors each source folder there, drive letter dropped.
+    """
+    return profile / "pycache" / os.path.splitdrive(str(source_dir))[1].lstrip("\\/")
+
+
+def remove_bytecode(profile: Path, loader: Path, payload: Optional[str]) -> None:
+    """Remove the bytecode Painter cached for the loader and for the payload it loaded.
+
+    Older Painters write it to ``__pycache__`` next to the loader instead.
+    Other plugins may share every folder here, so only folders left empty go.
+    """
+    prefix = profile / "pycache"
+    beside = loader.parent / "__pycache__"
+    mirrors = [bytecode_dir(profile, loader.parent)]
+    for cache in (beside, mirrors[0]):
+        for compiled in cache.glob(loader.stem + ".*.pyc"):
+            compiled.unlink()
+    if beside.is_dir() and not any(beside.iterdir()):
+        beside.rmdir()
+    if payload:
+        mirrors.append(bytecode_dir(profile, Path(payload)))
+        shutil.rmtree(mirrors[-1], ignore_errors=True)
+    for cache in mirrors:
+        while prefix in cache.parents and not (cache.is_dir() and any(cache.iterdir())):
+            if cache.is_dir():
+                cache.rmdir()
+            cache = cache.parent
 
 
 def loader_source(payload: Path) -> str:
@@ -155,12 +189,7 @@ def run(verb: str, yes: bool, environ: Mapping[str, str] = os.environ) -> Tuple[
             return done(EXIT_OK, "planned", f"Would remove {target}.")
         try:
             target.unlink()
-            # Painter's Python leaves the loader's bytecode next to it; other plugins may share the folder.
-            cache = target.parent / "__pycache__"
-            for compiled in cache.glob(target.stem + ".*.pyc"):
-                compiled.unlink()
-            if cache.is_dir() and not any(cache.iterdir()):
-                cache.rmdir()
+            remove_bytecode(profile_dir(environ), target, recorded)
         except OSError as exc:
             return done(EXIT_WRITE, "failed", f"Could not remove {target}: {exc}")
         result["applied"] = True
