@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the
 adapter this one was forked from. Experimental: not verified on a real ZBrush.

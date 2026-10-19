@@ -51,7 +51,7 @@ jobs:
         run: |
           host="${TAG%-v*}"
           version="${TAG##*-v}"
-          declared="$(sed -n 's/^version = "\(.*\)"$/\1/p' "meshy-dcc-$host/pyproject.toml" | head -1)"
+          declared="$(sed -n 's/^version *= *"\(.*\)"$/\1/p' "meshy-dcc-$host/pyproject.toml" | head -1)"
           if [ "$declared" != "$version" ]; then
             echo "::error::meshy-dcc-$host/pyproject.toml says '$declared' but the tag is $TAG."
             exit 1
