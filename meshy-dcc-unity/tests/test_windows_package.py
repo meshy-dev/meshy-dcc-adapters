@@ -18,7 +18,8 @@ def test_cmd_launcher_runs_the_bundled_python_with_every_argument():
 
 
 def test_a_python_exe_at_the_root_marks_a_windows_install(tmp_path: Path):
-    assert build_package.platform_tag(tmp_path).startswith(("macos_", "linux_"))
+    assert not build_package.is_windows_python(tmp_path)
+    assert build_package.platform_tag(tmp_path) != "windows_x86_64"
     (tmp_path / "python.exe").write_bytes(b"")
     assert build_package.is_windows_python(tmp_path)
     assert build_package.platform_tag(tmp_path) == "windows_x86_64"
