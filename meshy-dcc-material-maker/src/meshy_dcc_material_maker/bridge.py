@@ -1132,6 +1132,53 @@ class MaterialMakerCli:
             },
         }
 
+    def open_in_material_maker(self, path: str) -> dict[str, Any]:
+        """Open a graph in Material Maker's window for the user, and return at once.
+
+        A new Material Maker process of its own: it outlives the call and the
+        sidecar, and never touches a Material Maker the user already has open.
+        """
+        if not self.executable:
+            raise MaterialMakerError(
+                "Material Maker was not found; set MESHY_DCC_MATERIAL_MAKER_EXECUTABLE"
+            )
+        project = self._project_path(path)
+        validation = self._validate_data(self._read_project(project))
+        if not validation["valid"]:
+            # Material Maker would run these nodes (camera, downloads) on opening.
+            raise MaterialMakerError(
+                "Project failed validation: %s" % "; ".join(validation["errors"][:5])
+            )
+        # Material Maker opens a .ptex given as an argument; it must be absolute.
+        command = [self.executable, str(project)]
+        options: dict[str, Any] = {
+            "stdin": subprocess.DEVNULL,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+            "close_fds": True,
+        }
+        if os.name == "nt":
+            options["creationflags"] = (
+                subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+        else:
+            # Its own session: stopping the server ends the skill script's
+            # process group, which must not take the user's window with it.
+            options["start_new_session"] = True
+        process = subprocess.Popen(command, **options)
+        return {
+            "path": str(project),
+            "sha256": _sha256_file(project),
+            "executable": self.executable,
+            "pid": process.pid,
+            "material_maker_version": self.version(),
+            "note": (
+                "Opened for the user to look at. Material Maker does not reload a file "
+                "changed on disk: before editing this graph again, ask the user to close "
+                "its window, then open it again afterwards."
+            ),
+        }
+
 
 def _uses_clipboard(profile: Mapping[str, Any]) -> bool:
     files = profile.get("files", []) if isinstance(profile, Mapping) else []

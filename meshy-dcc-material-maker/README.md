@@ -51,8 +51,14 @@ installed or changed.
 
 The `material-maker-materials` skill has `get_status`, `create_material`,
 `get_graph`, `edit_graph`, `list_node_types`, `inspect_project`,
-`validate_project` and `export_material`. Every edit is saved at once, so an
-instance never has unsaved work and stops on request.
+`validate_project`, `export_material` and `open_in_material_maker`. Every edit
+is saved at once, so an instance never has unsaved work and stops on request.
+
+The edits go to the files, not to an open Material Maker window: Material
+Maker does not reload a graph changed on disk, and saving there overwrites
+the agent's change. The skill has agents ask the user to close a graph before
+editing it, and `open_in_material_maker` opens the result in a new Material
+Maker window for the user afterwards.
 
 See [Installation](install.md) for the package's own verbs and diagnostics.
 

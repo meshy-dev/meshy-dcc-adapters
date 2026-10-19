@@ -40,5 +40,11 @@ adapter this one was forked from.
   and in the Steam folder on Windows.
 - Every tool is synchronous. The skill is no longer preloaded at startup:
   agents load it with `load-skill`.
+- `open_in_material_maker` opens a project graph in Material Maker's window
+  for the user: a separate process that returns at once, outlives the
+  instance and never touches a Material Maker the user already has open. A
+  Material Maker window does not reload a graph changed on disk, so the skill
+  now has agents ask whether a graph is open there (and have the user close
+  it) before editing it, and never edit a graph the user is editing.
 - An instance launched by `meshy-dcc start-instance` advertises a safe stop.
   Edits are saved as they are made, so it always stops.
