@@ -53,8 +53,13 @@ EXCLUDE_NEWER = "2026-10-17T00:00:00Z"
 
 def pinned_python(platform: str, tmp: Path) -> Path:
     name, sha256 = PYTHONS[platform]
-    archive = tmp / "cpython.tar.gz"
-    urllib.request.urlretrieve(PYTHON_URL + name, archive)
+    # Kept between builds; a partial or stale file fails the digest and is fetched again.
+    archive = Path(tempfile.gettempdir()) / "meshy-dcc-build-release" / name
+    if not archive.is_file() or hashlib.sha256(archive.read_bytes()).hexdigest() != sha256:
+        archive.parent.mkdir(exist_ok=True)
+        # A stalled download fails instead of hanging the build.
+        with urllib.request.urlopen(PYTHON_URL + name, timeout=60) as response:
+            archive.write_bytes(response.read())
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     if digest != sha256:
         sys.exit(f"{archive}: sha256 {digest}, expected {sha256}")

@@ -32,6 +32,8 @@ jobs:
     # Both platforms build here: the Windows packages take a pinned Windows
     # CPython and win_amd64 wheels, no Windows machine needed.
     runs-on: macos-14
+    # The packaging downloads have no timeouts of their own; fail a stall, then rerun.
+    timeout-minutes: 45
     outputs:
       host: ${{ steps.tag.outputs.host }}
       version: ${{ steps.tag.outputs.version }}
