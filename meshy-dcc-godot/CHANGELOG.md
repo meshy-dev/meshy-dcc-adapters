@@ -50,3 +50,6 @@ adapter this one was forked from.
   exits when nothing is unsaved and refuses otherwise, unless the request
   carries `discard_unsaved`; an editor that cannot report unsaved state counts
   as unsaved.
+- Vector properties also take `{"x": .., "y": .., "z": ..}`; that form was
+  accepted and silently left the property unchanged. `update_property`
+  returns the value read back from the node.

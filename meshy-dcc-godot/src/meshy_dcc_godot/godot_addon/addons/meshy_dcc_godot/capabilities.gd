@@ -371,7 +371,7 @@ func _update_property(params: Dictionary) -> Dictionary:
 	undo.add_do_property(node, property_name, value)
 	undo.add_undo_property(node, property_name, previous)
 	undo.commit_action()
-	return {"updated": true, "node_path": str(node.get_path()), "property": property_name, "value": _json_value(value)}
+	return {"updated": true, "node_path": str(node.get_path()), "property": property_name, "value": _json_value(node.get(property_name))}
 
 
 func _get_node_properties(params: Dictionary) -> Dictionary:
@@ -1617,6 +1617,8 @@ func _stored_properties(object: Object) -> Dictionary:
 
 
 func _coerce_value(previous, value):
+	if value is Dictionary and (previous is Vector2 or previous is Vector2i or previous is Vector3 or previous is Vector3i):
+		value = [value.get("x", previous.x), value.get("y", previous.y), value.get("z", previous.z if previous is Vector3 or previous is Vector3i else 0)]
 	if previous is Vector2 and value is Array and value.size() >= 2: return Vector2(float(value[0]), float(value[1]))
 	if previous is Vector2i and value is Array and value.size() >= 2: return Vector2i(int(value[0]), int(value[1]))
 	if previous is Vector3 and value is Array and value.size() >= 3: return Vector3(float(value[0]), float(value[1]), float(value[2]))

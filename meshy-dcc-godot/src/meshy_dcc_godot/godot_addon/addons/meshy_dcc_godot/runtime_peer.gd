@@ -1717,6 +1717,8 @@ func _has_property(object: Object, property_name: String) -> bool:
 
 
 func _coerce_value(previous, value):
+	if value is Dictionary and (previous is Vector2 or previous is Vector2i or previous is Vector3 or previous is Vector3i):
+		value = [value.get("x", previous.x), value.get("y", previous.y), value.get("z", previous.z if previous is Vector3 or previous is Vector3i else 0)]
 	if previous is Vector2 and value is Array and value.size() >= 2: return _vector2(value)
 	if previous is Vector2i and value is Array and value.size() >= 2: return Vector2i(int(value[0]), int(value[1]))
 	if previous is Vector3 and value is Array and value.size() >= 3: return _vector3(value)
