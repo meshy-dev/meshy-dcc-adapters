@@ -490,10 +490,15 @@ class TestServerBindAndRegister:
 
     def test_auto_detects_version_fallback_when_maya_unavailable(self):
         """When maya.cmds is not importable, version falls back to 'unknown'."""
+        from meshy_dcc_maya import _version_probe
+
         server = self._make_server()
         mgr = MagicMock()
         mgr.bind_and_register.return_value = ("inst", MagicMock())
 
+        # The probe caches per process: an earlier test on this worker that ran it against a
+        # maya stub would make this one read that value instead of probing again.
+        _version_probe.clear_version_cache()
         # Temporarily remove maya from sys.modules so import fails
         saved = {k: v for k, v in sys.modules.items() if k.startswith("maya")}
         for k in list(saved):
@@ -502,6 +507,7 @@ class TestServerBindAndRegister:
             server.bind_and_register(mgr)
         finally:
             sys.modules.update(saved)
+            _version_probe.clear_version_cache()
 
         call_kwargs = mgr.bind_and_register.call_args
         assert call_kwargs[1]["version"] == "unknown"
