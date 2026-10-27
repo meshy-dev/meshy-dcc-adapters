@@ -1139,6 +1139,28 @@ class FreecadBridge:
             result.update(_transport_fields(started, process.returncode, stdout, stderr))
             return result
 
+    def _invoke_staged(
+        self, method: str, params: Mapping[str, Any], timeout_secs: float = 120
+    ) -> dict[str, Any]:
+        """Run a call whose output the caller publishes over a user's file.
+
+        A read-only call reports a non-zero exit as ``exit_code`` and lets the
+        caller decide (``status`` does). Here the caller moves the child's staged
+        file into place, and a child that exits non-zero after writing
+        ``ok: true`` has not shown that file is whole, so the call fails and the
+        caller publishes nothing. The check is on the result rather than inside
+        ``_invoke`` so it holds without any state shared between concurrent calls.
+        """
+        result = self._invoke(method, params, timeout_secs)
+        exit_code = result.get("exit_code")
+        if exit_code not in (0, None):
+            detail = str(result.get("stderr") or result.get("stdout") or "").strip()[:1_000]
+            raise BridgeError(
+                "FreeCAD %s backend exited unsuccessfully (exit %s) after writing a result, "
+                "so its output was not published: %s" % (self.backend, exit_code, detail)
+            )
+        return result
+
     def _script_path(self, value: str) -> Path:
         """Resolve a script the caller is allowed to name.
 
@@ -1357,7 +1379,7 @@ class FreecadBridge:
             request = dict(params)
             request["document_path"] = str(staged)
             try:
-                result = self._invoke(method, request, timeout_secs)
+                result = self._invoke_staged(method, request, timeout_secs)
             except BaseException as exc:
                 raise _unstage_failure(exc, staged, document) from None
             if not staged.is_file() or staged.stat().st_size <= 0:
@@ -1679,7 +1701,7 @@ class FreecadBridge:
         staged.unlink()
         try:
             try:
-                result = self._invoke(
+                result = self._invoke_staged(
                     "document.create",
                     {"document_path": str(staged), "name": name},
                     timeout_secs,
@@ -1906,7 +1928,7 @@ class FreecadBridge:
         staged.unlink()
         try:
             try:
-                result = self._invoke(
+                result = self._invoke_staged(
                     "document.save_copy",
                     {"document_path": str(source), "output_path": str(staged), **presentation},
                     timeout_secs,
@@ -2424,7 +2446,7 @@ class FreecadBridge:
         staged.unlink()
         try:
             try:
-                result = self._invoke(
+                result = self._invoke_staged(
                     "model.export_geometry",
                     {
                         "document_path": str(document),

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `3dsmax-mesh-ops` loads again: `inspect_mesh` and `pick_component` declared
+  `tool_role: inspection`, which meshy-dcc-core does not accept, so the skill
+  registered none of its 25 tools. Both are `read_only`. A new test loads every
+  bundled skill through core's loader and checks it registers every tool its
+  `tools.yaml` declares.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the

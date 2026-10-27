@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- A tool that writes a document or an export (`create_document`, `save_copy`,
+  `export_geometry` and every editing tool) no longer publishes the file when
+  the FreeCAD child exits non-zero after writing its result. The call fails
+  with the exit code and the child's stderr, the user's file is untouched, and
+  the call is not replayed. Read-only calls still report `exit_code` as before.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the

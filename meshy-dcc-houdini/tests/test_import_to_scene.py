@@ -12,7 +12,7 @@ import json
 import struct
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 import pytest
@@ -544,6 +544,182 @@ class TestMaterialModeIsNotSilent:
 
         assert _extra(result)["material_mode"] == "as_authored"
         assert _warnings(result), "default material_mode must not drop materials silently"
+
+
+def _glb_bytes(*chunks: bytes) -> bytes:
+    """A GLB header followed by raw chunk bytes; the header's total length is honest."""
+    body = b"".join(chunks)
+    return struct.pack("<III", 0x46546C67, 2, 12 + len(body)) + body
+
+
+def _fake_pxr(monkeypatch: pytest.MonkeyPatch, prims: List[Any], open_error: Optional[Exception] = None) -> None:
+    """Install a ``pxr`` whose stage holds *prims*: a (name, shader) pair per Material prim."""
+
+    class _Prim:
+        def __init__(self, name: str, shader: Any) -> None:
+            self.name, self.shader = name, shader
+
+        def IsA(self, _kind: Any) -> bool:
+            return True
+
+        def GetName(self) -> str:
+            return self.name
+
+    class _Material:
+        def __init__(self, prim: _Prim) -> None:
+            self.prim = prim
+
+        def ComputeSurfaceSource(self) -> Any:
+            return None if self.prim.shader is None else (self.prim.shader, "surface", "output")
+
+    class _Stage:
+        @staticmethod
+        def Open(_path: str) -> Any:
+            if open_error is not None:
+                raise open_error
+            return SimpleNamespace(Traverse=lambda: [_Prim(name, shader) for name, shader in prims])
+
+    pxr = ModuleType("pxr")
+    pxr.Usd = SimpleNamespace(Stage=_Stage)
+    pxr.UsdShade = SimpleNamespace(Material=_Material, Shader=lambda prim: prim)
+    monkeypatch.setitem(sys.modules, "pxr", pxr)
+
+
+_PREVIEW = {"diffuseColor": (0.72, 0.45, 0.2), "metallic": 1.0, "roughness": 0.28}
+
+
+class TestLostMaterialsAreCounted:
+    """``materials_lost`` is what the carrier declares minus what reached the scene."""
+
+    def test_clean_import_loses_nothing(self, script: ModuleType, hou: FakeHou, tmp_path: Path) -> None:
+        carrier = write_glb(tmp_path / "ok.glb", [{"name": "a", "pbrMetallicRoughness": {}}])
+
+        result = script.import_to_scene(_descriptor(carrier, "glb"), material_mode="as_authored")
+
+        extra = _extra(result)
+        assert (extra["status"], extra["materials_detected"], extra["materials_imported"]) == ("as_authored", 1, 1)
+        assert extra["materials_lost"] == 0
+        assert _warnings(result) == []
+
+    @pytest.mark.parametrize(
+        "carrier_bytes, why",
+        [
+            (struct.pack("<I", 0x46546C67), "truncated"),
+            (_glb_bytes(struct.pack("<II", 4096, 0x4E4F534A) + b"{}"), "claims 4096 byte(s)"),
+            (_glb_bytes(struct.pack("<II", 4, 0x004E4942) + b"\x00" * 4, struct.pack("<II", 0, 0)), "no JSON chunk"),
+        ],
+        ids=["short-header", "json-chunk-past-end", "no-json-chunk"],
+    )
+    def test_truncated_glb_is_unreadable_not_materialless(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, carrier_bytes: bytes, why: str
+    ) -> None:
+        carrier = tmp_path / "cut.glb"
+        carrier.write_bytes(carrier_bytes)
+
+        result = script.import_to_scene(_descriptor(carrier, "glb"), material_mode="as_authored")
+
+        assert _extra(result)["status"] == "carrier_unreadable"
+        assert _extra(result)["materials_imported"] == 0
+        assert [w["code"] for w in _warnings(result)] == ["material_fallback"]
+        assert why in _warnings(result)[0]["message"]
+
+    def test_obj_that_names_materials_it_cannot_supply_counts_them_as_lost(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path
+    ) -> None:
+        carrier = tmp_path / "asset.obj"
+        carrier.write_text("mtllib gone.mtl\nusemtl a\nusemtl b\nv 0 0 0\n", encoding="utf-8")
+
+        extra = _extra(script.import_to_scene(_descriptor(carrier, "obj"), material_mode="as_authored"))
+
+        assert (extra["materials_detected"], extra["materials_imported"], extra["materials_lost"]) == (2, 0, 2)
+
+    def test_usd_that_is_partly_readable_keeps_the_readable_material_and_reports_the_rest(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _fake_pxr(monkeypatch, [("preview", _FakeUsdShader(_PREVIEW)), ("arnold_look", _FakeUsdShader({}))])
+        carrier = write_usda(tmp_path / "asset.usda")
+
+        result = script.import_to_scene(_descriptor(carrier, "usd"), material_mode="as_authored")
+
+        extra = _extra(result)
+        assert extra["status"] == "carrier_unreadable"  # never as_authored with a material lost
+        assert (extra["materials_detected"], extra["materials_imported"], extra["materials_lost"]) == (2, 1, 1)
+        assert extra["material_paths"] == ["/mat/showcase_gltf_preview"]
+        assert [w["code"] for w in _warnings(result)] == ["material_fallback"]
+        assert "arnold_look" in _warnings(result)[0]["message"]
+        assert "1 lost" in result["message"]
+
+    def test_usd_with_only_unreadable_shaders_loses_them_all(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Arnold / MaterialX surfaces resolve through UsdShade but author no UsdPreviewSurface input.
+        _fake_pxr(monkeypatch, [("standard_surface", _FakeUsdShader({"base_color": (1, 0, 0)}))])
+        carrier = write_usda(tmp_path / "asset.usda")
+
+        extra = _extra(script.import_to_scene(_descriptor(carrier, "usd"), material_mode="as_authored"))
+
+        assert extra["status"] == "carrier_unreadable"
+        assert (extra["materials_detected"], extra["materials_imported"], extra["materials_lost"]) == (1, 0, 1)
+
+    def test_unopenable_usd_stage_is_unreadable_not_materialless(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _fake_pxr(monkeypatch, [], open_error=RuntimeError("corrupt layer"))
+        carrier = write_usda(tmp_path / "asset.usda")
+
+        result = script.import_to_scene(_descriptor(carrier, "usd"), material_mode="as_authored")
+
+        assert _extra(result)["status"] == "carrier_unreadable"
+        assert "corrupt layer" in _warnings(result)[0]["message"]
+
+    def test_shader_without_a_readable_base_colour_has_no_spec(self) -> None:
+        module = _load_helper()
+
+        assert module._shader_spec(_FakeUsdShader({}), "arnold") is None
+        # metallic/roughness alone would keep half a look on a neutral grey.
+        assert module._shader_spec(_FakeUsdShader({"metallic": 1.0, "roughness": 0.2}), "half") is None
+        assert module._shader_spec(_FakeUsdShader({"diffuseColor": (0.1, 0.2, 0.3)}), "ok")["metallic"] == 0.0
+
+    def test_material_no_node_can_be_created_for_is_lost(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        original = FakeNode.createNode
+
+        def _create(self: FakeNode, node_type: str, node_name: Optional[str] = None) -> FakeNode:
+            if node_name and node_name.endswith("second"):
+                raise RuntimeError("cannot create")
+            return original(self, node_type, node_name)
+
+        monkeypatch.setattr(FakeNode, "createNode", _create)
+        carrier = write_glb(
+            tmp_path / "two.glb",
+            [{"name": "first", "pbrMetallicRoughness": {}}, {"name": "second", "pbrMetallicRoughness": {}}],
+        )
+
+        result = script.import_to_scene(_descriptor(carrier, "glb"), material_mode="as_authored")
+
+        extra = _extra(result)
+        assert (extra["materials_detected"], extra["materials_imported"], extra["materials_lost"]) == (2, 1, 1)
+        assert extra["status"] == "import_incomplete"
+        assert [w["code"] for w in _warnings(result)] == ["material_fallback"]
+        assert "second" in _warnings(result)[0]["message"]
+
+    def test_default_gray_that_could_not_be_created_is_lost(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        original = FakeNode.createNode
+
+        def _create(self: FakeNode, node_type: str, node_name: Optional[str] = None) -> FakeNode:
+            if node_type == "matnet":
+                raise RuntimeError("no material network")
+            return original(self, node_type, node_name)
+
+        monkeypatch.setattr(FakeNode, "createNode", _create)
+        carrier = write_glb(tmp_path / "ok.glb", [])
+
+        extra = _extra(script.import_to_scene(_descriptor(carrier, "glb"), material_mode="default_gray"))
+
+        assert (extra["status"], extra["materials_imported"], extra["materials_lost"]) == ("failed", 0, 1)
 
 
 class TestMaterialModeVariants:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock
 
 from tests.conftest import load_and_call, make_mock_bpy
@@ -89,24 +90,108 @@ class TestNewScene:
 
 
 class TestSaveScene:
-    def test_save_to_explicit_path(self):
-        bpy = make_mock_bpy()
-        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath="/tmp/test.blend")
-        assert result["success"] is True
-        bpy.ops.wm.save_as_mainfile.assert_called_once_with(filepath="/tmp/test.blend")
+    """save_scene succeeds only when the operator finished and the file reads back fresh."""
 
-    def test_save_existing_file(self):
+    @staticmethod
+    def _saving_bpy(tmp_path, *, result=None, write=b"blend", scene_path="saved.blend", stale=False):
+        """A bpy whose save operators write ``write`` to ``scene_path`` and return ``result``."""
         bpy = make_mock_bpy()
-        bpy.data.filepath = "/existing/scene.blend"
+        target = tmp_path / scene_path
+        if stale:
+            target.write_bytes(b"older save")
+            os.utime(target, (1_000_000, 1_000_000))
+        bpy.data.filepath = ""
+
+        def save(**kwargs):
+            if write is not None:
+                target.write_bytes(write)
+            bpy.data.filepath = str(target) if scene_path else ""
+            return {"FINISHED"} if result is None else result
+
+        bpy.ops.wm.save_as_mainfile.side_effect = save
+        bpy.ops.wm.save_mainfile.side_effect = save
+        return bpy, target
+
+    def test_save_to_explicit_path_reports_the_verified_file(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path)
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is True
+        bpy.ops.wm.save_as_mainfile.assert_called_once_with(filepath=str(target))
+        ctx = result["context"]
+        assert ctx["filepath"] == str(target)
+        assert ctx["file_size_bytes"] == len(b"blend")
+        assert result["postcondition"]["verified"] is True
+        assert result["postcondition"]["path"] == str(target)
+
+    def test_reports_the_path_blender_saved_to_not_the_one_requested(self, tmp_path):
+        # Blender appends .blend to an extensionless path; that is the file to verify.
+        bpy, target = self._saving_bpy(tmp_path)
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(tmp_path / "saved"))
+        assert result["success"] is True
+        assert result["context"]["filepath"] == str(target)
+
+    def test_save_existing_file(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path)
+        bpy.data.filepath = str(target)
         result = load_and_call("blender-scene/scripts/save_scene.py", bpy)
         assert result["success"] is True
         bpy.ops.wm.save_mainfile.assert_called_once()
+        bpy.ops.wm.save_as_mainfile.assert_not_called()
 
     def test_error_when_no_filepath_and_unsaved(self):
         bpy = make_mock_bpy()
         bpy.data.filepath = ""
         result = load_and_call("blender-scene/scripts/save_scene.py", bpy)
         assert result["success"] is False
+        bpy.ops.wm.save_mainfile.assert_not_called()
+        bpy.ops.wm.save_as_mainfile.assert_not_called()
+
+    def test_cancelled_save_fails_even_though_a_file_is_already_there(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path, result={"CANCELLED"}, write=None, stale=True)
+        before = target.stat()
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is False
+        assert result["context"]["operator_result"] == ["CANCELLED"]
+        assert result["context"]["mutation_applied"] is None
+        assert target.read_bytes() == b"older save" and target.stat().st_mtime == before.st_mtime
+        assert bpy.ops.wm.save_as_mainfile.call_count == 1  # never replayed
+
+    def test_non_set_operator_result_fails(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path, result="FINISHED")
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is False
+
+    def test_finished_without_a_file_fails(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path, write=None)
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is False
+        assert "cannot be read back" in result["error"]
+
+    def test_finished_with_an_empty_file_fails(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path, write=b"")
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is False
+        assert "nonempty" in result["error"]
+
+    def test_finished_but_file_not_rewritten_fails(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path, write=None, stale=True)
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is False
+        assert "predates" in result["error"]
+        assert result["context"]["filepath"] == str(target)
+
+    def test_finished_with_no_scene_path_fails(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path, scene_path="")
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is False
+
+    def test_operator_exception_fails_and_is_not_replayed(self, tmp_path):
+        bpy, target = self._saving_bpy(tmp_path)
+        bpy.ops.wm.save_as_mainfile.side_effect = RuntimeError("Unable to open for writing")
+        result = load_and_call("blender-scene/scripts/save_scene.py", bpy, filepath=str(target))
+        assert result["success"] is False
+        assert result["context"]["mutation_applied"] is None
+        assert bpy.ops.wm.save_as_mainfile.call_count == 1
 
 
 class TestOpenScene:
