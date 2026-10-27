@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `save_scene` reads the save back. It fails unless Blender returns `FINISHED`
+  and the path Blender then reports for the scene is a regular, nonempty file
+  with a fresh modification time, so a cancelled save no longer looks like a
+  success because an older file sits at the path. The result's `filepath` is
+  the verified file, and a failure reports `mutation_applied: null` without
+  retrying.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the
