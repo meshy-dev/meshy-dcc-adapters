@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- `import_to_scene` reports materials it lost instead of `as_authored`. The
+  result's `extra.materials_lost` counts the materials the carrier declares
+  minus the material nodes that reached the scene, and `status` is
+  `as_authored` only when it is 0. A truncated GLB, a USD stage that will not
+  open, and a USD material with no readable `UsdPreviewSurface` (Arnold or
+  MaterialX surfaces, or no `diffuseColor`) are `carrier_unreadable` with a
+  `material_fallback` warning; the readable materials of a partly readable
+  stage are still imported. A material no node could be created for is
+  `import_incomplete`.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the
