@@ -37,15 +37,15 @@ Connect your MCP client (Claude Desktop, etc.) to the **single gateway endpoint*
 
     http://127.0.0.1:19765/mcp
 
-Newer sidecar binaries also expose the standalone gateway on the local network by
-default::
+The LAN listener is off by default: the gateway has no authentication. To opt in,
+set a positive ``MESHY_DCC_GATEWAY_REMOTE_PORT`` and a
+``MESHY_DCC_GATEWAY_REMOTE_HOST`` of ``0.0.0.0`` or a LAN address before loading
+the plugin::
 
-    http://<this-machine-lan-ip>:59765/mcp
+    http://<this-machine-lan-ip>:<configured-port>/mcp
 
 Remote listener election still follows the local gateway winner on
-``127.0.0.1:19765``. Set ``MESHY_DCC_GATEWAY_REMOTE_PORT=0`` to disable the LAN
-listener, or ``MESHY_DCC_GATEWAY_REMOTE_HOST`` / ``MESHY_DCC_GATEWAY_REMOTE_PORT``
-to choose a different bind address.
+``127.0.0.1:19765``.
 
 The gateway exposes a bounded dynamic surface (``search_tools`` / ``describe_tool`` /
 ``call_tool``) and MCP ``resources/read`` on ``gateway://instances`` for instance
@@ -71,10 +71,11 @@ Configuration
     ``meshy-dcc-gateway@<hostname>`` in sidecar mode.
 
 ``MESHY_DCC_GATEWAY_REMOTE_PORT``
-    LAN gateway listener port. Default ``59765``. Set to ``0`` to disable.
+    LAN gateway listener port. Default ``0`` (disabled). Set a positive port to enable.
 
 ``MESHY_DCC_GATEWAY_REMOTE_HOST``
-    LAN gateway listener bind address. Default ``0.0.0.0``.
+    LAN gateway listener bind address. Default ``127.0.0.1``; use ``0.0.0.0`` or a
+    LAN address to reach the listener from the network.
 
 ``MESHY_DCC_REGISTRY_DIR``
     Directory for the shared ``FileRegistry`` JSON.  Defaults to OS temp dir.
@@ -985,7 +986,7 @@ def _print_sidecar_info(handle) -> None:  # noqa: ANN001
 
             remote_host, remote_port = resolve_gateway_remote_options()
         except Exception:  # noqa: BLE001
-            remote_host, remote_port = "0.0.0.0", 59765
+            remote_host, remote_port = "127.0.0.1", 0
         if remote_port > 0:
             display_host = _gateway_remote_display_host(remote_host)
             gateway_lines.append(f"  Gateway LAN  : http://{display_host}:{remote_port}/mcp  (sidecar-managed)")

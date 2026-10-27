@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- With `MESHY_DCC_MAYA_SIDECAR=1` the sidecar no longer opens a LAN gateway
+  listener by default. The gateway has no authentication, so the listener
+  stays off (port 0, host 127.0.0.1) unless `MESHY_DCC_GATEWAY_REMOTE_PORT`
+  and `MESHY_DCC_GATEWAY_REMOTE_HOST` are set; a malformed or out-of-range
+  port also means off. It was 59765 on 0.0.0.0.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the

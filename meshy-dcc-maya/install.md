@@ -60,7 +60,7 @@ Off unless set before Maya starts:
 
 | Variable | Effect |
 |---|---|
-| `MESHY_DCC_MAYA_SIDECAR=1` | Run a `meshy-dcc-server` sidecar next to Maya (it can also open a LAN listener). |
+| `MESHY_DCC_MAYA_SIDECAR=1` | Run a `meshy-dcc-server` sidecar next to Maya. It opens no LAN listener unless you also set `MESHY_DCC_GATEWAY_REMOTE_PORT` above 0 and `MESHY_DCC_GATEWAY_REMOTE_HOST` to `0.0.0.0` or a LAN address (the default host is loopback). The gateway has no authentication. |
 | `MESHY_DCC_MAYA_DISABLE_AUTOSAVE=1` | Turn Maya's AutoSave off while the plug-in is loaded. Maya keeps that switch in the user's preferences. |
 | `MESHY_DCC_MAYA_COMMANDPORT_HYGIENE=1` | Close Maya's default commandPort and turn off the security warning on open ones. |
 

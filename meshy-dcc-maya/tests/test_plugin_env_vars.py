@@ -435,16 +435,24 @@ class TestSidecarUsesCoreRegistryDefaults:
         assert "Gateway      : http://127.0.0.1:19765/mcp  (sidecar-managed)" in output
         assert "Gateway LAN  : http://192.168.1.20:59765/mcp  (sidecar-managed)" in output
 
-    def test_sidecar_remote_gateway_options_default_and_disable(self, monkeypatch):
+    def test_sidecar_remote_gateway_options_default_off_and_explicit_opt_in(self, monkeypatch):
         from meshy_dcc_maya.sidecar import resolve_gateway_remote_options
 
         monkeypatch.delenv("MESHY_DCC_GATEWAY_REMOTE_HOST", raising=False)
         monkeypatch.delenv("MESHY_DCC_GATEWAY_REMOTE_PORT", raising=False)
-        assert resolve_gateway_remote_options() == ("0.0.0.0", 59765)
+        # Off and loopback by default: the LAN gateway has no authentication.
+        assert resolve_gateway_remote_options() == ("127.0.0.1", 0)
 
         monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_HOST", "192.168.2.10")
         monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_PORT", "0")
         assert resolve_gateway_remote_options() == ("192.168.2.10", 0)
+
+        monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_PORT", "59765")
+        assert resolve_gateway_remote_options() == ("192.168.2.10", 59765)
+
+        for invalid in ("", "invalid", "-1", "65536"):
+            monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_PORT", invalid)
+            assert resolve_gateway_remote_options() == ("192.168.2.10", 0)
 
 
 class TestGatewayHealthProbe:
