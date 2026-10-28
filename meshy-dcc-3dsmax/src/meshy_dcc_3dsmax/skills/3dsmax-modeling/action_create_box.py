@@ -27,7 +27,9 @@ def main(
         The action response.
     """
     rt = get_runtime()
-    box_obj = rt.Box(width=width, height=height, depth=depth)
+    # A 3ds Max Box has no `depth`: its third size is `length`, and pymxs
+    # ignores an unknown keyword, which left every box 25 units long.
+    box_obj = rt.Box(width=width, length=depth, height=height)
 
     if name:
         box_obj.name = name
@@ -39,9 +41,9 @@ def main(
         "data": {
             "node_name": str(box_obj.name),
             "object_id": int(box_obj.handle) if hasattr(box_obj, "handle") else None,
-            "width": width,
-            "height": height,
-            "depth": depth,
+            "width": float(box_obj.width),
+            "height": float(box_obj.height),
+            "depth": float(box_obj.length),
             "position": applied_position,
         },
     }

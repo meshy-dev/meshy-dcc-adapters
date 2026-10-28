@@ -7,6 +7,10 @@
   registered none of its 25 tools. Both are `read_only`. A new test loads every
   bundled skill through core's loader and checks it registers every tool its
   `tools.yaml` declares.
+- `create_box` builds a box of the requested depth. It passed `depth`, which a
+  3ds Max Box does not have (its third size is `length`), so every box was 25
+  units long, and the result echoed the requested sizes instead of reading the
+  box back.
 
 ## 0.1.0 (2026-10-19)
 
