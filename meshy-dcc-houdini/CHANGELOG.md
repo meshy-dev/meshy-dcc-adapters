@@ -11,6 +11,10 @@
   `material_fallback` warning; the readable materials of a partly readable
   stage are still imported. A material no node could be created for is
   `import_incomplete`.
+- `import_to_scene` sets metallic, roughness and opacity on the materials it
+  builds. A single value never reached the Houdini parm, so these materials
+  kept Houdini's defaults and every import warned that the shader does not
+  expose those parms.
 
 ## 0.1.0 (2026-10-19)
 

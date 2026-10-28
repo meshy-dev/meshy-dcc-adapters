@@ -540,11 +540,14 @@ def decode_materials(file_path: str, material_format: str) -> Tuple[Optional[Lis
 
 def _set_first_parm(node: Any, names: Any, value: Any) -> Optional[str]:
     """Set the first existing parm (scalar or tuple) in *names*."""
+    # Houdini gives a scalar parm a one-component parm tuple too, so a scalar
+    # value goes in as a 1-tuple; tuple(0.5) would raise and skip the parm.
+    values = tuple(value) if isinstance(value, (list, tuple)) else (value,)
     for name in names:
         parm_tuple = node.parmTuple(name) if hasattr(node, "parmTuple") else None
         if parm_tuple is not None:
             try:
-                parm_tuple.set(tuple(value))
+                parm_tuple.set(values)
                 return name
             except Exception:  # noqa: BLE001
                 continue
