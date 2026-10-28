@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Packaging: `build_package.py` reuses its cached CPython only when the
+  interpreter is there. An empty cache directory produced a package without
+  Python, whose installer then failed.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the

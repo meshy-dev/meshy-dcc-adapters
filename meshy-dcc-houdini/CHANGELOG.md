@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Packaging: `build_package.py` reuses its cached CPython only when the
+  interpreter is there. An empty cache directory produced a package without
+  Python, whose installer then failed.
 - `import_to_scene` reports materials it lost instead of `as_authored`. The
   result's `extra.materials_lost` counts the materials the carrier declares
   minus the material nodes that reached the scene, and `status` is

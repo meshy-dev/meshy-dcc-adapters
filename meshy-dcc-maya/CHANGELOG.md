@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Packaging: `build_package.py` reuses its cached CPython only when the
+  interpreter is there. An empty cache directory produced a package without
+  Python, whose installer then failed.
 - With `MESHY_DCC_MAYA_SIDECAR=1` the sidecar no longer opens a LAN gateway
   listener by default. The gateway has no authentication, so the listener
   stays off (port 0, host 127.0.0.1) unless `MESHY_DCC_GATEWAY_REMOTE_PORT`
