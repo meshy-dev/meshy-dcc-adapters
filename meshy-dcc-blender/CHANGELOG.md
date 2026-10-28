@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-10-28)
 
 - `save_scene` reads the save back. It fails unless Blender returns `FINISHED`
   and the path Blender then reports for the scene is a regular, nonempty file
@@ -8,6 +8,7 @@
   success because an older file sits at the path. The result's `filepath` is
   the verified file, and a failure reports `mutation_applied: null` without
   retrying.
+- Rebuilt on meshy-dcc-core 0.2.2: security fixes in the MCP server (rmcp 2.1) and Python bindings (PyO3 0.29), and tool calls whose deadline passes before they start are no longer run.
 
 ## 0.1.0 (2026-10-19)
 
