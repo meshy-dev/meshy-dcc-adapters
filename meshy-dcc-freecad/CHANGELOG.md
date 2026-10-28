@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-10-28)
 
 - A tool that writes a document or an export (`create_document`, `save_copy`,
   `export_geometry` and every editing tool) no longer publishes the file when
   the FreeCAD child exits non-zero after writing its result. The call fails
   with the exit code and the child's stderr, the user's file is untouched, and
   the call is not replayed. Read-only calls still report `exit_code` as before.
+- Rebuilt on meshy-dcc-core 0.2.2: security fixes in the MCP server (rmcp 2.1) and Python bindings (PyO3 0.29), and tool calls whose deadline passes before they start are no longer run.
 
 ## 0.1.0 (2026-10-19)
 

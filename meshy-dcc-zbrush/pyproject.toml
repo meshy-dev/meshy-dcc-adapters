@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meshy-dcc-zbrush"
-version = "0.1.0"
+version = "0.1.1"
 description = "Meshy DCC adapter for ZBrush 2026.1+: an in-ZBrush socket bridge plus an external Python sidecar"
 authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"

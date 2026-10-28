@@ -1,4 +1,4 @@
--- Meshy DCC for Roblox Studio 0.1.0 (installed by meshy-dcc; edits are overwritten)
+-- Meshy DCC for Roblox Studio 0.1.1 (installed by meshy-dcc; edits are overwritten)
 --!nonstrict
 --[[
 Connects this Studio place to a Meshy DCC sidecar on this computer (127.0.0.1
@@ -14,7 +14,7 @@ local EncodingService = game:GetService("EncodingService")
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
-local VERSION = "0.1.0"
+local VERSION = "0.1.1"
 -- Keep in step with PORTS in meshy_dcc_roblox/bridge.py.
 local PORTS = { 13890, 13891, 13892, 13893 }
 local SCAN_SECONDS = 5

@@ -39,7 +39,7 @@ The installer writes one file, `meshy_dcc_maya.mod`, into the first of:
 The file reads:
 
 ```
-+ meshy_dcc_maya 0.1.0 <extracted package>/module
++ meshy_dcc_maya 0.1.1 <extracted package>/module
 PYTHONPATH+:=python
 ```
 

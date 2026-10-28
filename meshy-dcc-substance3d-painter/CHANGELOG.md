@@ -1,10 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-10-28)
 
 - Packaging: `build_package.py` reuses its cached CPython only when the
   interpreter is there. An empty cache directory produced a package without
   Python, whose installer then failed.
+- Rebuilt on meshy-dcc-core 0.2.2: security fixes in the MCP server (rmcp 2.1) and Python bindings (PyO3 0.29), and tool calls whose deadline passes before they start are no longer run.
 
 ## 0.1.0 (2026-10-19)
 

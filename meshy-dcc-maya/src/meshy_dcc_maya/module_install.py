@@ -33,7 +33,7 @@ from pathlib import Path
 
 MOD_NAME = "meshy_dcc_maya"
 MOD_FILE = MOD_NAME + ".mod"
-MODULE_VERSION = "0.1.0"
+MODULE_VERSION = "0.1.1"
 MODULE_DIR = Path(os.path.abspath(__file__)).parents[2]  # abspath folds the launcher's "bin/.."
 REQUIRED = (
     "plug-ins/meshy_dcc_maya_plugin.py",

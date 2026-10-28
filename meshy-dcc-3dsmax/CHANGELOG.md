@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-10-28)
 
 - `3dsmax-mesh-ops` loads again: `inspect_mesh` and `pick_component` declared
   `tool_role: inspection`, which meshy-dcc-core does not accept, so the skill
@@ -11,6 +11,7 @@
   3ds Max Box does not have (its third size is `length`), so every box was 25
   units long, and the result echoed the requested sizes instead of reading the
   box back.
+- Rebuilt on meshy-dcc-core 0.2.2: security fixes in the MCP server (rmcp 2.1) and Python bindings (PyO3 0.29), and tool calls whose deadline passes before they start are no longer run.
 
 ## 0.1.0 (2026-10-19)
 
