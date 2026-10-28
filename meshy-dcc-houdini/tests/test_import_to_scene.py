@@ -58,6 +58,25 @@ class FakeParm:
         return self.value
 
 
+class FakeScalarParmTuple:
+    """Real Houdini also returns a one-component parm tuple for a scalar parm."""
+
+    def __init__(self, parm: FakeParm) -> None:
+        self._parm = parm
+
+    def name(self) -> str:
+        return self._parm.name()
+
+    def set(self, values: Any) -> None:
+        values = list(values)
+        if len(values) != 1:
+            raise ValueError("a scalar parm tuple takes one value")
+        self._parm.set(values[0])
+
+    def eval(self) -> List[Any]:
+        return [self._parm.eval()]
+
+
 # parm tuples / scalar parms exposed per node type, mirroring real Houdini.
 _NODE_PARM_TUPLES = {"principledshader::2.0": {"basecolor": 3}, "principledshader": {"basecolor": 3}}
 _NODE_PARMS = {
@@ -122,8 +141,10 @@ class FakeNode:
     def parm(self, name: str) -> Optional[FakeParm]:
         return self.parms.get(name)
 
-    def parmTuple(self, name: str) -> Optional[FakeParmTuple]:
-        return self.parm_tuples.get(name)
+    def parmTuple(self, name: str) -> Any:
+        if name in self.parm_tuples:
+            return self.parm_tuples[name]
+        return FakeScalarParmTuple(self.parms[name]) if name in self.parms else None
 
     def setParms(self, values: Dict[str, Any]) -> None:
         for key, value in values.items():
