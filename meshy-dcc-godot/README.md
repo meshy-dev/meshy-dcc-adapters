@@ -31,7 +31,10 @@ Godot does not scan dot directories). The installer finds Godot through
 
 When the editor loads the plugin it starts the recorded sidecar on a free
 bridge port, so several editors can run at once; the sidecar exits with the
-editor. An editor launched by `start-instance` advertises a safe stop: it
+editor. Its registry row keeps the sidecar's service `pid` and publishes the
+watched editor as `host_pid`, so Core can verify the original launch ownership.
+A standalone sidecar without `--watch-pid` remains unbound. An editor launched
+by `start-instance` advertises a safe stop: it
 exits when no scene or script is unsaved and refuses otherwise, unless the
 request carries `discard_unsaved`.
 

@@ -25,7 +25,7 @@ _server: Optional["GodotMcpServer"] = None
 class GodotMcpServer(DccServerBase):
     """Meshy DCC server backed by the bundled Godot EditorPlugin."""
 
-    def __init__(self, port: Optional[int] = None) -> None:
+    def __init__(self, port: Optional[int] = None, *, dcc_pid: Optional[int] = None) -> None:
         self._host_dispatcher = QueueDispatcher()
         self._host_driver = StandaloneHost(
             self._host_dispatcher,
@@ -45,6 +45,7 @@ class GodotMcpServer(DccServerBase):
             server_name="meshy-dcc-godot",
             server_version=__version__,
             execution_bridge=execution_bridge,
+            dcc_pid=dcc_pid,
         )
         super().__init__(options=options)
         self._readiness_binder = AdapterReadinessBinder(
@@ -102,10 +103,10 @@ class GodotMcpServer(DccServerBase):
         return get_bridge().is_connected()
 
 
-def start_server(port: Optional[int] = None) -> GodotMcpServer:
+def start_server(port: Optional[int] = None, *, dcc_pid: Optional[int] = None) -> GodotMcpServer:
     global _server
     if _server is None or not _server.is_running:
-        _server = GodotMcpServer(port)
+        _server = GodotMcpServer(port, dcc_pid=dcc_pid)
         _server.register_builtin_actions()
         _server.start()
     return _server
@@ -132,7 +133,7 @@ def main(watch_pid: Optional[int] = None) -> None:
     signal.signal(signal.SIGINT, lambda *_: stopped.set())
     if hasattr(signal, "SIGTERM"):
         signal.signal(signal.SIGTERM, lambda *_: stopped.set())
-    start_server()
+    start_server(dcc_pid=watch_pid)
     if watch_pid:
         threading.Thread(
             target=_watch_host, args=(watch_pid, stopped), name="meshy-dcc-godot-watch", daemon=True
