@@ -176,31 +176,11 @@ func _create_node(params: Dictionary) -> Dictionary:
 
 
 func _set_property(params: Dictionary) -> Dictionary:
-	var root := EditorInterface.get_edited_scene_root()
-	if root == null:
-		return _error("No scene is open")
-	var node_path := str(params.get("node_path", "."))
-	var node := root if node_path == "." else root.get_node_or_null(NodePath(node_path))
-	if node == null:
-		return _error("Node not found: %s" % node_path)
-	var property_name := str(params.get("property", ""))
-	if not _has_property(node, property_name):
-		return _error("Property not found on node: %s" % property_name)
-	var previous = node.get(property_name)
-	var value = params.get("value")
-	var undo := _plugin.get_undo_redo()
-	undo.create_action("Meshy DCC: Set %s" % property_name)
-	undo.add_do_property(node, property_name, value)
-	undo.add_undo_property(node, property_name, previous)
-	undo.commit_action()
-	return {"updated": true, "node_path": node_path, "property": property_name, "value": value}
-
-
-func _has_property(node: Object, property_name: String) -> bool:
-	for item in node.get_property_list():
-		if item.get("name") == property_name:
-			return true
-	return false
+	var result: Dictionary = _capabilities.execute("update_property", params)
+	if not result.has("__error__"):
+		# Preserve the legacy tool's caller-relative path while sharing validation/readback.
+		result["node_path"] = str(params.get("node_path", "."))
+	return result
 
 
 func _save_scene() -> Dictionary:

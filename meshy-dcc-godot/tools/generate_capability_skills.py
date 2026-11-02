@@ -36,7 +36,8 @@ CATEGORIES = {
         ("move_node", "Reparent a node while preserving ownership."),
         (
             "update_property",
-            "Set an existing node property, such as position, rotation, scale, transform or visible.",
+            "Set an existing node property, such as position, rotation, scale, transform "
+            "or visible.",
         ),
         ("get_node_properties", "Return stored and editable node properties."),
         ("add_resource", "Create and assign a Resource to a node property."),
@@ -755,7 +756,16 @@ TOOL_INPUT_SCHEMAS = {
         "parent_path",
     ),
     "update_property": _object(
-        {"node_path": SCENE_NODE, "property": STRING, "value": VALUE}, "property", "value"
+        {
+            "node_path": SCENE_NODE,
+            "property": STRING,
+            "value": {
+                "description": "Property value; Vector3 uses a numeric [x, y, z] array or x/y/z "
+                "object, never expression text."
+            },
+        },
+        "property",
+        "value",
     ),
     "get_node_properties": _object({"node_path": SCENE_NODE}),
     "add_resource": _object(

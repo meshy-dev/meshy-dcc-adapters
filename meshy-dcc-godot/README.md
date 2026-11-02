@@ -115,6 +115,12 @@ script. The compatibility tool execute_game_script is not an allowlist: it is a 
 call on an existing runtime node. It must not be used for playtest or RL control, and neither broad
 tool accepts raw source for immediate evaluation.
 
+Both `godot_scene__set_property` and `godot_node__update_property` take Vector3 values as numeric
+`[x, y, z]` arrays or objects such as `{"x": -2.2, "y": 1.5, "z": 0}`. An object may update selected
+components; the others keep their current values. Expression strings such as `"Vector3(...)"`
+are rejected before recording an undo action. Successful results return the stored property value;
+save the scene and inspect the native result when persistence matters.
+
 For bounded playtest control, use `execute_typed_action`. It accepts only the strict
 `input_action` and exact script-digest-bound `set_property` variants declared in the fixed
 `res://.meshy-dcc/playtest-actions.v1.json` project manifest. Calls bind the project, session,
@@ -172,6 +178,12 @@ python -m pip install --no-deps <meshy_dcc_core wheel> -e .
 python -m pip install "websockets>=12" "pytest>=8"
 PYTHONPATH=src:. python -m pytest tests
 python tools/lint_skills.py
+```
+
+The property boundary regression uses a disposable headless editor project and private settings:
+
+```bash
+GODOT_TEST_EXECUTABLE=/path/to/Godot python -m pytest tests/test_scene_properties.py
 ```
 
 Godot and the Godot logo are trademarks of the Godot Foundation. This
