@@ -12,7 +12,7 @@ metadata:
   meshy-dcc:
     dcc: unity
     layer: domain
-    version: "0.1.1"
+    version: "0.1.2"
     search-hint: "Unity ping readiness job status Console logs errors Game View screenshot PNG diagnostics"
     tags: "unity,console,logs,diagnostics,game-development"
     tools: tools.yaml

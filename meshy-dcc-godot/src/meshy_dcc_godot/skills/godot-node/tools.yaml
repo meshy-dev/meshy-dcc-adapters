@@ -49,7 +49,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: update_property
     description: Set an existing node property, such as position, rotation, scale, transform or visible. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"property":{"type":"string","maxLength":500},"value":{}},"additionalProperties":false,"required":["property","value"]}
+    input_schema: {"type":"object","properties":{"node_path":{"type":"string","maxLength":500,"description":"Edited-scene node path; empty or '.' is the scene root."},"property":{"type":"string","maxLength":500},"value":{"description":"Property value; Vector3 uses a numeric [x, y, z] array or x/y/z object, never expression text."}},"additionalProperties":false,"required":["property","value"]}
     output_schema: {type: object}
     read_only: false
     destructive: false

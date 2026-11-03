@@ -365,13 +365,21 @@ func _update_property(params: Dictionary) -> Dictionary:
 	var property_name := str(params.get("property", ""))
 	if not _has_property(node, property_name): return _error("Property not found: %s" % property_name)
 	var previous = node.get(property_name)
+	var input_error := _property_input_error(previous, params.get("value"))
+	if not input_error.is_empty(): return _error(input_error)
 	var value = _coerce_value(previous, params.get("value"))
+	if value is Vector3 and not value.is_finite():
+		return _error("Vector3 components exceed the host's finite numeric range")
 	var undo := _plugin.get_undo_redo()
 	undo.create_action("Meshy DCC: Set %s" % property_name)
 	undo.add_do_property(node, property_name, value)
 	undo.add_undo_property(node, property_name, previous)
 	undo.commit_action()
-	return {"updated": true, "node_path": str(node.get_path()), "property": property_name, "value": _json_value(node.get(property_name))}
+	var stored = node.get(property_name)
+	var matches: bool = stored.is_equal_approx(value) if stored is Vector3 and value is Vector3 else stored == value
+	if not matches:
+		return _error("Godot did not store the requested property value; inspect the node before continuing")
+	return {"updated": true, "node_path": str(node.get_path()), "property": property_name, "value": _json_value(stored)}
 
 
 func _get_node_properties(params: Dictionary) -> Dictionary:
@@ -1614,6 +1622,29 @@ func _stored_properties(object: Object) -> Dictionary:
 	for item in object.get_property_list():
 		if int(item.get("usage", 0)) & PROPERTY_USAGE_STORAGE: properties[str(item.name)] = _json_value(object.get(str(item.name)))
 	return properties
+
+
+func _property_input_error(previous, value) -> String:
+	if not previous is Vector3 and not previous is Vector3i:
+		return ""
+	var components: Array = []
+	if value is Array:
+		if value.size() != 3:
+			return "Vector3 requires exactly three numeric components [x, y, z]"
+		components = value
+	elif value is Dictionary:
+		if value.is_empty():
+			return "Vector3 requires numeric x, y or z components"
+		for key in value:
+			if key not in ["x", "y", "z"]:
+				return "Vector3 objects accept only numeric x, y and z components"
+			components.append(value[key])
+	else:
+		return "Vector3 requires a numeric [x, y, z] array or an x/y/z object, not expression text"
+	for component in components:
+		if typeof(component) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(component)):
+			return "Vector3 components must be finite numbers"
+	return ""
 
 
 func _coerce_value(previous, value):

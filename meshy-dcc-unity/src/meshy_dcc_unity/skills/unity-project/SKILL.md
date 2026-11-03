@@ -12,7 +12,7 @@ metadata:
   meshy-dcc:
     dcc: unity
     layer: domain
-    version: "0.1.1"
+    version: "0.1.2"
     search-hint: "Unity project source script sprite PNG TextureImporter CAS compile Play Mode Windows Android APK AAB player build"
     tags: "unity,project,assets,game-development"
     tools: tools.yaml
