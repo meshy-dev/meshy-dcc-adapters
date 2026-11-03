@@ -73,7 +73,7 @@ def test_files_only_install_records_launch_plan_then_uninstall_removes_it(
     assert not list((project / "addons").glob(".meshy_dcc_godot.*"))
 
     # A newer adapter over this one replaces the addon and removes the old copy.
-    monkeypatch.setattr(install_module, "__version__", "0.1.1")
+    monkeypatch.setattr(install_module, "__version__", "0.1.2")
     code, report = run(capsys, *install)
     assert code == INSTALL_EXIT_OK, report
     assert report["install_mode"] == "repair"

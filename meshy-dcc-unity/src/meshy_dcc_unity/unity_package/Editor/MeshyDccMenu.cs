@@ -6,7 +6,7 @@ namespace MeshyDcc.Unity
 {
     internal static class MeshyDccMenu
     {
-        private const string AdapterVersion = "0.1.0";
+        private const string AdapterVersion = "0.1.1";
         private const string ProjectUrl = "https://github.com/meshy-dev/meshy-dcc-adapters/tree/main/meshy-dcc-unity";
         private const string DefaultBridgeUrl = "ws://127.0.0.1:13852";
 

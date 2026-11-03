@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import errno
+import json
 import os
 import shutil
 import stat
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -1003,3 +1005,85 @@ def test_real_freecad_document_modeling_and_exchange(tmp_path: Path):
     removed = bridge.remove_object(str(document), "Body", cascade=True)
     assert set(removed["removed_objects"]) == {"Body", "BodyWithPort"}
     assert not list(tmp_path.glob(".*.FCBak"))
+
+
+# The path each call hands its child to write, which the bridge publishes afterwards.
+_STAGED_KEY = {
+    "model.add_primitive": "document_path",
+    "document.create": "document_path",
+    "document.save_copy": "output_path",
+    "model.export_geometry": "output_path",
+}
+
+
+def _child_that_exits(monkeypatch, returncode, calls):
+    """Replace the FreeCAD child: it stages its file, writes ``ok: true``, then exits."""
+
+    def popen(command, **kwargs):
+        request = json.loads(Path(command[-2]).read_text())
+        calls.append(request["method"])
+        key = _STAGED_KEY.get(request["method"])
+        if key:
+            Path(request["params"][key]).write_bytes(b"staged by the child")
+        kwargs["stderr"].write("child teardown fault")
+        Path(command[-1]).write_text(json.dumps({"ok": True, "result": {"verified": True}}))
+        return SimpleNamespace(pid=1, poll=lambda: returncode, returncode=returncode)
+
+    monkeypatch.setattr("meshy_dcc_freecad.bridge.subprocess.Popen", popen)
+
+
+def _bridge_with_user_files(tmp_path):
+    executable = tmp_path / "FreeCADCmd"
+    executable.write_bytes(b"synthetic executable, never run")
+    (tmp_path / "model.FCStd").write_bytes(b"user document")
+    (tmp_path / "source.FCStd").write_bytes(b"user source")
+    (tmp_path / "model.step").write_bytes(b"user export")
+    return FreecadBridge(str(executable), allowed_roots=[tmp_path])
+
+
+def _staged_call(bridge, tmp_path, operation):
+    model, source, step = (tmp_path / name for name in ("model.FCStd", "source.FCStd", "model.step"))
+    if operation == "mutate":
+        return bridge._mutate_document("model.add_primitive", str(model), {}, 30)
+    if operation == "create":
+        return bridge.create_document(str(model), overwrite=True)
+    if operation == "save_copy":
+        return bridge.save_copy(str(source), str(model), overwrite=True)
+    return bridge.export_geometry(str(model), ["Body"], str(step), overwrite=True)
+
+
+@pytest.mark.parametrize("operation", ["mutate", "create", "save_copy", "export"])
+def test_staged_output_is_not_published_when_the_child_exits_nonzero(
+    tmp_path, monkeypatch, operation
+):
+    """A child that wrote a result and then exited non-zero must not replace the user's file."""
+    bridge = _bridge_with_user_files(tmp_path)
+    calls = []
+    _child_that_exits(monkeypatch, 1, calls)
+    before = {path.name: path.read_bytes() for path in tmp_path.iterdir()}
+
+    with pytest.raises(BridgeError, match="exited unsuccessfully.*exit 1.*child teardown fault"):
+        _staged_call(bridge, tmp_path, operation)
+
+    # Every user file is as it was and nothing is left staged. The call ran once:
+    # no read-back of a file that was never published, and no replay.
+    assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == before
+    assert len(calls) == 1
+
+
+def test_staged_output_is_published_when_the_child_exits_zero(tmp_path, monkeypatch):
+    bridge = _bridge_with_user_files(tmp_path)
+    calls = []
+    _child_that_exits(monkeypatch, 0, calls)
+
+    _staged_call(bridge, tmp_path, "mutate")
+
+    assert (tmp_path / "model.FCStd").read_bytes() == b"staged by the child"
+    assert calls == ["model.add_primitive", "document.inspect"]
+
+
+def test_read_only_call_still_reports_a_nonzero_exit(tmp_path, monkeypatch):
+    bridge = _bridge_with_user_files(tmp_path)
+    _child_that_exits(monkeypatch, 3, [])
+
+    assert bridge._invoke("system.status", {})["exit_code"] == 3

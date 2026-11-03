@@ -35,3 +35,17 @@ metadata:
 # blender-scene
 
 Blender scene management skill — create, open, save and inspect scenes.
+
+## Verified saves
+
+`save_scene` uses Save As when `filepath` is given and saves the current file
+when it is omitted. It reports success only when Blender returns `FINISHED` and
+the path Blender then reports for the scene is a regular, nonempty file written
+by this call: a file that was already there does not count. `context.filepath`
+is that verified path (Blender appends `.blend` to an extensionless one) and
+`postcondition.verified` is `true`. This does not prove the content is intact;
+reopen the file for that.
+
+When the operator or the readback fails, the result is an error with
+`mutation_applied: null`: the file on disk may or may not have changed. The
+save is not retried, rolled back or deleted. Inspect the path before going on.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meshy-dcc-3dsmax"
-version = "0.1.0"
+version = "0.1.1"
 description = "3ds Max adapter for Meshy DCC: scene, import, material and render tools on the host's own Python"
 authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"

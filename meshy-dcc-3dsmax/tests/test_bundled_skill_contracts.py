@@ -155,6 +155,30 @@ def test_asset_source_loads_one_registered_handler_through_the_real_core_loader(
         server.stop()
 
 
+def test_every_bundled_skill_loads_all_its_tools_through_the_real_core_loader():
+    """Core drops a tools.yaml entry it cannot parse, e.g. a ``tool_role`` outside its enum.
+
+    ``3dsmax-mesh-ops`` once declared ``tool_role: inspection`` and loaded with zero tools,
+    which neither the schema checks above nor ``meshy-dcc lint`` noticed.
+    """
+    from meshy_dcc_3dsmax.server import MaxMcpServer, MaxServerOptions
+
+    server = MaxMcpServer(
+        options=MaxServerOptions(port=0, enable_gateway_failover=False, job_storage_path="")
+    )
+    try:
+        server.register_builtin_actions(include_bundled=False)
+        loaded = {
+            skill_dir.name: len(server._server.load_skill(skill_dir.name))
+            for skill_dir in _skill_dirs()
+        }
+    finally:
+        server.stop()
+
+    declared = {skill_dir.name: len(_tools(skill_dir)) for skill_dir in _skill_dirs()}
+    assert loaded == declared
+
+
 def test_public_bundled_skill_index_lists_every_exported_tool():
     """The public index should stay in sync with bundled tool metadata."""
     index = INDEX_DOC.read_text(encoding="utf-8")

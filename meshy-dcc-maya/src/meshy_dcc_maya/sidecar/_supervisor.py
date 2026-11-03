@@ -82,8 +82,10 @@ ENV_SIDECAR_MODE = "MESHY_DCC_MAYA_SIDECAR"
 ENV_GATEWAY_NAME = "MESHY_DCC_GATEWAY_NAME"
 ENV_GATEWAY_REMOTE_HOST = "MESHY_DCC_GATEWAY_REMOTE_HOST"
 ENV_GATEWAY_REMOTE_PORT = "MESHY_DCC_GATEWAY_REMOTE_PORT"
-DEFAULT_GATEWAY_REMOTE_HOST = "0.0.0.0"
-DEFAULT_GATEWAY_REMOTE_PORT = 59765
+# The LAN listener has no authentication: off and loopback-only unless the operator
+# sets both, as in meshy-dcc-core's own defaults.
+DEFAULT_GATEWAY_REMOTE_HOST = "127.0.0.1"
+DEFAULT_GATEWAY_REMOTE_PORT = 0
 _TRUTHY_VALUES = frozenset({"1", "true", "yes", "on"})
 
 # Grace period before SIGKILL on shutdown. 5 s matches the sidecar
@@ -171,9 +173,11 @@ def resolve_gateway_remote_options(env: Optional[dict] = None) -> tuple[str, int
     """Resolve LAN gateway listener options for the sidecar process.
 
     The standalone gateway listens on the local loopback port
-    (``MESHY_DCC_GATEWAY_PORT``, default 19765). Newer ``meshy-dcc-server``
-    sidecars ensure that process is running and can additionally ask it
-    to bind a LAN-facing listener for company network clients.
+    (``MESHY_DCC_GATEWAY_PORT``, default 19765). ``meshy-dcc-server`` sidecars
+    can also bind a second, LAN-facing listener, but only when the operator
+    sets ``MESHY_DCC_GATEWAY_REMOTE_PORT`` above 0 (and a host other than
+    loopback to reach it from the network). A missing, malformed or
+    out-of-range port means off.
     """
 
     source = os.environ if env is None else env
@@ -186,7 +190,7 @@ def resolve_gateway_remote_options(env: Optional[dict] = None) -> tuple[str, int
         port = int(raw_port)
     except ValueError:
         port = DEFAULT_GATEWAY_REMOTE_PORT
-    if port < 0:
+    if port < 0 or port > 65535:
         port = DEFAULT_GATEWAY_REMOTE_PORT
     return host, port
 

@@ -12,7 +12,7 @@ tools:
     destructive: true
     idempotent: false
   - name: save_scene
-    description: "Save the current Blender scene"
+    description: "Save the current Blender scene and read the saved file back. Succeeds only when Blender reports FINISHED and the scene's saved path is a fresh, nonempty file; the result's filepath is the file that was verified. A failed or unconfirmed save is not retried."
     source_file: scripts/save_scene.py
     execution: sync
     affinity: main

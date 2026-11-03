@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.1 (2026-10-28)
+
+- Packaging: `build_package.py` reuses its cached CPython only when the
+  interpreter is there. An empty cache directory produced a package without
+  Python, whose installer then failed.
+- With `MESHY_DCC_MAYA_SIDECAR=1` the sidecar no longer opens a LAN gateway
+  listener by default. The gateway has no authentication, so the listener
+  stays off (port 0, host 127.0.0.1) unless `MESHY_DCC_GATEWAY_REMOTE_PORT`
+  and `MESHY_DCC_GATEWAY_REMOTE_HOST` are set; a malformed or out-of-range
+  port also means off. It was 59765 on 0.0.0.0.
+- Rebuilt on meshy-dcc-core 0.2.2: security fixes in the MCP server (rmcp 2.1) and Python bindings (PyO3 0.29), and tool calls whose deadline passes before they start are no longer run.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the

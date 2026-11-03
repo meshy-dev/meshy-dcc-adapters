@@ -166,13 +166,15 @@ def _apply_material_mode(
 
     The File-SOP import path carries geometry only, so ``as_authored`` has to be
     reconstructed from the carrier itself.  Whatever happens, the returned
-    report tells the caller exactly how many materials landed, so the import
-    can warn instead of silently dropping the look of the asset.
+    report tells the caller exactly how many materials landed and how many did
+    not (``materials_lost``, counted against what reached the scene), so the
+    import can warn instead of silently dropping the look of the asset.
     """
     report: dict = {
         "material_mode": material_mode,
         "materials_detected": 0,
         "materials_imported": 0,
+        "materials_lost": 0,
         "material_paths": [],
         "material_assignments": [],
         "unapplied_parameters": [],
@@ -204,7 +206,9 @@ def _apply_material_mode(
             name_prefix=name_prefix,
         )
         report["status"] = "default_gray" if built["created"] else "failed"
+        report["materials_detected"] = 1
         report["materials_imported"] = len(built["created"])
+        report["materials_lost"] = 1 - len(built["created"])
         report["material_paths"] = list(built["created"])
         report["material_assignments"] = list(built["assigned"])
         if not built["created"]:
@@ -220,19 +224,30 @@ def _apply_material_mode(
         return report
 
     material_format = detect_material_format(filepath, variant_format)
-    specs, status, decode_detail = decode_materials_report(filepath, material_format)
-    report["status"] = status
+    specs, status, decode_detail, declared = decode_materials_report(filepath, material_format)
 
-    if status == "decoded" and specs:
-        report["materials_detected"] = len(specs)
+    skipped: list = []
+    if specs:
+        # ``carrier_unreadable`` can still carry readable specs: the carrier was
+        # partly decoded, and dropping those would lose more than the decoder
+        # admitted to.
         built = build_materials(hou, specs, container, name_prefix=name_prefix)
         report["materials_imported"] = len(built["created"])
         report["material_paths"] = list(built["created"])
         report["material_assignments"] = list(built["assigned"])
         report["unapplied_parameters"] = list(built["unapplied"])
         report["unapplied_required"] = list(built["unapplied_required"])
-        if built["created"]:
-            report["status"] = "as_authored"
+        skipped = list(built["skipped"])
+
+    # ``materials_detected`` counts what the carrier declares, readable or not;
+    # ``materials_lost`` is what of that did not reach the scene, whether the
+    # decoder could not read it or no node could be created for it.
+    report["materials_detected"] = max(declared, len(specs or []))
+    report["materials_lost"] = max(0, report["materials_detected"] - report["materials_imported"])
+    if status != "decoded":
+        report["status"] = status
+    else:
+        report["status"] = "as_authored" if not report["materials_lost"] else "import_incomplete"
 
     detail = "file={0}; format={1}".format(filepath, material_format or "unknown")
 
@@ -247,25 +262,27 @@ def _apply_material_mode(
             )
         )
 
-    if report["materials_imported"] == 0:
+    if status in ("unsupported_format", "decode_failed", "carrier_unreadable"):
         reason = {
             "unsupported_format": "this adapter has no material path for '{0}' carriers".format(
                 material_format or "unknown"
             ),
             "decode_failed": "the carrier could not be decoded for materials",
             "carrier_unreadable": "the carrier declares materials that could not be read",
-            "decoded": "no material node could be created in the scene",
-        }.get(status)
-        if reason is not None and decode_detail:
+        }[status]
+        if decode_detail:
             reason = "{0} ({1})".format(reason, decode_detail)
-        # ``no_materials`` is the only quiet outcome: the carrier was read and
-        # genuinely carries no materials, so nothing was lost.
-        if reason is not None:
-            _fallback(reason)
+        _fallback(reason)
+    elif skipped:
+        # Decoded, but ``build_materials`` made no node for these: they never
+        # reached the scene, whatever the decoded count says.
+        _fallback("no material node could be created for {0}".format(", ".join(skipped)))
     elif report["unapplied_required"]:
         # Materials exist but the shader did not expose the parms that carry
         # the base look, so the imported material is not the authored one.
         _fallback("the shader does not expose {0}".format(", ".join(report["unapplied_required"])))
+    # ``no_materials`` is the only quiet outcome: the carrier was read and
+    # genuinely carries no materials, so nothing was lost.
     return report
 
 
@@ -288,9 +305,9 @@ def import_to_scene(
     Returns:
         ActionResultModel dict with ImportToSceneResult in context.  Material
         fidelity is reported through ``context.extra`` (``material_mode``,
-        ``materials_detected``, ``materials_imported``, ``material_paths``,
-        ``material_assignments``) and, when ``as_authored`` could not be
-        honoured, through a ``material_fallback`` warning.
+        ``materials_detected``, ``materials_imported``, ``materials_lost``,
+        ``material_paths``, ``material_assignments``) and, when ``as_authored``
+        could not be honoured, through a ``material_fallback`` warning.
     """
     try:
         import hou  # noqa: PLC0415
@@ -399,6 +416,8 @@ def import_to_scene(
 
     imported_count = material_report["materials_imported"]
     material_note = "{0} material(s)".format(imported_count)
+    if material_report["materials_lost"]:
+        material_note += ", {0} lost".format(material_report["materials_lost"])
     if imported_count == 0 and mode != MaterialMode.SKIP:
         material_note += " (material_mode='{0}' was not honoured)".format(mode)
 

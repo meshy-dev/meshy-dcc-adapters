@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meshy-dcc-roblox"
-version = "0.1.0"
+version = "0.1.1"
 description = "Roblox Studio adapter for Meshy DCC: scene tools and Meshy GLB import"
 readme = "README.md"
 requires-python = ">=3.9"

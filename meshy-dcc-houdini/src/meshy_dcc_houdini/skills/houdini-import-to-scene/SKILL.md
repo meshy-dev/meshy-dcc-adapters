@@ -72,10 +72,11 @@ The decode outcome is reported in `extra.status`:
 
 | `status` | Meaning | Warning |
 |-----------|---------|---------|
-| `as_authored` | Materials were decoded and created. | no |
+| `as_authored` | Every material the carrier declares was decoded and created (`materials_lost` is 0). | no |
 | `default_gray` | A neutral gray material was created and bound. | no |
 | `no_materials` | The carrier was read and genuinely carries no materials. | **no** — nothing was lost |
-| `carrier_unreadable` | The carrier declares materials that could not be read (missing `.mtl` sidecar, unknown `usemtl` name, dangling glTF material index, USD material with no resolvable surface shader). | **yes** |
+| `carrier_unreadable` | The carrier declares materials that could not be read (missing `.mtl` sidecar, unknown `usemtl` name, dangling glTF material index, truncated GLB, USD stage that will not open, USD material with no readable `UsdPreviewSurface`: no surface shader, or none that authors `diffuseColor`, as with `arnold:standard_surface` or MaterialX). When only *some* USD materials are readable, those are still imported and `materials_lost` counts the rest. | **yes** |
+| `import_incomplete` | Materials were decoded but no node could be created in the scene for some or all of them. | **yes** |
 | `decode_failed` | The carrier could not be decoded at all. | **yes** |
 | `unsupported_format` | This adapter has no material path for the format (fbx, abc, bgeo, …). | **yes** |
 
@@ -99,13 +100,22 @@ Material accounting is always machine-readable in `ImportToSceneResult.extra`:
 
 ```json
 {"material_mode": "as_authored", "status": "as_authored",
- "materials_detected": 1, "materials_imported": 1,
+ "materials_detected": 1, "materials_imported": 1, "materials_lost": 0,
  "material_paths": ["/mat/asset_brushed_metal"],
  "material_assignments": [{"object": "/obj/asset", "material": "/mat/asset_brushed_metal", "parm": "shop_materialpath"}],
  "unapplied_parameters": [], "unapplied_required": []}
 ```
 
-Check `warnings[].code == "material_fallback"` (or `extra.materials_imported`)
+`materials_detected` counts what the carrier declares, readable or not;
+`materials_lost` is the part of that which did not reach the scene, counted from
+the nodes actually created. A USD stage with two materials where only one is
+readable reports `"materials_detected": 2, "materials_imported": 1,
+"materials_lost": 1` and `"status": "carrier_unreadable"`, never `as_authored`.
+When the carrier cannot be read at all (a truncated GLB, a stage that will not
+open) it does not say how many materials it declared, so `materials_lost` stays
+0: trust `status` and the warning, not the count.
+
+Check `warnings[].code == "material_fallback"` and `extra.materials_lost`
 before treating an import as look-complete — a silent `success: true` means the
 geometry arrived, not that the look did.
 

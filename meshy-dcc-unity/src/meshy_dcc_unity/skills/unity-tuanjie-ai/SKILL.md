@@ -12,7 +12,7 @@ metadata:
   meshy-dcc:
     dcc: unity
     layer: domain
-    version: "0.1.0"
+    version: "0.1.1"
     search-hint: "Tuanjie AI generate image sprite 3D material audio video terrain"
     tags: "unity,tuanjie,ai,assets,generation,game-development"
     tools: tools.yaml

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.1 (2026-10-28)
+
+- Packaging: `build_package.py` reuses its cached CPython only when the
+  interpreter is there. An empty cache directory produced a package without
+  Python, whose installer then failed.
+- `import_to_scene` reports materials it lost instead of `as_authored`. The
+  result's `extra.materials_lost` counts the materials the carrier declares
+  minus the material nodes that reached the scene, and `status` is
+  `as_authored` only when it is 0. A truncated GLB, a USD stage that will not
+  open, and a USD material with no readable `UsdPreviewSurface` (Arnold or
+  MaterialX surfaces, or no `diffuseColor`) are `carrier_unreadable` with a
+  `material_fallback` warning; the readable materials of a partly readable
+  stage are still imported. A material no node could be created for is
+  `import_incomplete`.
+- `import_to_scene` sets metallic, roughness and opacity on the materials it
+  builds. A single value never reached the Houdini parm, so these materials
+  kept Houdini's defaults and every import warned that the shader does not
+  expose those parms.
+- Rebuilt on meshy-dcc-core 0.2.2: security fixes in the MCP server (rmcp 2.1) and Python bindings (PyO3 0.29), and tool calls whose deadline passes before they start are no longer run.
+
 ## 0.1.0 (2026-10-19)
 
 First Meshy release. Versions restart at 0.1.0 and are unrelated to the

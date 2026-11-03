@@ -98,6 +98,8 @@ def test_start_sidecar_forwards_identity_flags(monkeypatch):
 
     monkeypatch.setattr("subprocess.Popen", fake_popen)
     monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
+    monkeypatch.delenv("MESHY_DCC_GATEWAY_REMOTE_HOST", raising=False)
+    monkeypatch.delenv("MESHY_DCC_GATEWAY_REMOTE_PORT", raising=False)
 
     handle = start_sidecar(
         maya_pid=1234,
@@ -127,15 +129,39 @@ def test_start_sidecar_forwards_identity_flags(monkeypatch):
     assert _flag_value(captured["cmd"], "--discovery-mcp-url") == "http://127.0.0.1:8765/mcp"
     assert _flag_value(captured["cmd"], "--gateway-name") == "meshy-dcc-gateway@workstation-01"
     assert _flag_value(captured["cmd"], "--gateway-port") == "19765"
-    assert _flag_value(captured["cmd"], "--gateway-remote-host") == "0.0.0.0"
-    assert _flag_value(captured["cmd"], "--gateway-remote-port") == "59765"
+    assert _flag_value(captured["cmd"], "--gateway-remote-host") == "127.0.0.1"
+    assert _flag_value(captured["cmd"], "--gateway-remote-port") == "0"
     assert _flag_value(captured["cmd"], "--registry-dir")
     assert captured["kwargs"]["env"]["MESHY_DCC_REGISTRY_DIR"] == _flag_value(captured["cmd"], "--registry-dir")
     assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_PORT"] == "19765"
-    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_REMOTE_HOST"] == "0.0.0.0"
-    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_REMOTE_PORT"] == "59765"
+    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_REMOTE_HOST"] == "127.0.0.1"
+    assert captured["kwargs"]["env"]["MESHY_DCC_GATEWAY_REMOTE_PORT"] == "0"
     assert handle.launch_contract["role"] == "per-dcc-sidecar"
     assert handle.launch_contract["recommended_next_action"]
+
+
+def test_start_sidecar_lan_listener_only_on_explicit_env(monkeypatch):
+    captured = {}
+
+    def fake_popen(cmd, **kwargs):
+        captured["cmd"] = list(cmd)
+        captured["env"] = dict(kwargs["env"])
+        return _FakeProc()
+
+    monkeypatch.setattr("subprocess.Popen", fake_popen)
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_HOST", "0.0.0.0")
+    monkeypatch.setenv("MESHY_DCC_GATEWAY_REMOTE_PORT", "59765")
+
+    start_sidecar(
+        maya_pid=1234,
+        binary_override=Path("meshy-dcc-server"),
+        qt_port_override=45555,
+        start_qt_server_fn=lambda port: {"host": "127.0.0.1", "port": port, "qt_binding": "fake-test-stub"},
+    )
+
+    assert _flag_value(captured["cmd"], "--gateway-remote-host") == "0.0.0.0"
+    assert _flag_value(captured["cmd"], "--gateway-remote-port") == "59765"
+    assert captured["env"]["MESHY_DCC_GATEWAY_REMOTE_PORT"] == "59765"
 
 
 def test_start_sidecar_omits_invalid_instance_id(monkeypatch):

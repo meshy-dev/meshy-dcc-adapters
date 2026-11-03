@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meshy-dcc-substance3d-painter"
-version = "0.1.0"
+version = "0.1.1"
 description = "Meshy DCC adapter for Adobe Substance 3D Painter"
 authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"

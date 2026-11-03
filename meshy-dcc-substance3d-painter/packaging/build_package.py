@@ -108,7 +108,9 @@ def python_home(platform: str, cache: Path) -> Path:
     """The pinned CPython for ``platform``, downloaded once into ``cache`` and checked against its digest."""
     archive_name, digest, _ = PLATFORMS[platform]
     home = cache / archive_name.removesuffix(".tar.gz") / "python"
-    if home.is_dir():
+    # Reuse the cache only when it holds the interpreter: an empty or half-extracted
+    # directory would build a package without Python.
+    if (home / "python.exe").is_file() or (home / "bin" / "python3").is_file():
         return home
     archive = cache / archive_name
     if not archive.is_file():

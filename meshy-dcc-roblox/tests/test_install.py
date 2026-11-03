@@ -28,7 +28,7 @@ def test_install_writes_plugin_binding_and_launch_plan(plugins, project):
     assert report["place_file"] == "Castle.rbxl" and report["plugin"] == str(plugin)
     assert plugin.read_text(encoding="utf-8") == install.PLUGIN_SOURCE.read_text(encoding="utf-8")
     config = json.loads((project / ".meshy-dcc" / "roblox.json").read_text())
-    assert config["place_file"] == "Castle.rbxl" and config["version"] == "0.1.0"
+    assert config["place_file"] == "Castle.rbxl" and config["version"] == "0.1.1"
     plan = json.loads((project / ".meshy-dcc" / "launch-plan.json").read_text())
     assert plan["dcc_type"] == "roblox"
     assert plan["executable"] == str(Path(sys.executable).absolute())

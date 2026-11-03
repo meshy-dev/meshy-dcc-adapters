@@ -1,7 +1,7 @@
 {
     "FileVersion": 3,
     "Version": 1,
-    "VersionName": "0.1.0",
+    "VersionName": "0.1.1",
     "FriendlyName": "Meshy DCC",
     "Description": "Lets the meshy-dcc CLI and AI agents drive the Unreal Editor: import Meshy models, inspect and edit levels, assets and materials.",
     "Category": "Scripting",

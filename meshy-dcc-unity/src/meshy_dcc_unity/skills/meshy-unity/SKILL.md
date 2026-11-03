@@ -12,7 +12,7 @@ metadata:
   meshy-dcc:
     dcc: unity
     layer: domain
-    version: "0.1.0"
+    version: "0.1.1"
     search-hint: "Unity import FBX OBJ model Meshy material texture PBR instantiate renderer save scene"
     tags: "unity,meshy,import,fbx,obj,material,pbr,handoff"
     tools: tools.yaml

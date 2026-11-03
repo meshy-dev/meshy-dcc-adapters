@@ -11,7 +11,7 @@ metadata:
   meshy-dcc:
     dcc: unity
     layer: domain
-    version: "0.1.0"
+    version: "0.1.1"
     search-hint: "Unity scene hierarchy GameObject transform save Undo"
     tags: "unity,scene,gameobject,transform,game-development"
     tools: tools.yaml

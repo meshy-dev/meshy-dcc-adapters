@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meshy-dcc-maya"
-version = "0.1.0"
+version = "0.1.1"
 description = "Meshy DCC Core adapter for Autodesk Maya: a Maya module that serves scene, import, material and render tools to the meshy-dcc CLI"
 authors = [{ name = "Meshy", email = "support@meshy.ai" }]
 readme = "README.md"

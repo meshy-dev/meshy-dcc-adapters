@@ -347,3 +347,37 @@ def test_lathe_profile_declares_bounded_main_thread_contract():
     assert schema["properties"]["degrees"]["maximum"] == 360
     assert schema["properties"]["segments"]["minimum"] == 3
     assert schema["properties"]["segments"]["maximum"] == 256
+
+
+class _Box:
+    """A native Box: width, length and height; pymxs drops any other keyword."""
+
+    def __init__(self, **kwargs) -> None:
+        self.width, self.length, self.height = 25.0, 25.0, 25.0
+        for key in ("width", "length", "height"):
+            if key in kwargs:
+                setattr(self, key, float(kwargs[key]))
+        self.name = "Box001"
+        self.handle = 3
+
+
+def test_create_box_sets_depth_as_the_native_length_and_reads_it_back(monkeypatch):
+    """`depth` is the Box's `length`; the result reports the node's sizes."""
+    boxes = []
+    runtime = types.SimpleNamespace(Box=lambda **kwargs: boxes.append(_Box(**kwargs)) or boxes[-1])
+    monkeypatch.setitem(sys.modules, "pymxs", types.SimpleNamespace(runtime=runtime))
+
+    from meshy_dcc_3dsmax._executor import run_skill_script
+
+    result = run_skill_script(
+        str(SKILL_DIR / "action_create_box.py"),
+        {"width": 30.0, "height": 50.0, "depth": 70.0, "name": "r2_box"},
+    )
+
+    assert result["success"] is True
+    assert (boxes[0].width, boxes[0].length, boxes[0].height) == (30.0, 70.0, 50.0)
+    assert {key: result["data"][key] for key in ("width", "height", "depth")} == {
+        "width": 30.0,
+        "height": 50.0,
+        "depth": 70.0,
+    }
