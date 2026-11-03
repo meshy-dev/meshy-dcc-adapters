@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 (2026-11-03)
+
+- Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,
+  launch target isolation and managed request/lifecycle integration.
+
 ## 0.1.1 (2026-10-28)
 
 - Rebuilt on meshy-dcc-core 0.2.2: security fixes in the MCP server (rmcp 2.1) and Python bindings (PyO3 0.29), and tool calls whose deadline passes before they start are no longer run.

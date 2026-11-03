@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 (2026-11-03)
+
+- Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,
+  launch target isolation and managed request/lifecycle integration.
+
 ## 0.1.1 (2026-10-28)
 
 - A tool that writes a document or an export (`create_document`, `save_copy`,
