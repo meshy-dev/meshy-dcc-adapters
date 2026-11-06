@@ -27,6 +27,11 @@
   refuses to render, with `CAMERA_RENDERABLE_UPDATE_FAILED`, when another
   camera cannot be switched off. The result also reports the configured
   `view_transform`.
+- Animation curve infinity modes read back correctly. Maya numbers them
+  constant 0, linear 1, cycle 3, cycle with offset 4, oscillate 5 (2 is
+  unused), so a cycle curve was reported as `cycle_relative`, a relative cycle
+  as `oscillate`, and an oscillating curve was rejected as unknown.
+  `get_anim_curves` and `set_keyframes` now use Maya's values.
 
 ## 0.1.2 (2026-11-03)
 
