@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Native values are no longer mistaken for methods. Every pymxs value is
+  callable, so `set_object_property` and `scene_patch` refused to write a
+  property whose value is a Point3 or a Name ("Refusing to overwrite a
+  method"), and `get_object_properties` reported such a property as not
+  readable. Only real functions are treated as methods now. The unit names in
+  `get_scene_info`, `get_scene_metadata` and the context snapshot are read the
+  same way as in the scene status instead of being called.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

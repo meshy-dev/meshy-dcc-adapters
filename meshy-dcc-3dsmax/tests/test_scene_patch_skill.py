@@ -431,3 +431,19 @@ def test_scene_patch_edit_ceiling_matches_the_module_constant():
     tool = next(item for item in tools if item["name"] == "scene_patch")
 
     assert tool["input_schema"]["properties"]["edits"]["maxItems"] == _load_action("action_scene_patch.py").MAX_EDITS
+
+
+def test_a_callable_native_point_is_a_property_not_a_method(monkeypatch):
+    """pymxs values are callable without being methods; only a method is refused."""
+
+    class NativePoint(_Point3):
+        def __call__(self):
+            raise AssertionError("native values must never be invoked")
+
+    runtime = _install_runtime(monkeypatch)
+    runtime.hero.pos = NativePoint(0, 0, 0)
+
+    result = _patch(edits=[{"op": "set_property", "node_name": "hero_mesh", "property": "pos", "value": [100, 80, 10]}])
+
+    assert result["success"] is True, result
+    assert [runtime.hero.pos.x, runtime.hero.pos.y, runtime.hero.pos.z] == [100, 80, 10]

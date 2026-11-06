@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
@@ -26,9 +27,9 @@ def normalize_scene_path(file_path: Any, *, must_exist: bool) -> Tuple[Optional[
 
 
 def _string_value(value: Any) -> str:
-    if callable(value):
-        # Every pymxs value is callable, including a name such as #inches;
-        # calling one that is not a function raises a MAXScript type error.
+    if inspect.isroutine(value):
+        # Every pymxs value is callable, including a name such as #inches, so
+        # only a real function is called; a name is serialized as it is.
         try:
             value = value()
         except Exception:  # noqa: BLE001
