@@ -1,7 +1,7 @@
 ---
 name: godot-input
 description: >-
-  Domain skill — Send a keyboard event to the running game. Send a mouse button event to the running game. Send mouse motion to the running game. Press or release a Godot input action in the running game. Queue a sequence of runtime input events. List InputMap actions and deadzones. Create or replace an InputMap action.
+  Domain skill — Send a keyboard event to the running game. Send a mouse button event to the running game. Send mouse motion to the running game. Press or release a Godot input action in the running game. Queue a sequence of runtime input events. List the project's input actions and deadzones. Create or update a project input action and save it.
 license: MIT
 compatibility: "Godot 4.4+; meshy-dcc-core 0.2.x"
 allowed-tools: "python"

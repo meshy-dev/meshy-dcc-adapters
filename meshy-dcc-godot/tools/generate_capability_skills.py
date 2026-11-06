@@ -82,8 +82,8 @@ CATEGORIES = {
         ("simulate_mouse_move", "Send mouse motion to the running game."),
         ("simulate_action", "Press or release a Godot input action in the running game."),
         ("simulate_sequence", "Queue a sequence of runtime input events."),
-        ("get_input_actions", "List InputMap actions and deadzones."),
-        ("set_input_action", "Create or replace an InputMap action."),
+        ("get_input_actions", "List the project's input actions and deadzones."),
+        ("set_input_action", "Create or update a project input action and save it."),
     ],
     "runtime": [
         ("get_runtime_status", "Return game-peer connection and play status."),
@@ -964,7 +964,7 @@ TOOL_INPUT_SCHEMAS = {
     "get_input_actions": _object({}),
     "set_input_action": _object(
         {
-            "action": dict(STRING, description="Action name; created when missing."),
+            "action": dict(STRING, description="Action name; created in the project when missing."),
             "deadzone": {
                 "type": "number",
                 "minimum": 0,

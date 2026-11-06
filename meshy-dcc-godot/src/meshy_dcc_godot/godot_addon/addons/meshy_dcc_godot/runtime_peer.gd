@@ -1330,7 +1330,12 @@ func _valid_claim_id(value: String) -> bool:
 
 func _selector_values_allowed(action_id: String, target: Dictionary) -> bool:
 	var values := [action_id]
-	values.append_array(target.values())
+	for field in target:
+		var value = target[field]
+		# A valid script path binds provenance; it does not select an executable surface.
+		# Its shape, containment, digest and the node's real script are checked separately.
+		if field == "script_path" and value is String and _valid_script_path(value): continue
+		values.append(value)
 	for value in values:
 		var lowered := str(value).to_lower()
 		for term in FORBIDDEN_ACTION_SELECTOR_TERMS:
@@ -1736,6 +1741,11 @@ func _json_value(value):
 	if value is Color: return [value.r, value.g, value.b, value.a]
 	if value is Resource: return {"type": value.get_class(), "path": value.resource_path}
 	if value is Object: return {"type": value.get_class(), "instance_id": value.get_instance_id()}
+	# Packed arrays are not Array, so they would otherwise fall through to str(value).
+	if value is PackedStringArray or value is PackedByteArray or value is PackedInt32Array or value is PackedInt64Array or value is PackedFloat32Array or value is PackedFloat64Array or value is PackedVector2Array or value is PackedVector3Array or value is PackedColorArray:
+		var packed: Array = []
+		for item in value: packed.append(_json_value(item))
+		return packed
 	if value is Array:
 		var array: Array = []
 		for item in value: array.append(_json_value(item))
