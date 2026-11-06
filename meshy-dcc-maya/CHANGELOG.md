@@ -13,6 +13,13 @@
   `introspect_eval`, `load_plugin`, and the `maya-dev` tools `run_script`,
   `run_entrypoint`, `run_check`, `reload_modules` and `start_debugpy`. It is a
   tool policy, not a sandbox; read-only and typed tools stay available.
+- `bake_textures` checks what it bakes. It samples the unlit `baseColor` or
+  `color` network into IFF textures with `convertSolidTx`, and reports success
+  only when every output file exists and is not empty. A failure lists each
+  failed object and keeps the verified files; the renderer and selection are
+  restored in every case. Only `bake_type="diffuse"` is supported: full render,
+  normals and AO were never implemented and now return a clear error. A single
+  object name is accepted as well as a list.
 
 ## 0.1.2 (2026-11-03)
 

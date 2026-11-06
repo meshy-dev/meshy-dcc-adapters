@@ -35,6 +35,16 @@ in `tools.yaml`.
 
 ## Scripts
 
+- `bake_textures` — Sample a mesh's unlit material `baseColor`/`color` network
+  into non-empty IFF UV textures using Maya `convertSolidTx`. Each object must
+  have one mesh shape, one shading group and one surface material; ambiguous
+  assignments fail. `bake_type="diffuse"` means base-color sampling, not an
+  Arnold diffuse lighting pass; full-render, normals, AO and UDIM baking are
+  not implemented by this tool. The legacy `renderer="arnold"` argument is
+  kept, and results report `backend="maya.convertSolidTx"`. Every output file
+  is checked, the renderer and selection are restored, and a partial failure
+  keeps the verified files and lists each failed object with its error.
+  `overscan` is kept but unused.
 - `bake_lighting` — Bake full lighting (diffuse + shadows) to a texture via `convertLightmap`
 - `bake_ambient_occlusion` — Bake AO using a `mib_amb_occlusion` shader
 - `transfer_maps` — Transfer normals/displacement/diffuse from high-res to low-res mesh
