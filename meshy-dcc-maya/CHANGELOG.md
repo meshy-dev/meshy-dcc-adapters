@@ -39,6 +39,9 @@
   Maya returns a sequence template), refuses a path outside that folder or a
   symlink, and removes the folder on every outcome. A folder that cannot be
   removed is reported in the result instead of replacing it.
+- `meshy-dcc-maya` (the pip installer) writes `PLATFORM:mac` on macOS. Maya's
+  module platform token is `mac`; `macos` never matched, so Maya on macOS
+  ignored the module file.
 
 ## 0.1.2 (2026-11-03)
 
