@@ -32,6 +32,8 @@
   unused), so a cycle curve was reported as `cycle_relative`, a relative cycle
   as `oscillate`, and an oscillating curve was rejected as unknown.
   `get_anim_curves` and `set_keyframes` now use Maya's values.
+- Starting Maya no longer pops up viewport messages. The sidecar and server
+  banners are printed to the Script Editor only.
 
 ## 0.1.2 (2026-11-03)
 
