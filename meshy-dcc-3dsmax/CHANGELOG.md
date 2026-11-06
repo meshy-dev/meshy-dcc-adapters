@@ -9,6 +9,12 @@
   readable. Only real functions are treated as methods now. The unit names in
   `get_scene_info`, `get_scene_metadata` and the context snapshot are read the
   same way as in the scene status instead of being called.
+- Spline tools close and open splines with 3ds Max's own `close` and `open`.
+  `draw_spline`, `curve_model`, `edit_curve` and the spline helper called
+  `closeSpline` and `openSpline`, which 3ds Max does not have, so closing a
+  spline failed. `draw_spline` in append or replace mode now puts the original
+  shape back (knots, tangent handles, closed flag and name) when drawing fails,
+  and reports `rolled_back` only after reading the restored shape back.
 
 ## 0.1.2 (2026-11-03)
 
