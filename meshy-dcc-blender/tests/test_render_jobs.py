@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import struct
 import sys
+import zlib
 from types import SimpleNamespace
 
 import pytest
@@ -12,8 +14,23 @@ def _write_valid_exr(path):
     path.write_bytes(b"\x76\x2f\x31\x01payload")
 
 
+def _chunk(kind, data=b""):
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+
+
+def png_bytes():
+    """A complete 1x1 RGB PNG."""
+    header = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _chunk(b"IHDR", header)
+        + _chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00"))
+        + _chunk(b"IEND")
+    )
+
+
 def _write_valid_png(path):
-    path.write_bytes(b"\x89PNG\r\n\x1a\npayload")
+    path.write_bytes(png_bytes())
 
 
 def _fake_bpy(filepath, file_format="PNG"):
@@ -118,6 +135,74 @@ def test_select_frames_resumes_only_missing_valid_pngs(tmp_path):
     jobs._expected_output_path(pattern, 3, output_format="PNG").write_bytes(b"not a png")
 
     assert jobs._select_frames(pattern, 1, 4, 1, resume_missing=True, output_format="PNG") == [2, 3, 4]
+
+
+def test_select_frames_rerenders_a_truncated_png(tmp_path):
+    pattern = str(tmp_path / "beauty_####")
+    _write_valid_png(jobs._expected_output_path(pattern, 1, output_format="PNG"))
+    # Starts with the signature but the worker died before the image was complete.
+    jobs._expected_output_path(pattern, 2, output_format="PNG").write_bytes(png_bytes()[:-20])
+
+    assert jobs._select_frames(pattern, 1, 2, 1, resume_missing=True, output_format="PNG") == [2]
+
+
+def _png_job(tmp_path, status, return_code=None):
+    pattern = str(tmp_path / "beauty_####")
+    process = SimpleNamespace(pid=7, poll=lambda: return_code)
+    job = {
+        "job_id": "j",
+        "status": status,
+        "process": process,
+        "frames": [1, 2],
+        "output_pattern": pattern,
+        "output_format": "PNG",
+        "stdout_path": "",
+        "stderr_path": "",
+    }
+    return job, pattern
+
+
+def test_png_job_is_failed_when_the_worker_left_a_truncated_frame(tmp_path):
+    job, pattern = _png_job(tmp_path, "running", return_code=0)
+    _write_valid_png(jobs._expected_output_path(pattern, 1, output_format="PNG"))
+    jobs._expected_output_path(pattern, 2, output_format="PNG").write_bytes(png_bytes()[:-20])
+
+    context = jobs._job_context(job)
+
+    assert context["status"] == "failed"
+    assert context["written_frame_count"] == 1
+    assert context["missing_frame_sample"] == [2]
+
+
+def test_png_job_completes_when_every_frame_is_whole(tmp_path):
+    job, pattern = _png_job(tmp_path, "running", return_code=0)
+    for frame in (1, 2):
+        _write_valid_png(jobs._expected_output_path(pattern, frame, output_format="PNG"))
+
+    assert jobs._job_context(job)["status"] == "completed"
+
+
+def test_completed_png_job_turns_failed_when_a_frame_is_later_damaged(tmp_path):
+    job, pattern = _png_job(tmp_path, "completed")
+    for frame in (1, 2):
+        _write_valid_png(jobs._expected_output_path(pattern, frame, output_format="PNG"))
+    assert jobs._job_context(job)["status"] == "completed"
+
+    jobs._expected_output_path(pattern, 2, output_format="PNG").write_bytes(b"\x89PNG\r\n\x1a\ngarbage")
+
+    assert jobs._job_context(job)["status"] == "failed"
+
+
+def test_windows_cancel_does_not_flash_a_console_window(monkeypatch):
+    calls = []
+    monkeypatch.setattr(jobs.os, "name", "nt")
+    monkeypatch.setattr(jobs.subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    monkeypatch.setattr(jobs.subprocess, "run", lambda *args, **kwargs: calls.append((args, kwargs)))
+
+    jobs._terminate_process_tree(SimpleNamespace(pid=99, poll=lambda: None))
+
+    assert calls[0][0][0] == ["taskkill", "/PID", "99", "/T", "/F"]
+    assert calls[0][1]["creationflags"] == 0x08000000
 
 
 def test_rejects_unsupported_background_render_format(tmp_path):

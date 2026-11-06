@@ -21,6 +21,18 @@
 - USD import applies the texture and subdivision options under the names Blender
   uses, so textures are imported by default again.
 
+- `pack_uvs` fails when Blender does not report FINISHED for the pack operator,
+  instead of normalizing a layout nobody packed, and returns the UV state it
+  found.
+- Background render jobs check that a PNG frame is structurally complete (chunk
+  checksums and a closing end marker), not just that it starts with the PNG
+  signature. A truncated frame is re-rendered on resume and keeps the job from
+  reporting completed.
+- Cancelling a background render job on Windows no longer flashes a console
+  window.
+- Multiview receipt reads and writes retry transient Windows sharing conflicts
+  for up to a second instead of 0.1 s.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

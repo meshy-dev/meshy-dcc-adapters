@@ -162,6 +162,32 @@ def test_uv_operator_reacquires_layer_after_edit_mode_invalidates_rna(tool):
         assert result["context"]["normalized_coordinate_count"] == 4
 
 
+def test_pack_uvs_rejects_a_cancelled_operator_without_normalizing():
+    obj = _mesh_obj()
+    bpy = _bpy_for(obj)
+    bpy.ops.uv.pack_islands.return_value = {"CANCELLED"}
+    before = [tuple(loop.uv) for loop in obj.data.uv_layers.active.data]
+
+    result = load_and_call("blender-uv-ops/scripts/pack_uvs.py", bpy, object_name=obj.name)
+
+    assert result["success"] is False
+    assert result["context"]["operator_result"] == ["CANCELLED"]
+    assert result["context"]["mutation_applied"] is True
+    assert [tuple(loop.uv) for loop in obj.data.uv_layers.active.data] == before
+
+
+def test_pack_uvs_reports_the_uv_state_when_the_operator_raises():
+    obj = _mesh_obj()
+    bpy = _bpy_for(obj)
+    bpy.ops.uv.pack_islands.side_effect = RuntimeError("poll failed")
+
+    result = load_and_call("blender-uv-ops/scripts/pack_uvs.py", bpy, object_name=obj.name)
+
+    assert result["success"] is False
+    assert result["context"]["mutation_applied"] is True
+    assert "uv_before" in result["context"]
+
+
 def test_tools_yaml_declares_modern_contract():
     doc = yaml.safe_load((SKILL_DIR / "tools.yaml").read_text(encoding="utf-8"))
     expected = {

@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Tuple
 
 from meshy_dcc_core.skill import skill_error, skill_exception, skill_success
 
+from ._png_integrity import is_complete_png
+
 _FRAME_TOKEN = re.compile(r"#+")
 _OPENEXR_MAGIC = b"\x76\x2f\x31\x01"
 _PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
@@ -154,6 +156,10 @@ def _is_valid_output(path: Path, *, output_format: str = "OPEN_EXR_MULTILAYER") 
     try:
         if not path.is_file() or path.stat().st_size < len(magic):
             return False
+        if magic == _PNG_MAGIC:
+            # A truncated frame still starts with the signature; resuming over it
+            # or reporting the job completed would hand back a broken image.
+            return is_complete_png(path)
         with path.open("rb") as stream:
             return stream.read(len(magic)) == magic
     except OSError:
@@ -452,22 +458,7 @@ def _job_context(job: Dict[str, Any]) -> Dict[str, Any]:
     process = job.get("process")
     output_format = str(job.get("output_format", "OPEN_EXR_MULTILAYER")).strip().upper()
     _output_format_spec(output_format)
-    if job["status"] == "running" and process is not None:
-        return_code = process.poll()
-        if return_code is not None:
-            expected = [
-                _expected_output_path(
-                    job["output_pattern"],
-                    frame,
-                    output_format=output_format,
-                )
-                for frame in job["frames"]
-            ]
-            job["status"] = (
-                "completed"
-                if return_code == 0 and all(_is_valid_output(path, output_format=output_format) for path in expected)
-                else "failed"
-            )
+    return_code = process.poll() if job["status"] == "running" and process is not None else None
     written = [
         frame
         for frame in job["frames"]
@@ -483,6 +474,14 @@ def _job_context(job: Dict[str, Any]) -> Dict[str, Any]:
     written_set = set(written)
     missing = [frame for frame in job["frames"] if frame not in written_set]
     expected_count = len(job["frames"])
+    if return_code is not None:
+        # Reuse the frame checks above: the poll that sees the worker exit would
+        # otherwise validate every frame twice.
+        job["status"] = "completed" if return_code == 0 and not missing else "failed"
+    elif output_format == "PNG" and job["status"] == "completed" and missing:
+        # A frame that was edited or truncated after completion must not stay
+        # "completed" beside a missing frame.
+        job["status"] = "failed"
     context = {
         "job_id": job["job_id"],
         "status": job["status"],
@@ -507,6 +506,9 @@ def _terminate_process_tree(process: Any) -> None:
             ["taskkill", "/PID", str(process.pid), "/T", "/F"],
             check=False,
             capture_output=True,
+            # taskkill is a console program; without this it flashes a console
+            # window when the job is cancelled from GUI Blender.
+            creationflags=subprocess.CREATE_NO_WINDOW,
         )
         return
     try:

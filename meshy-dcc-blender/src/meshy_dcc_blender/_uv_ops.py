@@ -598,6 +598,8 @@ def pack_uvs(
     normalize: bool = True,
 ) -> dict:
     """Pack UV islands through Blender's UV operator."""
+    obj = None
+    before_uv = None
     margin_error = _validate_margin(margin)
     if margin_error:
         return margin_error
@@ -611,6 +613,7 @@ def pack_uvs(
         layer = _get_uv_layer(mesh)
         if layer is None:
             return skill_error(f"No UV maps on {object_name}", "Create or unwrap a UV map before packing islands.")
+        before_uv = _mesh_uv_context(obj)
 
         operator_result = _run_uv_edit_operator(
             bpy,
@@ -619,6 +622,9 @@ def pack_uvs(
             margin=float(margin),
             rotate=bool(rotate),
         )
+        if "FINISHED" not in operator_result:
+            # Normalizing after a cancelled pack would report a layout nobody packed.
+            return _uv_operator_failed(object_name, "UV packing", operator_result, before_uv, _mesh_uv_context(obj))
         layer = _get_uv_layer(obj.data)
         if layer is None:
             raise RuntimeError("UV layer unavailable after packing")
@@ -641,6 +647,8 @@ def pack_uvs(
     except ImportError:
         return skill_error("Blender not available", "bpy could not be imported")
     except Exception as exc:
+        if obj is not None and before_uv is not None:
+            return _uv_exception_receipt(obj, "UV packing", before_uv, exc)
         return skill_exception(exc, message=f"Failed to pack UVs on {object_name}")
 
 
