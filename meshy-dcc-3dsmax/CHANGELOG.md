@@ -20,6 +20,11 @@
   rate changes. It reads the timeline back, fails when the host did not keep the
   values, and puts the original settings back (`restored` says whether they read
   back). A frame rate that is zero, negative or not finite is rejected.
+- New tool `3dsmax-scene__set_scene_units` sets the system unit type and scale
+  before modeling. It only works on an empty scene, does not rescale anything
+  or touch the display units, reads the values back, and puts the original
+  units back (reporting `rollback_verified`) when a write fails or does not
+  stick.
 
 ## 0.1.2 (2026-11-03)
 
