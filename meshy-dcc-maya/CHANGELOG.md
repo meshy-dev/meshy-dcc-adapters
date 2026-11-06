@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Verified rollbacks undo only their own edit. A mutation that failed before
+  its first write used to undo the artist's previous edit and still report
+  `rollback_verified=true`; the rollback now runs only when Maya's top undo
+  item is the tool's own chunk, and otherwise reports
+  `rollback_verified=false` with `rollback_skipped_reason`.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,
