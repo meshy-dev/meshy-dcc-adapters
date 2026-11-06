@@ -34,6 +34,10 @@
   before any node is created, and a lens that does not read back removes the
   camera and target the call created (`rolled_back`). `list_cameras` reports the
   same millimetre value.
+- `create_object` verifies the final position after rotation and scale (a world
+  rotation can move the node, so the position is applied last) and deletes the
+  node it created when naming, rotation, scale or placement fails, so retrying
+  no longer leaves orphan nodes. The result reports `rolled_back`.
 
 ## 0.1.2 (2026-11-03)
 
