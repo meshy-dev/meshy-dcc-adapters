@@ -38,6 +38,12 @@
   rotation can move the node, so the position is applied last) and deletes the
   node it created when naming, rotation, scale or placement fails, so retrying
   no longer leaves orphan nodes. The result reports `rolled_back`.
+- Arnold lights are bound to MAXtoA's own controls. The shape table was
+  numbered 0 to 3, but MAXtoA numbers its light shapes sphere 0, distant 1,
+  spot 2, quad 3, disk 4, cylinder 5, skydome 6, photometric 7, mesh 8, so a
+  `quad` request wrote a sphere. The light is built with `Arnold_Light`, and the
+  shape, quad size and radius go through `shapeType`, `quadX`/`quadY` and
+  `lightRadius`; `list_lights` reads `on` before `enabled`.
 
 ## 0.1.2 (2026-11-03)
 
