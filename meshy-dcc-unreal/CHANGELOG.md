@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- `prepare_official_mcp` no longer rewrites the project's editor INI. It
+  appends its four settings and leaves the existing bytes alone, so comments,
+  repeated keys and `+Key` array lines survive. It validates the project file
+  and the INI before writing either, reads both back after writing, and
+  restores the originals if a write or the read-back fails, so a failure no
+  longer leaves the plugin enabled without its settings. An INI syntax error is
+  reported by line number only.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,
