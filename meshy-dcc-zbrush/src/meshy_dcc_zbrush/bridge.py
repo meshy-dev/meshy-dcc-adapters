@@ -247,6 +247,10 @@ class SocketBridge:
 
     def _call_once(self, method: str, **params: Any) -> Any:
         payload = self._payload(method, params)
+        # Carry the wait budget across a delayed TCP accept: the plugin refuses a
+        # queued request that expired before it started. The adapter is not handed
+        # the caller's remaining budget, so the client timeout is the deadline.
+        payload["deadline_unix_ms"] = (time.time() + self._timeout) * 1000
 
         def unknown_outcome(reason: str) -> ZBrushBridgeError:
             # Once a real method is on the wire the host may be running it, so a

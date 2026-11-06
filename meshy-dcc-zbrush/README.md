@@ -49,7 +49,9 @@ busy answer, and `ping` is answered without touching the SDK. A request still
 running when the 600 s bridge timeout ends is reported as still running, not
 retried. So is a request whose connection resets, closes or times out, or whose
 reply is unreadable, after it was sent: the outcome is unknown and the call is
-not replayed. On Windows the bridge drains requests from a UI-thread timer; on
+not replayed. Each request carries the client's wall-clock deadline: the bridge
+refuses one that expired while it waited in the queue (`ZBRUSH_REQUEST_EXPIRED`,
+nothing was started, safe to retry) and never starts it late. On Windows the bridge drains requests from a UI-thread timer; on
 macOS it pumps them from a loop that keeps calling `zbc.update`.
 
 ## Tools

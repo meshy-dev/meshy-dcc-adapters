@@ -1,6 +1,11 @@
-"""Client lost-reply regression tests for the ZBrush socket bridge.
+"""Queue-deadline and client lost-reply regression tests for the ZBrush socket bridge.
 
-Once a real method is on the wire the host may already be running it, so a
+The in-ZBrush main-thread pump refuses a request whose wire deadline
+(``deadline_unix_ms``) or local queue timeout passed before it started, and
+answers ``-32004`` with ``executed: false``. A request that already started
+keeps the host busy and is reported as possibly still running.
+
+On the client side, once a real method is on the wire the host may already be running it, so a
 lost, empty or malformed reply, or a connection reset, abort, broken pipe, EOF
 or timeout after the connection was made, is ``-32002 execution_state=unknown,
 retryable=False`` and is never replayed. A failure before the connection exists
@@ -14,6 +19,8 @@ import json
 import socket
 import struct
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +28,186 @@ import pytest
 from meshy_dcc_zbrush import api
 from meshy_dcc_zbrush import bridge as bridge_mod
 from meshy_dcc_zbrush.bridge import STATUS_BLOCKED, SocketBridge, ZBrushBlockedError, ZBrushBridgeError
+from tests.test_socket_bridge_plugin import _load_bridge_plugin
+
+
+def _wait_until_queued(plugin):
+    deadline = time.monotonic() + 1
+    while plugin._REQUEST_QUEUE.empty() and time.monotonic() < deadline:
+        time.sleep(0.001)
+
+
+def test_expired_queued_request_does_not_execute_after_pump_resumes():
+    plugin = _load_bridge_plugin()
+    plugin._REQUEST_TIMEOUT_SECONDS = 0.01
+    handler = MagicMock(return_value={"result": {"ok": True}})
+    plugin._handle_request = handler
+
+    result = plugin._dispatch_request({"id": 1, "method": "execute_python"})
+    plugin._drain_request_queue()
+
+    handler.assert_not_called()
+    assert result["error"]["code"] == -32004
+    assert result["error"]["data"]["executed"] is False
+    assert plugin._ACTIVE_REQUEST is None
+
+
+def test_wire_deadline_rejects_request_delayed_before_plugin_accept():
+    plugin = _load_bridge_plugin()
+    handler = MagicMock()
+    plugin._handle_request = handler
+
+    result = plugin._dispatch_request(
+        {"id": 1, "method": "execute_python", "deadline_unix_ms": (time.time() - 1) * 1000}
+    )
+    plugin._drain_request_queue()
+
+    handler.assert_not_called()
+    assert result["error"]["code"] == -32004
+    assert plugin._REQUEST_QUEUE.empty()
+
+
+def test_started_request_remains_busy_after_wait_timeout():
+    plugin = _load_bridge_plugin()
+    plugin._REQUEST_TIMEOUT_SECONDS = 0.3
+    entered = threading.Event()
+    release = threading.Event()
+
+    def handle(payload):
+        entered.set()
+        assert release.wait(2)
+        return {"id": payload["id"], "result": {"ok": True}}
+
+    plugin._handle_request = handle
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        request = pool.submit(plugin._dispatch_request, {"id": 1, "method": "execute_python"})
+        _wait_until_queued(plugin)
+        pump = pool.submit(plugin._drain_request_queue)
+        assert entered.wait(1)
+        try:
+            response = request.result(timeout=1)
+            assert response["error"]["code"] == -32002
+            assert response["error"]["data"]["retryable"] is False
+            assert plugin._dispatch_request({"id": 2})["error"]["code"] == -32001
+        finally:
+            release.set()
+        pump.result(timeout=1)
+    assert plugin._ACTIVE_REQUEST is None
+
+
+def test_expiry_is_checked_on_pump_even_before_waiter_can_cancel():
+    plugin = _load_bridge_plugin()
+    handler = MagicMock()
+    plugin._handle_request = handler
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        request = pool.submit(plugin._dispatch_request, {"id": 1, "method": "execute_python"})
+        _wait_until_queued(plugin)
+        with plugin._REQUEST_STATE_LOCK:
+            plugin._ACTIVE_REQUEST["deadline"] = time.monotonic() - 1
+        plugin._drain_request_queue()
+        assert request.result(timeout=1)["error"]["code"] == -32004
+    handler.assert_not_called()
+
+
+def test_cancelled_queue_entries_stay_bounded():
+    plugin = _load_bridge_plugin()
+    plugin._REQUEST_TIMEOUT_SECONDS = 0.001
+    for request_id in range(10):
+        assert plugin._dispatch_request({"id": request_id})["error"]["code"] == -32004
+        assert plugin._REQUEST_QUEUE.qsize() == 1
+    plugin._drain_request_queue()
+    assert plugin._ACTIVE_REQUEST is None
+
+
+@pytest.mark.parametrize("deadline", [True, "tomorrow", float("nan"), float("inf"), 10**400])
+def test_invalid_deadlines_fail_closed(deadline):
+    plugin = _load_bridge_plugin()
+
+    response = plugin._dispatch_request({"id": 1, "deadline_unix_ms": deadline})
+
+    assert response["error"]["code"] == -32602
+    assert plugin._REQUEST_QUEUE.empty()
+
+
+def test_real_tcp_delayed_accept_discards_expired_host_work():
+    plugin = _load_bridge_plugin()
+    handler = MagicMock()
+    plugin._handle_request = handler
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        listener.settimeout(2)
+        with socket.create_connection(listener.getsockname(), timeout=2) as client:
+            client.sendall(
+                json.dumps({"id": 1, "method": "execute_python", "deadline_unix_ms": (time.time() - 1) * 1000}).encode()
+                + b"\n"
+            )
+            # The kernel takes the data before the embedded listener resumes.
+            conn, _ = listener.accept()
+            plugin._serve_client(conn)
+            response = json.loads(client.recv(65536))
+    assert response["error"]["code"] == -32004
+    plugin._drain_request_queue()
+    handler.assert_not_called()
+
+
+def test_aborted_started_request_releases_waiter_and_busy_slot():
+    plugin = _load_bridge_plugin()
+    plugin._handle_request = MagicMock(side_effect=SystemExit("abort"))
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        request = pool.submit(plugin._dispatch_request, {"id": 1, "method": "execute_python"})
+        _wait_until_queued(plugin)
+        with pytest.raises(SystemExit, match="abort"):
+            plugin._drain_request_queue()
+        response = request.result(timeout=1)
+    assert response["error"]["code"] == -32002
+    assert response["error"]["data"] == {"retryable": False, "execution_state": "unknown"}
+    assert plugin._ACTIVE_REQUEST is None
+
+
+def test_client_wire_deadline_is_its_own_timeout_not_the_plugin_cap(monkeypatch):
+    sent = []
+
+    def send(data, **_kwargs):
+        sent.append(json.loads(data))
+        return b'{"result":{"ok":true}}'
+
+    bridge = SocketBridge(timeout=5.0)
+    monkeypatch.setattr(bridge, "_send", send)
+    before = time.time()
+    assert bridge.call("execute_python", code="x = 1") == {"ok": True}
+    after = time.time()
+
+    wire_ms = sent[0]["deadline_unix_ms"]
+    assert before * 1000 + 5000 <= wire_ms <= after * 1000 + 5000
+
+    # The plugin turns that wire value into a ~5 s wait, well under its 600 s cap.
+    plugin = _load_bridge_plugin()
+    plugin._handle_request = MagicMock(return_value={"result": {"ok": True}})
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        request = pool.submit(plugin._dispatch_request, sent[0])
+        _wait_until_queued(plugin)
+        remaining = plugin._ACTIVE_REQUEST["deadline"] - time.monotonic()
+        assert 0 < remaining < 6
+        plugin._drain_request_queue()
+        assert request.result(timeout=2)["result"] == {"ok": True}
+
+
+def test_expired_request_error_maps_to_a_retryable_tool_error(monkeypatch):
+    bridge = SocketBridge(host="127.0.0.1", port=19876)
+    bridge._connected = True
+    expired = {"error": {"code": -32004, "message": "expired", "data": {"retryable": True, "executed": False}}}
+    monkeypatch.setattr(bridge, "_send", lambda _data, **_kw: json.dumps(expired).encode())
+    monkeypatch.setattr(api, "_bridge", bridge)
+
+    @api.with_zbrush
+    def call_expired(**_kwargs):
+        return api.get_bridge().call("execute_python", code="x=1")
+
+    result = call_expired()
+
+    assert result["error"] == "ZBRUSH_REQUEST_EXPIRED"
+    assert result["context"]["executed"] is False
 
 
 def _assert_unknown_outcome(error: ZBrushBridgeError) -> None:

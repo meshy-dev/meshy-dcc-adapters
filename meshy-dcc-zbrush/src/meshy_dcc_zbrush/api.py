@@ -130,6 +130,7 @@ def with_zbrush(func: _F) -> _F:
             error_code = {
                 -32001: "ZBRUSH_BUSY",
                 -32002: "ZBRUSH_TIMEOUT_STILL_RUNNING",
+                -32004: "ZBRUSH_REQUEST_EXPIRED",
             }.get(exc.code, "ZBRUSH_BRIDGE_ERROR")
             return zb_error(
                 str(exc),
