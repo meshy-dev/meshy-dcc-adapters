@@ -210,14 +210,6 @@ tooltip:"Start meshy-dcc-3dsmax server"
     on execute do python.Execute "import meshy_dcc_3dsmax; meshy_dcc_3dsmax.main()"
 )
 
-macroScript MeshyDcc3dsmax_StopSidecar
-category:"Meshy DCC"
-buttonText:"Stop Server"
-tooltip:"Stop meshy-dcc-3dsmax server"
-(
-    on execute do python.Execute "import meshy_dcc_3dsmax; meshy_dcc_3dsmax.stop_sidecar_bridge()"
-)
-
 macroScript MeshyDcc3dsmax_OpenAdmin
 category:"Meshy DCC"
 buttonText:"Open Gateway Admin"
@@ -250,7 +242,6 @@ if menuMan.findMenu "Meshy DCC" == undefined do
     dccMenu.addItem (menuMan.createActionItem "MeshyDcc3dsmax_CopyInstanceId" "Meshy DCC") -1
     dccMenu.addItem (menuMan.createSeparatorItem()) -1
     dccMenu.addItem (menuMan.createActionItem "MeshyDcc3dsmax_StartSidecar" "Meshy DCC") -1
-    dccMenu.addItem (menuMan.createActionItem "MeshyDcc3dsmax_StopSidecar" "Meshy DCC") -1
     dccMenu.addItem (menuMan.createSeparatorItem()) -1
     dccMenu.addItem (menuMan.createActionItem "MeshyDcc3dsmax_OpenAdmin" "Meshy DCC") -1
     dccMenu.addItem (menuMan.createActionItem "MeshyDcc3dsmax_PrintStatus" "Meshy DCC") -1
@@ -281,14 +272,6 @@ buttonText:"Start Server"
 tooltip:"Start meshy-dcc-3dsmax server"
 (
     on execute do python.Execute "import meshy_dcc_3dsmax; meshy_dcc_3dsmax.main()"
-)
-
-macroScript MeshyDcc3dsmax_StopSidecar
-category:"Meshy DCC"
-buttonText:"Stop Server"
-tooltip:"Stop meshy-dcc-3dsmax server"
-(
-    on execute do python.Execute "import meshy_dcc_3dsmax; meshy_dcc_3dsmax.stop_sidecar_bridge()"
 )
 
 macroScript MeshyDcc3dsmax_OpenAdmin
@@ -333,7 +316,6 @@ function meshyDcc3dsmaxRegisterMenus =
     dccSubMenu.CreateAction "4D455348-0000-0000-0000-000000000002" 647394 "MeshyDcc3dsmax_CopyInstanceId`Meshy DCC" title:"Copy Instance ID"
     dccSubMenu.CreateSeparator "4D455348-0000-0000-0000-000000000003"
     dccSubMenu.CreateAction "4D455348-0000-0000-0000-000000000004" 647394 "MeshyDcc3dsmax_StartSidecar`Meshy DCC" title:"Start Server"
-    dccSubMenu.CreateAction "4D455348-0000-0000-0000-000000000005" 647394 "MeshyDcc3dsmax_StopSidecar`Meshy DCC" title:"Stop Server"
     dccSubMenu.CreateSeparator "4D455348-0000-0000-0000-000000000006"
     dccSubMenu.CreateAction "4D455348-0000-0000-0000-000000000007" 647394 "MeshyDcc3dsmax_OpenAdmin`Meshy DCC" title:"Open Gateway Admin"
     dccSubMenu.CreateAction "4D455348-0000-0000-0000-000000000008" 647394 "MeshyDcc3dsmax_PrintStatus`Meshy DCC" title:"Server Info"

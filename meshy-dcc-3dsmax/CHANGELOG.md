@@ -44,6 +44,11 @@
   `quad` request wrote a sphere. The light is built with `Arnold_Light`, and the
   shape, quad size and radius go through `shapeType`, `quadX`/`quadY` and
   `lightRadius`; `list_lights` reads `on` before `enabled`.
+- The Meshy DCC menu no longer has a Stop Server item. A server stopped from
+  the menu left the instance dead for the rest of the session and made the
+  gateway drop it mid-task. The server stops when 3ds Max closes or the
+  connector is uninstalled. Start Server stays in the menu to bring the server
+  back if the startup script could not start it.
 
 ## 0.1.2 (2026-11-03)
 
