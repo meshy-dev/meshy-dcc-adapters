@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from meshy_dcc_houdini._vex_types import VexSeverity, WrangleType
 from meshy_dcc_houdini._vex_validator import (
+    _strip_comments_and_strings,
     validate_attribute_bindings,
     validate_vex_snippet_client,
     validate_wrangle_parameters,
@@ -251,3 +254,44 @@ class TestValidateAttributeBindings:
         # Should have line context
         assert errors[0].line is not None
         assert "unknownAttr" in errors[0].message
+
+
+# ---------------------------------------------------------------------------
+# Strings and comments must not hide a disallowed call from the allowlist
+# ---------------------------------------------------------------------------
+
+
+class TestStripCommentsAndStrings:
+    @pytest.mark.parametrize(
+        "code, expected",
+        [
+            ('s@name = "path // to nowhere"; @P += 1;', 's@name = ""; @P += 1;'),
+            ("s@name = 'path // to nowhere'; @P += 1;", 's@name = ""; @P += 1;'),
+            ('s@a = "he said \\"hi\\" ok"; @P += 1;', 's@a = ""; @P += 1;'),
+            ('s@a = "/* not a comment"; @P += 1;', 's@a = ""; @P += 1;'),
+            ('s@name = "x // y"; @P += 1;  // tail', 's@name = ""; @P += 1;   '),
+        ],
+    )
+    def test_string_literal_is_blanked_not_truncated(self, code: str, expected: str) -> None:
+        assert _strip_comments_and_strings(code) == expected
+
+    def test_unterminated_quote_in_comment_does_not_span_lines(self) -> None:
+        stripped = _strip_comments_and_strings('// 5" diameter\n@P += 1;\ns@a = "x";')
+        assert "@P += 1;" in stripped
+        assert 's@a = "";' in stripped
+
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "unknown();",
+            's@name = "path // to nowhere"; unknown();',
+            "string s = 'path // inside'; unknown();",
+            's@a = "/* open"; unknown(); s@b = "close */";',
+            '// 5" diameter\nunknown();\ns@a = "x";',
+            '// use " around paths\nunknown();\ns@a = "x";',
+            's@a = "he said \\"hi\\" ok"; unknown();',
+        ],
+    )
+    def test_disallowed_call_is_still_flagged(self, code: str) -> None:
+        errors = validate_vex_snippet_client(code, WrangleType.POINT_WRANGLE)
+        assert any("Disallowed function call" in e.message for e in errors)

@@ -316,15 +316,16 @@ def validate_attribute_bindings(
 # ---------------------------------------------------------------------------
 
 
+# One left-to-right pass: block comment, line comment, or a single-line string
+# literal in either quote style (backslash escapes honoured). Whichever starts
+# first wins, so a comment marker inside a string and a quote inside a comment
+# are both left alone, and an unterminated quote cannot pair across lines.
+_COMMENT_OR_STRING = re.compile(r"""/\*[\s\S]*?\*/|//[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'""")
+
+
 def _strip_comments_and_strings(code: str) -> str:
     """Remove comments and string literals so the token allowlist is accurate."""
-    # Remove block comments
-    code = re.sub(r"/\*.*?\*/", " ", code, flags=re.DOTALL)
-    # Remove line comments
-    code = re.sub(r"//.*$", " ", code, flags=re.MULTILINE)
-    # Remove string literals
-    code = re.sub(r'"[^"]*"', '""', code)
-    return code
+    return _COMMENT_OR_STRING.sub(lambda m: '""' if m.group()[0] in "\"'" else " ", code)
 
 
 def _is_allowed_token(token: str, wrangle_type: WrangleType | str) -> bool:
