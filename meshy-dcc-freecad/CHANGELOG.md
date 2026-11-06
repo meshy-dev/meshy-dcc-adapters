@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- A call that opens FreeCAD's GUI (`render_view`, and any call given
+  `visible_objects`) closes its
+  main window before it writes its result, so FreeCAD 1.1.x no longer exits
+  non-zero during teardown and voids a result that was already verified. A
+  window that cannot be closed, or a document still open at that point, fails
+  the call, and the operation's own error is kept when both happen. Not yet
+  confirmed on a real FreeCAD 1.1.x.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

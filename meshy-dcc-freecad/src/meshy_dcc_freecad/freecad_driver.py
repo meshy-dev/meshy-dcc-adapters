@@ -4831,6 +4831,37 @@ def partdesign_hole(params):
     )
 
 
+def _close_owned_gui():
+    """Destroy the driver's own main window while App and Python still exist.
+
+    ``presentation.initialize`` opens one for GUI-backed calls. Left open, the
+    interpreter tears down around it and FreeCAD 1.1.x exits non-zero, which
+    voids a result the call already verified.
+    """
+    App = sys.modules.get("FreeCAD")
+    Gui = sys.modules.get("FreeCADGui")
+    if Gui is None or not getattr(App, "GuiUp", False):
+        return
+    window = Gui.getMainWindow()
+    if window is None:
+        return
+    # Every operation closes its own documents. Do not enter a save dialog or
+    # silently discard an unexpected surviving document during teardown.
+    if App.listDocuments():
+        raise RuntimeError("Native GUI teardown found an open document")
+    from PySide import QtCore
+
+    destroyed = []
+    window.destroyed.connect(lambda *args: destroyed.append(True))
+    if not window.close():
+        raise RuntimeError("Native GUI refused to close its main window")
+    if not destroyed:
+        window.deleteLater()
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+    if not destroyed:
+        raise RuntimeError("Native GUI main window deletion did not complete")
+
+
 def main():
     request_path = sys.argv[-2]
     result_path = sys.argv[-1]
@@ -4873,6 +4904,16 @@ def main():
         state = getattr(exc, "state_payload", None)
         if isinstance(state, dict):
             payload["error"]["sketch_state"] = state
+    # Close the window before the result is written: a failed teardown must turn
+    # an ok result into a failure, and must not hide the operation's own error.
+    try:
+        _close_owned_gui()
+    except Exception as exc:
+        cleanup_error = {"type": type(exc).__name__, "message": str(exc)}
+        if payload.get("ok"):
+            payload = {"ok": False, "error": cleanup_error}
+        else:
+            payload["error"]["gui_cleanup_error"] = cleanup_error
     with open(result_path, "w", encoding="utf-8") as stream:
         json.dump(payload, stream, ensure_ascii=False)
 
