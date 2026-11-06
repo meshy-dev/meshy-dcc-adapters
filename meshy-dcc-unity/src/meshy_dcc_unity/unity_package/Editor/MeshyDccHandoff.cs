@@ -117,7 +117,7 @@ namespace MeshyDcc.Unity
             var importer = string.IsNullOrEmpty(assetPath) ? null : AssetImporter.GetAtPath(assetPath) as TextureImporter;
             return new JObject {
                 ["property"] = property, ["assigned"] = true,
-                ["texture_instance_id"] = texture.GetInstanceID().ToString(),
+                ["texture_instance_id"] = MeshyDccObjectIdentity.GetId(texture),
                 ["texture_name"] = texture.name, ["asset_path"] = assetPath,
                 ["width"] = texture.width, ["height"] = texture.height,
                 ["importer"] = importer ? new JObject {
@@ -160,11 +160,11 @@ namespace MeshyDcc.Unity
                     var shader = material ? material.shader : null;
                     if (materialSlots.Count < maxMaterialSlots)
                         materialSlots.Add(new JObject {
-                            ["object_instance_id"] = renderer.gameObject.GetInstanceID().ToString(),
+                            ["object_instance_id"] = MeshyDccObjectIdentity.GetId(renderer.gameObject),
                             ["hierarchy_path"] = HierarchyPath(renderer.transform),
-                            ["renderer_instance_id"] = renderer.GetInstanceID().ToString(),
+                            ["renderer_instance_id"] = MeshyDccObjectIdentity.GetId(renderer),
                             ["material_slot_index"] = i,
-                            ["material_instance_id"] = material ? material.GetInstanceID().ToString() : null,
+                            ["material_instance_id"] = material ? MeshyDccObjectIdentity.GetId(material) : null,
                             ["material_asset_path"] = material ? AssetDatabase.GetAssetPath(material) : null,
                             ["shader_name"] = shader ? shader.name : null,
                             ["standard_textures"] = shader && shader.name == "Standard" ? new JObject {
@@ -195,18 +195,18 @@ namespace MeshyDcc.Unity
                     if (findings.Count >= maxFindings) continue;
                     findings.Add(new JObject {
                         ["kind"] = kind,
-                        ["object_instance_id"] = renderer.gameObject.GetInstanceID().ToString(),
+                        ["object_instance_id"] = MeshyDccObjectIdentity.GetId(renderer.gameObject),
                         ["hierarchy_path"] = HierarchyPath(renderer.transform),
-                        ["renderer_instance_id"] = renderer.GetInstanceID().ToString(),
+                        ["renderer_instance_id"] = MeshyDccObjectIdentity.GetId(renderer),
                         ["renderer_type"] = renderer.GetType().FullName,
                         ["renderer_enabled"] = renderer.enabled,
                         ["object_active"] = renderer.gameObject.activeInHierarchy,
                         ["object_active_self"] = renderer.gameObject.activeSelf,
                         ["material_slot_index"] = i,
                         ["material_name"] = material ? material.name : null,
-                        ["material_instance_id"] = material ? material.GetInstanceID().ToString() : null,
+                        ["material_instance_id"] = material ? MeshyDccObjectIdentity.GetId(material) : null,
                         ["shader_name"] = shader ? shader.name : null,
-                        ["shader_instance_id"] = shader ? shader.GetInstanceID().ToString() : null,
+                        ["shader_instance_id"] = shader ? MeshyDccObjectIdentity.GetId(shader) : null,
                         ["shader_supported"] = shader ? new JValue(shader.isSupported) : JValue.CreateNull()
                     });
                 }
@@ -362,14 +362,14 @@ namespace MeshyDcc.Unity
         private static int ValidateSingleMaterial(GameObject model)
         {
             var renderers = model.GetComponentsInChildren<Renderer>(true);
-            var materialIds = new HashSet<int>();
+            var materialIds = new HashSet<string>();
             int slots = 0;
             foreach (var renderer in renderers)
                 foreach (var material in renderer.sharedMaterials)
                 {
                     slots++;
                     if (!material) throw new InvalidOperationException("The FBX has an empty material slot; refusing an ambiguous texture assignment.");
-                    materialIds.Add(material.GetInstanceID());
+                    materialIds.Add(MeshyDccObjectIdentity.GetId(material));
                 }
             if (slots == 0 || materialIds.Count != 1)
                 throw new InvalidOperationException("Unity material delivery requires exactly one unambiguous FBX material across all renderer slots.");
@@ -654,7 +654,7 @@ namespace MeshyDcc.Unity
                 var created = (GameObject)PrefabUtility.InstantiatePrefab(model, SceneManager.GetActiveScene());
                 Undo.RegisterCreatedObjectUndo(created, "Meshy import model");
                 EditorSceneManager.MarkSceneDirty(created.scene);
-                result["instance_id"] = created.GetInstanceID().ToString();
+                result["instance_id"] = MeshyDccObjectIdentity.GetId(created);
                 result["name"] = created.name;
                 result["renderers"] = created.GetComponentsInChildren<Renderer>(true).Length;
                 result["material_delivery"] = materialPlan == null

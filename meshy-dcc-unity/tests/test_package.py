@@ -433,3 +433,10 @@ def test_tuanjie_ai_skill_reuses_optional_native_custom_tools():
     assert "read_only: true" in tools
     assert "destructive: true" in tools
     assert "idempotent: false" in tools
+
+
+def test_handoff_uses_version_compatible_object_identity():
+    handoff = (PACKAGE / "Editor" / "MeshyDccHandoff.cs").read_text(encoding="utf-8")
+    assert "GetInstanceID(" not in handoff
+    assert "new HashSet<string>()" in handoff
+    assert "materialIds.Add(MeshyDccObjectIdentity.GetId(material))" in handoff
