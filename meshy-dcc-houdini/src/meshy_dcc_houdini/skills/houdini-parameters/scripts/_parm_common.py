@@ -48,7 +48,13 @@ def _safe(obj: Any, method: str):
 
 
 def coerce_scalar(value: Any, current: Any) -> Any:
-    """Best-effort coercion of *value* to the type of *current*."""
+    """Best-effort coercion of *value* to the type of *current*.
+
+    A null is never a valid parameter value: it is rejected instead of becoming
+    the string ``"None"`` or ``False``.
+    """
+    if value is None:
+        raise TypeError("Cannot coerce null (None) to a parameter value: provide a concrete value")
     if current is None or isinstance(value, type(current)):
         return value
     try:

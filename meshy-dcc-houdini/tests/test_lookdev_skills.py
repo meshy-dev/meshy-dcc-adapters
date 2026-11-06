@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
+import pytest
 from skill_loader import skill_script_import_context
 
 _SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
@@ -37,6 +39,20 @@ def _parm(name, value):
     parm.name.return_value = name
     parm.eval.return_value = value
     return parm
+
+
+class TestLookdevCoerceScalar:
+    @pytest.mark.parametrize("current", ["old", True, 3, 0.5])
+    def test_coerce_scalar_rejects_null(self, current) -> None:
+        common = _load_script("_lookdev_common.py")
+        with pytest.raises(TypeError, match="None"):
+            common.coerce_scalar(None, current)
+
+    def test_coerce_scalar_reads_boolean_strings(self) -> None:
+        common = _load_script("_lookdev_common.py")
+        assert common.coerce_scalar("false", True) is False
+        assert common.coerce_scalar("0", True) is False
+        assert common.coerce_scalar("yes", True) is True
 
 
 class TestLookdevQuery:
@@ -102,7 +118,7 @@ class TestLookdevQuery:
 class TestLookdevEdit:
     def test_set_material_parms_coerces(self) -> None:
         mod = _load_script("set_material_parms.py")
-        tuple_parm = MagicMock()
+        tuple_parm = [MagicMock() for _ in range(3)]
         scalar_parm = MagicMock()
         scalar_parm.eval.return_value = 0.0
         node = _node("/mat/clay", "clay", "principledshader::2.0")
@@ -113,8 +129,28 @@ class TestLookdevEdit:
         with patch.dict(sys.modules, {"hou": mock_hou}):
             result = mod.set_material_parms("/mat/clay", {"basecolor": [0.8, 0.4, 0.2], "rough": 0.6})
         assert result["success"] is True
-        tuple_parm.set.assert_called_once_with((0.8, 0.4, 0.2))
-        scalar_parm.set.assert_called_once_with(0.6)
+        for component, value in zip(tuple_parm, (0.8, 0.4, 0.2)):
+            component.set.assert_called_once_with(value, follow_parm_reference=False)
+        scalar_parm.set.assert_called_once_with(0.6, follow_parm_reference=False)
+
+    def test_set_material_parms_rejects_null_and_applies_siblings(self) -> None:
+        mod = _load_script("set_material_parms.py")
+        rough_parm = MagicMock()
+        rough_parm.eval.return_value = 0.0
+        str_parm = MagicMock()
+        str_parm.eval.return_value = "hello"
+        node = _node("/mat/clay", "clay", "principledshader::2.0")
+        node.parmTuple.side_effect = lambda n: None
+        node.parm.side_effect = lambda n: {"rough": rough_parm, "name": str_parm}.get(n)
+        mock_hou = MagicMock()
+        mock_hou.node.return_value = node
+        with patch.dict(sys.modules, {"hou": mock_hou}):
+            result = mod.set_material_parms("/mat/clay", {"rough": 0.6, "name": None})
+        assert result["success"] is True
+        rough_parm.set.assert_called_once_with(0.6, follow_parm_reference=False)
+        str_parm.set.assert_not_called()  # not the string "None"
+        assert result["context"]["applied"] == {"rough": 0.6}
+        assert "name" in result["context"]["errors"]
 
     def test_connect_shader_by_name(self) -> None:
         mod = _load_script("connect_shader.py")
@@ -189,7 +225,7 @@ class TestPresets:
         with patch.dict(sys.modules, {"hou": load_hou}):
             load_result = load_mod.load_preset("warm_clay", "/mat/clay2")
         assert load_result["success"] is True
-        target_parm.set.assert_called_once_with(0.6)
+        target_parm.set.assert_called_once_with(0.6, follow_parm_reference=False)
 
         delete_mod = _load_script("delete_preset.py")
         delete_result = delete_mod.delete_preset("warm_clay")
@@ -202,3 +238,33 @@ class TestPresets:
         with patch.dict(sys.modules, {"hou": MagicMock()}):
             result = load_mod.load_preset("nope", "/mat/clay")
         assert result["success"] is False
+
+    @pytest.mark.parametrize(
+        "parameters, expect_success",
+        [({"rough": None}, False), ({"rough": 0.6, "name": None}, True)],
+    )
+    def test_load_preset_fails_only_when_every_parameter_fails(
+        self, tmp_path: Path, monkeypatch, parameters: dict, expect_success: bool
+    ) -> None:
+        monkeypatch.setenv("MESHY_DCC_HOUDINI_MATERIAL_PRESET_DIR", str(tmp_path))
+        preset = {"material_type": "principledshader::2.0", "parameters": parameters}
+        (tmp_path / "preset.json").write_text(json.dumps(preset), encoding="utf-8")
+        load_mod = _load_script("load_preset.py")
+        rough_parm = MagicMock()
+        rough_parm.eval.return_value = 0.0
+        str_parm = MagicMock()
+        str_parm.eval.return_value = "hello"
+        target = _node("/mat/clay2", "clay2", "principledshader::2.0")
+        target.parmTuple.return_value = None
+        target.parm.side_effect = lambda n: {"rough": rough_parm, "name": str_parm}.get(n)
+        load_hou = MagicMock()
+        load_hou.node.return_value = target
+        with patch.dict(sys.modules, {"hou": load_hou}):
+            result = load_mod.load_preset("preset", "/mat/clay2")
+        assert result["success"] is expect_success
+        assert "rough" in result["context"]["errors"] or expect_success
+        str_parm.set.assert_not_called()
+        if expect_success:
+            assert result["context"]["applied"] == {"rough": 0.6}
+        else:
+            rough_parm.set.assert_not_called()

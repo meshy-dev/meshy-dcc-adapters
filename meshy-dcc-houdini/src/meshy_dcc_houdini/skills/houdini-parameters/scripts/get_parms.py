@@ -11,7 +11,10 @@ from meshy_dcc_houdini.api import safe_parm_eval
 
 
 def get_parms(node_path: str, names: Optional[List[str]] = None) -> dict:
-    """Return values for the requested parm names (all parms when omitted)."""
+    """Return values for the requested parm names.
+
+    ``names=None`` reads every parm on the node; an explicit empty list selects nothing.
+    """
     try:
         import hou  # noqa: PLC0415
     except ImportError:
@@ -21,7 +24,7 @@ def get_parms(node_path: str, names: Optional[List[str]] = None) -> dict:
         node = get_node(hou, node_path)
         values = {}
         missing = []
-        if names:
+        if names is not None:
             for name in names:
                 parm_tuple = node.parmTuple(name)
                 parm = node.parm(name)

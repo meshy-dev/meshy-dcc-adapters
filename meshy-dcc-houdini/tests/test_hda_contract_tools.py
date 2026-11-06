@@ -10,6 +10,7 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
 from skill_error_assertions import skill_error_detail
 from skill_loader import skill_script_import_context
 
@@ -205,6 +206,29 @@ def test_author_hda_interface_accepts_one_sided_numeric_ranges() -> None:
 
     assert result["success"] is True
     node.setParmTemplateGroup.assert_called_once_with(group)
+
+
+@pytest.mark.parametrize("kind", ["string", "float", "int"])
+def test_author_hda_interface_rejects_null_default(kind: str) -> None:
+    # str(None) would otherwise bake the literal "None" into a string default.
+    mod = _load_script("author_hda_interface.py")
+    group = _Group()
+    node = MagicMock()
+    node.path.return_value = "/obj/asset"
+    node.type.return_value.definition.return_value = None
+    node.parmTemplateGroup.return_value = group
+    mock_hou = MagicMock(**_template_api())
+    mock_hou.node.return_value = node
+
+    with patch.dict(sys.modules, {"hou": mock_hou}):
+        result = mod.author_hda_interface(
+            "/obj/asset", [{"type": kind, "name": "shot", "label": "Shot", "default": None}]
+        )
+
+    assert result["success"] is False
+    assert "null" in skill_error_detail(result).lower()
+    node.setParmTemplateGroup.assert_not_called()
+    assert len(group.entries()) == 0
 
 
 def test_publish_hda_library_namespaces_versions_and_embeds_manifest(tmp_path: Path) -> None:

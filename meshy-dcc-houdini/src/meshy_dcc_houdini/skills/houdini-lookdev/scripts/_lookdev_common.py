@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from meshy_dcc_houdini.api import set_parm_value
+
 ENV_PRESET_DIR = "MESHY_DCC_HOUDINI_MATERIAL_PRESET_DIR"
 
 # Parameter assignment for an object's material, in priority order.
@@ -29,13 +31,21 @@ def preset_dir() -> Path:
 
 
 def coerce_scalar(value: Any, current: Any) -> Any:
-    """Best-effort coerce *value* to the type of *current* (the parm's value)."""
-    if current is None:
+    """Best-effort coerce *value* to the type of *current* (the parm's value).
+
+    A null is never a valid parameter value: it is rejected instead of becoming
+    the string ``"None"`` or ``False``.
+    """
+    if value is None:
+        raise TypeError("Cannot coerce null (None) to a parameter value: provide a concrete value")
+    if current is None or isinstance(value, type(current)):
         return value
     try:
         if isinstance(current, bool):
+            if isinstance(value, str):
+                return value.strip().lower() in ("1", "true", "yes", "on")
             return bool(value)
-        if isinstance(current, int) and not isinstance(current, bool):
+        if isinstance(current, int):
             return int(value)
         if isinstance(current, float):
             return float(value)
@@ -57,7 +67,7 @@ def set_parameters(node: Any, parameters: dict) -> tuple:
                 if parm_tuple is None:
                     errors[name] = "No parameter tuple named {!r}".format(name)
                     continue
-                parm_tuple.set(tuple(value))
+                set_parm_value(node, name, value)
                 applied[name] = list(value)
             else:
                 parm = node.parm(name)
@@ -69,7 +79,7 @@ def set_parameters(node: Any, parameters: dict) -> tuple:
                 except Exception:  # noqa: BLE001
                     current = None
                 coerced = coerce_scalar(value, current)
-                parm.set(coerced)
+                parm.set(coerced, follow_parm_reference=False)
                 applied[name] = coerced
         except Exception as exc:  # noqa: BLE001
             errors[name] = str(exc)
