@@ -20,6 +20,13 @@
   restored in every case. Only `bake_type="diffuse"` is supported: full render,
   normals and AO were never implemented and now return a clear error. A single
   object name is accepted as well as a list.
+- `render_frame` picks the camera exactly. It keeps the full DAG path, refuses a
+  camera name that matches more than one node (`camera_source="ambiguous"`),
+  makes only the chosen camera renderable for the render (other renderable
+  cameras add output subfolders) and restores every camera flag afterwards. It
+  refuses to render, with `CAMERA_RENDERABLE_UPDATE_FAILED`, when another
+  camera cannot be switched off. The result also reports the configured
+  `view_transform`.
 
 ## 0.1.2 (2026-11-03)
 
