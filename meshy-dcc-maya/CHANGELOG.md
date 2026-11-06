@@ -34,6 +34,11 @@
   `get_anim_curves` and `set_keyframes` now use Maya's values.
 - Starting Maya no longer pops up viewport messages. The sidecar and server
   banners are printed to the Script Editor only.
+- `capture_viewport` finds the playblast image reliably. It renders into its own
+  temporary folder, takes the path Maya returned (or the single PNG written when
+  Maya returns a sequence template), refuses a path outside that folder or a
+  symlink, and removes the folder on every outcome. A folder that cannot be
+  removed is reported in the result instead of replacing it.
 
 ## 0.1.2 (2026-11-03)
 
