@@ -7,7 +7,6 @@
   startup script launches, now gets one (the missing `is_background` check made
   that setup fail silently, leaving main-thread tools unable to load), and the
   pump is started with it.
-
 - Import and export no longer report success when Blender did not finish the
   operator or wrote nothing. A cancelled import or export is an error, an export
   must leave a non-empty file, and the basic OBJ writer is used only when
@@ -20,7 +19,6 @@
   actually loaded, including collision suffixes, and can load node groups.
 - USD import applies the texture and subdivision options under the names Blender
   uses, so textures are imported by default again.
-
 - `pack_uvs` fails when Blender does not report FINISHED for the pack operator,
   instead of normalizing a layout nobody packed, and returns the UV state it
   found.
@@ -40,7 +38,6 @@
   rejects now restores the previous output or denoise settings instead of
   leaving a half-applied batch. Blender 4.x, which has no media type, still
   takes the format directly.
-
 - The main-thread dispatch budget is configurable instead of a fixed 30 s:
   `start_server(main_thread_timeout_ms=...)`,
   `BlenderServerOptions.main_thread_timeout_ms`, or
