@@ -10,7 +10,7 @@ from meshy_dcc_3dsmax._scene_utils import iter_scene_nodes, node_identity, point
 CAMERA_FACTORIES: Dict[str, Tuple[str, ...]] = {
     "target": ("Targetcamera", "TargetCamera"),
     "free": ("FreeCamera", "Freecamera"),
-    "physical": ("PhysicalCamera",),
+    "physical": ("Physical", "PhysicalCamera"),
 }
 
 LIGHT_FACTORIES: Dict[str, Tuple[str, ...]] = {
@@ -22,6 +22,59 @@ LIGHT_FACTORIES: Dict[str, Tuple[str, ...]] = {
     # Callers must capability-check it and verify the native class readback.
     "arnold": ("Arnold_Light",),
 }
+
+# 3ds Max standard (target/free) cameras drive the lens through a horizontal
+# field of view in degrees. The mm <-> FOV conversion depends on the scene's
+# render aperture width, exposed by the documented MAXScript global
+# ``getRendApertureWidth()`` (36 mm by default, but user-configurable). A
+# Physical camera instead exposes the millimetre ``focal_length`` properties.
+# Production code never assumes the 36 mm default: when the host cannot report
+# a positive finite aperture, a create fails closed instead of reporting an
+# unverified lens, and a read reports ``None`` instead of a guessed value.
+def _render_aperture_width(runtime: Any) -> Optional[float]:
+    """Return the scene's render aperture width (mm), or ``None`` if unverifiable."""
+    getter = getattr(runtime, "getRendApertureWidth", None)
+    if not callable(getter):
+        return None
+    try:
+        width = getter()
+    except Exception:  # noqa: BLE001 - an unusable aperture must fail closed.
+        return None
+    value = _float_or_none(width)
+    if value is None or not math.isfinite(value) or value <= 0.0:
+        return None
+    return value
+
+
+def _focal_length_to_fov(focal_length_mm: float, aperture_width_mm: float) -> float:
+    """Return the horizontal FOV (degrees) for a lens at the given aperture."""
+    return math.degrees(2.0 * math.atan(aperture_width_mm / (2.0 * focal_length_mm)))
+
+
+def _fov_to_focal_length(fov: float, aperture_width_mm: float) -> float:
+    """Return the lens (mm) for a horizontal FOV (degrees) at the given aperture."""
+    return aperture_width_mm / (2.0 * math.tan(math.radians(fov) / 2.0))
+
+
+def _camera_focal_length(node: Any, aperture_width_mm: Optional[float] = None) -> Optional[float]:
+    """Return a camera's lens in mm, from its mm alias or its native fov.
+
+    A Physical camera exposes ``focal_length_mm``/``focalLength`` directly. A
+    standard target/free camera drives the lens through ``fov`` (degrees), so
+    inverting it needs the live render aperture width. Without a verified
+    aperture we report ``None`` rather than a lens derived from a guessed 36 mm.
+    """
+    mm = _float_or_none(
+        getattr(node, "focal_length_mm", getattr(node, "focalLength", getattr(node, "focal_length", None)))
+    )
+    if mm is not None:
+        return mm
+    if aperture_width_mm is None:
+        return None
+    fov = _float_or_none(getattr(node, "fov", None))
+    if fov is None or not 0.0 < fov < 180.0:
+        return None
+    return _fov_to_focal_length(fov, aperture_width_mm)
 
 
 def cam_success(message: str, **data: Any) -> Dict[str, Any]:
@@ -36,7 +89,7 @@ def cam_error(message: str, **data: Any) -> Dict[str, Any]:
 
 def list_cameras(runtime: Any) -> Dict[str, Any]:
     """List camera nodes with common properties."""
-    cameras = [camera_summary(node) for node in iter_scene_nodes(runtime) if is_camera(node, runtime=runtime)]
+    cameras = [camera_summary(node, runtime) for node in iter_scene_nodes(runtime) if is_camera(node, runtime=runtime)]
     return cam_success("Listed cameras", cameras=cameras, count=len(cameras))
 
 
@@ -56,9 +109,42 @@ def create_camera(
     focal_length: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Create a host-native camera node."""
+    # Validate the requested lens before constructing any node. A non-numeric
+    # value (for example "65mm") would otherwise raise from float() after the
+    # camera and target already exist, leaking them with no rollback path.
+    requested_focal_length = None
+    if focal_length is not None:
+        try:
+            requested_focal_length = float(focal_length)
+        except (TypeError, ValueError):
+            return cam_error(
+                "focal_length must be a finite number",
+                field="focal_length",
+                requested=focal_length,
+            )
+        if not math.isfinite(requested_focal_length) or requested_focal_length <= 0:
+            return cam_error(
+                "focal_length must be a positive finite number",
+                field="focal_length",
+                requested=focal_length,
+            )
     factories = CAMERA_FACTORIES.get(camera_type)
     if factories is None:
         return cam_error("Unsupported camera_type", camera_type=camera_type)
+    # A standard (target/free) camera converts the requested millimetres into a
+    # horizontal FOV through the scene's render aperture width. Resolve it from
+    # the host BEFORE constructing any node. A fixed 36 mm would give the wrong
+    # fov (and the wrong lens in the Max UI) whenever the aperture was changed;
+    # if the host cannot report a valid aperture, fail closed instead of guessing.
+    render_aperture_width = None
+    if requested_focal_length is not None and camera_type != "physical":
+        render_aperture_width = _render_aperture_width(runtime)
+        if render_aperture_width is None:
+            return cam_error(
+                "Cannot convert focal_length to FOV: the host render aperture width is unavailable",
+                field="focal_length",
+                requested=focal_length,
+            )
     camera, warnings = _construct_runtime_object(runtime, factories)
     if camera is None:
         return cam_error("No supported camera constructor was available", camera_type=camera_type, warnings=warnings)
@@ -79,15 +165,58 @@ def create_camera(
                 _set_optional_attr(camera, "target", target)
             else:
                 warnings.append("No supported target-object constructor was available")
-    if focal_length is not None:
-        _set_optional_attr(camera, "focalLength", float(focal_length))
-        _set_optional_attr(camera, "focal_length", float(focal_length))
+    reported_focal_length = None
+    if requested_focal_length is not None:
+        # A Physical camera exposes the lens in millimetres; standard target/free
+        # cameras drive it through ``fov`` (degrees). Using the mm aliases on a
+        # standard camera would always fail native readback and delete a camera
+        # the caller legitimately asked for, so convert mm -> fov for those.
+        if camera_type == "physical":
+            aliases = ("focal_length_mm", "focalLength", "focal_length")
+            target_value = requested_focal_length
+        else:
+            aliases = ("fov",)
+            target_value = _focal_length_to_fov(requested_focal_length, render_aperture_width)
+        applied = _set_supported_attrs(runtime, camera, aliases, target_value)
+        actual = _read_first_attr(runtime, camera, aliases)
+        getter = getattr(runtime, "getProperty", None)
+        if callable(getter):
+            actual = None
+            for attr in aliases:
+                if not _runtime_has_property(runtime, camera, attr):
+                    continue
+                try:
+                    actual = getter(camera, attr)
+                    break
+                except Exception:  # noqa: BLE001 - cached wrapper attributes are not native readback.
+                    continue
+        actual = _float_or_none(actual)
+        if not applied or actual is None or not math.isclose(actual, target_value, rel_tol=1e-6, abs_tol=1e-6):
+            supported = any(_runtime_has_property(runtime, camera, attr) for attr in aliases)
+            owned = [_owned_light(runtime, node) for node in (camera, target) if node is not None]
+            incomplete = _rollback_owned_nodes(runtime, owned)
+            return cam_error(
+                "Camera focal length did not pass native readback",
+                field="focal_length",
+                requested=requested_focal_length,
+                actual=actual,
+                supported=supported,
+                rolled_back=not incomplete,
+                changed_node_count=len(incomplete),
+                rollback_incomplete_handles=[handle for _node, handle, _summary in incomplete if handle is not None],
+            )
+        # Report the millimetre value the caller asked for, not the native fov
+        # readback used to verify a standard camera.
+        reported_focal_length = requested_focal_length
     _append_scene_object(runtime, camera)
     if target is not None:
         _append_scene_object(runtime, target)
     return cam_success(
         "Created camera",
-        camera=camera_summary(camera),
+        camera=dict(
+            camera_summary(camera, runtime),
+            **({"focal_length": reported_focal_length} if reported_focal_length is not None else {}),
+        ),
         changed_node_count=1 + int(target is not None),
         warnings=warnings,
     )
@@ -112,7 +241,7 @@ def set_active_camera(
     _set_optional_attr(runtime, "activeCamera", camera)
     _set_optional_attr(runtime, "renderCamera", camera)
     _set_optional_attr(runtime, "render_camera", camera)
-    return cam_success("Set active camera", camera=camera_summary(camera), changed_camera_count=1)
+    return cam_success("Set active camera", camera=camera_summary(camera, runtime), changed_camera_count=1)
 
 
 def create_light(
@@ -323,15 +452,16 @@ def create_three_point_light_rig(
     )
 
 
-def camera_summary(node: Any) -> Dict[str, Any]:
-    """Return common camera properties."""
+def camera_summary(node: Any, runtime: Any = None) -> Dict[str, Any]:
+    """Return common camera properties using the live render aperture width."""
+    aperture_width_mm = _render_aperture_width(runtime) if runtime is not None else None
     return {
         "node": node_identity(node),
         "type": _node_kind(node, default="camera"),
         "position": _vector_or_none(getattr(node, "position", None)),
         "target": _target_summary(getattr(node, "target", None)),
         "target_position": _vector_or_none(getattr(node, "target_position", None)),
-        "focal_length": _float_or_none(getattr(node, "focalLength", getattr(node, "focal_length", None))),
+        "focal_length": _camera_focal_length(node, aperture_width_mm),
         "enabled": bool(getattr(node, "enabled", True)),
     }
 

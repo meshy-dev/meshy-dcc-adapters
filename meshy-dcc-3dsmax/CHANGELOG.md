@@ -25,6 +25,15 @@
   or touch the display units, reads the values back, and puts the original
   units back (reporting `rollback_verified`) when a write fails or does not
   stick.
+- `create_camera` checks the lens it was asked for. A Physical camera is built
+  with 3ds Max's own `Physical` class and its focal length is read back through
+  the native getter; a target or free camera has no millimetre lens, so the
+  millimetres are converted to a field of view with the scene's render aperture
+  width (never an assumed 36 mm) and read back as that. A `focal_length` that is
+  not a positive number, or an aperture the host cannot report, is refused
+  before any node is created, and a lens that does not read back removes the
+  camera and target the call created (`rolled_back`). `list_cameras` reports the
+  same millimetre value.
 
 ## 0.1.2 (2026-11-03)
 
