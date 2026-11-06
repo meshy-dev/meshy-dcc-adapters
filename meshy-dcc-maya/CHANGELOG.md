@@ -42,6 +42,9 @@
 - `meshy-dcc-maya` (the pip installer) writes `PLATFORM:mac` on macOS. Maya's
   module platform token is `mac`; `macos` never matched, so Maya on macOS
   ignored the module file.
+- The Meshy DCC menu no longer has Restart MCP Server and Stop MCP Server.
+  Stopping the server removed the Maya instance from the gateway until Maya was
+  restarted. To unload the connector, use Maya's Plug-in Manager.
 
 ## 0.1.2 (2026-11-03)
 
