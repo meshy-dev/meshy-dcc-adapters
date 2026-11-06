@@ -15,6 +15,11 @@
   spline failed. `draw_spline` in append or replace mode now puts the original
   shape back (knots, tangent handles, closed flag and name) when drawing fails,
   and reports `rolled_back` only after reading the restored shape back.
+- `set_timeline_settings` sets the frame rate before the range, because 3ds Max
+  keeps the range in ticks and a range set first lands on other frames once the
+  rate changes. It reads the timeline back, fails when the host did not keep the
+  values, and puts the original settings back (`restored` says whether they read
+  back). A frame rate that is zero, negative or not finite is rejected.
 
 ## 0.1.2 (2026-11-03)
 
