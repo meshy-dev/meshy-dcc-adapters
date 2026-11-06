@@ -32,6 +32,14 @@
   window.
 - Multiview receipt reads and writes retry transient Windows sharing conflicts
   for up to a second instead of 0.1 s.
+- Render output settings work on Blender 5: `set_render_output`,
+  `set_render_settings` and viewport capture select the media type before the
+  format (multi-layer EXR was rejected), `color_depth` accepts Blender's native
+  `16` and `32` (`16F` and `32F` stay as aliases), and the denoise GPU option
+  and denoising pass use the property names Blender exposes. A value the host
+  rejects now restores the previous output or denoise settings instead of
+  leaving a half-applied batch. Blender 4.x, which has no media type, still
+  takes the format directly.
 
 ## 0.1.2 (2026-11-03)
 

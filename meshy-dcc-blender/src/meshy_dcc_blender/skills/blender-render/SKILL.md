@@ -111,17 +111,30 @@ rendering a sub-rectangle:
 `set_view_layer_passes` complements `blender-scene-assembly`'s
 `configure_view_layer`, which can only switch passes **on**. Use this one when a
 pass has to be turned off again. Passes listed in neither `enable` nor `disable`
-keep their current state.
+keep their current state. The `denoising` pass uses the native Cycles
+`denoising_store_passes` flag.
 
-Denoise settings are Cycles-only; EEVEE ignores them.
+Denoise settings are Cycles-only; EEVEE ignores them. `set_render_denoise.use_gpu`
+sets the OpenImageDenoise GPU preference (`scene.cycles.denoising_use_gpu`);
+actual GPU acceleration needs a compatible device. A property the host does not
+expose rejects the whole batch before anything changes, and a value the host
+refuses restores the previous denoise settings.
+
+`color_depth` takes Blender's native values such as `16` and `32`; `16F` and
+`32F` are aliases for them. The final container, including a `multilayer`
+override, is chosen before the format-dependent colour settings. If the host
+rejects a value or format, the previous output settings are restored.
 
 Multi-layer EXR is a property of the **container format**, so
 `multilayer: true` switches `image_settings.file_format` to
 `OPEN_EXR_MULTILAYER` *and* clears `render.use_single_layer` (render every
 layer). `multilayer: false` drops back to `OPEN_EXR` when the container was
 multi-layer. `use_single_layer` alone only controls which layers are rendered —
-it cannot produce a multi-layer file. Both read tools report `multilayer`
-derived from `file_format`. When neither `scene_name` nor `view_layer_name` is
+it cannot produce a multi-layer file. On Blender builds with
+`image_settings.media_type`, `OPEN_EXR_MULTILAYER` is only accepted after the
+media type is `MULTI_LAYER_IMAGE`; the typed tools set that first, and set
+`IMAGE` first when returning to PNG or single-layer EXR. Older builds take the
+format directly. Both read tools report `multilayer` derived from `file_format`. When neither `scene_name` nor `view_layer_name` is
 given, these tools operate on `bpy.context.view_layer`.
 
 Poll using the existing `get_render_job(job_id)` and retain `job_directory`.

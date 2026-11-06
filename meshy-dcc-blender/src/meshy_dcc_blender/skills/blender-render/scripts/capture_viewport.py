@@ -9,6 +9,8 @@ from typing import Optional
 
 from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
 
+from meshy_dcc_blender._image_format import set_image_format
+
 
 def _view3d_override(context):
     """Return a complete VIEW_3D operator context without changing UI state."""
@@ -163,7 +165,7 @@ def capture_viewport(
                     scene.render.resolution_x = target_x
                     scene.render.resolution_y = target_y
                     scene.render.resolution_percentage = 100
-                    scene.render.image_settings.file_format = _image_format(filepath, old_format)
+                    set_image_format(scene.render.image_settings, _image_format(filepath, old_format))
                     scene.render.use_file_extension = False
 
                     if not bpy.ops.render.opengl.poll():
@@ -186,7 +188,7 @@ def capture_viewport(
                     scene.render.resolution_x = old_x
                     scene.render.resolution_y = old_y
                     scene.render.resolution_percentage = old_percentage
-                    scene.render.image_settings.file_format = old_format
+                    set_image_format(scene.render.image_settings, old_format)
                     scene.render.use_file_extension = old_use_extension
         finally:
             if staged_path is not None:
