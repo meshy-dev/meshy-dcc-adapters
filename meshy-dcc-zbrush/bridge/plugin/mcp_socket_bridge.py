@@ -345,6 +345,20 @@ def _subtool_name(path: str) -> str:
     return ntpath.basename(path)
 
 
+# ZBrush SDK ``zbrush_info``: 0 is the version number (float), 1 is the edition
+# type (0 Demo, 1 Beta, 2 Full), not a minor version. This plugin runs inside
+# ZBrush where meshy_dcc_zbrush may not import, so it mirrors
+# meshy_dcc_zbrush._version_probe.read_sdk_version. Keep the two in step.
+def _read_sdk_version(zbc: Any) -> "tuple[str, int]":
+    text = f"{float(zbc.zbrush_info(0)):.3f}".rstrip("0").rstrip(".")
+    version = f"{text}.0" if "." not in text else text
+    try:
+        edition = int(zbc.zbrush_info(1))
+    except (TypeError, ValueError):
+        edition = -1
+    return version, edition
+
+
 def _get_session_info() -> Dict[str, Any]:
     zbc = _import_zbc()
     identity_path = os.path.join(os.path.dirname(_BRIDGE_FILE), "meshy_dcc_zbrush_install_identity.json")
@@ -358,6 +372,7 @@ def _get_session_info() -> Dict[str, Any]:
             bridge_digest = hashlib.sha256(stream.read()).hexdigest()
     except OSError:
         bridge_digest = ""
+    sdk_version, sdk_edition = _read_sdk_version(zbc)
     return {
         "adapter_version": install_identity.get("adapter_version"),
         "bridge_instance_id": _BRIDGE_INSTANCE_ID,
@@ -368,7 +383,10 @@ def _get_session_info() -> Dict[str, Any]:
         "socket_endpoint": install_identity.get("socket_endpoint"),
         "selected_dcc_path": install_identity.get("dcc_path"),
         "selected_dcc_sha256": install_identity.get("dcc_sha256"),
-        "zbrush_version": f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}",
+        "zbrush_version": sdk_version,
+        "zbrush_edition": sdk_edition,
+        # The signed executable's ProductVersion recorded at install time.
+        "zbrush_product_version": str(install_identity.get("zbrush_version") or ""),
         "zbrush_commands_origin": os.path.abspath(getattr(zbc, "__file__", "")),
         "active_tool_path": str(zbc.get_active_tool_path() or ""),
         "subtool_count": int(zbc.get_subtool_count()),
@@ -1324,7 +1342,7 @@ def _start_sidecar(python: str, port: int, token: str) -> "subprocess.Popen[byte
     # The sidecar cannot import zbrush.commands; it registers this version.
     try:
         zbc = _import_zbc()
-        env["MESHY_DCC_ZBRUSH_VERSION"] = f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}"
+        env["MESHY_DCC_ZBRUSH_VERSION"] = _read_sdk_version(zbc)[0]
     except Exception:  # noqa: BLE001 - the sidecar then reports "unknown"
         pass
     argv = [python, "-m", "meshy_dcc_zbrush", "serve", "--watch-pid", str(os.getpid()), "--socket-port", str(port)]
@@ -1526,7 +1544,9 @@ def _fallback_server_info() -> None:
     try:
         import zbrush.commands as zbc  # noqa: PLC0415
 
-        zb_version = f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}"
+        zb_version, zb_edition = _read_sdk_version(zbc)
+        edition_label = {0: "Demo", 1: "Beta", 2: "Full"}.get(zb_edition, "unknown")
+        zb_version = f"{zb_version} ({edition_label} edition)"
     except Exception:
         zb_version = "unknown"
 

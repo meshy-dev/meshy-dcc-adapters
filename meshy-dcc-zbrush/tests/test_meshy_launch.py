@@ -270,15 +270,16 @@ def test_bridge_hands_the_zbrush_version_to_its_sidecar(monkeypatch: pytest.Monk
     # The sidecar cannot import zbrush.commands, so `list` showed zbrush@unknown.
     bridge = _load_bridge_plugin()
     zbc = MagicMock()
-    zbc.zbrush_info.side_effect = [2026, 2]
+    zbc.zbrush_info.side_effect = [2026.0, 2]  # version number, edition (Full)
     monkeypatch.setattr(bridge, "_import_zbc", lambda: zbc)
     popen = MagicMock()
     monkeypatch.setattr(bridge.subprocess, "Popen", popen)
 
     bridge._start_sidecar("/pkg/python/bin/python3", 1234, "secret")
 
-    assert popen.call_args.kwargs["env"]["MESHY_DCC_ZBRUSH_VERSION"] == "2026.2"
+    # zbrush_info(1) is the edition, so it is not part of the version.
+    assert popen.call_args.kwargs["env"]["MESHY_DCC_ZBRUSH_VERSION"] == "2026.0"
     from meshy_dcc_zbrush._version_probe import get_zbrush_version_string
 
-    monkeypatch.setenv("MESHY_DCC_ZBRUSH_VERSION", "2026.2")
-    assert get_zbrush_version_string() == "2026.2"
+    monkeypatch.setenv("MESHY_DCC_ZBRUSH_VERSION", "2026.0")
+    assert get_zbrush_version_string() == "2026.0"

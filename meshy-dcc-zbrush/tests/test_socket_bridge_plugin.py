@@ -261,7 +261,7 @@ def test_session_info_works_after_zbrush_drops_the_script_file(monkeypatch) -> N
     path = bridge.__file__
     del bridge.__dict__["__file__"]
     zbc = MagicMock()
-    zbc.zbrush_info.side_effect = [2026, 2]
+    zbc.zbrush_info.side_effect = [2026.0, 2]  # version number, edition (Full)
     zbc.get_active_tool_path.return_value = "SimpleBrush"
     zbc.get_subtool_count.return_value = 1
     monkeypatch.setattr(bridge, "_import_zbc", lambda: zbc)
@@ -269,7 +269,8 @@ def test_session_info_works_after_zbrush_drops_the_script_file(monkeypatch) -> N
     info = bridge._get_session_info()
 
     assert Path(info["bridge_module_path"]) == Path(path)
-    assert info["zbrush_version"] == "2026.2"
+    assert info["zbrush_version"] == "2026.0"
+    assert info["zbrush_edition"] == 2
 
 
 def test_standalone_plugin_instance_id_fails_closed(monkeypatch) -> None:

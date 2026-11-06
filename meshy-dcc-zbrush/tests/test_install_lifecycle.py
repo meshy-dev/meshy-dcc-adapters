@@ -1727,3 +1727,22 @@ def test_zbrush_commands_origin_outside_the_selected_product_is_rejected(
     assert result["exit_code"] == 40
     assert result["stage"] == "host_identity"
     assert result["directly_usable"] is False
+
+
+@pytest.mark.parametrize("edition", [0, 1, 2])
+def test_verify_does_not_roll_back_for_any_sdk_edition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, edition: int):
+    """The SDK reports its version number, edition and the executable's ProductVersion separately."""
+    from meshy_dcc_zbrush.install_lifecycle import run_lifecycle
+
+    request = _request(tmp_path)
+    archive = tmp_path / "plugin.zip"
+    digest = _build_sidecar_archive(archive)
+    receipt, session = _pending_sidecar(request, archive, digest)
+    session["zbrush_version"] = "2026.0"
+    session["zbrush_edition"] = edition
+    session["zbrush_product_version"] = receipt["host_version"]
+    _bind_sidecar(monkeypatch, request, session)
+
+    verified = run_lifecycle(replace(request, operation="verify"))
+
+    assert verified["exit_code"] == 0
