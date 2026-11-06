@@ -7,6 +7,12 @@
   `rollback_verified=true`; the rollback now runs only when Maya's top undo
   item is the tool's own chunk, and otherwise reports
   `rollback_verified=false` with `rollback_skipped_reason`.
+- `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1` now blocks every tool that runs
+  code, not only `execute_python`, `execute_mel` and `write_module`:
+  `create_expression`, `edit_expression`, `get_script_node` (create),
+  `introspect_eval`, `load_plugin`, and the `maya-dev` tools `run_script`,
+  `run_entrypoint`, `run_check`, `reload_modules` and `start_debugpy`. It is a
+  tool policy, not a sandbox; read-only and typed tools stay available.
 
 ## 0.1.2 (2026-11-03)
 

@@ -9,6 +9,7 @@ from typing import Optional
 # Import local modules
 from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
 
+from meshy_dcc_maya._code_policy import arbitrary_script_refusal
 from meshy_dcc_maya.api import validate_node_exists
 
 
@@ -32,6 +33,13 @@ def get_script_node(
 
     if not node_name:
         return skill_error("No scriptNode name provided", "Provide 'node_name' parameter.")
+
+    # Only ``create`` stores a script body that Maya runs; ``get`` and
+    # ``delete`` stay available.
+    if action == "create":
+        refusal = arbitrary_script_refusal("get_script_node")
+        if refusal is not None:
+            return refusal
 
     try:
         import maya.cmds as cmds  # noqa: PLC0415

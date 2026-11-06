@@ -31,6 +31,8 @@ from typing import Any, Dict, List, Optional
 # Import local modules
 from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
 
+from meshy_dcc_maya._code_policy import arbitrary_script_refusal
+
 # ---------------------------------------------------------------------------
 # Helpers — version detection
 # ---------------------------------------------------------------------------
@@ -401,10 +403,12 @@ def search(module: str, query: str, max_results: int = 30) -> dict:
 
 
 def eval_expr(expression: str, timeout_secs: float = 2.0) -> dict:
-    """Evaluate a single Python *expression* inside Maya (read-only sandbox).
+    """Evaluate a single Python *expression* inside Maya.
 
     Only ``ast.Expression`` nodes are accepted — statements, assignments, and
-    imports are rejected to prevent accidental scene modification.
+    imports are rejected. This is not a sandbox: the expression can still call
+    ``maya.cmds`` and change the scene, so operators can refuse it with
+    ``MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1``.
 
     This tool has ``affinity: main`` because the expression may read DAG state.
 
@@ -415,6 +419,10 @@ def eval_expr(expression: str, timeout_secs: float = 2.0) -> dict:
     Returns:
         ToolResult with ``context.value`` (repr, truncated to 2 KB).
     """
+    refusal = arbitrary_script_refusal("introspect_eval")
+    if refusal is not None:
+        return refusal
+
     try:
         ast.parse(expression.strip(), mode="eval")
     except SyntaxError as exc:

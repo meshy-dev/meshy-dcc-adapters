@@ -37,3 +37,10 @@ typed parameters.
 - `list_expressions` � List Maya expression nodes in the scene
 - `delete_expression` � Delete a Maya expression node by name
 - `get_expression_string` � Read the MEL expression body of a node
+
+## Restricted mode
+
+`create_expression` and `edit_expression` run code: Maya evaluates the
+expression string, and a MEL expression can embed `python(...)`. With
+`MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1` both return a policy refusal before
+touching the scene. `list_expressions` and `delete_expression` stay available.

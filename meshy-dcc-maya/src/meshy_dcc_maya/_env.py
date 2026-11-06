@@ -43,8 +43,9 @@ ENV_ENABLE_GATEWAY_FAILOVER = "MESHY_DCC_MAYA_ENABLE_GATEWAY_FAILOVER"
 #: When ``"1"`` / ``"true"`` / ``"yes"``, :func:`execute_python` returns a
 #: structured refusal so agents must use ``load_skill`` + typed tools.
 ENV_DISABLE_EXECUTE_PYTHON = "MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON"
-#: When set (same truthy tokens as above), both ``execute_python`` and
-#: ``execute_mel`` are refused — strictest pipeline / classroom mode.
+#: When set (same truthy tokens as above), every code-bearing tool is refused,
+#: not just ``execute_python`` / ``execute_mel`` — strictest pipeline /
+#: classroom mode. See ``_code_policy.CODE_BEARING_TOOLS``.
 ENV_DISABLE_ARBITRARY_SCRIPT = "MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT"
 #: Optional per-tool opt-out for MEL when arbitrary script is otherwise allowed.
 ENV_DISABLE_EXECUTE_MEL = "MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL"
@@ -72,20 +73,25 @@ def _env_truthy(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
 
 
+def resolve_arbitrary_script_disabled() -> bool:
+    """Return True when every code-bearing tool must refuse calls."""
+    return _env_truthy(ENV_DISABLE_ARBITRARY_SCRIPT)
+
+
 def resolve_execute_python_disabled() -> bool:
     """Return True when ``execute_python`` must refuse all calls.
 
     ``MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT`` implies this flag.  Used by
     ``maya-scripting`` scripts so studios can enforce skills-first workflows.
     """
-    if _env_truthy(ENV_DISABLE_ARBITRARY_SCRIPT):
+    if resolve_arbitrary_script_disabled():
         return True
     return _env_truthy(ENV_DISABLE_EXECUTE_PYTHON)
 
 
 def resolve_execute_mel_disabled() -> bool:
     """Return True when ``execute_mel`` must refuse all calls."""
-    if _env_truthy(ENV_DISABLE_ARBITRARY_SCRIPT):
+    if resolve_arbitrary_script_disabled():
         return True
     return _env_truthy(ENV_DISABLE_EXECUTE_MEL)
 

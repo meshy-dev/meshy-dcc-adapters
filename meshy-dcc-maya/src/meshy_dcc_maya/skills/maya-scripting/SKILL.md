@@ -37,7 +37,7 @@ metadata:
 
 **Skills-first default:** `search_skills` / `dcc_capability_manifest` → `load_skill("<domain>")` → call the concrete tool from `tools.yaml` (validated `inputSchema`, safety hints). Reserve `execute_python` / `execute_mel` for **escape hatches**: no matching skill, intentional bulk work inside one Maya payload, OpenMaya-only gaps, or introspection-only passes.
 
-Studios can hard-block arbitrary execution with `MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON=1`, `MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL=1`, or `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1` (blocks both).
+Studios can hard-block arbitrary execution with `MESHY_DCC_MAYA_DISABLE_EXECUTE_PYTHON=1`, `MESHY_DCC_MAYA_DISABLE_EXECUTE_MEL=1`, or `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1`, which blocks every tool that runs code: `execute_python`, `execute_mel`, `write_module`, `get_script_node` (create), `introspect_eval`, `load_plugin`, `create_expression`, `edit_expression` and the `maya-dev` run tools. It is a tool policy, not a sandbox.
 
 ## Decision tree
 

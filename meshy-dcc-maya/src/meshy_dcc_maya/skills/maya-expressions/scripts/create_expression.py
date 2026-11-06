@@ -9,6 +9,8 @@ from typing import Optional, Union
 # Import local modules
 from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
 
+from meshy_dcc_maya._code_policy import arbitrary_script_refusal
+
 _VALID_UNIT_CONVERSIONS = {"none", "angularOnly", "all"}
 
 
@@ -35,6 +37,11 @@ def create_expression(
         ToolResult dict with ``context.expression_name``, ``context.expression_str``,
         and optional ``context.object_name``.
     """
+    # An expression string is code: a MEL expression can embed python(...).
+    refusal = arbitrary_script_refusal("create_expression")
+    if refusal is not None:
+        return refusal
+
     if not expression or not expression.strip():
         return skill_error("Missing parameter", "'expression' string is required and must not be empty")
 
