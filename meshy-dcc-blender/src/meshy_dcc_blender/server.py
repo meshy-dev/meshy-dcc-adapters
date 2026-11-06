@@ -104,6 +104,17 @@ class BlenderServerOptions:
     # Execution options (new in 0.17+)
     dispatcher: Optional[Any] = None  # BaseDccCallableDispatcher
     execution_bridge: Optional[Any] = None  # HostExecutionBridge
+    #: Budget (ms) for the default main-thread dispatcher; ``None`` resolves through
+    #: ``MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS``, then 30 s. Ignored when a
+    #: dispatcher or bridge is supplied. It is only the fallback for calls without
+    #: a ``timeout_hint_secs`` on the Python dispatch route: the caller's deadline,
+    #: which core passes to the host main-thread queue, is neither shortened nor
+    #: extended by it.
+    main_thread_timeout_ms: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        if self.main_thread_timeout_ms is not None:
+            _env.validate_main_thread_timeout_ms(self.main_thread_timeout_ms)
 
     def to_core_options(self) -> DccServerOptions:
         """Convert to core DccServerOptions using from_env()."""
@@ -199,7 +210,13 @@ class BlenderMcpServer(DccServerBase):
         dispatcher: Optional[Any] = None,
         execution_bridge: Optional[Any] = None,
         options: Optional[BlenderServerOptions] = None,
+        *,
+        main_thread_timeout_ms: Optional[int] = None,
     ) -> None:
+        if options is not None and main_thread_timeout_ms is not None:
+            # The keyword is a shortcut for the no-options path; dropping it here
+            # silently would leave the caller's budget ineffective.
+            raise ValueError("Pass main_thread_timeout_ms inside BlenderServerOptions when options is provided")
         if options is None:
             options = BlenderServerOptions(
                 port=port,
@@ -216,6 +233,7 @@ class BlenderMcpServer(DccServerBase):
                 enable_workflows=enable_workflows,
                 dispatcher=dispatcher,
                 execution_bridge=execution_bridge,
+                main_thread_timeout_ms=main_thread_timeout_ms,
             )
 
         if options.dispatcher is None and options.execution_bridge is None:
@@ -225,7 +243,10 @@ class BlenderMcpServer(DccServerBase):
             from .dispatcher import create_dispatcher
 
             try:
-                default_dispatcher = create_dispatcher(ui_mode=not self.is_background())
+                default_dispatcher = create_dispatcher(
+                    ui_mode=not self.is_background(),
+                    timeout_ms=_env.resolve_main_thread_timeout_ms(options.main_thread_timeout_ms),
+                )
             except Exception as exc:
                 raise RuntimeError("Blender main-thread dispatcher initialization failed") from exc
             # Do not mutate caller-owned options, which may be reused for another server.
@@ -726,6 +747,8 @@ def start_server(
     enable_workflows: Optional[bool] = None,
     dispatcher: Optional[Any] = None,
     execution_bridge: Optional[Any] = None,
+    *,
+    main_thread_timeout_ms: Optional[int] = None,
 ) -> BlenderMcpServer:
     """Start the Blender MCP server (creates a process-level singleton).
 
@@ -752,6 +775,9 @@ def start_server(
         enable_workflows: Enable workflow MCP tools (``None`` = env).
         dispatcher: Optional host dispatcher for main-thread execution.
         execution_bridge: Optional execution bridge supplied by meshy-dcc-core.
+        main_thread_timeout_ms: Budget (ms) for the default main-thread dispatcher;
+            ``None`` uses ``MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS`` or 30 s.
+            Ignored when ``dispatcher`` or ``execution_bridge`` is supplied.
 
     Returns:
         The running :class:`BlenderMcpServer` instance.
@@ -773,6 +799,7 @@ def start_server(
         enable_workflows=enable_workflows,
         dispatcher=dispatcher,
         execution_bridge=execution_bridge,
+        main_thread_timeout_ms=main_thread_timeout_ms,
     )
     if register_builtins:
         _server_instance.register_builtin_actions(include_bundled=include_bundled)

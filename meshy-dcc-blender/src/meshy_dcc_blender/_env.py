@@ -30,6 +30,13 @@ ENV_BLENDER_VERSION = "BLENDER_VERSION"
 #: Advisory readiness probe timeout (positive integer seconds) — parity with
 #: Maya / Houdini ``_readiness`` wiring.
 ENV_READINESS_TIMEOUT_SECS = "MESHY_DCC_BLENDER_READINESS_TIMEOUT_SECS"
+#: Main-thread dispatch budget in milliseconds for the default dispatcher. Tools
+#: that declare ``timeout_hint_secs: 0`` fall back to it on the Python dispatch
+#: route; a per-tool hint still wins and the caller's own deadline is never
+#: shortened or extended by it.
+ENV_MAIN_THREAD_TIMEOUT_MS = "MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS"
+#: Default main-thread dispatch budget (30 s).
+DEFAULT_MAIN_THREAD_TIMEOUT_MS = 30000
 #: Opt out of the four ``project_*`` MCP tools (``"0"`` disables).
 ENV_PROJECT_TOOLS = "MESHY_DCC_BLENDER_PROJECT_TOOLS"
 #: Opt out of MCP resource publishing such as ``scene://current`` (``"0"`` disables).
@@ -206,3 +213,34 @@ def resolve_semantic_embedder_kind(env: Optional[dict] = None) -> str:
     environ = env if env is not None else os.environ
     kind = str(environ.get(ENV_SEMANTIC_EMBEDDER, "hashed")).strip().lower()
     return "onnx" if kind == "onnx" else "hashed"
+
+
+def validate_main_thread_timeout_ms(value: object) -> int:
+    """Return *value* as a positive integer millisecond budget or raise ``ValueError``.
+
+    ``bool`` is rejected even though it subclasses ``int``.
+    """
+    if type(value) is not int or value <= 0:
+        raise ValueError("main_thread_timeout_ms must be a positive integer or None")
+    return value
+
+
+def resolve_main_thread_timeout_ms(override: Optional[int] = None) -> int:
+    """Resolve the main-thread dispatch budget: explicit value > env > 30 s.
+
+    An invalid env value is ignored with a warning, so a mistyped variable
+    cannot stop the server from starting.
+    """
+    if override is not None:
+        return validate_main_thread_timeout_ms(override)
+    raw = os.environ.get(ENV_MAIN_THREAD_TIMEOUT_MS)
+    if raw is None or not raw.strip():
+        return DEFAULT_MAIN_THREAD_TIMEOUT_MS
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        value = 0
+    if value <= 0:
+        logger.warning("Ignoring invalid %s=%r (expected positive integer milliseconds)", ENV_MAIN_THREAD_TIMEOUT_MS, raw)
+        return DEFAULT_MAIN_THREAD_TIMEOUT_MS
+    return value

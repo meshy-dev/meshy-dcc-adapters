@@ -41,6 +41,15 @@
   leaving a half-applied batch. Blender 4.x, which has no media type, still
   takes the format directly.
 
+- The main-thread dispatch budget is configurable instead of a fixed 30 s:
+  `start_server(main_thread_timeout_ms=...)`,
+  `BlenderServerOptions.main_thread_timeout_ms`, or
+  `MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS` (explicit value, then the variable,
+  then 30 s). It only applies to the dispatcher the adapter creates, and only to
+  calls whose tool declares no `timeout_hint_secs`; a tool's own hint wins and
+  the caller's deadline, which the host main-thread queue enforces, is not
+  shortened or extended.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,
