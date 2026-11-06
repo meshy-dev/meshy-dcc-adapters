@@ -60,6 +60,51 @@ class TestBlenderMcpServerBasic:
         server = BlenderMcpServer()
         assert server.mcp_url is None
 
+    def test_default_dispatcher_is_created_and_pumped_without_one_supplied(self):
+        """The startup script passes no dispatcher; the server must still build one.
+
+        ``is_background`` used to be missing, so the attribute error was swallowed
+        and no executor was ever registered.
+        """
+        from meshy_dcc_blender.server import BlenderMcpServer
+
+        server = BlenderMcpServer(port=0)
+
+        assert server.is_background() is True  # no bpy in the unit-test process
+        assert server._inprocess_executor_registered
+        assert server._pump_dispatcher is not None
+        assert server._options.execution.mode.bridge.host_dispatcher is server._pump_dispatcher.host_dispatcher
+
+    def test_readiness_waits_for_the_main_thread_pump(self):
+        from meshy_dcc_blender.server import BlenderMcpServer
+
+        server = BlenderMcpServer(port=0)
+        report = server.readiness_report()
+        assert report["dispatcher"] is True
+        assert report["dcc"] is False
+        assert report["main_thread_executor"] is False
+
+        server._pump_dispatcher.host_dispatcher.tick(16)
+
+        assert server.readiness_report()["dcc"] is True
+        assert server.readiness_report()["main_thread_executor"] is True
+
+        server.stop()
+        assert server.readiness_report()["dcc"] is False
+
+    def test_ui_dispatcher_readiness_follows_the_timer_tick(self):
+        from meshy_dcc_blender.host import BlenderUiDispatcher
+        from meshy_dcc_blender.server import BlenderMcpServer
+
+        dispatcher = BlenderUiDispatcher()
+        server = BlenderMcpServer(port=0, dispatcher=dispatcher)
+        assert server._pump_dispatcher is dispatcher
+        assert server.readiness_report()["dcc"] is False
+
+        dispatcher._timer_tick()  # what bpy.app.timers calls on the main thread
+
+        assert server.readiness_report()["dcc"] is True
+
     def test_dispatcher_is_wrapped_as_execution_bridge(self):
         from meshy_dcc_blender.host import BlenderCallableDispatcher, BlenderInlineCallableDispatcher
         from meshy_dcc_blender.server import BlenderMcpServer

@@ -31,7 +31,9 @@ def _preserve_mcp_dispatcher() -> None:
         if server is None:
             return
 
-        dispatcher = getattr(server, "_blender_dispatcher", None)
+        # The adapter dispatcher owns the timer pump; ``_blender_dispatcher`` is
+        # core's inline bridge wrapper.
+        dispatcher = getattr(server, "_pump_dispatcher", None) or getattr(server, "_blender_dispatcher", None)
         if dispatcher is None:
             return
 

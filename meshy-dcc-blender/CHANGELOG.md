@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Readiness turns green only after a probe has actually run on Blender's
+  main-thread pump. A server started without a dispatcher, such as the one the
+  startup script launches, now gets one (the missing `is_background` check made
+  that setup fail silently, leaving main-thread tools unable to load), and the
+  pump is started with it.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

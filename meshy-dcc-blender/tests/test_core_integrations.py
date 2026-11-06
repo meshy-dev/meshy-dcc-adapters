@@ -76,15 +76,16 @@ class _FakeServer:
 
 
 class TestReadinessBinder:
-    def test_no_dispatcher_marks_dcc_ready_immediately(self):
+    def test_no_dispatcher_stays_not_ready(self):
         from meshy_dcc_blender._readiness import ReadinessBinder
 
         server = _FakeServer(dispatcher=None)
         binder = ReadinessBinder()
-        assert binder.bind(server) is True
+        assert binder.bind(server) is False
         report = binder.report()
-        assert report["dispatcher"] is True
-        assert report["dcc"] is True
+        assert report["dispatcher"] is False
+        assert report["dcc"] is False
+        assert report["main_thread_executor"] is False
         assert binder.published_to_server is True
         # Probe was published to the inner server.
         assert server._server.readiness_probe is binder.probe
@@ -99,7 +100,9 @@ class TestReadinessBinder:
                 captured["request_id"] = request_id
                 captured["affinity"] = affinity
                 # Simulate the main-thread no-op completing.
-                on_complete(task())
+                task()
+                on_complete({"success": True, "status": "completed"})
+                return {"success": True, "status": "pending"}
 
         server = _FakeServer(dispatcher=_AsyncDispatcher())
         binder = ReadinessBinder()
@@ -123,6 +126,7 @@ class TestReadinessBinder:
                 # real Blender timer pump where the callback runs later.
                 pending_on_complete["callback"] = on_complete
                 pending_on_complete["task"] = task
+                return {"success": True, "status": "pending"}
 
         server = _FakeServer(dispatcher=_DeferredAsyncDispatcher())
         binder = ReadinessBinder()
@@ -138,7 +142,8 @@ class TestReadinessBinder:
 
         # Now simulate the Blender timer pump draining the probe callback.
         assert "callback" in pending_on_complete
-        pending_on_complete["callback"](pending_on_complete["task"]())
+        pending_on_complete["task"]()
+        pending_on_complete["callback"]({"success": True, "status": "completed"})
 
         # After the probe completes, both bits should be green.
         report_after = binder.report()
@@ -148,13 +153,73 @@ class TestReadinessBinder:
         )
 
     def test_bind_idempotent(self):
+        from meshy_dcc_core.host import QueueDispatcher
+
         from meshy_dcc_blender._readiness import ReadinessBinder
 
-        server = _FakeServer()
+        server = _FakeServer(dispatcher=QueueDispatcher())
         binder = ReadinessBinder()
         binder.bind(server)
         # Second bind on the same server is a no-op.
         assert binder.bind(server) is True
+
+    def test_queue_dispatcher_is_ready_only_after_the_pump_ticks(self):
+        from meshy_dcc_core.host import QueueDispatcher
+
+        from meshy_dcc_blender._readiness import ReadinessBinder
+
+        queue = QueueDispatcher()
+        binder = ReadinessBinder()
+        assert binder.bind(_FakeServer(dispatcher=queue)) is True
+        assert binder.report()["dcc"] is False
+        assert binder.report()["main_thread_executor"] is False
+
+        queue.tick(16)
+
+        assert binder.report()["dcc"] is True
+        assert binder.report()["main_thread_executor"] is True
+
+    def test_failed_or_refused_probe_never_turns_ready(self):
+        from meshy_dcc_blender._readiness import ReadinessBinder
+
+        class _Refusing:
+            def submit_async_callable(self, **kwargs):
+                return {"success": False, "status": "failed", "error": "busy"}
+
+        class _Failing:
+            def submit_async_callable(self, *, task, on_complete, **kwargs):
+                on_complete({"success": False, "status": "failed", "error": "boom"})
+                return {"success": True, "status": "pending"}
+
+        class _Raising:
+            def submit_async_callable(self, **kwargs):
+                raise RuntimeError("no pump")
+
+        for dispatcher in (_Refusing(), _Failing(), _Raising()):
+            binder = ReadinessBinder()
+            binder.bind(_FakeServer(dispatcher=dispatcher))
+            assert binder.report()["dcc"] is False
+            assert binder.report()["main_thread_executor"] is False
+
+    def test_stale_probe_cannot_revive_a_revalidated_or_stopped_binder(self):
+        from meshy_dcc_blender._readiness import ReadinessBinder
+
+        callbacks = []
+        binder = ReadinessBinder(probe_scheduler=lambda _dispatcher, on_done: callbacks.append(on_done) or True)
+        binder.bind(_FakeServer(dispatcher=object()))
+        assert binder.revalidate_dispatcher() is True
+        first, second = callbacks
+
+        first()  # queued before the revalidation: must be ignored
+        assert binder.report()["dcc"] is False
+        second()
+        assert binder.report()["dcc"] is True
+
+        binder.revalidate_dispatcher()
+        assert binder.report()["dcc"] is False
+        binder.invalidate()
+        callbacks[-1]()
+        assert binder.report()["dcc"] is False
 
     def test_resolve_timeout_env(self, monkeypatch):
         from meshy_dcc_blender._readiness import resolve_readiness_timeout_secs

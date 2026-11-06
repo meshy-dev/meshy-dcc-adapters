@@ -23,7 +23,7 @@ Usage (inside Blender Python console or startup script)::
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -201,16 +201,6 @@ class BlenderMcpServer(DccServerBase):
         options: Optional[BlenderServerOptions] = None,
     ) -> None:
         if options is None:
-            if dispatcher is None and execution_bridge is None:
-                # Default to a UI or standalone dispatcher if none provided
-                # (essential for workers started via CLI)
-                try:
-                    from .dispatcher import create_dispatcher
-
-                    dispatcher = create_dispatcher(ui_mode=not self.is_background())
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("[%s] Failed to create default dispatcher: %s", _DCC_NAME, exc)
-
             options = BlenderServerOptions(
                 port=port,
                 extra_skill_paths=extra_skill_paths,
@@ -228,7 +218,38 @@ class BlenderMcpServer(DccServerBase):
                 execution_bridge=execution_bridge,
             )
 
+        if options.dispatcher is None and options.execution_bridge is None:
+            # Servers started without a host dispatcher (the startup script, a
+            # bare ``start_server()``) still need one: without it no in-process
+            # executor is registered and every main-thread tool fails to load.
+            from .dispatcher import create_dispatcher
+
+            try:
+                default_dispatcher = create_dispatcher(ui_mode=not self.is_background())
+            except Exception as exc:
+                raise RuntimeError("Blender main-thread dispatcher initialization failed") from exc
+            # Do not mutate caller-owned options, which may be reused for another server.
+            options = replace(options, dispatcher=default_dispatcher)
+
+        # The adapter-owned dispatcher holds the host timer pump
+        # (``bpy.app.timers``). Core replaces the server's own dispatcher
+        # reference with an inline bridge wrapper that has no ``start()``, so
+        # keep the original and drive it from :meth:`start`; without that pump
+        # main-thread work is queued and never drained.
+        self._pump_dispatcher: Optional[Any] = options.dispatcher
+        if options.execution_bridge is not None:
+            bridge = options.execution_bridge
+            host_dispatcher = bridge.resolve_host_dispatcher()
+            # An explicit bridge is authoritative: never pump an unrelated
+            # dispatcher supplied alongside it.
+            candidate = bridge.dispatcher
+            self._pump_dispatcher = candidate if callable(getattr(candidate, "start", None)) else None
+            if host_dispatcher is not None and _host_dispatcher_from(options.dispatcher) is host_dispatcher:
+                self._pump_dispatcher = options.dispatcher
+
         super().__init__(options=options.to_core_options())
+        if not self._inprocess_executor_registered:
+            raise RuntimeError("Blender main-thread in-process executor registration failed")
 
         self._extra_skill_paths: List[str] = list(options.extra_skill_paths or [])
 
@@ -298,6 +319,21 @@ class BlenderMcpServer(DccServerBase):
         if self._semantic is not None:
             logger.info("[%s] semantic skill recall enabled (embedder=%s)", _DCC_NAME, self._semantic.embedder_kind)
 
+    # ── Host mode ──────────────────────────────────────────────────────────────
+
+    def is_background(self) -> bool:
+        """Return whether Blender is running in background mode.
+
+        Used by ``__init__`` to pick a UI or standalone dispatcher before
+        ``super().__init__()`` runs, so it must not depend on any state set there.
+        """
+        try:
+            import bpy  # noqa: PLC0415
+        except ImportError:
+            # No Blender host: treat as non-interactive.
+            return True
+        return bool(getattr(bpy.app, "background", False))
+
     # ── Blender version detection ──────────────────────────────────────────────
 
     def _version_string(self) -> str:
@@ -347,8 +383,11 @@ class BlenderMcpServer(DccServerBase):
 
         super().start(install_atexit_hook=install_atexit_hook)
         attach_safe_stop(self)
-        if self._blender_dispatcher is not None:
-            start_fn = getattr(self._blender_dispatcher, "start", None)
+        # The adapter dispatcher owns the host timer pump; core's inline bridge
+        # wrapper in ``_blender_dispatcher`` has no ``start()``.
+        pump_owner = getattr(self, "_pump_dispatcher", None) or self._blender_dispatcher
+        if pump_owner is not None:
+            start_fn = getattr(pump_owner, "start", None)
             if callable(start_fn):
                 start_fn()
         if not self._scene_handlers:
@@ -375,6 +414,9 @@ class BlenderMcpServer(DccServerBase):
 
     def stop(self) -> None:
         """Detach MCP resource handlers, stop the HTTP server and the dispatcher."""
+        readiness = getattr(self, "readiness", None)
+        if readiness is not None:
+            readiness.invalidate()
         _resources._default_event_remover(self._scene_handlers)
         self._scene_handlers = []
         if self._resources is not None:
@@ -383,12 +425,14 @@ class BlenderMcpServer(DccServerBase):
             except Exception as exc:  # noqa: BLE001
                 logger.debug("[%s] resources.unbind failed: %s", _DCC_NAME, exc)
 
-        super().stop()
-
-        if self._blender_dispatcher is not None:
-            stop_fn = getattr(self._blender_dispatcher, "stop", None)
-            if callable(stop_fn):
-                stop_fn()
+        pump_owner = getattr(self, "_pump_dispatcher", None) or self._blender_dispatcher
+        try:
+            super().stop()
+        finally:
+            if pump_owner is not None:
+                stop_fn = getattr(pump_owner, "stop", None)
+                if callable(stop_fn):
+                    stop_fn()
 
     # ── Builtin action registration + core integrations ────────────────────────
 
