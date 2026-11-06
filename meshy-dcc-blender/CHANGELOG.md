@@ -8,6 +8,19 @@
   that setup fail silently, leaving main-thread tools unable to load), and the
   pump is started with it.
 
+- Import and export no longer report success when Blender did not finish the
+  operator or wrote nothing. A cancelled import or export is an error, an export
+  must leave a non-empty file, and the basic OBJ writer is used only when
+  Blender has no OBJ exporter and no options were requested (it used to hide
+  any exporter failure).
+- `import_to_scene` fails when the import adds no objects, and
+  `material_mode=skip` now clears the materials on the imported meshes (it
+  raised after the objects were already in the scene).
+- `append_from_blend` and `link_from_blend` report the data blocks Blender
+  actually loaded, including collision suffixes, and can load node groups.
+- USD import applies the texture and subdivision options under the names Blender
+  uses, so textures are imported by default again.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

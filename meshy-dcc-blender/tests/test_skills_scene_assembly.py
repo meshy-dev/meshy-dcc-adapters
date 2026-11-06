@@ -3,13 +3,80 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
 import yaml
 
 from tests.conftest import load_and_call, make_mock_bpy
 
 ASSEMBLY_PATH = "src/meshy_dcc_blender/skills/blender-scene-assembly/tools.yaml"
+
+
+class _LoadedDataBlock:
+    def __init__(self, name):
+        self.name = name
+
+
+class _LibraryLoad:
+    """Model ``libraries.load``: on exit Blender swaps the requested names for loaded IDs."""
+
+    def __init__(self, data_type, loaded_by_name):
+        self.data_type = data_type
+        self.loaded_by_name = loaded_by_name
+        self.data_from = SimpleNamespace(**{data_type: list(loaded_by_name)})
+        self.data_to = SimpleNamespace()
+
+    def __enter__(self):
+        return self.data_from, self.data_to
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            items = getattr(self.data_to, self.data_type)
+            items[:] = [self.loaded_by_name[name] for name in items]
+
+
+@pytest.mark.parametrize("tool,link", [("append_from_blend", False), ("link_from_blend", True)])
+@pytest.mark.parametrize(
+    "source_names,requested,loaded,expected",
+    [
+        (["Hero"], None, ["Hero"], ["Hero"]),
+        (["Hero"], ["Hero"], ["Hero.001"], ["Hero.001"]),  # collision suffix
+        (["Hero", "Bad"], None, ["Hero", None], ["Hero"]),  # one block failed to load
+        (["Bad"], ["Bad"], [None], []),
+        (["Hero"], ["Missing"], ["Hero"], []),  # nothing matched the request
+    ],
+    ids=["loaded", "renamed", "partial", "failed", "no-match"],
+)
+def test_append_link_report_the_blocks_actually_loaded(tmp_path, tool, link, source_names, requested, loaded, expected):
+    path = tmp_path / "library.blend"
+    path.touch()
+    loaded_by_name = {src: None if got is None else _LoadedDataBlock(got) for src, got in zip(source_names, loaded)}
+    bpy = make_mock_bpy()
+    bpy.data.libraries.load.return_value = _LibraryLoad("objects", loaded_by_name)
+
+    result = load_and_call(
+        f"blender-scene-assembly/scripts/{tool}.py", bpy, filepath=str(path), data_type="objects", names=requested
+    )
+
+    assert result["success"] is True
+    assert result["context"]["names"] == expected
+    assert result["context"]["count"] == len(expected)
+    assert result["message"].startswith(f"{'Linked' if link else 'Appended'} {len(expected)} objects")
+
+
+def test_append_node_groups_uses_blenders_snake_case_attribute(tmp_path):
+    path = tmp_path / "library.blend"
+    path.touch()
+    bpy = make_mock_bpy()
+    bpy.data.libraries.load.return_value = _LibraryLoad("node_groups", {"Rig": _LoadedDataBlock("Rig")})
+
+    result = load_and_call(
+        "blender-scene-assembly/scripts/append_from_blend.py", bpy, filepath=str(path), data_type="node_groups"
+    )
+
+    assert result["context"]["names"] == ["Rig"]
 
 
 def _make_scene(name="Scene"):

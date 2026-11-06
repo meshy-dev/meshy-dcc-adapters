@@ -8,6 +8,8 @@ from typing import Any, Mapping, Sequence
 
 from meshy_dcc_core.skill import skill_error, skill_exception, skill_success
 
+from ._modeling_common import operator_finished
+
 _PRESET_STORE_KEY = "meshy_dcc_export_presets"
 _IMPORT_FORMATS = {"fbx", "obj", "gltf", "usd", "alembic"}
 _EXPORT_FORMATS = {"fbx", "obj", "gltf", "usd", "alembic"}
@@ -112,7 +114,7 @@ def _operator_properties(operator: Any) -> dict[str, Any] | None:
 
 
 def _call_with_options(operator: Any, base: dict[str, Any], options: dict[str, Any], warnings: list[str]) -> None:
-    """Call ``operator`` with the options it declares; an invalid value fails the call.
+    """Call ``operator`` with the options it declares; an invalid value or a non-FINISHED result fails the call.
 
     It used to retry without every option on any TypeError, so one bad value
     (a JSON list for an enum-flag option such as FBX ``object_types``) silently
@@ -130,7 +132,10 @@ def _call_with_options(operator: Any, base: dict[str, Any], options: dict[str, A
             for key, value in options.items()
             if key in supported
         }
-    operator(**{**base, **options})
+    status = operator(**{**base, **options})
+    if not operator_finished(status):
+        # A cancelled import or export writes nothing but used to look like success.
+        raise RuntimeError(f"Operator did not finish: {status!r}")
 
 
 def _has_nonempty_file(path: Path) -> bool:
@@ -224,8 +229,10 @@ def _import_by_format(
             return [], warnings, skill_error("Unsupported import format", f"Format '{format}' is not importable.")
     except Exception as exc:
         return [], warnings, skill_exception(exc, message=f"Failed to import {target}")
-    after = _object_names(bpy)
-    return sorted(after - before), warnings, None
+    imported = sorted(_object_names(bpy) - before)
+    if not imported:
+        warnings.append("Import finished but added no objects")
+    return imported, warnings, None
 
 
 def _export_by_format(
@@ -248,25 +255,22 @@ def _export_by_format(
         elif format == "obj":
             wm_export = getattr(bpy.ops.wm, "obj_export", None)
             scene_export = getattr(getattr(bpy.ops, "export_scene", None), "obj", None)
-            try:
-                if callable(wm_export):
-                    _call_with_options(
-                        wm_export,
-                        {"filepath": str(target), "export_selected_objects": selected},
-                        options,
-                        warnings,
-                    )
-                elif callable(scene_export):
-                    _call_with_options(
-                        scene_export, {"filepath": str(target), "use_selection": selected}, options, warnings
-                    )
-                else:
-                    raise RuntimeError("No OBJ export operator is available")
-                if not _has_nonempty_file(target):
-                    raise RuntimeError("OBJ exporter produced no file")
-            except Exception:
+            if callable(wm_export):
+                _call_with_options(
+                    wm_export,
+                    {"filepath": str(target), "export_selected_objects": selected},
+                    options,
+                    warnings,
+                )
+            elif callable(scene_export):
+                _call_with_options(
+                    scene_export, {"filepath": str(target), "use_selection": selected}, options, warnings
+                )
+            elif not options:
                 warnings.append("Used basic OBJ fallback writer")
                 _write_basic_obj(bpy, target, selected_names if selected else None)
+            else:
+                raise RuntimeError("No OBJ export operator is available to apply the requested options")
         elif format == "gltf":
             _call_with_options(
                 bpy.ops.export_scene.gltf, {"filepath": str(target), "use_selection": selected}, options, warnings
@@ -284,8 +288,9 @@ def _export_by_format(
             return [], warnings, skill_error("Unsupported export format", f"Format '{format}' is not exportable.")
     except Exception as exc:
         return [], warnings, skill_exception(exc, message=f"Failed to export {target}")
-    written = [str(target)] if target.exists() else []
-    return written, warnings, None
+    if not _has_nonempty_file(target):
+        return [], warnings, skill_error("Export produced no file", "The exporter did not write a non-empty file.")
+    return [str(target)], warnings, None
 
 
 def _result_for_export(
@@ -429,16 +434,22 @@ def import_usd(
         "import_materials": import_materials,
         "import_cameras": import_cameras,
         "import_lights": import_lights,
-        "import_textures": import_textures,
+        # Blender's operator has no boolean ``import_textures``: it was ignored,
+        # so textures were never imported.
+        "import_textures_mode": "IMPORT_PACK" if import_textures else "IMPORT_NONE",
         "import_subdiv": import_subdiv,
         "scale": float(scale),
     }
     if prim_path_mask:
         base_opts["prim_path_mask"] = str(prim_path_mask)
-    base_opts.update(opts)
     try:
         import bpy
 
+        properties = _operator_properties(getattr(bpy.ops.wm, "usd_import", None))
+        if properties is not None and "import_subdivision" in properties:
+            # Newer Blender renamed the option.
+            base_opts["import_subdivision"] = base_opts.pop("import_subdiv")
+        base_opts.update(opts)
         imported, warnings, error = _import_by_format(bpy, target, "usd", base_opts)
         elapsed_ms = int((time.perf_counter() - start) * 1000)
         if error:

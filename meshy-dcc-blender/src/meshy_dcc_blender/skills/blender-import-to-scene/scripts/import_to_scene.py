@@ -105,6 +105,9 @@ def _import_file_to_scene(
     imported_names = context.get("imported_object_names", [])
     if isinstance(imported_names, str):
         imported_names = [n.strip() for n in imported_names.split(",") if n.strip()]
+    if not imported_names:
+        # A finished operator that adds nothing (empty or wrong file) is not an import.
+        raise RuntimeError(f"Import finished but added no objects from {filepath}")
 
     warnings: list[ImportWarning] = []
 
@@ -131,8 +134,10 @@ def _import_file_to_scene(
     elif material_mode == MaterialMode.SKIP:
         for name in imported_names:
             obj = bpy.data.objects.get(name)
-            if obj and hasattr(obj, "material_slots"):
-                obj.material_slots.clear()
+            # ``material_slots`` is read-only; the slots live on the data block.
+            materials = getattr(getattr(obj, "data", None), "materials", None) if obj else None
+            if materials is not None:
+                materials.clear()
         warnings.append(
             ImportWarning(
                 code=ImportWarningCode.MATERIAL_FALLBACK,
