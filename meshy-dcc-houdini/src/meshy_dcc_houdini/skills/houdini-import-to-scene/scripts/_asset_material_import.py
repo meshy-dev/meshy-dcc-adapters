@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import struct
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -35,6 +36,8 @@ _METALLIC_PARMS = ("metallic", "metalness")
 _ROUGHNESS_PARMS = ("rough", "roughness")
 _EMISSIVE_PARMS = ("emitcolor", "emissivecolor", "emit")
 _OPACITY_PARMS = ("opacity", "opac")
+_BASE_COLOR_TEXTURE_PARMS = ("basecolor_texture",)
+_BASE_COLOR_TEXTURE_ENABLE_PARMS = ("basecolor_useTexture",)
 
 # Suffix -> decoder key, longest first so ``.usda`` beats ``.usd``.
 _MATERIAL_SUFFIXES = (".gltf", ".glb", ".obj", ".usd", ".usda", ".usdc", ".usdz")
@@ -227,8 +230,39 @@ def _decode_gltf(file_path: str) -> Optional[List[Dict[str, Any]]]:
     return specs
 
 
-def _parse_mtl(mtl_path: str) -> Dict[str, Dict[str, Any]]:
-    """Parse a Wavefront ``.mtl`` file into raw material records."""
+def _wavefront_tokens(line: str) -> List[str]:
+    """Split a Wavefront line, honouring quoted names; backslashes stay literal (Windows paths)."""
+    lexer = shlex.shlex(line, posix=True)
+    lexer.whitespace_split = True
+    lexer.escape = ""
+    lexer.commenters = ""
+    try:
+        return list(lexer)
+    except ValueError:  # unterminated quote
+        return line.split()
+
+
+def _local_file_path(base_dir: str, reference: str, root: str) -> Optional[str]:
+    """Resolve an existing sidecar file that stays inside the asset folder *root*.
+
+    URL and UNC references, ``..`` escapes and symlinks that leave *root* give
+    ``None``; a rejected reference is never opened.
+    """
+    if not reference or reference.startswith(("\\\\", "//")):
+        return None
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", reference) and not re.match(r"^[a-zA-Z]:[\\/]", reference):
+        return None
+    path = os.path.realpath(os.path.join(base_dir, reference.replace("\\", os.sep)))
+    real_root = os.path.realpath(root)
+    try:
+        inside = os.path.commonpath([real_root, path]) == real_root
+    except ValueError:  # another drive
+        inside = False
+    return path if inside and os.path.isfile(path) else None
+
+
+def _parse_mtl(mtl_path: str, root: str) -> Dict[str, Dict[str, Any]]:
+    """Parse a Wavefront ``.mtl`` file into raw material records; textures must lie inside *root*."""
     materials: Dict[str, Dict[str, Any]] = {}
     current: Optional[Dict[str, Any]] = None
     try:
@@ -238,15 +272,16 @@ def _parse_mtl(mtl_path: str) -> Dict[str, Dict[str, Any]]:
         return materials
 
     for line in lines:
-        tokens = line.strip().split()
+        tokens = _wavefront_tokens(line)
         if not tokens or tokens[0].startswith("#"):
             continue
         # Exact keyword match: ``mtllibX`` / an indented ``usemtl`` must not be
         # mistaken for the real thing.
         keyword, values = tokens[0].lower(), tokens[1:]
         if keyword == "newmtl" and values:
-            current = {"name": values[0], "Kd": [0.8, 0.8, 0.8], "Ks": [0.0, 0.0, 0.0], "Ns": 10.0, "d": 1.0}
-            materials[values[0]] = current
+            name = " ".join(values)
+            current = {"name": name, "Kd": [0.8, 0.8, 0.8], "Ks": [0.0, 0.0, 0.0], "Ns": 10.0, "d": 1.0}
+            materials[name] = current
         elif current is None:
             continue
         elif keyword in ("kd", "ks") and len(values) >= 3:
@@ -262,6 +297,14 @@ def _parse_mtl(mtl_path: str) -> Dict[str, Dict[str, Any]]:
             except ValueError:
                 alpha = 1.0
             current["d"] = alpha if keyword == "d" else 1.0 - alpha
+        elif keyword == "map_kd":
+            reference = " ".join(values)
+            if not values or values[0].startswith("-"):
+                texture, issue = None, "map_Kd has no filename or uses unsupported texture options"
+            else:
+                texture = _local_file_path(os.path.dirname(mtl_path), reference, root)
+                issue = None if texture else "map_Kd is not an existing local file in the asset folder: " + reference
+            current["map_Kd"], current["map_Kd_issue"] = texture, issue
     return materials
 
 
@@ -288,14 +331,14 @@ def _decode_obj(obj_path: str) -> Optional[List[Dict[str, Any]]]:
     mtl_names: List[str] = []
     used: List[str] = []
     for line in lines:
-        tokens = line.strip().split()
-        if not tokens:
+        fields = line.strip().split(None, 1)
+        if len(fields) < 2:
             continue
-        keyword = tokens[0].lower()
+        keyword = fields[0].lower()
         if keyword == "mtllib":
-            mtl_names.extend(tokens[1:])
-        elif keyword == "usemtl" and len(tokens) > 1:
-            name = tokens[1]
+            mtl_names.extend(_wavefront_tokens(fields[1]))
+        elif keyword == "usemtl":
+            name = " ".join(_wavefront_tokens(fields[1]))
             if name not in used:
                 used.append(name)
     if not mtl_names:
@@ -305,11 +348,15 @@ def _decode_obj(obj_path: str) -> Optional[List[Dict[str, Any]]]:
     records: Dict[str, Dict[str, Any]] = {}
     missing: List[str] = []
     for mtl_name in mtl_names:
-        mtl_path = os.path.join(base_dir, os.path.basename(mtl_name))
-        if not os.path.isfile(mtl_path):
+        # A nested path is read in place; otherwise fall back to the bare file
+        # name beside the OBJ (an absolute path written on another machine).
+        mtl_path = _local_file_path(base_dir, mtl_name, base_dir) or _local_file_path(
+            base_dir, os.path.basename(mtl_name.replace("\\", "/")), base_dir
+        )
+        if mtl_path is None:
             missing.append(mtl_name)
             continue
-        parsed = _parse_mtl(mtl_path)
+        parsed = _parse_mtl(mtl_path, base_dir)
         if not parsed:
             missing.append(mtl_name)
             continue
@@ -340,15 +387,17 @@ def _decode_obj(obj_path: str) -> Optional[List[Dict[str, Any]]]:
             continue
         specular = record.get("Ks") or [0.0, 0.0, 0.0]
         metallic = _clamp01(max(specular) * 0.9)
-        specs.append(
-            _material_spec(
-                name=str(record.get("name") or name),
-                base_color=_rgb(record.get("Kd"), [0.8, 0.8, 0.8]),
-                metallic=metallic,
-                roughness=_phong_to_roughness(record.get("Ns", 10.0)),
-                opacity=record.get("d", 1.0),
-            )
+        spec = _material_spec(
+            name=str(record.get("name") or name),
+            base_color=_rgb(record.get("Kd"), [0.8, 0.8, 0.8]),
+            metallic=metallic,
+            roughness=_phong_to_roughness(record.get("Ns", 10.0)),
+            opacity=record.get("d", 1.0),
         )
+        if "map_Kd" in record:
+            spec["base_color_texture"] = record["map_Kd"]
+            spec["base_color_texture_issue"] = record["map_Kd_issue"]
+        specs.append(spec)
     return specs
 
 
@@ -616,6 +665,15 @@ def _create_shader(network: Any, spec: Dict[str, Any], node_name: str) -> Tuple[
             continue
         if _set_first_parm(material, parm_names, value) is None:
             (unapplied_required if required else unapplied_optional).append(channel)
+
+    texture = spec.get("base_color_texture")
+    if spec.get("base_color_texture_issue"):
+        unapplied_required.append("base_color_texture ({0})".format(spec["base_color_texture_issue"]))
+    elif texture and (
+        _set_first_parm(material, _BASE_COLOR_TEXTURE_PARMS, texture) is None
+        or _set_first_parm(material, _BASE_COLOR_TEXTURE_ENABLE_PARMS, 1) is None
+    ):
+        unapplied_required.append("base_color_texture")
 
     emissive = spec.get("emissive")
     if emissive and any(emissive):

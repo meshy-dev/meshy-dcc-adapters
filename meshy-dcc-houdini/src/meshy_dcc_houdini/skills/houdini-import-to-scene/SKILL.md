@@ -72,7 +72,8 @@ The decode outcome is reported in `extra.status`:
 
 | `status` | Meaning | Warning |
 |-----------|---------|---------|
-| `as_authored` | Every material the carrier declares was decoded and created (`materials_lost` is 0). | no |
+| `as_authored` | Every material the carrier declares was decoded and created (`materials_lost` is 0) and its required channels were applied. | no |
+| `partial` | Material nodes were created, but a required channel or texture could not be applied. | **yes** |
 | `default_gray` | A neutral gray material was created and bound. | no |
 | `no_materials` | The carrier was read and genuinely carries no materials. | **no** — nothing was lost |
 | `carrier_unreadable` | The carrier declares materials that could not be read (missing `.mtl` sidecar, unknown `usemtl` name, dangling glTF material index, truncated GLB, USD stage that will not open, USD material with no readable `UsdPreviewSurface`: no surface shader, or none that authors `diffuseColor`, as with `arnold:standard_surface` or MaterialX). When only *some* USD materials are readable, those are still imported and `materials_lost` counts the rest. | **yes** |
@@ -92,8 +93,9 @@ actual cause:
 
 A material can also be created with the wrong look: if the shader does not
 expose a channel that carries the base look (`base_color`, `metallic`,
-`roughness`), the import reports it in `extra.unapplied_required` **and** warns,
-rather than reporting a clean `as_authored`. Optional channels (`opacity`,
+`roughness`, or an OBJ `map_Kd` texture), the import reports it in
+`extra.unapplied_required` **and** warns, with `status` `partial` rather than a
+clean `as_authored`. Optional channels (`opacity`,
 `emissive`) are only recorded in `extra.unapplied_parameters`.
 
 Material accounting is always machine-readable in `ImportToSceneResult.extra`:
@@ -123,10 +125,16 @@ The asset path is expanded (`~`, environment variables) exactly once, before it
 is handed to both the File SOP and the material decoder, so `$ASSETS/x.glb`
 cannot reach the geometry import while missing the material decode.
 
+OBJ/MTL also binds `map_Kd` to the Principled base-colour texture and enables
+it. Nested relative `mtllib` paths and quoted filenames are kept; textures
+resolve relative to their MTL sidecar and must lie inside the OBJ's folder. A
+missing file, a URL or UNC path, a path or symlink that leaves the folder, or a
+texture option is reported as `partial` with `material_fallback`.
+
 Known limits: only surface PBR values (base colour, metallic, roughness,
-emissive, opacity) are translated; textures, UDIM sets and non-PBR shader graphs
-are not rebuilt, and a multi-material carrier binds its first material to the
-container.
+emissive, opacity) and plain local OBJ diffuse textures are translated. Other
+texture slots, UDIM sets and non-PBR shader graphs are not rebuilt, and a
+multi-material carrier binds its first material to the container.
 
 ## Gateway flow
 
