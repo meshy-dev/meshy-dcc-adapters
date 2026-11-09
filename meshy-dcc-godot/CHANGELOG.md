@@ -21,6 +21,10 @@
   preview when Godot has one, and otherwise `available: false` with a reason
   (a preview that is still being generated can be requested again).
 - `export_project` accepts `res://`-prefixed output paths.
+- Exporting the project, through `export_project` or from the command line,
+  no longer starts a second sidecar or saves project settings and readiness
+  under the editor that has the project open. `export_project` timed out
+  because of it.
 
 ## 0.1.2 (2026-11-03)
 

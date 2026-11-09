@@ -74,6 +74,27 @@ def _resolve_project_context(arguments: Iterable[str]) -> tuple[Path, Path]:
     return project_file, engine_dir / "Plugins"
 
 
+def _current_project_context() -> tuple[Path, Path]:
+    """The open project file and the engine's plugin folder.
+
+    On macOS and Linux the editor's embedded Python does not see the editor's
+    command line in ``sys.argv``, so ask the editor when the command line does
+    not name the project.
+    """
+    try:
+        return _resolve_project_context(_process_arguments())
+    except ValueError:
+        try:
+            import unreal
+        except ImportError:
+            unreal = None
+        project = unreal.Paths.get_project_file_path() if unreal is not None else ""
+        if not project:
+            raise
+        full = unreal.Paths.convert_relative_path_to_full
+        return Path(full(project)).resolve(), Path(full(unreal.Paths.engine_plugins_dir())).resolve()
+
+
 def _atomic_write_bytes(path: Path, contents: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -222,7 +243,7 @@ def prepare_official_mcp(
 ) -> dict:
     """Enable official MCP plugins and autostart for the current project."""
     try:
-        project_file, engine_plugins_dir = _resolve_project_context(_process_arguments())
+        project_file, engine_plugins_dir = _current_project_context()
     except (OSError, ValueError) as exc:
         return skill_error(
             "The current Unreal project could not be resolved",

@@ -356,7 +356,8 @@ def _start_server_with_host():
                 return existing
             stop_server()
 
-        dispatcher = BlenderUiDispatcher()
+        resolve_timeout = _addon_module("_env").resolve_main_thread_timeout_ms
+        dispatcher = BlenderUiDispatcher(timeout_ms=resolve_timeout())
         try:
             server = start_server(
                 gateway_port=_env_port("MESHY_DCC_GATEWAY_PORT", _DEFAULT_GATEWAY_PORT),

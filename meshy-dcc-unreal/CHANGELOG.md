@@ -9,6 +9,9 @@
   restores the originals if a write or the read-back fails, so a failure no
   longer leaves the plugin enabled without its settings. An INI syntax error is
   reported by line number only.
+- `prepare_official_mcp` finds the open project through the editor on macOS
+  and Linux, where the editor's Python does not see its command line and the
+  call reported that no `.uproject` was given.
 
 ## 0.1.2 (2026-11-03)
 

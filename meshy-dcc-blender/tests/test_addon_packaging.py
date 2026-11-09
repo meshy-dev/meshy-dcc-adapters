@@ -347,6 +347,9 @@ def test_addon_register_starts_server_with_core_backed_blender_ui_dispatcher(mon
     calls = []
 
     class _Dispatcher:
+        def __init__(self, timeout_ms):
+            self.timeout_ms = timeout_ms
+
         def start(self):
             calls.append(("dispatcher.start", self))
 
@@ -366,6 +369,7 @@ def test_addon_register_starts_server_with_core_backed_blender_ui_dispatcher(mon
     monkeypatch.setenv("MESHY_DCC_BLENDER_PORT", "18765")
     monkeypatch.setenv("MESHY_DCC_GATEWAY_PORT", "19765")
     monkeypatch.setenv("MESHY_DCC_REGISTRY_DIR", "/tmp/meshy-dcc-registry")
+    monkeypatch.setenv("MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS", "2000")
     monkeypatch.delenv("MESHY_DCC_UI_CONTROL_PROCESS_ID", raising=False)
 
     mod.register()
@@ -378,6 +382,8 @@ def test_addon_register_starts_server_with_core_backed_blender_ui_dispatcher(mon
         "registry_dir": "/tmp/meshy-dcc-registry",
         "dispatcher": calls[1][1],
     }
+    # The add-on's own dispatcher honours the main-thread budget variable.
+    assert calls[1][1].timeout_ms == 2000
     assert os.environ["MESHY_DCC_UI_CONTROL_PROCESS_ID"] == str(os.getpid())
 
     mod.unregister()

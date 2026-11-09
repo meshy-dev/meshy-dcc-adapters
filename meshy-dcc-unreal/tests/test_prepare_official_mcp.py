@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sys
+from types import SimpleNamespace
 
 import pytest
 from test_official_mcp import _load_prepare_module
@@ -25,6 +27,36 @@ def setup_project(tmp_path, monkeypatch):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('{"FileVersion": 3}', encoding="utf-8")
     return prepare, project, config
+
+
+def test_project_comes_from_the_editor_when_the_command_line_lacks_it(setup_project, monkeypatch, tmp_path):
+    """macOS: the embedded Python's sys.argv does not carry the editor's command line."""
+    prepare, project, config = setup_project
+    monkeypatch.setattr(prepare, "_process_arguments", lambda: [""])
+    paths = SimpleNamespace(
+        get_project_file_path=lambda: "../../Project/Example.uproject",
+        engine_plugins_dir=lambda: "../../Engine/Plugins/",
+        convert_relative_path_to_full=lambda path: str(tmp_path / "Engine" / "Binaries" / path),
+    )
+    monkeypatch.setitem(sys.modules, "unreal", SimpleNamespace(Paths=paths))
+
+    result = prepare.prepare_official_mcp()
+
+    assert result["success"] is True
+    assert result["context"]["configuration_verified"] is True
+    assert b"ServerPortNumber=8000" in config.read_bytes()
+
+
+def test_no_project_anywhere_is_reported_without_writing(setup_project, monkeypatch):
+    prepare, project, config = setup_project
+    monkeypatch.setattr(prepare, "_process_arguments", lambda: [""])
+    monkeypatch.setitem(sys.modules, "unreal", None)
+    _assert_no_writes(prepare, monkeypatch)
+
+    result = prepare.prepare_official_mcp()
+
+    assert result["success"] is False
+    assert "could not be resolved" in result["message"]
 
 
 def _assert_no_writes(prepare, monkeypatch):
