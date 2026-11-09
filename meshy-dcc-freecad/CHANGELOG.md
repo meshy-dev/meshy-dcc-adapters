@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - A call that opens FreeCAD's GUI (`render_view`, and any call given
   `visible_objects`) closes its
@@ -9,6 +9,9 @@
   window that cannot be closed, or a document still open at that point, fails
   the call, and the operation's own error is kept when both happen. Not yet
   confirmed on a real FreeCAD 1.1.x.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 

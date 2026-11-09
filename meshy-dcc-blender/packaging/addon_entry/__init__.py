@@ -24,7 +24,7 @@ _ECHO_PREFIX = "[Meshy DCC]"
 bl_info = {
     "name": "Meshy DCC",
     "author": "Meshy",
-    "version": (0, 1, 2),
+    "version": (0, 1, 3),
     "blender": (4, 5, 0),
     "location": "Top Bar > Meshy DCC",
     "description": "Embeds an MCP HTTP server inside Blender for AI-driven 3D workflows",
@@ -837,4 +837,4 @@ def unregister() -> None:
 # ``unregister()`` detaches rather than uninstalls it, which is what keeps
 # ``import meshy_dcc_blender`` working after ``wm.read_factory_settings``.
 
-__addon_version__ = "0.1.2"
+__addon_version__ = "0.1.3"

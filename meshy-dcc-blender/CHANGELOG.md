@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - Readiness turns green only after a probe has actually run on Blender's
   main-thread pump. A server started without a dispatcher, such as the one the
@@ -48,6 +48,9 @@
   shortened or extended.
 - The main-thread budget variable also applies to the add-on Blender loads at
   startup, which kept the 30 s default.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 
