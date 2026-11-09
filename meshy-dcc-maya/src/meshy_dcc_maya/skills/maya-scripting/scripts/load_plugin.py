@@ -6,6 +6,7 @@ from typing import Any, List, Optional
 
 from meshy_dcc_core.skill import skill_entry
 
+from meshy_dcc_maya._code_policy import arbitrary_script_refusal
 from meshy_dcc_maya.api import maya_error, maya_from_exception, maya_success
 
 
@@ -45,6 +46,10 @@ def load_plugin(
     already_loaded_ok: bool = True,
 ) -> dict:
     """Load a Maya plug-in and optionally set its autoload preference."""
+    refusal = arbitrary_script_refusal("load_plugin")
+    if refusal is not None:
+        return refusal
+
     try:
         import maya.cmds as cmds  # noqa: PLC0415
 

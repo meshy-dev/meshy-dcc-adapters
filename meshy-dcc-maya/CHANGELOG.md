@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Verified rollbacks undo only their own edit. A mutation that failed before
+  its first write used to undo the artist's previous edit and still report
+  `rollback_verified=true`; the rollback now runs only when Maya's top undo
+  item is the tool's own chunk, and otherwise reports
+  `rollback_verified=false` with `rollback_skipped_reason`.
+- `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1` now blocks every tool that runs
+  code, not only `execute_python`, `execute_mel` and `write_module`:
+  `create_expression`, `edit_expression`, `get_script_node` (create),
+  `introspect_eval`, `load_plugin`, and the `maya-dev` tools `run_script`,
+  `run_entrypoint`, `run_check`, `reload_modules` and `start_debugpy`. It is a
+  tool policy, not a sandbox; read-only and typed tools stay available.
+- `bake_textures` checks what it bakes. It samples the unlit `baseColor` or
+  `color` network into IFF textures with `convertSolidTx`, and reports success
+  only when every output file exists and is not empty. A failure lists each
+  failed object and keeps the verified files; the renderer and selection are
+  restored in every case. Only `bake_type="diffuse"` is supported: full render,
+  normals and AO were never implemented and now return a clear error. A single
+  object name is accepted as well as a list.
+- `render_frame` picks the camera exactly. It keeps the full DAG path, refuses a
+  camera name that matches more than one node (`camera_source="ambiguous"`),
+  makes only the chosen camera renderable for the render (other renderable
+  cameras add output subfolders) and restores every camera flag afterwards. It
+  refuses to render, with `CAMERA_RENDERABLE_UPDATE_FAILED`, when another
+  camera cannot be switched off. The result also reports the configured
+  `view_transform`.
+- Animation curve infinity modes read back correctly. Maya numbers them
+  constant 0, linear 1, cycle 3, cycle with offset 4, oscillate 5 (2 is
+  unused), so a cycle curve was reported as `cycle_relative`, a relative cycle
+  as `oscillate`, and an oscillating curve was rejected as unknown.
+  `get_anim_curves` and `set_keyframes` now use Maya's values.
+- Starting Maya no longer pops up viewport messages. The sidecar and server
+  banners are printed to the Script Editor only.
+- `capture_viewport` finds the playblast image reliably. It renders into its own
+  temporary folder, takes the path Maya returned (or the single PNG written when
+  Maya returns a sequence template), refuses a path outside that folder or a
+  symlink, and removes the folder on every outcome. A folder that cannot be
+  removed is reported in the result instead of replacing it.
+- `meshy-dcc-maya` (the pip installer) writes `PLATFORM:mac` on macOS. Maya's
+  module platform token is `mac`; `macos` never matched, so Maya on macOS
+  ignored the module file.
+- The Meshy DCC menu no longer has Restart MCP Server and Stop MCP Server.
+  Stopping the server removed the Maya instance from the gateway until Maya was
+  restarted. To unload the connector, use Maya's Plug-in Manager.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

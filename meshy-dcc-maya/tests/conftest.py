@@ -3,6 +3,7 @@
 Provides:
 - ``load_skill_script(skill_dir, script_name)`` — load a skill script by path
 - ``make_mock_maya(cmds_attrs, mel_attrs)`` — build a (mock_maya, mock_cmds, mock_mel) triple
+- ``wire_named_undo_queue(cmds)`` — give a mock a named undo queue so MayaUndoChunk can prove ownership
 - ``mock_maya_modules`` — autouse fixture for server tests
 - ``load_and_call(rel_path, mock_cmds, func_name, **kwargs)`` — load + call with mock active
 - ``load_and_call_with_mel(rel_path, mock_cmds, mock_mel, **kwargs)`` — like load_and_call but also patches maya.mel
@@ -92,6 +93,30 @@ def make_mock_maya(
         for k, v in mel_attrs.items():
             setattr(mock_mel, k, v)
     return mock_maya, mock_cmds, mock_mel
+
+
+def wire_named_undo_queue(cmds, undo_enabled=True):
+    """Give a mock ``cmds`` a named undo queue.
+
+    ``MayaUndoChunk`` only undoes when the top undo item carries its own chunk
+    name, so a bare ``undoInfo.return_value = True`` can no longer exercise a
+    rollback. ``closeChunk`` publishes the chunk opened last as the top item.
+    """
+    state = {"open": None, "top": None}
+
+    def _undo_info(**kwargs):
+        if kwargs.get("query") and kwargs.get("state"):
+            return undo_enabled
+        if kwargs.get("query") and kwargs.get("undoName"):
+            return state["top"]
+        if kwargs.get("openChunk"):
+            state["open"] = kwargs.get("chunkName")
+        elif kwargs.get("closeChunk") and state["open"] is not None:
+            state["top"], state["open"] = state["open"], None
+        return None
+
+    cmds.undoInfo.side_effect = _undo_info
+    return cmds
 
 
 _LOAD_COUNTER = [0]

@@ -1363,3 +1363,16 @@ def test_emitted_report_matches_the_version_core_validates(tmp_path, monkeypatch
     if document is not None:
         declared = document["properties"]["schema_version"]["const"]
         assert report["schema_version"] == declared
+
+
+@pytest.mark.parametrize("host_platform, token", [("darwin", "mac"), ("linux", "linux")])
+def test_descriptor_uses_maya_platform_tokens(tmp_path, monkeypatch, host_platform, token):
+    from meshy_dcc_maya import install
+
+    monkeypatch.setattr(install.sys, "platform", host_platform)
+    monkeypatch.setattr(install.os, "name", "posix")
+    descriptor = install._render_descriptor(tmp_path)
+    headers = [line for line in descriptor.splitlines() if line.startswith("+")]
+    assert headers
+    assert all("PLATFORM:{} ".format(token) in line for line in headers)
+    assert "PLATFORM:macos" not in descriptor

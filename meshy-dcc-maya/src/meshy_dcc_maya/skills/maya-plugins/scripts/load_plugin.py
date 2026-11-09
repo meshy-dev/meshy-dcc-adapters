@@ -6,6 +6,7 @@ from typing import Optional
 
 from meshy_dcc_core.skill import skill_entry
 
+from meshy_dcc_maya._code_policy import arbitrary_script_refusal
 from meshy_dcc_maya.api import maya_error, maya_from_exception, maya_success
 from meshy_dcc_maya.plugins import PLUGIN_PATH_ENV, PluginContractError
 from meshy_dcc_maya.plugins import load_plugin as _load_plugin
@@ -13,6 +14,10 @@ from meshy_dcc_maya.plugins import load_plugin as _load_plugin
 
 def load_plugin(plugin: Optional[str] = None, autoload: bool = False) -> dict:
     """Load a plug-in and optionally remember it for future sessions."""
+    refusal = arbitrary_script_refusal("load_plugin")
+    if refusal is not None:
+        return refusal
+
     try:
         import maya.cmds as cmds  # noqa: PLC0415
 

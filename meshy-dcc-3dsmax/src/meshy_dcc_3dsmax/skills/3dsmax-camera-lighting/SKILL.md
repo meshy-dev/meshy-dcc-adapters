@@ -60,7 +60,7 @@ provider (`auto` follows the active renderer):
 
 | Provider | Kinds | Factories |
 |---|---|---|
-| `arnold` | `area`, `dome`, `photometric` | `aiAreaLight`, `aiSkyDomeLight`, `aiPhotometricLight` |
+| `arnold` | `area`, `dome`, `photometric` | `Arnold_Light`, `aiSkyDomeLight`, `aiPhotometricLight` |
 | `corona` | `area`, `sun`, `sky` | `CoronaLight`, `CoronaSun`, `CoronaSky` |
 | `photometric` | `area`, `photometric`, `sun` | `mrAreaOmni`, `mrAreaSpot`, `FreeLight`, `TargetLight` |
 | `standard` | `omni`, `spot`, `directional`, `skylight` | `OmniLight`, `FreeSpot`, `DirectionalLight`, `Skylight` |
@@ -70,7 +70,7 @@ Supported controls and the enum tables each provider declares:
 
 | Control | Arnold | Corona | Photometric | Standard |
 |---|---|---|---|---|
-| `shape` | `quad` = 0, `disk` = 1, `cylinder` = 2, `sphere` = 3 | `rectangle` = 0, `disc` = 1, `sphere` = 2, `cylinder` = 3, `mesh` = 4 | `rectangle` = 0, `disc` = 1, `sphere` = 2, `cylinder` = 3 | n/a |
+| `shape` | `quad` = 3, `disk` = 4, `cylinder` = 5, `sphere` = 0 | `rectangle` = 0, `disc` = 1, `sphere` = 2, `cylinder` = 3, `mesh` = 4 | `rectangle` = 0, `disc` = 1, `sphere` = 2, `cylinder` = 3 | n/a |
 | `units` | `renderer` = 0, `w` = 1, `lm` = 2, `cd` = 3, `lx` = 4, `radiance` = 5 | `renderer` = 0, `w` = 1, `lm` = 2, `cd` = 3, `lx` = 4 | `renderer` = 0, `cd` = 1, `lm` = 2, `lx` = 3 | n/a |
 | `intensity` / `exposure` | `intensity`, `exposure` | `intensity`, `exposure` | `intensity` | `multiplier` |
 | `color_temperature` | `color_temperature`, `kelvin` | `temperature` | `kelvin` | n/a |

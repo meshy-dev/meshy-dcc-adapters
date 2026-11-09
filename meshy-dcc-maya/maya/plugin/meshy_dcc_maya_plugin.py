@@ -976,7 +976,7 @@ def _maybe_spawn_sidecar() -> bool:
 
 
 def _print_sidecar_info(handle) -> None:  # noqa: ANN001
-    """Append a sidecar banner to the script editor / viewport HUD."""
+    """Print a sidecar banner to the script editor / output window."""
     gateway_port = _resolve_gateway_port_for_display()
     gateway_lines = []
     if gateway_port > 0:
@@ -1011,17 +1011,6 @@ def _print_sidecar_info(handle) -> None:  # noqa: ANN001
     if stderr_path:
         lines.insert(-1, f"  stderr log   : {stderr_path}")
     print("\n".join(lines))  # noqa: T201 — intentional console output
-
-    if _is_interactive():
-        try:
-            cmds.inViewMessage(
-                amg=f"Meshy DCC <b>sidecar</b> PID <b>{handle.proc.pid}</b> attached",
-                pos="topCenter",
-                fade=True,
-                fadeStayTime=4000,
-            )
-        except Exception:  # noqa: BLE001 — viewport HUD is cosmetic
-            pass
 
 
 def _probe_gateway_health_deferred(
@@ -1232,19 +1221,6 @@ def _print_startup_info(cfg: dict) -> None:
 
     # Print to Maya script editor / output window
     print(banner)  # noqa: T201 — intentional console output
-
-    # Also show in Maya viewport HUD (interactive mode only)
-    if _is_interactive() and _handle:
-        try:
-            if is_gw:
-                hud_msg = f"Meshy DCC <b>[GATEWAY]</b> {gw_url}/mcp"
-            elif gateway_port > 0:
-                hud_msg = f"Meshy DCC <b>[instance]</b> → gateway {gw_url}/mcp"
-            else:
-                hud_msg = f"Meshy DCC ready: {instance_url}"
-            cmds.inViewMessage(amg=hud_msg, pos="topCenter", fade=True, fadeStayTime=4000)
-        except Exception:
-            pass  # viewport HUD is cosmetic, never block startup
 
 
 def _stop_sidecar_if_running() -> None:
@@ -1473,9 +1449,6 @@ def _add_menu() -> None:
         cmds.menuItem(divider=True)
         cmds.menuItem(label="Copy Instance ID", command=lambda *_: _copy_instance_id())
         cmds.menuItem(label="Server Info", command=lambda *_: _show_server_info())
-        cmds.menuItem(divider=True)
-        cmds.menuItem(label="Restart MCP Server", command=lambda *_: _restart_deferred())
-        cmds.menuItem(label="Stop MCP Server", command=lambda *_: _stop_blocking())
         cmds.menuItem(divider=True)
         cmds.menuItem(label="Enable/Disable Hot Reload", command=lambda *_: _toggle_hot_reload())
         cmds.menuItem(divider=True)

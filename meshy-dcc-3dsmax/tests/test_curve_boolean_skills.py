@@ -440,11 +440,11 @@ class FakeRuntime:
         return shape.splines[spline_index - 1].closed
 
     @staticmethod
-    def closeSpline(shape, spline_index):  # noqa: N802 - mirrors pymxs runtime naming.
+    def close(shape, spline_index):  # noqa: N802 - mirrors pymxs runtime naming.
         shape.splines[spline_index - 1].closed = True
 
     @staticmethod
-    def openSpline(shape, spline_index):  # noqa: N802 - mirrors pymxs runtime naming.
+    def open(shape, spline_index):  # noqa: N802 - mirrors pymxs runtime naming.
         shape.splines[spline_index - 1].closed = False
 
     @staticmethod
@@ -2370,3 +2370,161 @@ def test_boolean_operation_row_is_in_the_destructive_undo_table():
 
     assert "`3dsmax-mesh-ops__boolean_operation`" in destructive
     assert "`3dsmax-mesh-ops__boolean_operation`" not in non_destructive
+
+
+# ── native close/open and rollback of an existing shape ────────────────
+
+
+def test_draw_spline_verifies_native_close(monkeypatch):
+    runtime = _install(monkeypatch, FakeRuntime())
+    module = _load(MODELING_DIR, "action_draw_spline.py")
+    result = module.main(points=[[0, 0, 0], [10, 0, 0], [0, 10, 0]], closed=True)
+    assert result["success"] is True, result
+    assert runtime.nodes[0].splines[0].closed is True
+
+
+def test_draw_spline_rolls_back_when_native_close_is_ignored(monkeypatch):
+    runtime = _install(monkeypatch, FakeRuntime())
+    monkeypatch.setattr(runtime, "close", lambda shape, index: None)
+    module = _load(MODELING_DIR, "action_draw_spline.py")
+    result = module.main(points=[[0, 0, 0], [10, 0, 0], [0, 10, 0]], closed=True)
+    assert result["success"] is False
+    assert result["data"]["mismatches"] == [{"field": "closed", "expected": True, "actual": False}]
+    assert result["data"]["rolled_back"] is True
+    assert runtime.nodes == []
+
+
+def test_draw_spline_reports_a_runtime_without_native_close(monkeypatch):
+    runtime = _install(monkeypatch, FakeRuntime())
+    monkeypatch.setattr(runtime, "close", None)
+    module = _load(MODELING_DIR, "action_draw_spline.py")
+    result = module.main(points=[[0, 0, 0], [10, 0, 0], [0, 10, 0]], closed=True)
+    assert result["success"] is False
+    assert "does not expose close" in result["message"]
+    assert result["data"]["rolled_back"] is True
+
+
+@pytest.mark.parametrize("mode, spline_index", [("append", 1), ("append", 2), ("replace", 1)])
+def test_draw_spline_restores_the_existing_shape_when_the_write_fails(monkeypatch, mode, spline_index):
+    runtime = _install(monkeypatch, FakeRuntime())
+    draw = _load(MODELING_DIR, "action_draw_spline.py")
+    inspect = _load(MODELING_DIR, "action_inspect_curve.py")
+    assert draw.main(points=[[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]], name="shape_a")["success"] is True
+    before = inspect.main(node_name="shape_a")
+    original_knots = [knot["position"] for knot in before["data"]["splines"][0]["knots"]]
+
+    # close() is ignored, so the closed readback fails after the splines were
+    # already changed.
+    monkeypatch.setattr(runtime, "close", lambda shape, index: None)
+    result = draw.main(
+        points=[[20.0, 0.0, 0.0], [30.0, 0.0, 0.0]],
+        mode=mode,
+        node_name="shape_a",
+        spline_index=spline_index,
+        closed=True,
+    )
+
+    assert result["success"] is False
+    assert result["data"]["rolled_back"] is True
+    after = inspect.main(node_name="shape_a")
+    assert after["data"]["spline_count"] == 1
+    assert [knot["position"] for knot in after["data"]["splines"][0]["knots"]] == original_knots
+    assert after["data"]["splines"][0]["closed"] is False
+
+
+def test_draw_spline_restores_the_existing_shape_when_close_raises(monkeypatch):
+    runtime = _install(monkeypatch, FakeRuntime())
+    draw = _load(MODELING_DIR, "action_draw_spline.py")
+    inspect = _load(MODELING_DIR, "action_inspect_curve.py")
+    draw.main(points=[[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]], name="shape_a")
+    original_knots = [
+        knot["position"] for knot in inspect.main(node_name="shape_a")["data"]["splines"][0]["knots"]
+    ]
+
+    def exploding_close(shape, index):
+        shape.splines[index - 1].closed = True  # a partial write, then the host raises
+        raise RuntimeError("close failed after write")
+
+    monkeypatch.setattr(runtime, "close", exploding_close)
+    result = draw.main(
+        points=[[20.0, 0.0, 0.0], [30.0, 0.0, 0.0]], mode="append", node_name="shape_a", closed=True
+    )
+
+    assert result["success"] is False
+    assert result["data"]["rolled_back"] is True
+    after = inspect.main(node_name="shape_a")
+    assert after["data"]["spline_count"] == 1
+    assert [knot["position"] for knot in after["data"]["splines"][0]["knots"]] == original_knots
+    assert after["data"]["splines"][0]["closed"] is False
+
+
+def test_draw_spline_rollback_restores_the_original_name(monkeypatch):
+    runtime = _install(monkeypatch, FakeRuntime())
+    draw = _load(MODELING_DIR, "action_draw_spline.py")
+    draw.main(points=[[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]], name="original_name")
+    shape = runtime.getNodeByName("original_name")
+    assert shape is not None
+
+    monkeypatch.setattr(runtime, "close", lambda s, i: None)
+    result = draw.main(
+        points=[[20.0, 0.0, 0.0], [30.0, 0.0, 0.0]],
+        mode="append",
+        node_name="original_name",
+        name="renamed_shape",
+        closed=True,
+    )
+
+    assert result["success"] is False
+    assert result["data"]["rolled_back"] is True
+    assert runtime.getNodeByName("original_name") is shape
+    assert runtime.getNodeByName("renamed_shape") is None
+
+
+def _curved_shape_with_handles(runtime, name="curve_a"):
+    shape = runtime.SplineShape()
+    shape.name = name
+    runtime.addNewSpline(shape)
+    points = [
+        ((0.0, 0.0, 0.0), (-3.0, -1.0, 0.0), (3.0, 1.0, 0.0)),
+        ((10.0, 5.0, 0.0), (-2.0, -4.0, 0.0), (2.0, 4.0, 0.0)),
+    ]
+    for index, (pos, in_vec, out_vec) in enumerate(points, start=1):
+        runtime.addKnot(shape, 1, "bezier", "curve", runtime.Point3(*pos))
+        runtime.setInVec(shape, 1, index, runtime.Point3(*in_vec))
+        runtime.setOutVec(shape, 1, index, runtime.Point3(*out_vec))
+    return shape
+
+
+def test_draw_spline_rollback_rebuilds_curved_segments_and_handles(monkeypatch):
+    runtime = _install(monkeypatch, FakeRuntime())
+    _curved_shape_with_handles(runtime)
+    draw = _load(MODELING_DIR, "action_draw_spline.py")
+    segments = []
+    original_add_knot = runtime.addKnot
+
+    def spy(shape, spline_index, knot_type, segment_type, point):
+        segments.append(segment_type)
+        return original_add_knot(shape, spline_index, knot_type, segment_type, point)
+
+    monkeypatch.setattr(runtime, "addKnot", spy)
+    # Fail while mapping points, so only the rollback rebuilds knots.
+    monkeypatch.setattr(draw, "world_to_object", lambda rt, node, point: (None, "injected failure"))
+
+    result = draw.main(points=[[20.0, 0.0, 0.0], [30.0, 0.0, 0.0]], mode="append", node_name="curve_a")
+
+    assert result["success"] is False
+    assert result["data"]["rolled_back"] is True
+    assert "curve" in segments
+
+
+def test_draw_spline_rollback_is_not_verified_when_the_host_drops_handle_writes(monkeypatch):
+    runtime = _install(monkeypatch, FakeRuntime())
+    _curved_shape_with_handles(runtime)
+    draw = _load(MODELING_DIR, "action_draw_spline.py")
+    monkeypatch.setattr(draw, "world_to_object", lambda rt, node, point: (None, "injected failure"))
+    monkeypatch.setattr(runtime, "setInVec", lambda *args: None)
+
+    result = draw.main(points=[[20.0, 0.0, 0.0], [30.0, 0.0, 0.0]], mode="append", node_name="curve_a")
+
+    assert result["success"] is False
+    assert result["data"]["rolled_back"] is False

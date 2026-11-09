@@ -39,6 +39,8 @@ from meshy_dcc_core.adapter_contracts import (
 )
 from meshy_dcc_core.skill import skill_error, skill_exception, skill_success
 
+from meshy_dcc_maya._code_policy import arbitrary_script_refusal
+
 ENV_DEV_ROOTS = "MESHY_DCC_MAYA_DEV_ROOTS"
 ENV_DEBUGPY_LOG_DIR = "MESHY_DCC_MAYA_DEBUGPY_LOG_DIR"
 ENV_DEV_ARTIFACT_DIR = "MESHY_DCC_MAYA_DEV_ARTIFACT_DIR"
@@ -289,6 +291,10 @@ def reload_modules(
 ) -> Dict[str, Any]:
     """Reload or purge modules that belong to an attached project."""
 
+    refusal = arbitrary_script_refusal("reload_modules")
+    if refusal is not None:
+        return refusal
+
     project, error = _get_project(project_name)
     if error is not None:
         return error
@@ -464,6 +470,10 @@ def run_entrypoint(
 ) -> Dict[str, Any]:
     """Run a Python callable from an attached project inside Maya."""
 
+    refusal = arbitrary_script_refusal("run_entrypoint")
+    if refusal is not None:
+        return refusal
+
     project, error = _get_project(project_name)
     if error is not None:
         return error
@@ -534,6 +544,10 @@ def run_script(
     chdir_project: bool = True,
 ) -> Dict[str, Any]:
     """Run a Python script file below the attached project root."""
+
+    refusal = arbitrary_script_refusal("run_script")
+    if refusal is not None:
+        return refusal
 
     project, error = _get_project(project_name)
     if error is not None:
@@ -963,6 +977,10 @@ def start_debugpy(
     path_mappings: Any = None,
 ) -> Dict[str, Any]:
     """Start debugpy in the Maya process so an IDE can attach."""
+
+    refusal = arbitrary_script_refusal("start_debugpy")
+    if refusal is not None:
+        return refusal
 
     host = str(host or "127.0.0.1")
     port = int(port or 5678)
@@ -2044,6 +2062,10 @@ def run_check(
     event_correlation_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Reload project code, run an entrypoint, and optionally capture Maya UI."""
+
+    refusal = arbitrary_script_refusal("run_check")
+    if refusal is not None:
+        return refusal
 
     run_result = run_entrypoint(
         target=target,

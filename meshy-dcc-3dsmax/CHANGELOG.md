@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Native values are no longer mistaken for methods. Every pymxs value is
+  callable, so `set_object_property` and `scene_patch` refused to write a
+  property whose value is a Point3 or a Name ("Refusing to overwrite a
+  method"), and `get_object_properties` reported such a property as not
+  readable. Only real functions are treated as methods now. The unit names in
+  `get_scene_info`, `get_scene_metadata` and the context snapshot are read the
+  same way as in the scene status instead of being called.
+- Spline tools close and open splines with 3ds Max's own `close` and `open`.
+  `draw_spline`, `curve_model`, `edit_curve` and the spline helper called
+  `closeSpline` and `openSpline`, which 3ds Max does not have, so closing a
+  spline failed. `draw_spline` in append or replace mode now puts the original
+  shape back (knots, tangent handles, closed flag and name) when drawing fails,
+  and reports `rolled_back` only after reading the restored shape back.
+- `set_timeline_settings` sets the frame rate before the range, because 3ds Max
+  keeps the range in ticks and a range set first lands on other frames once the
+  rate changes. It reads the timeline back, fails when the host did not keep the
+  values, and puts the original settings back (`restored` says whether they read
+  back). A frame rate that is zero, negative or not finite is rejected.
+- New tool `3dsmax-scene__set_scene_units` sets the system unit type and scale
+  before modeling. It only works on an empty scene, does not rescale anything
+  or touch the display units, reads the values back, and puts the original
+  units back (reporting `rollback_verified`) when a write fails or does not
+  stick.
+- `create_camera` checks the lens it was asked for. A Physical camera is built
+  with 3ds Max's own `Physical` class and its focal length is read back through
+  the native getter; a target or free camera has no millimetre lens, so the
+  millimetres are converted to a field of view with the scene's render aperture
+  width (never an assumed 36 mm) and read back as that. A `focal_length` that is
+  not a positive number, or an aperture the host cannot report, is refused
+  before any node is created, and a lens that does not read back removes the
+  camera and target the call created (`rolled_back`). `list_cameras` reports the
+  same millimetre value.
+- `create_object` verifies the final position after rotation and scale (a world
+  rotation can move the node, so the position is applied last) and deletes the
+  node it created when naming, rotation, scale or placement fails, so retrying
+  no longer leaves orphan nodes. The result reports `rolled_back`.
+- Arnold lights are bound to MAXtoA's own controls. The shape table was
+  numbered 0 to 3, but MAXtoA numbers its light shapes sphere 0, distant 1,
+  spot 2, quad 3, disk 4, cylinder 5, skydome 6, photometric 7, mesh 8, so a
+  `quad` request wrote a sphere. The light is built with `Arnold_Light`, and the
+  shape, quad size and radius go through `shapeType`, `quadX`/`quadY` and
+  `lightRadius`; `list_lights` reads `on` before `enabled`.
+- The Meshy DCC menu no longer has a Stop Server item. A server stopped from
+  the menu left the instance dead for the rest of the session and made the
+  gateway drop it mid-task. The server stops when 3ds Max closes or the
+  connector is uninstalled. Start Server stays in the menu to bring the server
+  back if the startup script could not start it.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

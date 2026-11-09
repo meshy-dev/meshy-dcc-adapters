@@ -1,10 +1,11 @@
-"""Bake lighting or texture to a UV map."""
+"""Sample unlit material base color into a UV texture."""
 
 # Import future modules
 from __future__ import annotations
 
 # Import built-in modules
 import logging
+import os
 from typing import List
 
 # Import local modules
@@ -15,6 +16,30 @@ from meshy_dcc_maya.api import batch_validate_nodes
 logger = logging.getLogger(__name__)
 
 
+def _diffuse_source(cmds, obj):
+    shapes = (
+        [obj]
+        if cmds.nodeType(obj) == "mesh"
+        else cmds.listRelatives(obj, shapes=True, noIntermediate=True, fullPath=True, type="mesh") or []
+    )
+    if len(shapes) != 1:
+        raise ValueError("Expected one mesh shape for '{}'".format(obj))
+    groups = sorted(set(cmds.listConnections(shapes[0], source=False, destination=True, type="shadingEngine") or []))
+    if len(groups) != 1:
+        raise ValueError("Expected one shading group for '{}'".format(obj))
+    materials = cmds.listConnections(groups[0] + ".surfaceShader", source=True, destination=False) or []
+    if len(materials) != 1:
+        raise ValueError("Expected one surface material for '{}'".format(obj))
+    for attr in ("baseColor", "color"):
+        if cmds.attributeQuery(attr, node=materials[0], exists=True):
+            plug = materials[0] + "." + attr
+            sources = cmds.listConnections(plug, source=True, destination=False, plugs=True) or []
+            if len(sources) > 1:
+                raise ValueError("Ambiguous diffuse input for '{}'".format(obj))
+            return sources[0] if sources else plug
+    raise ValueError("Material has no baseColor/color attribute for '{}'".format(obj))
+
+
 def bake_textures(
     objects: List[str],
     file_path: str,
@@ -23,29 +48,29 @@ def bake_textures(
     renderer: str = "arnold",
     overscan: int = 3,
 ) -> dict:
-    """Bake lighting or texture to a UV map.
+    """Sample unlit material base color into UV textures using convertSolidTx.
 
     Args:
         objects: List of mesh objects to bake.
         file_path: Output texture file path (without extension).
         resolution: Output texture resolution in pixels.  Default: 512.
-        bake_type: Bake type — ``"diffuse"``, ``"full_render"``,
-            ``"normals"``, ``"ao"``.  Default: ``"diffuse"``.
-        renderer: Renderer to use for baking. Maya 2017 and later use
-            Arnold; the removed mentalRay renderer is rejected. Default:
-            ``"arnold"``.
-        overscan: Anti-alias overscan in pixels.  Default: 3.
+        bake_type: Only ``"diffuse"`` is supported: unlit baseColor/color
+            network sampling, not an Arnold diffuse lighting pass or RTT.
+        renderer: Legacy renderer selection, restored afterwards. ``"arnold"``
+            is accepted for compatibility; the backend remains convertSolidTx.
+        overscan: Retained for call compatibility; unused by convertSolidTx.
 
     Returns:
-        ToolResult dict with ``context.baked_objects`` and
-        ``context.file_path``.
+        Success only if every object produced non-empty files. Failures retain
+        verified ``baked_files`` and per-object errors; ``partial`` marks retained
+        outputs. Renderer and selection are restored before returning.
     """
 
-    valid_types = ("diffuse", "full_render", "normals", "ao")
+    valid_types = ("diffuse",)
     if bake_type not in valid_types:
         return skill_error(
-            "Invalid bake_type: {}".format(bake_type),
-            "Use one of: {}".format(", ".join(valid_types)),
+            "Unsupported bake_type: {}".format(bake_type),
+            "Only unlit diffuse/base-color UV sampling is supported; Arnold RTT, normals and AO are not implemented.",
         )
 
     valid_renderers = ("arnold",)
@@ -55,6 +80,8 @@ def bake_textures(
             "Use one of: {}".format(", ".join(valid_renderers)),
         )
 
+    if isinstance(objects, str):
+        objects = [objects]
     if not objects:
         return skill_error("No objects specified for baking", "objects list must not be empty")
 
@@ -66,64 +93,99 @@ def bake_textures(
 
     try:
         import maya.cmds as cmds  # noqa: PLC0415
+    except ImportError:
+        return skill_error("Maya not available", "maya.cmds could not be imported")
 
+    context = {}
+    try:
         err = batch_validate_nodes(cmds, list(objects))
         if err:
             return err
 
         renderer_attr = "defaultRenderGlobals.currentRenderer"
-        cmds.setAttr(renderer_attr, renderer, type="string")
-        active_renderer = cmds.getAttr(renderer_attr)
-        if active_renderer != renderer:
-            return skill_error(
-                "Could not activate renderer: {}".format(renderer),
-                "Maya reports the active renderer as {!r}.".format(active_renderer),
-            )
-
-        bake_type_map = {
-            "diffuse": "diffuse",
-            "full_render": "fullRender",
-            "normals": "normals",
-            "ao": "occlusion",
-        }
-        internal_type = bake_type_map[bake_type]
-
-        # Use Maya's convertSolidTx / bakeTextures for flexibility
-        cmds.select(objects, replace=True)
-        baked_files = []
-        for obj in objects:
-            out_path = "{}_{}".format(file_path, obj.replace("|", "_").replace(":", "_"))
-            try:
-                cmds.convertSolidTx(
-                    obj,
-                    fileImageName=out_path,
-                    resolutionX=resolution,
-                    resolutionY=resolution,
-                    antiAlias=True,
-                    bm=0,  # blend mode: normal
-                    fts=True,  # fill texture seams
-                    sp=False,  # do not show progress
-                    backgroundMode=0,
-                    renderSampler=internal_type,
+        original_renderer = cmds.getAttr(renderer_attr)
+        original_selection = cmds.ls(selection=True, long=True) or []
+        try:
+            cmds.setAttr(renderer_attr, renderer, type="string")
+            active_renderer = cmds.getAttr(renderer_attr)
+            if active_renderer != renderer:
+                return skill_error(
+                    "Could not activate renderer: {}".format(renderer),
+                    "Maya reports the active renderer as {!r}.".format(active_renderer),
                 )
-                baked_files.append(out_path)
-            except Exception as bake_exc:
-                logger.warning("Bake skipped for '%s': %s", obj, bake_exc)
 
-        return skill_success(
-            "Baked {} object(s) to '{}'".format(len(baked_files), file_path),
-            objects=objects,
-            baked_count=len(baked_files),
-            file_path=file_path,
-            resolution=resolution,
-            bake_type=bake_type,
-            renderer=renderer,
-            prompt="Check the result with list_texture_bake or use related actions to continue.",
-        )
-    except ImportError:
-        return skill_error("Maya not available", "maya.cmds could not be imported")
+            os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+            cmds.select(objects, replace=True)
+            baked_files = []
+            baked_objects = []
+            failed_objects = []
+            for obj in objects:
+                out_path = "{}_{}.iff".format(file_path, obj.replace("|", "_").replace(":", "_"))
+                try:
+                    file_nodes = cmds.convertSolidTx(
+                        _diffuse_source(cmds, obj),
+                        obj,
+                        fileImageName=out_path,
+                        fileFormat="iff",
+                        resolutionX=resolution,
+                        resolutionY=resolution,
+                        antiAlias=True,
+                        fillTextureSeams=True,
+                        samplePlane=False,
+                        backgroundMode="extend",
+                    )
+                    if isinstance(file_nodes, str):
+                        file_nodes = [file_nodes]
+                    if not file_nodes:
+                        raise ValueError("Conversion returned no file texture nodes")
+                    for node in file_nodes:
+                        output = cmds.getAttr("{}.fileTextureName".format(node))
+                        if not output:
+                            raise ValueError("Conversion returned an empty texture path")
+                        if not os.path.isabs(output):
+                            output = cmds.workspace(expandName=output)
+                        if not os.path.isfile(output) or os.path.getsize(output) == 0:
+                            raise ValueError("Missing or empty baked texture: {}".format(output))
+                        baked_files.append(output)
+                    baked_objects.append(obj)
+                except Exception as bake_exc:
+                    logger.warning("Bake skipped for '%s': %s", obj, bake_exc)
+                    failed_objects.append({"object": obj, "error": str(bake_exc)})
+
+            context = {
+                "objects": objects,
+                "baked_count": len(baked_objects),
+                "baked_objects": baked_objects,
+                "baked_files": baked_files,
+                "failed_objects": failed_objects,
+                "partial": bool(failed_objects and baked_files),
+                "file_path": file_path,
+                "resolution": resolution,
+                "bake_type": bake_type,
+                "renderer": renderer,
+                "backend": "maya.convertSolidTx",
+            }
+            if failed_objects:
+                return skill_error(
+                    "Baking failed for {} of {} object(s)".format(len(failed_objects), len(objects)),
+                    "Inspect failed_objects before retrying; successful outputs are retained.",
+                    **context,
+                )
+            return skill_success(
+                "Baked {} object(s) to '{}'".format(len(baked_objects), file_path),
+                prompt="Use baked_files to inspect or publish the generated textures.",
+                **context,
+            )
+        finally:
+            try:
+                cmds.setAttr(renderer_attr, original_renderer, type="string")
+            finally:
+                if original_selection:
+                    cmds.select(original_selection, replace=True)
+                else:
+                    cmds.select(clear=True)
     except Exception as exc:
-        return skill_exception(exc, message="Failed to bake textures")
+        return skill_exception(exc, message="Failed to bake textures", **context)
 
 
 @skill_entry

@@ -1080,13 +1080,22 @@ class TestMenuIntegration:
         assert 'menuMan.findMenu "Meshy DCC"' in script
         assert "MeshyDcc3dsmax_StartSidecar" in script
         assert "meshy_dcc_3dsmax.main()" in script
-        assert "MeshyDcc3dsmax_StopSidecar" in script
         assert "MeshyDcc3dsmax_CopyInstanceId" in script
         assert "meshy_dcc_3dsmax.copy_instance_id()" in script
         assert "MeshyDcc3dsmax_OpenAdmin" in script
         assert "http://127.0.0.1:19765/admin?panel=instances" in script
         assert "MeshyDcc3dsmax_AboutMeshyDcc" in script
         assert "meshy_dcc_3dsmax.about_meshy_dcc()" in script
+
+    def test_menu_has_no_stop_item(self):
+        """Stopping the server from the menu is gone; Start stays as the recovery path."""
+        from meshy_dcc_3dsmax.menu import _menu_script_2025, _menu_script_legacy
+
+        for script in (_menu_script_legacy(), _menu_script_2025()):
+            assert "MeshyDcc3dsmax_StopSidecar" not in script
+            assert "Stop Server" not in script
+            assert "stop_sidecar_bridge" not in script
+            assert "MeshyDcc3dsmax_StartSidecar" in script
 
     def test_public_print_status_matches_menu_macro(self):
         """The persisted Print Status macro calls the package-level public API."""

@@ -435,3 +435,30 @@ def test_scene_status_reads_unit_names_that_pymxs_reports_as_callable():
 
     assert status["system_units"] == "inches"
     assert status["display_units"] == "generic"
+
+
+class _NativeName(str):
+    """A pymxs name: callable, but it must never be called."""
+
+    def __call__(self):
+        raise AssertionError("native names must never be invoked")
+
+
+def test_native_unit_names_are_serialized_by_every_reader_without_being_called():
+    import importlib.util
+
+    from meshy_dcc_3dsmax._scene_lifecycle import _string_value
+    from meshy_dcc_3dsmax.context_snapshot import _safe_units
+
+    assert _string_value(_NativeName("#inches")) == "inches"
+    assert _string_value(lambda: _NativeName("#centimeters")) == "centimeters"
+
+    runtime = types.SimpleNamespace(units=types.SimpleNamespace(SystemType=_NativeName("#inches")))
+    assert _safe_units(runtime) == "inches"
+
+    root = Path(__file__).resolve().parents[1] / "src" / "meshy_dcc_3dsmax" / "skills" / "3dsmax-scene"
+    for filename in ("action_get_scene_info.py", "action_get_scene_metadata.py"):
+        spec = importlib.util.spec_from_file_location("units_reader_" + filename[:-3], str(root / filename))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        assert module._normalize_unit(_NativeName("#Inches")) == "inches"

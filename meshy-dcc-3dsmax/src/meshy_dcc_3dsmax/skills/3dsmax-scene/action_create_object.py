@@ -5,11 +5,23 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, Optional, Tuple
 
+from meshy_dcc_3dsmax._curve_utils import delete_node
 from meshy_dcc_3dsmax._env import ENV_DISABLE_ARBITRARY_SCRIPT, resolve_arbitrary_script_disabled
-from meshy_dcc_3dsmax._scene_utils import node_bounding_box, point3_to_list, serialize_property_value
+from meshy_dcc_3dsmax._scene_utils import node_bounding_box, point3_to_list, serialize_property_value, vector_equal
 from meshy_dcc_3dsmax.api import get_runtime, with_max
 
 IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _fail_created(runtime: Any, node: Any, message: str, **data: Any) -> Dict[str, Any]:
+    """Delete a node this call created and report whether the rollback verified.
+
+    Every failure after ``factory(**kwargs)`` has produced a node must take the
+    node back out of the scene; otherwise retrying the request keeps creating
+    orphan nodes. The verified ``rolled_back`` flag is reported to the caller.
+    """
+    data["rolled_back"] = delete_node(runtime, node)
+    return {"success": False, "message": message, "data": data}
 
 # Layer 1: defense in depth. Runtime symbols that must never be reachable
 # through object creation, even if the class check below is ever bypassed.
@@ -199,67 +211,67 @@ def main(
 
     node_name = getattr(node, "name", None)
     if node_name is None:
-        return {
-            "success": False,
-            "message": "Creation did not return a scene node",
-            "data": {"object_type": class_name, "returned_type": type(node).__name__},
-        }
+        return _fail_created(
+            rt, node, "Creation did not return a scene node",
+            object_type=class_name, returned_type=type(node).__name__,
+        )
 
     if name:
         try:
             node.name = str(name)
         except Exception as exc:  # noqa: BLE001
-            return {
-                "success": False,
-                "message": "Object was created but could not be named",
-                "data": {
-                    "object_type": class_name,
-                    "requested_name": str(name),
-                    "error": "{}: {}".format(type(exc).__name__, exc),
-                },
-            }
+            return _fail_created(
+                rt, node, "Object was created but could not be named",
+                object_type=class_name,
+                requested_name=str(name),
+                error="{}: {}".format(type(exc).__name__, exc),
+            )
         if str(getattr(node, "name", "")) != str(name):
-            return {
-                "success": False,
-                "message": "Object name was not applied",
-                "data": {
-                    "object_type": class_name,
-                    "requested_name": str(name),
-                    "readback": str(getattr(node, "name", "")),
-                },
-            }
+            return _fail_created(
+                rt, node, "Object name was not applied",
+                object_type=class_name,
+                requested_name=str(name),
+                readback=str(getattr(node, "name", "")),
+            )
 
-    placement: Dict[str, Any] = {}
-    if position is not None:
-        try:
-            node.pos = rt.Point3(*[float(item) for item in position])
-            placement["position"] = point3_to_list(node.pos)
-        except Exception as exc:  # noqa: BLE001
-            return {
-                "success": False,
-                "message": "Object was created but position was rejected",
-                "data": {"object_type": class_name, "error": str(exc), "requested": position},
-            }
     if rotation is not None:
         try:
             node.rotation = rt.EulerAngles(*[float(item) for item in rotation])
-            placement["rotation"] = point3_to_list(node.rotation)
         except Exception as exc:  # noqa: BLE001
-            return {
-                "success": False,
-                "message": "Object was created but rotation was rejected",
-                "data": {"object_type": class_name, "error": str(exc), "requested": rotation},
-            }
+            return _fail_created(
+                rt, node, "Object was created but rotation was rejected",
+                object_type=class_name, error=str(exc), requested=rotation,
+            )
     if scale is not None:
         try:
             node.scale = rt.Point3(*[float(item) for item in scale])
-            placement["scale"] = point3_to_list(node.scale)
         except Exception as exc:  # noqa: BLE001
-            return {
-                "success": False,
-                "message": "Object was created but scale was rejected",
-                "data": {"object_type": class_name, "error": str(exc), "requested": scale},
-            }
+            return _fail_created(
+                rt, node, "Object was created but scale was rejected",
+                object_type=class_name, error=str(exc), requested=scale,
+            )
+
+    # World rotation/scale can orbit a node, so apply its requested position last.
+    if position is not None:
+        try:
+            node.pos = rt.Point3(*[float(item) for item in position])
+        except Exception as exc:  # noqa: BLE001
+            return _fail_created(
+                rt, node, "Object was created but position was rejected",
+                object_type=class_name, error=str(exc), requested=position,
+            )
+    if position is not None and not vector_equal(getattr(node, "pos", None), position):
+        # The node already exists; leaving it behind would make every retry add
+        # yet another orphan. Delete it and report whether the rollback verified.
+        return _fail_created(
+            rt, node, "Object placement did not verify",
+            object_type=class_name,
+            requested=position,
+            readback=point3_to_list(getattr(node, "pos", None)),
+        )
+    rotation_value = getattr(node, "rotation", None)
+    if hasattr(rotation_value, "w"):
+        rotation_value = rt.quatToEuler(rotation_value)
 
     identity: Dict[str, Any] = {
         "node_name": str(getattr(node, "name", "")),
@@ -273,13 +285,12 @@ def main(
         "params": {key: serialize_property_value(item) for key, item in kwargs.items()},
         "placement": {
             "position": point3_to_list(getattr(node, "pos", None)),
-            "rotation": point3_to_list(getattr(node, "rotation", None)),
+            "rotation": point3_to_list(rotation_value),
             "scale": point3_to_list(getattr(node, "scale", None)),
         },
         "bounding_box": node_bounding_box(node),
         "creatable_class_evidence": evidence,
     }
-    data["placement"].update(placement)
 
     return {
         "success": True,

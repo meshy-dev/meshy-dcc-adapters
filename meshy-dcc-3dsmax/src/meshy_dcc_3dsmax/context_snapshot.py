@@ -23,6 +23,8 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
+from meshy_dcc_3dsmax._scene_lifecycle import _string_value
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -243,9 +245,8 @@ def _safe_node_count(rt: Any) -> Optional[int]:
 def _safe_units(rt: Any) -> Optional[str]:
     """Return the system unit type, or ``None`` when unavailable.
 
-    MAXScript ``units.SystemType`` may be a callable (newer builds) or a
-    plain name literal such as ``#inches``.  We handle both and strip the
-    ``#`` prefix so callers always see a clean lowercase string.
+    Native Name values advertise callability without being functions, so they
+    are serialized as they are; only a real function is called.
     """
     units = _safe_attr(rt, "units")
     if units is None:
@@ -254,15 +255,11 @@ def _safe_units(rt: Any) -> Optional[str]:
     if system_type is None:
         return None
     try:
-        if callable(system_type):
-            raw = str(system_type())
-        else:
-            raw = str(system_type)
+        normalized = _string_value(system_type).lower()
     except Exception as exc:  # noqa: BLE001
         logger.debug("MaxContextSnapshot: units.SystemType() failed: %s", exc)
         return None
-    normalized = raw.lstrip("#").strip().lower()
-    return normalized or None
+    return None if normalized == "unknown" else normalized
 
 
 def _safe_version() -> Optional[str]:

@@ -46,18 +46,22 @@ def _resolve_camera(cmds, camera: Optional[str]) -> Tuple[Optional[str], Optiona
     if camera:
         if not cmds.objExists(camera):
             return None, None, "missing"
+        matches = cmds.ls(camera, long=True) or []
+        if len(matches) != 1:
+            return None, None, "ambiguous"
+        camera = matches[0]
         node_type = cmds.nodeType(camera)
         if node_type == "camera":
-            parents = cmds.listRelatives(camera, parent=True, fullPath=False) or []
+            parents = cmds.listRelatives(camera, parent=True, fullPath=True) or []
             return (_first_scalar(parents) or camera), camera, "explicit_shape"
-        shapes = cmds.listRelatives(camera, shapes=True, type="camera", fullPath=False) or []
+        shapes = cmds.listRelatives(camera, shapes=True, type="camera", fullPath=True) or []
         return camera, _first_scalar(shapes), "explicit_transform"
 
-    renderable_shapes = cmds.ls(type="camera") or []
+    renderable_shapes = cmds.ls(type="camera", long=True) or []
     for shape in renderable_shapes:
         try:
             if cmds.getAttr("{}.renderable".format(shape)):
-                parents = cmds.listRelatives(shape, parent=True, fullPath=False) or []
+                parents = cmds.listRelatives(shape, parent=True, fullPath=True) or []
                 parent = _first_scalar(parents)
                 if parent:
                     return parent, shape, "renderable_camera"
@@ -65,7 +69,7 @@ def _resolve_camera(cmds, camera: Optional[str]) -> Tuple[Optional[str], Optiona
             continue
 
     if cmds.objExists("persp"):
-        shapes = cmds.listRelatives("persp", shapes=True, type="camera", fullPath=False) or []
+        shapes = cmds.listRelatives("persp", shapes=True, type="camera", fullPath=True) or []
         return "persp", _first_scalar(shapes), "fallback_persp"
     return None, None, "none"
 
@@ -193,11 +197,35 @@ def render_frame(
 
         target_dir = output_dir or _workspace_render_dir(cmds)
         os.makedirs(target_dir, exist_ok=True)
-        prefix = os.path.join(target_dir, _safe_output_name(output_name))
+        prefix = os.path.join(target_dir, _safe_output_name(output_name)).replace(os.sep, "/")
         started_at = time.time()
         render_result = None
+        camera_renderable = "{}.renderable".format(camera_shape) if camera_shape else None
+        camera_shapes = list(cmds.ls(type="camera", long=True) or [])
+        if camera_shape and camera_shape not in camera_shapes:
+            camera_shapes.append(camera_shape)
+        changed_cameras = []
 
         try:
+            # Multiple renderable cameras add output subfolders even for an explicit camera.
+            for shape in camera_shapes:
+                attr = "{}.renderable".format(shape)
+                previous = _get_attr_or_none(cmds, attr)
+                enabled = attr == camera_renderable
+                if previous is not None and bool(previous) != enabled:
+                    try:
+                        cmds.setAttr(attr, enabled)
+                    except Exception as exc:
+                        # Continuing with another renderable camera can corrupt the output path.
+                        return skill_error(
+                            "Could not isolate the selected render camera",
+                            str(exc),
+                            error_code="CAMERA_RENDERABLE_UPDATE_FAILED",
+                            camera=camera_name,
+                            blocked_attribute=attr,
+                            possible_solutions=["Make camera renderability writable before rendering."],
+                        )
+                    changed_cameras.append((attr, previous))
             cmds.currentTime(target_frame)
             cmds.setAttr("defaultResolution.width", target_width)
             cmds.setAttr("defaultResolution.height", target_height)
@@ -249,6 +277,14 @@ def render_frame(
                 cmds.currentTime(previous_frame)
             except Exception:
                 pass
+            restore_error = None
+            for attr, previous in reversed(changed_cameras):
+                try:
+                    cmds.setAttr(attr, previous)
+                except Exception as exc:
+                    restore_error = exc
+            if restore_error is not None:
+                raise restore_error
 
         candidates = _candidate_paths(prefix, target_dir, render_result)
         output_path, empty_paths = _pick_nonempty_output(candidates, started_at)
@@ -284,6 +320,12 @@ def render_frame(
             "output_prefix": prefix,
             "image_base64": image_base64,
         }
+        # This is a configured preference, not proof of a transform applied to output pixels.
+        try:
+            context["view_transform"] = cmds.colorManagementPrefs(query=True, viewTransformName=True)
+        except Exception as exc:
+            context["view_transform"] = None
+            context["color_management_error"] = str(exc)
         if render_result is not None:
             context["render_result"] = render_result
         return skill_success(

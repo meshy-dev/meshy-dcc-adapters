@@ -217,3 +217,63 @@ def test_interpolation_and_delete_update_native_controller_keys(monkeypatch):
     assert all(key.in_tangent == key.out_tangent == "linear" for component in components.values() for key in keys)
     assert deleted["data"]["changes"][0]["native_changed_key_count"] == 6
     assert all(not component.keys for component in components.values())
+
+
+def test_timeline_changes_fps_before_constructing_native_tick_interval(monkeypatch):
+    runtime = _install_fake_pymxs(monkeypatch)
+    rates = []
+
+    def interval(start, end):
+        rates.append(runtime.frameRate)
+        return types.SimpleNamespace(start=start, end=end)
+
+    runtime.Interval = interval
+    result = _load_action("action_set_timeline_settings.py").main(start_frame=1, end_frame=144, frame_rate=24)
+    assert result["success"] is True, result
+    assert rates == [24]
+    assert result["data"]["settings"]["frame_end"] == 144
+
+
+def test_timeline_refuses_success_when_host_ignores_fps(monkeypatch):
+    runtime = _install_fake_pymxs(monkeypatch)
+    monkeypatch.setattr(type(runtime), "frameRate", property(lambda self: 30, lambda self, value: None), raising=False)
+    result = _load_action("action_set_timeline_settings.py").main(start_frame=1, end_frame=144, frame_rate=24)
+    assert result["success"] is False
+    assert result["data"]["settings"]["frame_rate"] == 30
+
+
+def test_timeline_puts_the_original_settings_back_when_verification_fails(monkeypatch):
+    runtime = _install_fake_pymxs(monkeypatch)
+    calls = []
+
+    def interval(start, end):
+        calls.append((start, end))
+        # The host moves the end of the first range it is given, then behaves.
+        return types.SimpleNamespace(start=start, end=end + 1 if len(calls) == 1 else end)
+
+    runtime.Interval = interval
+
+    result = _load_action("action_set_timeline_settings.py").main(start_frame=5, end_frame=50, frame_rate=24)
+
+    assert result["success"] is False
+    assert result["data"]["requested"] == {"frame_start": 5, "frame_end": 50, "frame_rate": 24.0}
+    assert result["data"]["settings"]["frame_end"] == 51
+    assert result["data"]["restored"] is True
+    assert (runtime.frameRate, runtime.animationRange.start, runtime.animationRange.end) == (30.0, 1, 24)
+
+
+def test_timeline_reports_when_the_original_settings_could_not_be_put_back(monkeypatch):
+    runtime = _install_fake_pymxs(monkeypatch)
+    runtime.Interval = lambda start, end: types.SimpleNamespace(start=start, end=end + 1)
+
+    result = _load_action("action_set_timeline_settings.py").main(start_frame=5, end_frame=50, frame_rate=24)
+
+    assert result["success"] is False
+    assert result["data"]["restored"] is False
+
+
+def test_timeline_rejects_a_non_positive_frame_rate_before_touching_the_scene(monkeypatch):
+    runtime = _install_fake_pymxs(monkeypatch)
+    result = _load_action("action_set_timeline_settings.py").main(start_frame=1, end_frame=10, frame_rate=0)
+    assert result["success"] is False
+    assert runtime.frameRate == 30.0

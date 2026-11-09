@@ -51,3 +51,10 @@ wants to restrict which local projects can be attached.
 - `ui_snapshot` / `ui_find` / `ui_action` — Inspect and operate Maya Qt UI controls, with optional action evidence artifacts
 - `make_node_ref` / `resolve_node_ref` — Build and resolve stable Maya node references
 - `run_check` — Reload, run an entrypoint, capture diagnostics/artifacts/session events, optionally grab UI
+
+## Restricted mode
+
+With `MESHY_DCC_MAYA_DISABLE_ARBITRARY_SCRIPT=1`, the tools that run or import
+project code (`run_script`, `run_entrypoint`, `run_check`, `reload_modules` and
+`start_debugpy`) return a policy refusal before touching Maya. `attach_project`
+only registers a trusted root and stays available.

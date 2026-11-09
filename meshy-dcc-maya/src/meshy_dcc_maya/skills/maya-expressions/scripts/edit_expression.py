@@ -9,6 +9,7 @@ from typing import Optional
 # Import local modules
 from meshy_dcc_core.skill import skill_entry, skill_error, skill_exception, skill_success
 
+from meshy_dcc_maya._code_policy import arbitrary_script_refusal
 from meshy_dcc_maya.api import validate_node_exists
 
 
@@ -27,6 +28,10 @@ def edit_expression(
     Returns:
         ToolResult dict confirming the update.
     """
+    refusal = arbitrary_script_refusal("edit_expression")
+    if refusal is not None:
+        return refusal
+
     try:
         import maya.cmds as cmds  # noqa: PLC0415
 
