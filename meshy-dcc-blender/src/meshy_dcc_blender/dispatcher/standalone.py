@@ -9,6 +9,8 @@ from typing import Any, Callable, Dict, Optional
 from meshy_dcc_core import JobOutcome
 from meshy_dcc_core.host import BlockingDispatcher
 
+from .._env import DEFAULT_MAIN_THREAD_TIMEOUT_MS
+
 
 class BlenderStandaloneDispatcher:
     """Dispatcher for Blender standalone (background) mode.
@@ -17,7 +19,7 @@ class BlenderStandaloneDispatcher:
     historical ``dispatch`` / ``dispatch_async`` convenience API.
     """
 
-    def __init__(self, timeout_ms: int = 30000) -> None:
+    def __init__(self, timeout_ms: int = DEFAULT_MAIN_THREAD_TIMEOUT_MS) -> None:
         self.timeout_ms = timeout_ms
         self._host_dispatcher = BlockingDispatcher()
         self._results: Dict[str, Any] = {}

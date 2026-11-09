@@ -34,7 +34,7 @@ _VIEW_LAYER_PASSES = {
     "cryptomatte_asset": ("layer", "use_pass_cryptomatte_asset"),
     "volume_direct": ("cycles", "use_pass_volume_direct"),
     "volume_indirect": ("cycles", "use_pass_volume_indirect"),
-    "denoising": ("cycles", "use_pass_denoising"),
+    "denoising": ("cycles", "denoising_store_passes"),
 }
 
 
@@ -129,8 +129,6 @@ def _append_common(
         import bpy
 
         dataname = data_type_key
-        if dataname == "node_groups":
-            dataname = "nodeGroups"
 
         with bpy.data.libraries.load(str(path), link=link) as (data_from, data_to):
             src_items = _iter_items(data_from, dataname)
@@ -140,13 +138,17 @@ def _append_common(
                 items = list(src_items)
             setattr(data_to, dataname, items)
 
+        # Blender replaces the assigned names with the loaded IDs (None for a failed
+        # load) on exit; report those, including any collision suffix.
+        loaded_names = [item.name for item in getattr(data_to, dataname) if item is not None]
+
         return skill_success(
-            f"{'Linked' if link else 'Appended'} {len(items)} {data_type_key} from {path.name}",
+            f"{'Linked' if link else 'Appended'} {len(loaded_names)} {data_type_key} from {path.name}",
             filepath=str(path),
             data_type=data_type_key,
-            names=items,
+            names=loaded_names,
             link=bool(link),
-            count=len(items),
+            count=len(loaded_names),
             prompt="Use blender-collection or blender-scene tools to organize the imported data.",
         )
     except ImportError:

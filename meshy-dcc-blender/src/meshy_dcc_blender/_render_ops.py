@@ -11,10 +11,12 @@ module stays importable outside Blender.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from typing import Any, Sequence
 
 from meshy_dcc_core.skill import skill_error, skill_exception, skill_success
 
+from meshy_dcc_blender._image_format import set_image_format
 from meshy_dcc_blender._scene_assembly_ops import _VIEW_LAYER_PASSES
 
 # Output file formats exposed through `set_render_output`. Anything Blender
@@ -38,10 +40,36 @@ _MULTILAYER_FORMAT = "OPEN_EXR_MULTILAYER"
 _SINGLE_LAYER_EXR_FORMAT = "OPEN_EXR"
 
 _COLOR_MODES = ("RGB", "RGBA", "BW", "RGBA_PREMUL")
-_COLOR_DEPTHS = ("8", "10", "12", "16", "16F", "32F")
+# Blender's enum values are "16" (half) and "32" (float); "16F"/"32F" are the
+# names the tool has always documented and are kept as aliases.
+_COLOR_DEPTHS = ("8", "10", "12", "16", "32", "16F", "32F")
+_COLOR_DEPTH_ALIASES = {"16F": "16", "32F": "32"}
 _EXR_CODECS = ("NONE", "PXR24", "ZIP", "PIZ", "RLE", "ZIPS", "B44", "B44A", "DWAA", "DWAB")
 _DENOISERS = ("AUTO", "OPENIMAGEDENOISE", "OPTIX", "NONE")
 _DENOISE_INPUT_PASSES = ("RGB", "RGB_ALBEDO", "RGB_ALBEDO_NORMAL")
+
+
+@contextmanager
+def _atomic_settings(*groups):
+    """Restore the writable settings if the host rejects a value part-way through.
+
+    Each group is ``(owner, attributes)`` in dependency order: media type and
+    format come back before the colour enums a format change can reset.
+    Properties that were not requested are snapshotted too for that reason.
+    """
+    previous = [
+        (owner, attribute, getattr(owner, attribute))
+        for owner, attributes in groups
+        for attribute in attributes
+        if hasattr(owner, attribute)
+    ]
+    try:
+        yield
+    except Exception:
+        for owner, attribute, value in previous:
+            if getattr(owner, attribute) != value:
+                setattr(owner, attribute, value)
+        raise
 
 
 def _iter_items(collection: Any) -> list:
@@ -290,7 +318,7 @@ def set_render_denoise(
         denoiser: One of ``AUTO``, ``OPENIMAGEDENOISE``, ``OPTIX``, ``NONE``.
         input_passes: ``RGB``, ``RGB_ALBEDO``, or ``RGB_ALBEDO_NORMAL``.
         prefilter: Denoising prefilter mode reported by the Cycles add-on.
-        use_gpu: Request GPU denoising (OPTIX only).
+        use_gpu: Request OpenImageDenoise GPU acceleration when the host supports it.
         scene_name: Target scene; defaults to the active scene.
     """
     if enabled is None and denoiser is None and input_passes is None and prefilter is None and use_gpu is None:
@@ -338,7 +366,7 @@ def set_render_denoise(
         if prefilter is not None:
             pending.append(("denoising_prefilter", "scene.cycles.denoising_prefilter", str(prefilter).upper()))
         if use_gpu is not None:
-            pending.append(("use_denoising_use_gpu", "scene.cycles.use_denoising_use_gpu", bool(use_gpu)))
+            pending.append(("denoising_use_gpu", "scene.cycles.denoising_use_gpu", bool(use_gpu)))
         unsupported = [path for _key, path, _value in pending if not hasattr(cycles, path.rsplit(".", 1)[-1])]
         if unsupported:
             return skill_error(
@@ -346,16 +374,21 @@ def set_render_denoise(
                 "Not exposed by this Blender build: " + ", ".join(unsupported) + ". Nothing was changed.",
             )
 
-        applied: dict = {}
-        for key, _path, value in pending:
-            setattr(cycles, key, value)
-            applied[key] = getattr(cycles, key, value)
-        if enabled is not None and "denoising" in _VIEW_LAYER_PASSES:
+        owner, attribute = None, None
+        if enabled is not None:
             layer, layer_error = _resolve_view_layer(bpy, scene, None, use_active=scene_name is None)
             if layer_error is None:
                 owner, attribute = _pass_owner(layer, "denoising")
-                if owner is not None:
-                    setattr(owner, attribute, bool(enabled))
+        groups = [(cycles, [key for key, _path, _value in pending])]
+        if owner is not None:
+            groups.append((owner, [attribute]))
+        applied: dict = {}
+        with _atomic_settings(*groups):
+            for key, _path, value in pending:
+                setattr(cycles, key, value)
+                applied[key] = getattr(cycles, key, value)
+            if owner is not None:
+                setattr(owner, attribute, bool(enabled))
 
         return skill_success(
             f"Updated denoise settings for {getattr(scene, 'name', scene_name)}",
@@ -425,7 +458,8 @@ def set_render_output(
         filepath: Output path; may include a trailing frame placeholder.
         file_format: Image format, for example ``OPEN_EXR_MULTILAYER``.
         color_mode: ``RGB``, ``RGBA``, ``BW``, or ``RGBA_PREMUL``.
-        color_depth: ``8``, ``10``, ``12``, ``16``, ``16F``, or ``32F``.
+        color_depth: ``8``, ``10``, ``12``, ``16``, or ``32``; ``16F`` and ``32F``
+            are aliases for ``16`` and ``32``.
         exr_codec: EXR compression codec, for example ``DWAA``.
         multilayer: ``True`` switches the container to ``OPEN_EXR_MULTILAYER`` and
             renders every layer into that single file. ``False`` drops back to
@@ -508,48 +542,55 @@ def set_render_output(
                 "Not exposed by this Blender build: " + ", ".join(unsupported) + ". Nothing was changed.",
             )
 
-        applied: dict = {}
-        if filepath is not None:
-            render.filepath = str(filepath)
-            applied["filepath"] = str(filepath)
-        if file_format is not None:
-            settings.file_format = str(file_format).upper()
-            applied["file_format"] = settings.file_format
-        if color_mode is not None:
-            settings.color_mode = str(color_mode).upper()
-            applied["color_mode"] = settings.color_mode
-        if color_depth is not None:
-            settings.color_depth = str(color_depth).upper()
-            applied["color_depth"] = settings.color_depth
-        if exr_codec is not None:
-            settings.exr_codec = str(exr_codec).upper()
-            applied["exr_codec"] = settings.exr_codec
-        if multilayer is not None:
-            # Multi-layer output is a container format, not a switch on
-            # use_single_layer: use_single_layer only decides whether every
-            # layer is rendered. Both have to move together.
-            if bool(multilayer):
-                settings.file_format = _MULTILAYER_FORMAT
-                render.use_single_layer = False
-            else:
-                if _is_multilayer(render):
-                    settings.file_format = _SINGLE_LAYER_EXR_FORMAT
-                render.use_single_layer = True
-            applied["multilayer"] = bool(multilayer)
-            applied["file_format"] = settings.file_format
-        # use_preview lives on ImageFormatSettings alongside the other image
-        # options; the remaining flags are RenderSettings options.
-        if use_preview is not None:
-            settings.use_preview = bool(use_preview)
-            applied["use_preview"] = bool(use_preview)
-        for flag, attribute in (
-            (use_file_extension, "use_file_extension"),
-            (use_overwrite, "use_overwrite"),
-            (use_placeholder, "use_placeholder"),
+        with _atomic_settings(
+            (settings, ("media_type", "file_format", "color_mode", "color_depth", "exr_codec", "use_preview")),
+            (render, ("filepath", "use_single_layer", "use_file_extension", "use_overwrite", "use_placeholder")),
         ):
-            if flag is not None:
-                setattr(render, attribute, bool(flag))
-                applied[attribute] = bool(flag)
+            applied: dict = {}
+            if filepath is not None:
+                render.filepath = str(filepath)
+                applied["filepath"] = str(filepath)
+            if file_format is not None:
+                set_image_format(settings, str(file_format).upper())
+                applied["file_format"] = settings.file_format
+            if multilayer is not None:
+                # Multi-layer output is a container format, not a switch on
+                # use_single_layer: use_single_layer only decides whether every
+                # layer is rendered. Both have to move together.
+                if bool(multilayer):
+                    set_image_format(settings, _MULTILAYER_FORMAT)
+                    render.use_single_layer = False
+                else:
+                    if _is_multilayer(render):
+                        set_image_format(settings, _SINGLE_LAYER_EXR_FORMAT)
+                    render.use_single_layer = True
+                applied["multilayer"] = bool(multilayer)
+                applied["file_format"] = settings.file_format
+            # The final container is chosen first: a format change can reset the
+            # colour enums, which are only valid for the format they follow.
+            if color_mode is not None:
+                settings.color_mode = str(color_mode).upper()
+                applied["color_mode"] = settings.color_mode
+            if color_depth is not None:
+                depth = str(color_depth).upper()
+                settings.color_depth = _COLOR_DEPTH_ALIASES.get(depth, depth)
+                applied["color_depth"] = settings.color_depth
+            if exr_codec is not None:
+                settings.exr_codec = str(exr_codec).upper()
+                applied["exr_codec"] = settings.exr_codec
+            # use_preview lives on ImageFormatSettings alongside the other image
+            # options; the remaining flags are RenderSettings options.
+            if use_preview is not None:
+                settings.use_preview = bool(use_preview)
+                applied["use_preview"] = bool(use_preview)
+            for flag, attribute in (
+                (use_file_extension, "use_file_extension"),
+                (use_overwrite, "use_overwrite"),
+                (use_placeholder, "use_placeholder"),
+            ):
+                if flag is not None:
+                    setattr(render, attribute, bool(flag))
+                    applied[attribute] = bool(flag)
 
         return skill_success(
             f"Updated render output for {getattr(scene, 'name', scene_name)}",

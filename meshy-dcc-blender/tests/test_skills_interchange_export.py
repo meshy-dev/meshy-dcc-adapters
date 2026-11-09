@@ -187,7 +187,8 @@ def test_import_file_supports_gltf(tmp_path):
 def test_export_obj_fallback_and_gltf_batch_export(tmp_path):
     cube = FakeObject("Cube")
     bpy = _bpy_with_scene([cube])
-    bpy.ops.wm.obj_export.side_effect = RuntimeError("operator unavailable")
+    bpy.ops.wm.obj_export = None
+    bpy.ops.export_scene.obj = None
     bpy.ops.export_scene.gltf.side_effect = _write_file_operator("gltf")
 
     obj_path = tmp_path / "mesh.obj"
@@ -338,7 +339,8 @@ def test_import_usd_filters_only_unsupported_operator_options(tmp_path):
                 Property("import_materials"),
                 Property("import_cameras"),
                 Property("import_lights"),
-                Property("import_subdiv"),
+                Property("import_subdivision"),
+                Property("import_textures_mode"),
                 Property("scale"),
             ]
             return type("RnaType", (), {"properties": properties})()
@@ -370,10 +372,11 @@ def test_import_usd_filters_only_unsupported_operator_options(tmp_path):
         "import_materials": True,
         "import_cameras": True,
         "import_lights": True,
-        "import_subdiv": True,
+        "import_subdivision": True,
+        "import_textures_mode": "IMPORT_PACK",
         "scale": 0.5,
     }
-    assert result["context"]["warnings"] == ["Ignored unsupported options: ['import_textures']"]
+    assert result["context"]["warnings"] == []
 
 
 def test_import_usd_reports_missing_file(tmp_path):
@@ -498,3 +501,117 @@ def test_export_fbx_fails_on_a_bad_option_instead_of_dropping_all(tmp_path):
     assert result["success"] is False
     assert "bake_anim" in json.dumps(result)
     assert bpy.ops.export_scene.fbx.received is None
+
+
+def test_import_fails_when_the_operator_is_cancelled(tmp_path):
+    source = tmp_path / "asset.glb"
+    source.write_bytes(b"glTF")
+    bpy = _bpy_with_scene([])
+    bpy.ops.import_scene.gltf.return_value = {"CANCELLED"}
+
+    result = load_and_call("blender-interchange/scripts/import_file.py", bpy, path=str(source))
+
+    assert result["success"] is False
+    assert "did not finish" in str(result)
+
+
+def test_import_that_adds_no_objects_says_so(tmp_path):
+    source = tmp_path / "asset.glb"
+    source.write_bytes(b"glTF")
+    bpy = _bpy_with_scene([])
+    bpy.ops.import_scene.gltf.return_value = {"FINISHED"}
+
+    result = load_and_call("blender-interchange/scripts/import_file.py", bpy, path=str(source))
+
+    assert result["context"]["imported_count"] == 0
+    assert result["context"]["warnings"] == ["Import finished but added no objects"]
+
+
+def test_export_fails_when_a_finished_operator_wrote_nothing(tmp_path):
+    bpy = _bpy_with_scene([FakeObject("Cube")])
+    bpy.ops.export_scene.gltf.return_value = {"FINISHED"}
+    target = tmp_path / "empty.glb"
+
+    result = load_and_call("blender-interchange/scripts/export_gltf.py", bpy, path=str(target))
+
+    assert result["success"] is False
+    assert "non-empty file" in str(result)
+
+    target.write_bytes(b"")  # an empty file is no better than a missing one
+    again = load_and_call("blender-interchange/scripts/export_gltf.py", bpy, path=str(target))
+    assert again["success"] is False
+
+
+def test_batch_export_stops_on_a_cancelled_item(tmp_path):
+    bpy = _bpy_with_scene([FakeObject("Cube")])
+    bpy.ops.export_scene.gltf.return_value = {"CANCELLED"}
+
+    result = load_and_call(
+        "blender-interchange/scripts/batch_export.py",
+        bpy,
+        items=[{"path": str(tmp_path / "a.glb"), "object_names": ["Cube"]}],
+    )
+
+    assert result["success"] is False
+
+
+class _TaggableObject(FakeObject):
+    """FakeObject that accepts the asset-id custom property import_to_scene writes."""
+
+    def __init__(self, name):
+        super().__init__(name)
+        self.material_slots = []
+        self.data = MagicMock()
+        self.props = {}
+
+    def __setitem__(self, key, value):
+        self.props[key] = value
+
+
+def _import_to_scene(tmp_path, new_objects, status=None, **kwargs):
+    source = tmp_path / "model.glb"
+    source.write_bytes(b"glTF")
+    bpy = _bpy_with_scene([])
+
+    def gltf_import(filepath, **_kwargs):
+        bpy.data.objects.extend(new_objects)
+        return status or {"FINISHED"}
+
+    bpy.ops.import_scene.gltf.side_effect = gltf_import
+    descriptor = {"asset_id": "demo/model", "variants": [{"local_path": str(source), "format": "glb"}]}
+    return load_and_call(
+        "blender-import-to-scene/scripts/import_to_scene.py",
+        bpy,
+        func_name="import_to_scene",
+        descriptor=descriptor,
+        **kwargs,
+    )
+
+
+def test_import_to_scene_reports_the_imported_objects(tmp_path):
+    result = _import_to_scene(tmp_path, [_TaggableObject("Model")])
+
+    assert result["success"] is True
+    assert result["context"]["imported_nodes"] == ["Model"]
+
+
+def test_import_to_scene_is_not_a_success_when_nothing_was_imported(tmp_path):
+    result = _import_to_scene(tmp_path, [])
+
+    assert result["success"] is False
+    assert "added no objects" in str(result)
+
+
+def test_import_to_scene_is_not_a_success_when_the_import_is_cancelled(tmp_path):
+    result = _import_to_scene(tmp_path, [_TaggableObject("Model")], status={"CANCELLED"})
+
+    assert result["success"] is False
+
+
+def test_import_to_scene_skip_materials_clears_the_data_block_slots(tmp_path):
+    obj = _TaggableObject("Model")
+
+    result = _import_to_scene(tmp_path, [obj], material_mode="skip")
+
+    assert result["success"] is True
+    obj.data.materials.clear.assert_called_once_with()

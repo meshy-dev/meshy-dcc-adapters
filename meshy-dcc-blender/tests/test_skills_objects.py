@@ -312,3 +312,4 @@ def test_import_placement_rotates_quaternion_objects():
     assert warnings == []
     assert obj.rotation_euler == [0.0, 0.0, 0.0]
     assert obj.rotation_quaternion is not before
+

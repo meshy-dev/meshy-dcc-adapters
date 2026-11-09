@@ -23,7 +23,7 @@ Usage (inside Blender Python console or startup script)::
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -104,6 +104,17 @@ class BlenderServerOptions:
     # Execution options (new in 0.17+)
     dispatcher: Optional[Any] = None  # BaseDccCallableDispatcher
     execution_bridge: Optional[Any] = None  # HostExecutionBridge
+    #: Budget (ms) for the default main-thread dispatcher; ``None`` resolves through
+    #: ``MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS``, then 30 s. Ignored when a
+    #: dispatcher or bridge is supplied. It is only the fallback for calls without
+    #: a ``timeout_hint_secs`` on the Python dispatch route: the caller's deadline,
+    #: which core passes to the host main-thread queue, is neither shortened nor
+    #: extended by it.
+    main_thread_timeout_ms: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        if self.main_thread_timeout_ms is not None:
+            _env.validate_main_thread_timeout_ms(self.main_thread_timeout_ms)
 
     def to_core_options(self) -> DccServerOptions:
         """Convert to core DccServerOptions using from_env()."""
@@ -199,18 +210,14 @@ class BlenderMcpServer(DccServerBase):
         dispatcher: Optional[Any] = None,
         execution_bridge: Optional[Any] = None,
         options: Optional[BlenderServerOptions] = None,
+        *,
+        main_thread_timeout_ms: Optional[int] = None,
     ) -> None:
+        if options is not None and main_thread_timeout_ms is not None:
+            # The keyword is a shortcut for the no-options path; dropping it here
+            # silently would leave the caller's budget ineffective.
+            raise ValueError("Pass main_thread_timeout_ms inside BlenderServerOptions when options is provided")
         if options is None:
-            if dispatcher is None and execution_bridge is None:
-                # Default to a UI or standalone dispatcher if none provided
-                # (essential for workers started via CLI)
-                try:
-                    from .dispatcher import create_dispatcher
-
-                    dispatcher = create_dispatcher(ui_mode=not self.is_background())
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("[%s] Failed to create default dispatcher: %s", _DCC_NAME, exc)
-
             options = BlenderServerOptions(
                 port=port,
                 extra_skill_paths=extra_skill_paths,
@@ -226,9 +233,44 @@ class BlenderMcpServer(DccServerBase):
                 enable_workflows=enable_workflows,
                 dispatcher=dispatcher,
                 execution_bridge=execution_bridge,
+                main_thread_timeout_ms=main_thread_timeout_ms,
             )
 
+        if options.dispatcher is None and options.execution_bridge is None:
+            # Servers started without a host dispatcher (the startup script, a
+            # bare ``start_server()``) still need one: without it no in-process
+            # executor is registered and every main-thread tool fails to load.
+            from .dispatcher import create_dispatcher
+
+            try:
+                default_dispatcher = create_dispatcher(
+                    ui_mode=not self.is_background(),
+                    timeout_ms=_env.resolve_main_thread_timeout_ms(options.main_thread_timeout_ms),
+                )
+            except Exception as exc:
+                raise RuntimeError("Blender main-thread dispatcher initialization failed") from exc
+            # Do not mutate caller-owned options, which may be reused for another server.
+            options = replace(options, dispatcher=default_dispatcher)
+
+        # The adapter-owned dispatcher holds the host timer pump
+        # (``bpy.app.timers``). Core replaces the server's own dispatcher
+        # reference with an inline bridge wrapper that has no ``start()``, so
+        # keep the original and drive it from :meth:`start`; without that pump
+        # main-thread work is queued and never drained.
+        self._pump_dispatcher: Optional[Any] = options.dispatcher
+        if options.execution_bridge is not None:
+            bridge = options.execution_bridge
+            host_dispatcher = bridge.resolve_host_dispatcher()
+            # An explicit bridge is authoritative: never pump an unrelated
+            # dispatcher supplied alongside it.
+            candidate = bridge.dispatcher
+            self._pump_dispatcher = candidate if callable(getattr(candidate, "start", None)) else None
+            if host_dispatcher is not None and _host_dispatcher_from(options.dispatcher) is host_dispatcher:
+                self._pump_dispatcher = options.dispatcher
+
         super().__init__(options=options.to_core_options())
+        if not self._inprocess_executor_registered:
+            raise RuntimeError("Blender main-thread in-process executor registration failed")
 
         self._extra_skill_paths: List[str] = list(options.extra_skill_paths or [])
 
@@ -298,6 +340,21 @@ class BlenderMcpServer(DccServerBase):
         if self._semantic is not None:
             logger.info("[%s] semantic skill recall enabled (embedder=%s)", _DCC_NAME, self._semantic.embedder_kind)
 
+    # ── Host mode ──────────────────────────────────────────────────────────────
+
+    def is_background(self) -> bool:
+        """Return whether Blender is running in background mode.
+
+        Used by ``__init__`` to pick a UI or standalone dispatcher before
+        ``super().__init__()`` runs, so it must not depend on any state set there.
+        """
+        try:
+            import bpy  # noqa: PLC0415
+        except ImportError:
+            # No Blender host: treat as non-interactive.
+            return True
+        return bool(getattr(bpy.app, "background", False))
+
     # ── Blender version detection ──────────────────────────────────────────────
 
     def _version_string(self) -> str:
@@ -347,8 +404,11 @@ class BlenderMcpServer(DccServerBase):
 
         super().start(install_atexit_hook=install_atexit_hook)
         attach_safe_stop(self)
-        if self._blender_dispatcher is not None:
-            start_fn = getattr(self._blender_dispatcher, "start", None)
+        # The adapter dispatcher owns the host timer pump; core's inline bridge
+        # wrapper in ``_blender_dispatcher`` has no ``start()``.
+        pump_owner = getattr(self, "_pump_dispatcher", None) or self._blender_dispatcher
+        if pump_owner is not None:
+            start_fn = getattr(pump_owner, "start", None)
             if callable(start_fn):
                 start_fn()
         if not self._scene_handlers:
@@ -375,6 +435,9 @@ class BlenderMcpServer(DccServerBase):
 
     def stop(self) -> None:
         """Detach MCP resource handlers, stop the HTTP server and the dispatcher."""
+        readiness = getattr(self, "readiness", None)
+        if readiness is not None:
+            readiness.invalidate()
         _resources._default_event_remover(self._scene_handlers)
         self._scene_handlers = []
         if self._resources is not None:
@@ -383,12 +446,14 @@ class BlenderMcpServer(DccServerBase):
             except Exception as exc:  # noqa: BLE001
                 logger.debug("[%s] resources.unbind failed: %s", _DCC_NAME, exc)
 
-        super().stop()
-
-        if self._blender_dispatcher is not None:
-            stop_fn = getattr(self._blender_dispatcher, "stop", None)
-            if callable(stop_fn):
-                stop_fn()
+        pump_owner = getattr(self, "_pump_dispatcher", None) or self._blender_dispatcher
+        try:
+            super().stop()
+        finally:
+            if pump_owner is not None:
+                stop_fn = getattr(pump_owner, "stop", None)
+                if callable(stop_fn):
+                    stop_fn()
 
     # ── Builtin action registration + core integrations ────────────────────────
 
@@ -682,6 +747,8 @@ def start_server(
     enable_workflows: Optional[bool] = None,
     dispatcher: Optional[Any] = None,
     execution_bridge: Optional[Any] = None,
+    *,
+    main_thread_timeout_ms: Optional[int] = None,
 ) -> BlenderMcpServer:
     """Start the Blender MCP server (creates a process-level singleton).
 
@@ -708,6 +775,9 @@ def start_server(
         enable_workflows: Enable workflow MCP tools (``None`` = env).
         dispatcher: Optional host dispatcher for main-thread execution.
         execution_bridge: Optional execution bridge supplied by meshy-dcc-core.
+        main_thread_timeout_ms: Budget (ms) for the default main-thread dispatcher;
+            ``None`` uses ``MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS`` or 30 s.
+            Ignored when ``dispatcher`` or ``execution_bridge`` is supplied.
 
     Returns:
         The running :class:`BlenderMcpServer` instance.
@@ -729,6 +799,7 @@ def start_server(
         enable_workflows=enable_workflows,
         dispatcher=dispatcher,
         execution_bridge=execution_bridge,
+        main_thread_timeout_ms=main_thread_timeout_ms,
     )
     if register_builtins:
         _server_instance.register_builtin_actions(include_bundled=include_bundled)

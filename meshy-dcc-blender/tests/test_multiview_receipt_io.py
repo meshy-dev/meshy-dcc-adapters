@@ -124,9 +124,9 @@ def test_persistent_conflict_fails_within_short_retry_budget(tmp_path, monkeypat
         assert read_receipt(tmp_path, "test") == original
         assert list(tmp_path.iterdir()) == [tmp_path / "result.json"]
 
-    assert 1 < len(attempts) <= 10
-    assert retry_clock.sleeps
-    assert retry_clock.now <= 0.1
+    assert len(attempts) == receipts._IO_RETRY_ATTEMPTS
+    assert retry_clock.sleeps == [receipts._IO_RETRY_INTERVAL] * (receipts._IO_RETRY_ATTEMPTS - 1)
+    assert retry_clock.now < receipts._IO_RETRY_DEADLINE
 
 
 def test_retry_deadline_prevents_another_attempt_after_scheduler_delay(tmp_path, monkeypatch, retry_clock):
@@ -135,7 +135,7 @@ def test_retry_deadline_prevents_another_attempt_after_scheduler_delay(tmp_path,
     attempts = _reject_io(monkeypatch, tmp_path, "read", _sharing_error())
 
     def delayed_sleep(delay):
-        retry_clock.now += 0.2
+        retry_clock.now += receipts._IO_RETRY_DEADLINE + 0.5
 
     monkeypatch.setattr(receipts.time, "sleep", delayed_sleep)
     result = load_skill_script("blender-render", "get_render_job").main(job_id="test", job_directory=str(tmp_path))
@@ -143,6 +143,28 @@ def test_retry_deadline_prevents_another_attempt_after_scheduler_delay(tmp_path,
     assert result["success"] is False
     assert result["message"] == "Render receipt unavailable"
     assert len(attempts) == 1
+
+
+def test_slow_first_attempt_still_gets_retried(tmp_path, monkeypatch, retry_clock):
+    """One slow attempt (over the old 0.1 s budget) must not turn a transient conflict into a failure."""
+    write_receipt(tmp_path, _receipt())
+    monkeypatch.setattr(sys, "platform", "win32")
+    original = Path.open
+    conflicted = False
+
+    def slow_open_then_succeed(path, *args, **kwargs):
+        nonlocal conflicted
+        if path == tmp_path / "result.json" and not conflicted:
+            conflicted = True
+            retry_clock.now += 0.5
+            raise _sharing_error(5)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", slow_open_then_succeed)
+    result = load_skill_script("blender-render", "get_render_job").main(job_id="test", job_directory=str(tmp_path))
+
+    assert result["success"], result
+    assert result["context"]["last_recorded_status"] == "running"
 
 
 @pytest.mark.parametrize("operation", ["read", "replace"])

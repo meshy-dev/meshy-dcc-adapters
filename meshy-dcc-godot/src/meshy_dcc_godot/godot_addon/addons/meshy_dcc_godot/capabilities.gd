@@ -20,6 +20,7 @@ const RUNTIME_ACTIONS := [
 
 var _plugin: EditorPlugin
 var _messages: Array[Dictionary] = []
+var _preview_result: Dictionary = {}
 
 
 func _init(plugin: EditorPlugin) -> void:
@@ -514,6 +515,8 @@ func _get_open_scripts() -> Dictionary:
 func _validate_script(params: Dictionary) -> Dictionary:
 	var source := str(params.get("source", ""))
 	var path := str(params.get("path", ""))
+	# reload() answers OK for whitespace exactly as for "", so a blank source must not read as valid.
+	if not source.is_empty() and source.strip_edges().is_empty(): return _error("source is blank; pass GDScript, or omit source to check path")
 	if source.is_empty():
 		var read := _read_text({"path": path}, ["gd"])
 		if read.has("__error__"): return read
@@ -653,25 +656,70 @@ func _reload_project() -> Dictionary:
 
 
 func _get_input_actions() -> Dictionary:
+	# The editor's own InputMap holds editor shortcuts; the project's actions are the input/* settings.
 	var actions: Array[Dictionary] = []
-	for action in InputMap.get_actions():
-		if str(action).begins_with("ui_"): continue
-		actions.append({"name": str(action), "deadzone": InputMap.action_get_deadzone(action), "events": InputMap.action_get_events(action).map(func(event): return event.as_text())})
+	for property in ProjectSettings.get_property_list():
+		var key := str(property.get("name", ""))
+		if not key.begins_with("input/") or key.begins_with("input/ui_"): continue
+		var setting = ProjectSettings.get_setting(key)
+		if not setting is Dictionary: continue
+		var events: Array = []
+		for event in setting.get("events", []): events.append(event.as_text() if event is InputEvent else "(empty event)")
+		actions.append({"name": key.trim_prefix("input/"), "deadzone": float(setting.get("deadzone", 0.2)), "events": events})
 	return {"actions": actions}
 
 
 func _set_input_action(params: Dictionary) -> Dictionary:
-	var action := str(params.get("action", ""))
-	if action.is_empty(): return _error("action is required")
-	if not InputMap.has_action(action): InputMap.add_action(action, float(params.get("deadzone", 0.5)))
-	else: InputMap.action_set_deadzone(action, float(params.get("deadzone", InputMap.action_get_deadzone(action))))
-	if bool(params.get("replace_events", false)): InputMap.action_erase_events(action)
+	var action = params.get("action", "")
+	if not action is String or action.is_empty() or action.length() > 500: return _error("action must be a non-empty string of at most 500 characters")
+	for index in action.length():
+		if action.unicode_at(index) < 32 or action[index] in ["/", ":", "=", "\\", "\""]: return _error("action contains a character Godot does not allow in input action names")
+	if params.has("deadzone"):
+		var raw = params.deadzone
+		if not (raw is int or raw is float) or not is_finite(float(raw)) or raw < 0 or raw > 1: return _error("deadzone must be a number between 0 and 1")
+	var event: InputEventKey = null
 	if params.has("keycode"):
-		var event := InputEventKey.new()
-		event.keycode = int(params.keycode)
-		InputMap.action_add_event(action, event)
-	ProjectSettings.save()
-	return {"updated": true, "action": action, "deadzone": InputMap.action_get_deadzone(action)}
+		var raw = params.keycode
+		if not (raw is int or raw is float) or not is_finite(float(raw)) or raw != floor(float(raw)) or raw < 1 or raw > KEY_CODE_MASK: return _error("keycode must be a Godot Key code")
+		event = InputEventKey.new()
+		event.keycode = int(raw)
+	var key := "input/%s" % action
+	var existed := ProjectSettings.has_setting(key)
+	var previous = ProjectSettings.get_setting(key) if existed else null
+	if existed and not previous is Dictionary: return _error("Existing project setting %s is not an input action" % key)
+	var setting: Dictionary = previous.duplicate() if existed else {"deadzone": 0.5, "events": []}
+	var events: Array = [] if bool(params.get("replace_events", false)) else Array(setting.get("events", []))
+	if event != null:
+		var present := false
+		for existing in events:
+			if existing is InputEventKey and existing.keycode == event.keycode and existing.physical_keycode == 0 and existing.device == event.device and existing.get_modifiers_mask() == 0: present = true
+		if not present: events.append(event)
+	setting["events"] = events
+	if params.has("deadzone"): setting["deadzone"] = float(params.deadzone)
+	ProjectSettings.set_setting(key, setting)
+	var save_error := ProjectSettings.save()
+	# Only report success once the saved project file holds the action.
+	var problem := error_string(save_error) if save_error != OK else _saved_input_problem(action, setting)
+	if not problem.is_empty():
+		if existed: ProjectSettings.set_setting(key, previous)
+		else: ProjectSettings.clear(key)
+		return _error("Input action %s was not persisted: %s" % [action, problem])
+	return {"updated": true, "persisted": true, "action": action, "deadzone": float(setting.deadzone), "events": setting.events.map(func(item): return item.as_text() if item is InputEvent else "(empty event)")}
+
+
+func _saved_input_problem(action: String, expected: Dictionary) -> String:
+	var config := ConfigFile.new()
+	var load_error := config.load("res://project.godot")
+	if load_error != OK: return "project.godot could not be read back (%s)" % error_string(load_error)
+	var saved = config.get_value("input", action, null)
+	if not saved is Dictionary: return "project.godot has no input/%s entry" % action
+	if not is_equal_approx(float(saved.get("deadzone", -1.0)), float(expected.deadzone)): return "saved deadzone differs"
+	var events: Array = saved.get("events", [])
+	if events.size() != expected.events.size(): return "saved event count differs"
+	for index in events.size():
+		if (events[index] is InputEventKey) != (expected.events[index] is InputEventKey): return "saved event type differs"
+		if events[index] is InputEventKey and events[index].keycode != expected.events[index].keycode: return "saved key code differs"
+	return ""
 
 
 func _find_nodes_by_type(params: Dictionary) -> Dictionary:
@@ -781,13 +829,13 @@ func _list_export_presets() -> Dictionary:
 func _export_project(params: Dictionary) -> Dictionary:
 	var preset := str(params.get("preset", ""))
 	if preset.is_empty(): return _error("preset is required")
-	var path := str(params.get("path", ""))
+	var path := str(params.get("path", "")).trim_prefix("res://")
 	if path.is_empty() or path.is_absolute_path() or ".." in path: return _error("Export path must be relative to the project")
-	var absolute := ProjectSettings.globalize_path("res://" + path.trim_prefix("res://"))
+	var absolute := ProjectSettings.globalize_path("res://" + path)
 	var args := PackedStringArray(["--path", ProjectSettings.globalize_path("res://"), "--headless", "--export-debug" if bool(params.get("debug", false)) else "--export-release", preset, absolute])
 	var output: Array = []
 	var exit_code := OS.execute(OS.get_executable_path(), args, output, true, false)
-	return {"exported": exit_code == 0, "exit_code": exit_code, "path": "res://" + path.trim_prefix("res://"), "output": "\n".join(output).right(20000)}
+	return {"exported": exit_code == 0, "exit_code": exit_code, "path": "res://" + path, "output": "\n".join(output).right(20000)}
 
 
 func _get_export_info() -> Dictionary:
@@ -879,15 +927,27 @@ func _create_resource(params: Dictionary) -> Dictionary:
 func _get_resource_preview(params: Dictionary) -> Dictionary:
 	var checked := _existing_path(params.get("path", ""), [])
 	if checked.has("error"): return _error(checked.error)
+	if DisplayServer.get_name() == "headless": return {"path": checked.path, "available": false, "reason": "Resource previews need a windowed editor"}
+	# Godot renders previews asynchronously: queue the request and read it only if the
+	# callback ran already (a cached preview). Otherwise it is cached for the next call.
+	_preview_result = {}
+	EditorInterface.get_resource_previewer().queue_resource_preview(checked.path, self, "_resource_preview_ready", checked.path)
+	var texture: Texture2D = _preview_result.get(checked.path)
+	_preview_result = {}
+	if texture == null: return {"path": checked.path, "available": false, "reason": "No preview yet; Godot generates it asynchronously, so retry shortly"}
+	var image := texture.get_image()
+	if image == null or image.is_empty(): return {"path": checked.path, "available": false, "reason": "The preview has no readable image"}
+	if image.is_compressed() and image.decompress() != OK: return _error("Unable to decode preview")
 	var cache_dir := "res://.meshy-dcc/previews"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(cache_dir))
 	var output := "%s/%s.png" % [cache_dir, checked.path.md5_text()]
-	var texture: Texture2D = EditorInterface.get_resource_previewer().get_resource_preview(checked.path)
-	if texture == null: return {"path": checked.path, "available": false}
-	var image: Image = texture.get_image()
-	var save_error = image.save_png(output)
-	if save_error != OK: return _error("Unable to save preview")
+	var save_error := image.save_png(output)
+	if save_error != OK: return _error("Unable to save preview: %s" % error_string(save_error))
 	return {"path": checked.path, "available": true, "preview_path": output}
+
+
+func _resource_preview_ready(path: String, preview: Texture2D, _small_preview: Texture2D, _userdata) -> void:
+	_preview_result[path] = preview
 
 
 func _add_autoload(params: Dictionary) -> Dictionary:
@@ -1021,11 +1081,36 @@ func _add_animation_track(params: Dictionary) -> Dictionary:
 func _set_animation_keyframe(params: Dictionary) -> Dictionary:
 	var animation := _animation(params)
 	if animation == null: return _error("Animation not found")
-	var track := int(params.get("track", -1))
-	if track < 0 or track >= animation.get_track_count(): return _error("Invalid animation track")
-	var time := float(params.get("time", 0.0))
-	var key := animation.track_insert_key(track, time, params.get("value"), float(params.get("transition", 1.0)))
+	var raw_track = params.get("track", -1)
+	if not _finite_number(raw_track) or float(raw_track) != floor(float(raw_track)): return _error("Animation track must be an integer")
+	if raw_track < 0 or raw_track >= animation.get_track_count(): return _error("Invalid animation track")
+	var track := int(raw_track)
+	var raw_time = params.get("time", 0.0)
+	var raw_transition = params.get("transition", 1.0)
+	if not _finite_number(raw_time) or raw_time < 0: return _error("Animation time must be a finite, non-negative number")
+	if not _finite_number(raw_transition): return _error("Animation transition must be a finite number")
+	if not params.has("value"): return _error("Animation key value is required")
+	var value = params.value
+	var track_type := animation.track_get_type(track)
+	if track_type in [Animation.TYPE_POSITION_3D, Animation.TYPE_SCALE_3D, Animation.TYPE_ROTATION_3D]:
+		var size := 4 if track_type == Animation.TYPE_ROTATION_3D else 3
+		if not value is Array or value.size() != size: return _error("This 3D track needs exactly %d numeric components" % size)
+		for component in value:
+			if not _finite_number(component): return _error("3D key components must be finite numbers")
+		if track_type == Animation.TYPE_ROTATION_3D:
+			var rotation := Quaternion(float(value[0]), float(value[1]), float(value[2]), float(value[3]))
+			if not rotation.is_finite() or not rotation.is_normalized(): return _error("Rotation key must be a unit quaternion [x, y, z, w]")
+			value = rotation
+		else:
+			value = Vector3(float(value[0]), float(value[1]), float(value[2]))
+	var time := float(raw_time)
+	var key := animation.track_insert_key(track, time, value, float(raw_transition))
+	if key < 0: return _error("Godot rejected the animation key; nothing was inserted")
 	return {"inserted": true, "track": track, "key": key, "time": time}
+
+
+func _finite_number(value) -> bool:
+	return (value is int or value is float) and is_finite(float(value))
 
 
 func _get_animation_info(params: Dictionary) -> Dictionary:
@@ -1671,6 +1756,11 @@ func _json_value(value):
 	if value is Transform2D or value is Transform3D or value is Basis or value is Projection: return str(value)
 	if value is Resource: return {"type": value.get_class(), "path": value.resource_path}
 	if value is Object: return {"type": value.get_class(), "instance_id": value.get_instance_id()}
+	# Packed arrays are not Array, so they would otherwise fall through to str(value).
+	if value is PackedStringArray or value is PackedByteArray or value is PackedInt32Array or value is PackedInt64Array or value is PackedFloat32Array or value is PackedFloat64Array or value is PackedVector2Array or value is PackedVector3Array or value is PackedColorArray:
+		var packed: Array = []
+		for item in value: packed.append(_json_value(item))
+		return packed
 	if value is Array:
 		var array: Array = []
 		for item in value: array.append(_json_value(item))

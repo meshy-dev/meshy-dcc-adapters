@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Model handoff and renderer inspection now compile on Unity 6.6, which removed
+  the `GetInstanceID` API.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

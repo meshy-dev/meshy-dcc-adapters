@@ -23,10 +23,10 @@ class FakeCycles:
         self.denoiser = "AUTO"
         self.denoising_input_passes = "RGB"
         self.denoising_prefilter = "ACCURATE"
-        self.use_denoising_use_gpu = False
+        self.denoising_use_gpu = False
         self.use_pass_volume_direct = False
         self.use_pass_volume_indirect = False
-        self.use_pass_denoising = False
+        self.denoising_store_passes = False
 
 
 class FakeViewLayer:
@@ -255,7 +255,7 @@ def test_cycles_passes_route_to_the_cycles_owner():
     result = _call("set_view_layer_passes", _bpy_with_scene(scene), enable=["volume_direct", "denoising"])
     assert result["success"] is True
     assert layer.cycles.use_pass_volume_direct is True
-    assert layer.cycles.use_pass_denoising is True
+    assert layer.cycles.denoising_store_passes is True
 
 
 # ---------------------------------------------------------------------------
@@ -269,18 +269,18 @@ def test_set_render_denoise_enables_and_flips_the_denoising_pass():
 
     assert result["success"] is True
     assert scene.cycles.use_denoising is True
-    assert scene.view_layers.get("ViewLayer").cycles.use_pass_denoising is True
+    assert scene.view_layers.get("ViewLayer").cycles.denoising_store_passes is True
 
 
 def test_set_render_denoise_disables_and_clears_the_denoising_pass():
     scene = _default_scene()
     scene.cycles.use_denoising = True
-    scene.view_layers.get("ViewLayer").cycles.use_pass_denoising = True
+    scene.view_layers.get("ViewLayer").cycles.denoising_store_passes = True
 
     result = _call("set_render_denoise", _bpy_with_scene(scene), enabled=False)
     assert result["success"] is True
     assert scene.cycles.use_denoising is False
-    assert scene.view_layers.get("ViewLayer").cycles.use_pass_denoising is False
+    assert scene.view_layers.get("ViewLayer").cycles.denoising_store_passes is False
 
 
 def test_set_render_denoise_configures_denoiser_and_input_passes():
@@ -345,6 +345,107 @@ def test_set_render_output_configures_multilayer_exr():
     assert scene.render.image_settings.exr_codec == "DWAA"
     assert scene.render.use_single_layer is False
     assert result["context"]["multilayer"] is True
+
+
+class Blender5ImageSettings(FakeImageSettings):
+    """Models Blender 5: ``file_format`` is filtered by ``media_type`` and the EXR depths are 16/32."""
+
+    _FORMATS = {
+        "IMAGE": ("PNG", "JPEG", "OPEN_EXR"),
+        "MULTI_LAYER_IMAGE": ("OPEN_EXR_MULTILAYER",),
+        "VIDEO": ("FFMPEG",),
+    }
+
+    def __init__(self):
+        object.__setattr__(self, "media_type", "IMAGE")
+        super().__init__()
+
+    def __setattr__(self, name, value):
+        if name == "media_type":
+            if value not in self._FORMATS:
+                raise TypeError(f"media_type {value!r} not found")
+            object.__setattr__(self, "file_format", self._FORMATS[value][0])  # a media change resets the format
+        elif name == "file_format" and value not in self._FORMATS[self.media_type]:
+            raise TypeError(f"enum {value!r} not found")
+        elif name == "color_depth" and self.file_format.startswith("OPEN_EXR") and value not in ("16", "32"):
+            raise TypeError(f"enum {value!r} not found")
+        object.__setattr__(self, name, value)
+
+
+def _blender5_scene():
+    scene = _default_scene()
+    scene.render.image_settings = Blender5ImageSettings()
+    return scene
+
+
+def test_set_render_output_selects_the_media_type_before_the_multilayer_format():
+    scene = _blender5_scene()
+    result = _call("set_render_output", _bpy_with_scene(scene), file_format="OPEN_EXR_MULTILAYER")
+
+    assert result["success"] is True, result
+    settings = scene.render.image_settings
+    assert (settings.media_type, settings.file_format) == ("MULTI_LAYER_IMAGE", "OPEN_EXR_MULTILAYER")
+    assert result["context"]["multilayer"] is True
+
+    back = _call("set_render_output", _bpy_with_scene(scene), multilayer=False)
+    assert back["success"] is True, back
+    assert (settings.media_type, settings.file_format) == ("IMAGE", "OPEN_EXR")
+
+
+def test_set_render_output_maps_half_and_float_depth_aliases_to_native_values():
+    scene = _blender5_scene()
+    for alias, native in (("16F", "16"), ("32f", "32"), ("32", "32")):
+        result = _call("set_render_output", _bpy_with_scene(scene), file_format="OPEN_EXR", color_depth=alias)
+        assert result["success"] is True, (alias, result)
+        assert scene.render.image_settings.color_depth == native
+        assert result["context"]["applied"]["color_depth"] == native
+
+
+def test_a_rejected_output_value_restores_the_previous_settings():
+    scene = _blender5_scene()
+    settings = scene.render.image_settings
+    _call("set_render_output", _bpy_with_scene(scene), file_format="OPEN_EXR", color_depth="32")
+
+    # The format change succeeds, then the host refuses the depth for PNG's sibling EXR.
+    result = _call(
+        "set_render_output",
+        _bpy_with_scene(scene),
+        filepath="//out/new",
+        file_format="OPEN_EXR_MULTILAYER",
+        color_depth="8",
+    )
+
+    assert result["success"] is False
+    assert scene.render.filepath == "//render"
+    assert (settings.media_type, settings.file_format, settings.color_depth) == ("IMAGE", "OPEN_EXR", "32")
+
+
+def test_set_render_settings_uses_the_media_type_api_for_multilayer_exr():
+    scene = _blender5_scene()
+
+    result = load_and_call(
+        "blender-render/scripts/set_render_settings.py", _bpy_with_scene(scene), file_format="open_exr_multilayer"
+    )
+
+    assert result["success"] is True, result
+    assert scene.render.image_settings.file_format == "OPEN_EXR_MULTILAYER"
+
+
+def test_a_host_rejected_denoise_batch_restores_the_previous_settings():
+    scene = _default_scene()
+
+    class RejectingCycles(FakeCycles):
+        def __setattr__(self, name, value):
+            if name == "denoising_prefilter" and value == "NOPE":
+                raise TypeError("enum not found")
+            object.__setattr__(self, name, value)
+
+    scene.cycles = RejectingCycles()
+    result = _call("set_render_denoise", _bpy_with_scene(scene), enabled=True, denoiser="OPTIX", prefilter="nope")
+
+    assert result["success"] is False
+    assert scene.cycles.use_denoising is False
+    assert scene.cycles.denoiser == "AUTO"
 
 
 def test_set_render_output_multilayer_false_uses_single_layer():

@@ -11,6 +11,8 @@ from typing import Any, Callable, Optional
 from meshy_dcc_core import HostUiDispatcherBase
 from meshy_dcc_core.host import BlockingDispatcher, HostAdapter, QueueDispatcher
 
+from ._env import DEFAULT_MAIN_THREAD_TIMEOUT_MS
+
 TickFn = Callable[[], Optional[float]]
 
 
@@ -126,7 +128,7 @@ class BlenderUiDispatcher(HostUiDispatcherBase):
     def __init__(
         self,
         *,
-        timeout_ms: int = 30000,
+        timeout_ms: int = DEFAULT_MAIN_THREAD_TIMEOUT_MS,
         budget_ms: float = 200.0,
         active_interval_secs: float = 0.0,
         # Blender timers cannot be woken from the HTTP thread (bpy.app.timers is

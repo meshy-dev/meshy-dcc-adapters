@@ -6,6 +6,7 @@ from typing import Any
 
 from meshy_dcc_core import PyPumpedDispatcher
 
+from .._env import DEFAULT_MAIN_THREAD_TIMEOUT_MS
 from ..host import BlenderTimerPump, BlenderUiDispatcher
 
 DEFAULT_BUDGET_MS = 200
@@ -17,7 +18,7 @@ _CorePump = BlenderTimerPump
 
 def create_dispatcher(
     ui_mode: bool = True,
-    timeout_ms: int = 30000,
+    timeout_ms: int = DEFAULT_MAIN_THREAD_TIMEOUT_MS,
 ) -> Any:
     """Create a Blender dispatcher for UI or standalone mode."""
     if ui_mode:
@@ -30,7 +31,7 @@ def create_dispatcher(
 
 def create_pumped_dispatcher(
     ui_mode: bool = True,
-    timeout_ms: int = 30000,
+    timeout_ms: int = DEFAULT_MAIN_THREAD_TIMEOUT_MS,
     budget_ms: int = DEFAULT_BUDGET_MS,
 ) -> Any:
     """Create a dispatcher configured with a Blender timer pump."""

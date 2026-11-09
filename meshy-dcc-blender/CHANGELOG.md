@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Readiness turns green only after a probe has actually run on Blender's
+  main-thread pump. A server started without a dispatcher, such as the one the
+  startup script launches, now gets one (the missing `is_background` check made
+  that setup fail silently, leaving main-thread tools unable to load), and the
+  pump is started with it.
+- Import and export no longer report success when Blender did not finish the
+  operator or wrote nothing. A cancelled import or export is an error, an export
+  must leave a non-empty file, and the basic OBJ writer is used only when
+  Blender has no OBJ exporter and no options were requested (it used to hide
+  any exporter failure).
+- `import_to_scene` fails when the import adds no objects, and
+  `material_mode=skip` now clears the materials on the imported meshes (it
+  raised after the objects were already in the scene).
+- `append_from_blend` and `link_from_blend` report the data blocks Blender
+  actually loaded, including collision suffixes, and can load node groups.
+- USD import applies the texture and subdivision options under the names Blender
+  uses, so textures are imported by default again.
+- `pack_uvs` fails when Blender does not report FINISHED for the pack operator,
+  instead of normalizing a layout nobody packed, and returns the UV state it
+  found.
+- Background render jobs check that a PNG frame is structurally complete (chunk
+  checksums and a closing end marker), not just that it starts with the PNG
+  signature. A truncated frame is re-rendered on resume and keeps the job from
+  reporting completed.
+- Cancelling a background render job on Windows no longer flashes a console
+  window.
+- Multiview receipt reads and writes retry transient Windows sharing conflicts
+  for up to a second instead of 0.1 s.
+- Render output settings work on Blender 5: `set_render_output`,
+  `set_render_settings` and viewport capture select the media type before the
+  format (multi-layer EXR was rejected), `color_depth` accepts Blender's native
+  `16` and `32` (`16F` and `32F` stay as aliases), and the denoise GPU option
+  and denoising pass use the property names Blender exposes. A value the host
+  rejects now restores the previous output or denoise settings instead of
+  leaving a half-applied batch. Blender 4.x, which has no media type, still
+  takes the format directly.
+- The main-thread dispatch budget is configurable instead of a fixed 30 s:
+  `start_server(main_thread_timeout_ms=...)`,
+  `BlenderServerOptions.main_thread_timeout_ms`, or
+  `MESHY_DCC_BLENDER_MAIN_THREAD_TIMEOUT_MS` (explicit value, then the variable,
+  then 30 s). It only applies to the dispatcher the adapter creates, and only to
+  calls whose tool declares no `timeout_hint_secs`; a tool's own hint wins and
+  the caller's deadline, which the host main-thread queue enforces, is not
+  shortened or extended.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

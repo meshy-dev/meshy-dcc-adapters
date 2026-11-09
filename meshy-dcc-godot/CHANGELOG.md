@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- `set_input_action` now writes the action to the project's input settings and
+  saves `project.godot`, then reads the file back before reporting success. It
+  used to change only the editor's own input map and answer `updated: true`
+  while nothing was saved. It rejects invalid names, dead zones and key codes,
+  keeps existing keys unless `replace_events` is set, and does not add the same
+  key twice. `get_input_actions` lists the project's actions instead of the
+  editor's shortcuts.
+- Project settings and runtime property reads return packed arrays, such as
+  `editor_plugins/enabled`, as JSON arrays instead of a quoted string.
+- `set_animation_keyframe` validates the track, time, transition and value,
+  converts position, scale and rotation arrays to the types Godot expects, and
+  reports an error when Godot rejects the key instead of `inserted: true`.
+- `validate_script` rejects a whitespace-only source, also when a path is given.
+- Typed playtest actions accept a `script_path` such as `res://scripts/player.gd`;
+  the word "script" in a valid path no longer rejects the action.
+- `get_resource_preview` uses Godot's asynchronous preview API. It returns the
+  preview when Godot has one, and otherwise `available: false` with a reason
+  (a preview that is still being generated can be requested again).
+- `export_project` accepts `res://`-prefixed output paths.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,
