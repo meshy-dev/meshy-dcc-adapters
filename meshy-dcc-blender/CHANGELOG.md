@@ -46,6 +46,8 @@
   calls whose tool declares no `timeout_hint_secs`; a tool's own hint wins and
   the caller's deadline, which the host main-thread queue enforces, is not
   shortened or extended.
+- The main-thread budget variable also applies to the add-on Blender loads at
+  startup, which kept the 30 s default.
 
 ## 0.1.2 (2026-11-03)
 
