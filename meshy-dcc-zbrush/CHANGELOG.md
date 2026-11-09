@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- A call whose connection resets, closes or times out after the request was
+  sent, or whose reply is empty or unreadable, is reported as `-32002` with
+  `execution_state: unknown` and `retryable: false`, and is never replayed.
+  A failure before the connection is made is still reported as unreachable,
+  and a reset after the connection was accepted makes the health probe report
+  `blocked`. A blocked verdict on reconnect is no longer reported as "not
+  available".
+- Requests carry a deadline. A request that waited in the bridge's queue past
+  it is refused with `ZBRUSH_REQUEST_EXPIRED` (`executed: false`, safe to
+  retry) instead of starting late.
+- The ZBrush version is the SDK version number alone. `zbrush_info(1)` is the
+  edition (Demo, Beta or Full), which `get_session_info` now reports as
+  `zbrush_edition`, with the executable's `zbrush_product_version`. A Full
+  edition ZBrush was reported as version `.2`. `verify` now compares the SDK's
+  year and the executable's full ProductVersion, so the edition no longer makes
+  it fail.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

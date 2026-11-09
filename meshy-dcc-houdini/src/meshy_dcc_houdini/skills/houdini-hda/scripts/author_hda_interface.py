@@ -23,6 +23,9 @@ def _values(value: Any, count: int, cast: Any) -> Tuple[Any, ...]:
     raw = value if isinstance(value, (list, tuple)) else [value] * count
     if len(raw) != count:
         raise ValueError("default must contain exactly {} value(s)".format(count))
+    # str(None) would otherwise bake the literal "None" into a string default.
+    if any(item is None for item in raw):
+        raise ValueError("default must not contain null (None) values")
     return tuple(cast(item) for item in raw)
 
 

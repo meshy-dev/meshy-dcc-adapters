@@ -44,6 +44,10 @@ def get_bridge():
     if not _bridge.is_connected():
         try:
             _bridge.connect()
+        except ZBrushBlockedError:
+            # A blocked verdict must reach with_zbrush's ZBRUSH_BLOCKED branch, which
+            # carries the "do not retry automatically" warning.
+            raise
         except Exception as exc:  # noqa: BLE001
             raise ZBrushNotAvailableError(f"ZBrush sidecar bridge reconnect failed: {exc}") from exc
     return _bridge
@@ -126,11 +130,16 @@ def with_zbrush(func: _F) -> _F:
             error_code = {
                 -32001: "ZBRUSH_BUSY",
                 -32002: "ZBRUSH_TIMEOUT_STILL_RUNNING",
+                -32004: "ZBRUSH_REQUEST_EXPIRED",
             }.get(exc.code, "ZBRUSH_BRIDGE_ERROR")
             return zb_error(
                 str(exc),
                 error_code,
-                prompt="Wait for the active ZBrush operation to finish before retrying.",
+                prompt=(
+                    "The outcome is unknown. Inspect ZBrush before retrying; the operation may have side effects."
+                    if exc.code == -32002
+                    else "Wait for the active ZBrush operation to finish before retrying."
+                ),
                 bridge_code=exc.code,
                 **exc.data,
             )

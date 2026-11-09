@@ -6,6 +6,7 @@ import configparser
 import ctypes
 import json
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -19,6 +20,12 @@ _PLUGIN_RELATIVE_PATHS = {
     "NiagaraToolsets": Path("Experimental/Toolsets/NiagaraToolsets/NiagaraToolsets.uplugin"),
 }
 _MCP_SECTION = "/Script/ModelContextProtocolEngine.ModelContextProtocolSettings"
+_AUTOSTART_SETTINGS = {
+    "ServerPortNumber": "8000",
+    "ServerUrlPath": "/mcp",
+    "bAutoStartServer": "True",
+    "bEnableToolSearch": "True",
+}
 
 
 def _process_arguments() -> list[str]:
@@ -67,12 +74,14 @@ def _resolve_project_context(arguments: Iterable[str]) -> tuple[Path, Path]:
     return project_file, engine_dir / "Plugins"
 
 
-def _atomic_write_text(path: Path, text: str) -> None:
+def _atomic_write_bytes(path: Path, contents: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as stream:
-            stream.write(text)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(contents)
+        if path.exists():
+            os.chmod(temporary_name, path.stat().st_mode & 0o777)
         os.replace(temporary_name, path)
     except Exception:
         try:
@@ -100,31 +109,109 @@ def _upsert_plugins(project_data: dict[str, Any], plugin_names: Iterable[str]) -
     return changed
 
 
-def _configure_autostart(config_path: Path) -> bool:
-    parser = configparser.RawConfigParser(strict=False)
-    parser.optionxform = str
-    if config_path.is_file():
-        parser.read(config_path, encoding="utf-8-sig")
-    if not parser.has_section(_MCP_SECTION):
-        parser.add_section(_MCP_SECTION)
+def _read_optional_bytes(path: Path) -> bytes | None:
+    try:
+        return path.read_bytes()
+    except FileNotFoundError:
+        return None
 
-    desired = {
-        "ServerPortNumber": "8000",
-        "ServerUrlPath": "/mcp",
-        "bAutoStartServer": "True",
-        "bEnableToolSearch": "True",
+
+def _autostart_values(contents: bytes) -> dict[str, str | None]:
+    """Read this INI's effective scalars, not the engine's merged runtime config."""
+    text = contents.decode("utf-8-sig")
+    parser = configparser.RawConfigParser(strict=False, delimiters=("=",), default_section="\0")
+    parser.optionxform = str.casefold
+    # Unreal section names are case-insensitive; DEFAULT is an ordinary section.
+    validation_text = re.sub(r"(?m)^([ \t]*\[)([^\]\r\n]+)(\])", lambda match: match[0].casefold(), text)
+    parser.read_string(validation_text)
+    # A later Unreal array/remove command (+ - . !) can invalidate an earlier scalar
+    # value; ConfigParser alone would treat those as unrelated option names.
+    pending_commands = set()
+    scalar_names = {name.casefold() for name in _AUTOSTART_SETTINGS}
+    section_name = ""
+    for line in validation_text.splitlines():
+        stripped = line.strip()
+        header = parser.SECTCRE.match(stripped)
+        if header:
+            section_name = header.group("header")
+        elif section_name == _MCP_SECTION.casefold() and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip().casefold()
+            scalar = key.lstrip("+-.!")
+            if scalar in scalar_names:
+                if scalar != key:
+                    pending_commands.add(scalar)
+                else:
+                    pending_commands.discard(scalar)
+    return {
+        key: parser.get(_MCP_SECTION.casefold(), key, fallback=None) if key.casefold() not in pending_commands else None
+        for key in _AUTOSTART_SETTINGS
     }
-    changed = any(parser.get(_MCP_SECTION, key, fallback=None) != value for key, value in desired.items())
-    if not changed:
-        return False
-    for key, value in desired.items():
-        parser.set(_MCP_SECTION, key, value)
 
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8", newline="") as stream:
-        parser.write(stream, space_around_delimiters=False)
-        stream.seek(0)
-        _atomic_write_text(config_path, stream.read())
-    return True
+
+def _render_autostart(original: bytes | None) -> bytes:
+    """Append only the needed scalar overrides, retaining every original INI byte.
+
+    Unreal merges repeated sections and the last scalar assignment wins, so the
+    original comments, duplicate keys and ``+Key`` array commands stay as written.
+    """
+    contents = original or b""
+    if _autostart_values(contents) == _AUTOSTART_SETTINGS:
+        return contents
+
+    text = contents.decode("utf-8-sig")
+    newline = "\r\n" if "\r\n" in text else "\n"
+    separator = newline if not text or text.endswith(("\n", "\r")) else newline * 2
+    section = newline.join([f"[{_MCP_SECTION}]", *[f"{key}={value}" for key, value in _AUTOSTART_SETTINGS.items()]])
+    return contents + (separator + section + newline).encode("utf-8")
+
+
+class _ConfigurationWriteError(OSError):
+    def __init__(self, cause: Exception, rollback_errors: list[dict[str, str]]):
+        super().__init__(str(cause))
+        self.rollback_errors = rollback_errors
+
+
+def _write_configuration(configuration: list[tuple[Path, bytes | None, bytes]]) -> None:
+    """Write every changed file, read each back, and restore the originals on any failure.
+
+    A file someone else changed since it was read is neither overwritten nor
+    rolled back.
+    """
+    attempted: list[tuple[Path, bytes | None, bytes]] = []
+    try:
+        for path, original, _ in configuration:
+            if _read_optional_bytes(path) != original:
+                raise OSError(f"Configuration changed before write: {path}")
+        for path, original, configured in configuration:
+            if configured != original:
+                attempted.append((path, original, configured))
+                _atomic_write_bytes(path, configured)
+        for path, _, configured in configuration:
+            if _read_optional_bytes(path) != configured:
+                raise OSError(f"Configuration readback mismatch: {path}")
+    except Exception as exc:
+        rollback_errors = []
+        for path, original, configured in reversed(attempted):
+            try:
+                current = _read_optional_bytes(path)
+                if current == original:
+                    continue
+                if current != configured:
+                    raise OSError("Configuration changed externally; left untouched")
+                if original is None:
+                    path.unlink()
+                else:
+                    _atomic_write_bytes(path, original)
+            except Exception as rollback_exc:
+                rollback_errors.append({"path": str(path), "error": str(rollback_exc)})
+        raise _ConfigurationWriteError(exc, rollback_errors) from exc
+
+
+def _configure_autostart(config_path: Path) -> bool:
+    original = _read_optional_bytes(config_path)
+    configured = _render_autostart(original)
+    _write_configuration([(config_path, original, configured)])
+    return configured != original
 
 
 @skill_entry
@@ -167,22 +254,56 @@ def prepare_official_mcp(
         )
 
     try:
-        project_data = json.loads(project_file.read_text(encoding="utf-8-sig"))
+        # Read and validate both files before any write, including creating Config/.
+        project_original = project_file.read_bytes()
+        project_data = json.loads(project_original.decode("utf-8-sig"))
         if not isinstance(project_data, dict):
             raise ValueError("The .uproject root must be an object")
-        changed_plugins = _upsert_plugins(project_data, plugin_names)
-        if changed_plugins:
-            _atomic_write_text(
-                project_file,
-                json.dumps(project_data, ensure_ascii=False, indent="\t") + "\n",
-            )
         config_path = project_file.parent / "Config" / "DefaultEditorPerProjectUserSettings.ini"
-        config_changed = _configure_autostart(config_path)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        config_original = _read_optional_bytes(config_path)
+        config_contents = _render_autostart(config_original)
+        changed_plugins = _upsert_plugins(project_data, plugin_names)
+        project_contents = project_original
+        if changed_plugins:
+            project_contents = (json.dumps(project_data, ensure_ascii=False, indent="\t") + "\n").encode("utf-8")
+        config_changed = config_contents != config_original
+        # The INI goes first: if the .uproject write then fails, an INI that is not
+        # rolled back is inert, whereas an enabled plugin without its settings is not.
+        _write_configuration(
+            [(config_path, config_original, config_contents), (project_file, project_original, project_contents)]
+        )
+    except _ConfigurationWriteError as exc:
+        return skill_error(
+            "Failed to configure Epic Unreal MCP; rollback is incomplete"
+            if exc.rollback_errors
+            else "Failed to configure Epic Unreal MCP; original files were restored",
+            "configuration_rollback_failed" if exc.rollback_errors else "configuration_write_failed",
+            details=str(exc),
+            rollback_complete=not exc.rollback_errors,
+            rollback_errors=exc.rollback_errors,
+            possible_solutions=["Review the reported files and restore them before retrying."],
+        )
+    except configparser.Error as exc:
+        # Parser messages can quote unrelated configuration values: report line numbers only.
+        line_numbers = [number for number, _ in getattr(exc, "errors", [])]
+        line_numbers.append(getattr(exc, "lineno", None))
+        return skill_error(
+            "Failed to validate the editor INI syntax",
+            "invalid_editor_ini",
+            error_type=type(exc).__name__,
+            line_numbers=sorted({number for number in line_numbers if type(number) is int}),
+            possible_solutions=[
+                "Correct the reported lines in Config/DefaultEditorPerProjectUserSettings.ini locally; "
+                "its text is left out of this diagnostic."
+            ],
+        )
+    except (OSError, ValueError) as exc:
         return skill_error(
             "Failed to configure Epic Unreal MCP for this project",
             str(exc),
-            possible_solutions=["Check that the project and Config directory are writable."],
+            possible_solutions=[
+                "Check the project JSON, the editor INI syntax and that the project and Config directory are writable."
+            ],
         )
 
     restart_required = bool(changed_plugins)
@@ -204,4 +325,5 @@ def prepare_official_mcp(
         changed_plugins=changed_plugins,
         config_changed=config_changed,
         restart_required=restart_required,
+        configuration_verified=True,
     )

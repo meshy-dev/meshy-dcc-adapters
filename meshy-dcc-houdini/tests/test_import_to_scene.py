@@ -83,8 +83,22 @@ _NODE_PARMS = {
     "geo": {"scale": 1.0, "shop_materialpath": ""},
     "file": {"file": ""},
     "gltf": {"filename": ""},
-    "principledshader::2.0": {"metallic": 0.0, "rough": 1.0, "opacity": 1.0, "emitcolor": 0.0},
-    "principledshader": {"metallic": 0.0, "rough": 1.0, "opacity": 1.0, "emitcolor": 0.0},
+    "principledshader::2.0": {
+        "metallic": 0.0,
+        "rough": 1.0,
+        "opacity": 1.0,
+        "emitcolor": 0.0,
+        "basecolor_texture": "",
+        "basecolor_useTexture": 0,
+    },
+    "principledshader": {
+        "metallic": 0.0,
+        "rough": 1.0,
+        "opacity": 1.0,
+        "emitcolor": 0.0,
+        "basecolor_texture": "",
+        "basecolor_useTexture": 0,
+    },
     "matnet": {},
 }
 
@@ -380,6 +394,131 @@ class TestMaterialModeAsAuthored:
         assert 0.0 < shader.parms["rough"].value < 0.3  # Ns 120 -> glossy
         assert shader.parms["metallic"].value > 0.5  # bright Ks -> metallic
         assert _warnings(result) == []
+
+
+def _write_textured_obj(root: Path, map_line: str) -> Path:
+    """An OBJ in *root* whose MTL carries *map_line* after the base material."""
+    carrier = write_obj_with_mtl(root / "asset.obj")
+    with (root / "asset.mtl").open("a", encoding="utf-8") as handle:
+        handle.write(map_line + "\n")
+    return carrier
+
+
+class TestObjDiffuseTextures:
+    @pytest.mark.parametrize("quoted_texture", [False, True])
+    def test_nested_mtl_resolves_texture_relative_to_sidecar(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, quoted_texture: bool
+    ) -> None:
+        material_dir = tmp_path / "materials with spaces"
+        texture = material_dir / "textures" / "hull paint.png"
+        texture.parent.mkdir(parents=True)
+        texture.write_bytes(b"texture")
+        reference = "textures/hull paint.png"
+        if quoted_texture:
+            reference = '"' + reference + '"'
+        (material_dir / "boat material.mtl").write_text(
+            'newmtl "hull paint"\nKd 0.8 0.7 0.6\nNs 10\nmap_Kd ' + reference + "\n", encoding="utf-8"
+        )
+        carrier = tmp_path / "boat.obj"
+        carrier.write_text(
+            'mtllib "materials with spaces/boat material.mtl"\nusemtl "hull paint"\nv 0 0 0\n', encoding="utf-8"
+        )
+
+        result = script.import_to_scene(_descriptor(carrier, "obj"))
+
+        assert _extra(result)["status"] == "as_authored"
+        assert _warnings(result) == []
+        shader = hou.registry["/mat/showcase_gltf_hull_paint"]
+        assert Path(shader.parm("basecolor_texture").eval()) == texture.resolve()
+        assert shader.parm("basecolor_useTexture").eval() == 1
+
+    @pytest.mark.parametrize(
+        "reference, reason",
+        [
+            ("textures/missing.png", "local file"),
+            ("-s 2 2 2 textures/hull.png", "options"),
+            ("../outside.png", "local file"),
+            ("link.png", "local file"),
+        ],
+    )
+    def test_unavailable_texture_reports_partial_material(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, reference: str, reason: str
+    ) -> None:
+        root = tmp_path / "asset"
+        root.mkdir()
+        (tmp_path / "outside.png").write_bytes(b"texture")
+        try:
+            (root / "link.png").symlink_to(tmp_path / "outside.png")
+        except OSError:
+            pytest.skip("symlinks are not available")
+        carrier = _write_textured_obj(root, "map_Kd " + reference)
+
+        result = script.import_to_scene(_descriptor(carrier, "obj"))
+
+        extra = _extra(result)
+        assert result["success"] is True
+        assert extra["status"] == "partial"
+        assert extra["materials_imported"] == 1
+        assert len(extra["unapplied_required"]) == 1
+        assert "base_color_texture" in extra["unapplied_required"][0]
+        assert reason in extra["unapplied_required"][0]
+        assert [warning["code"] for warning in _warnings(result)] == ["material_fallback"]
+        assert hou.registry["/mat/showcase_gltf_brushed_metal"].parm("basecolor_useTexture").eval() == 0
+
+    def test_mtl_symlink_outside_the_asset_folder_is_not_read(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path
+    ) -> None:
+        root = tmp_path / "asset"
+        root.mkdir()
+        outside = write_obj_with_mtl(tmp_path / "outside" / "asset.obj")
+        carrier = root / "asset.obj"
+        carrier.write_text(outside.read_text(encoding="utf-8"), encoding="utf-8")
+        try:
+            (root / "asset.mtl").symlink_to(tmp_path / "outside" / "asset.mtl")
+        except OSError:
+            pytest.skip("symlinks are not available")
+
+        result = script.import_to_scene(_descriptor(carrier, "obj"))
+
+        assert _extra(result)["status"] == "carrier_unreadable"
+        assert _extra(result)["materials_imported"] == 0
+
+    @pytest.mark.parametrize(
+        "reference",
+        ["https://example.invalid/texture.png", "file:///texture.png", "//host/share/x.png", r"\\host\share\x.png"],
+    )
+    def test_remote_texture_reference_is_rejected_before_file_access(
+        self, reference: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        helper = _load_helper()
+
+        def _unexpected_stat(path: str) -> bool:
+            pytest.fail("Remote path reached file access: " + path)
+
+        monkeypatch.setattr(helper.os.path, "isfile", _unexpected_stat)
+        assert helper._local_file_path(str(tmp_path), reference, str(tmp_path)) is None
+
+    @pytest.mark.parametrize("missing_parm", ["basecolor_texture", "basecolor_useTexture"])
+    def test_missing_texture_shader_parm_reports_partial_material(
+        self, script: ModuleType, hou: FakeHou, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing_parm: str
+    ) -> None:
+        original = FakeNode.__init__
+
+        def _init_without_texture_parm(
+            self: FakeNode, path: str, type_name: str, parent: Any, registry: Dict[str, Any]
+        ) -> None:
+            original(self, path, type_name, parent, registry)
+            self.parms.pop(missing_parm, None)
+
+        monkeypatch.setattr(FakeNode, "__init__", _init_without_texture_parm)
+        (tmp_path / "diffuse.png").write_bytes(b"texture")
+        carrier = _write_textured_obj(tmp_path, "map_Kd diffuse.png")
+
+        result = script.import_to_scene(_descriptor(carrier, "obj"))
+
+        assert _extra(result)["status"] == "partial"
+        assert _extra(result)["unapplied_required"] == ["/mat/showcase_gltf_brushed_metal:base_color_texture"]
+        assert [warning["code"] for warning in _warnings(result)] == ["material_fallback"]
 
 
 class TestUsdMaterials:

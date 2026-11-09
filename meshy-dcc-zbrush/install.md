@@ -67,8 +67,10 @@ agreed stop ends the ZBrush process that `start-instance` launched.
   the bridge port and the sidecar it started.
 - A call reports `ZBRUSH_BLOCKED`: ZBrush is inside a native call, possibly a
   dialog that needs a person. Do not retry; ask the user.
-- `ZBRUSH_TIMEOUT_STILL_RUNNING`: the request is still running in ZBrush. Do
-  not repeat it; wait until `get_session_info` answers.
+- `ZBRUSH_TIMEOUT_STILL_RUNNING`: the request is still running in ZBrush, or
+  its reply was lost after it was sent and the outcome is unknown
+  (`execution_state: unknown`). Do not repeat it; wait until `get_session_info`
+  answers, then read the scene back.
 
 ## Earlier installer
 

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- `import_to_scene` carries an OBJ+MTL `map_Kd` diffuse texture onto the
+  Principled shader's base-colour texture and enables it. Nested `mtllib`
+  paths and quoted names work, textures resolve beside their MTL, and a
+  texture, MTL or symlink outside the asset folder is never read. A required
+  channel or texture the shader did not take now gives `status` `partial` with
+  a `material_fallback` warning instead of `as_authored`.
+- The VEX allowlist check no longer lets a disallowed call hide behind a `//`
+  or `/*` inside a string, a single-quoted string, or a stray quote in a
+  comment.
+- Parameter tools reject a `null` value instead of writing the string `"None"`
+  to a string parm or `False` to a toggle. This covers `set_parms`,
+  `set_material_parms`, `load_preset` and string defaults in
+  `author_hda_interface`. Lookdev toggles read `"false"` and `"0"` as off.
+- `get_parms` with an empty `names` list returns nothing; only omitting `names`
+  reads the whole node.
+- `load_preset` fails when every parameter in the preset is rejected, and
+  lists the applied parameters when only some are.
+- Literal values written by the node, HDA, material, lookdev, material-library
+  and export-preset tools replace a parm's channel reference without changing
+  the parm it points at. A tuple of the wrong length is rejected before any
+  component is written.
+
 ## 0.1.2 (2026-11-03)
 
 - Rebuild with meshy-dcc-core 0.2.3 for the corrected macOS native wheel,

@@ -11,6 +11,7 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
+import pytest
 from skill_loader import skill_script_import_context
 
 _SKILLS_ROOT = Path(__file__).parent.parent / "src" / "meshy_dcc_houdini" / "skills"
@@ -72,8 +73,54 @@ class TestParameterQuery:
         assert result["context"]["values"] == {"scale": 2.0}
         assert result["context"]["missing"] == ["nope"]
 
+    def test_get_parms_empty_names_selects_nothing_but_omitted_reads_all(self) -> None:
+        mod = _load_script("houdini-parameters", "get_parms.py")
+        scale = MagicMock()
+        scale.name.return_value = "scale"
+        scale.eval.return_value = 2.0
+        node = _node()
+        node.parms.return_value = [scale]
+        mock_hou = MagicMock()
+        mock_hou.node.return_value = node
+
+        with patch.dict(sys.modules, {"hou": mock_hou}):
+            omitted = mod.get_parms("/obj/geo1")
+            node.parms.assert_called_once()
+            empty = mod.get_parms("/obj/geo1", names=[])
+
+        assert omitted["context"]["values"] == {"scale": 2.0}
+        assert empty["success"] is True
+        assert empty["context"]["values"] == {}
+        assert empty["context"]["missing"] == []
+        node.parms.assert_called_once()  # the empty selector did not read the whole node
+
 
 class TestParameterEdit:
+    @pytest.mark.parametrize("current", ["hello", 3, True, 0.5])
+    def test_set_parms_rejects_null_and_leaves_siblings_applied(self, current: object) -> None:
+        mod = _load_script("houdini-parameters", "set_parms.py")
+        bad = MagicMock()
+        bad.eval.return_value = current
+        good = MagicMock()
+        good.eval.return_value = 3
+        for parm in (bad, good):
+            parm.keyframes.return_value = []
+            parm.isTimeDependent.return_value = False
+        node = _node()
+        node.parmTuple.side_effect = lambda n: None
+        node.parm.side_effect = lambda n: {"bad": bad, "good": good}.get(n)
+        mock_hou = MagicMock()
+        mock_hou.node.return_value = node
+
+        with patch.dict(sys.modules, {"hou": mock_hou}):
+            result = mod.set_parms("/obj/geo1", {"bad": None, "good": "5"})
+
+        assert result["success"] is True
+        bad.set.assert_not_called()  # not the string "None", not False
+        good.set.assert_called_once_with(5)
+        assert result["context"]["applied"] == {"good": 5}
+        assert "none" in result["context"]["errors"]["bad"].lower()
+
     def test_set_parms_coerces_and_reports_errors(self) -> None:
         mod = _load_script("houdini-parameters", "set_parms.py")
         count_parm = MagicMock()

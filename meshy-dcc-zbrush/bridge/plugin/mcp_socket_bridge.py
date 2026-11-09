@@ -345,6 +345,20 @@ def _subtool_name(path: str) -> str:
     return ntpath.basename(path)
 
 
+# ZBrush SDK ``zbrush_info``: 0 is the version number (float), 1 is the edition
+# type (0 Demo, 1 Beta, 2 Full), not a minor version. This plugin runs inside
+# ZBrush where meshy_dcc_zbrush may not import, so it mirrors
+# meshy_dcc_zbrush._version_probe.read_sdk_version. Keep the two in step.
+def _read_sdk_version(zbc: Any) -> "tuple[str, int]":
+    text = f"{float(zbc.zbrush_info(0)):.3f}".rstrip("0").rstrip(".")
+    version = f"{text}.0" if "." not in text else text
+    try:
+        edition = int(zbc.zbrush_info(1))
+    except (TypeError, ValueError):
+        edition = -1
+    return version, edition
+
+
 def _get_session_info() -> Dict[str, Any]:
     zbc = _import_zbc()
     identity_path = os.path.join(os.path.dirname(_BRIDGE_FILE), "meshy_dcc_zbrush_install_identity.json")
@@ -358,6 +372,7 @@ def _get_session_info() -> Dict[str, Any]:
             bridge_digest = hashlib.sha256(stream.read()).hexdigest()
     except OSError:
         bridge_digest = ""
+    sdk_version, sdk_edition = _read_sdk_version(zbc)
     return {
         "adapter_version": install_identity.get("adapter_version"),
         "bridge_instance_id": _BRIDGE_INSTANCE_ID,
@@ -368,7 +383,10 @@ def _get_session_info() -> Dict[str, Any]:
         "socket_endpoint": install_identity.get("socket_endpoint"),
         "selected_dcc_path": install_identity.get("dcc_path"),
         "selected_dcc_sha256": install_identity.get("dcc_sha256"),
-        "zbrush_version": f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}",
+        "zbrush_version": sdk_version,
+        "zbrush_edition": sdk_edition,
+        # The signed executable's ProductVersion recorded at install time.
+        "zbrush_product_version": str(install_identity.get("zbrush_version") or ""),
         "zbrush_commands_origin": os.path.abspath(getattr(zbc, "__file__", "")),
         "active_tool_path": str(zbc.get_active_tool_path() or ""),
         "subtool_count": int(zbc.get_subtool_count()),
@@ -1126,11 +1144,51 @@ def _serve_client(conn: socket.socket) -> None:
         conn.sendall((json.dumps(response) + "\n").encode("utf-8"))
 
 
+def _expired_response(payload: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "jsonrpc": "2.0",
+        "id": payload.get("id", 0),
+        "error": {
+            "code": -32004,
+            "message": "ZBrush request expired before execution; no host operation was started",
+            "data": {"retryable": True, "executed": False, "active_method": payload.get("method")},
+        },
+    }
+
+
 def _dispatch_request(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Queue host API work for the ZBrush main thread and await its response."""
+    """Queue host work with a deadline; never start a request after it expires."""
     global _ACTIVE_REQUEST
 
-    pending: Dict[str, Any] = {"payload": payload, "event": threading.Event()}
+    # The sidecar and plugin normally share a machine (and wall clock). Carry
+    # expiry across the TCP accept backlog, then use monotonic time locally.
+    remaining = _REQUEST_TIMEOUT_SECONDS
+    wire_deadline = payload.get("deadline_unix_ms")
+    if wire_deadline is not None:
+        try:
+            valid_deadline = (
+                not isinstance(wire_deadline, bool)
+                and isinstance(wire_deadline, (int, float))
+                and math.isfinite(wire_deadline)
+            )
+        except OverflowError:
+            valid_deadline = False
+        if not valid_deadline:
+            return {
+                "jsonrpc": "2.0",
+                "id": payload.get("id", 0),
+                "error": {"code": -32602, "message": "deadline_unix_ms must be a finite number"},
+            }
+        remaining = min(remaining, wire_deadline / 1000.0 - time.time())
+    if remaining <= 0:
+        return _expired_response(payload)
+
+    pending: Dict[str, Any] = {
+        "payload": payload,
+        "event": threading.Event(),
+        "deadline": time.monotonic() + remaining,
+        "state": "queued",
+    }
     with _REQUEST_STATE_LOCK:
         if _ACTIVE_REQUEST is not None:
             active_method = _ACTIVE_REQUEST["payload"].get("method")
@@ -1143,23 +1201,41 @@ def _dispatch_request(payload: Dict[str, Any]) -> Dict[str, Any]:
                     "data": {"retryable": True, "active_method": active_method},
                 },
             }
+        # With no active request, any old queue entries are cancelled. Drop
+        # their tombstones so repeated timeouts cannot grow an unbounded queue.
+        while True:
+            try:
+                _REQUEST_QUEUE.get_nowait()
+            except queue.Empty:
+                break
         _ACTIVE_REQUEST = pending
-    _REQUEST_QUEUE.put(pending)
-    if not pending["event"].wait(_REQUEST_TIMEOUT_SECONDS):
-        return {
-            "jsonrpc": "2.0",
-            "id": payload.get("id", 0),
-            "error": {
-                "code": -32002,
-                "message": "Timed out waiting for ZBrush; the accepted request may still be running",
-                "data": {"retryable": False, "still_running": True, "active_method": payload.get("method")},
-            },
-        }
-    return pending["response"]
+        _REQUEST_QUEUE.put(pending)
+    if pending["event"].wait(max(0.0, pending["deadline"] - time.monotonic())):
+        return pending["response"]
+    with _REQUEST_STATE_LOCK:
+        if pending["state"] in ("finished", "cancelled"):
+            return pending["response"]
+        if pending["state"] == "queued":
+            pending["state"] = "cancelled"
+            pending["response"] = _expired_response(payload)
+            if _ACTIVE_REQUEST is pending:
+                _ACTIVE_REQUEST = None
+            pending["event"].set()
+            return pending["response"]
+    # Once native code has started, a timeout cannot cancel or roll it back.
+    return {
+        "jsonrpc": "2.0",
+        "id": payload.get("id", 0),
+        "error": {
+            "code": -32002,
+            "message": "Timed out waiting for ZBrush; the accepted request may still be running",
+            "data": {"retryable": False, "still_running": True, "active_method": payload.get("method")},
+        },
+    }
 
 
 def _drain_request_queue() -> None:
-    """Run queued ZBrush SDK calls from the host's main-thread pump."""
+    """Run unexpired queued SDK calls from the host's main-thread pump."""
     global _ACTIVE_REQUEST
 
     while True:
@@ -1167,13 +1243,37 @@ def _drain_request_queue() -> None:
             pending = _REQUEST_QUEUE.get_nowait()
         except queue.Empty:
             return
+        with _REQUEST_STATE_LOCK:
+            if pending["state"] == "cancelled" or time.monotonic() >= pending["deadline"]:
+                pending["state"] = "cancelled"
+                pending["response"] = _expired_response(pending["payload"])
+                if _ACTIVE_REQUEST is pending:
+                    _ACTIVE_REQUEST = None
+                pending["event"].set()
+                continue
+            pending["state"] = "started"
+        response = {
+            "jsonrpc": "2.0",
+            "id": pending["payload"].get("id", 0),
+            "error": {
+                "code": -32002,
+                "message": "ZBrush request aborted after starting; inspect the scene before retrying",
+                "data": {"retryable": False, "execution_state": "unknown"},
+            },
+        }
         try:
-            pending["response"] = _handle_request(pending["payload"])
+            response = _handle_request(pending["payload"])
+        except Exception as exc:
+            response["error"]["message"] = f"ZBrush request failed after starting: {exc}"
         finally:
+            # Also release waiters if user code raises SystemExit/KeyboardInterrupt.
+            # Preserve the exception for the host, but never strand admission busy.
             with _REQUEST_STATE_LOCK:
                 if _ACTIVE_REQUEST is pending:
                     _ACTIVE_REQUEST = None
-            pending["event"].set()
+                pending["response"] = response
+                pending["state"] = "finished"
+                pending["event"].set()
 
 
 def _listen(host: str, port: int) -> socket.socket:
@@ -1242,7 +1342,7 @@ def _start_sidecar(python: str, port: int, token: str) -> "subprocess.Popen[byte
     # The sidecar cannot import zbrush.commands; it registers this version.
     try:
         zbc = _import_zbc()
-        env["MESHY_DCC_ZBRUSH_VERSION"] = f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}"
+        env["MESHY_DCC_ZBRUSH_VERSION"] = _read_sdk_version(zbc)[0]
     except Exception:  # noqa: BLE001 - the sidecar then reports "unknown"
         pass
     argv = [python, "-m", "meshy_dcc_zbrush", "serve", "--watch-pid", str(os.getpid()), "--socket-port", str(port)]
@@ -1444,7 +1544,9 @@ def _fallback_server_info() -> None:
     try:
         import zbrush.commands as zbc  # noqa: PLC0415
 
-        zb_version = f"{int(zbc.zbrush_info(0))}.{int(zbc.zbrush_info(1))}"
+        zb_version, zb_edition = _read_sdk_version(zbc)
+        edition_label = {0: "Demo", 1: "Beta", 2: "Full"}.get(zb_edition, "unknown")
+        zb_version = f"{zb_version} ({edition_label} edition)"
     except Exception:
         zb_version = "unknown"
 

@@ -43,6 +43,11 @@ loopback HTTP endpoint.
 6. Fall back to the normal Meshy DCC Unreal skills when the official endpoint is
    unavailable or the running engine is older than 5.8.
 
+`prepare_official_mcp` appends its settings to the editor INI without touching
+the bytes already there (comments, repeated keys, `+Key` array lines), validates
+both files before writing, reads them back, and restores the originals if
+anything fails.
+
 The bridge accepts loopback HTTP endpoints only. Run it with `affinity:any`;
 never block Unreal's game thread while making an HTTP request back into the
 same editor process.
