@@ -44,9 +44,18 @@ var _next_reconnect_ms := 0
 var _debugger
 var _runtime_ready := false
 var _pending_guarded_commits: Dictionary = {}
+var _inert := false
 
 
 func _enter_tree() -> void:
+	# An export run (`export_project`, or a command-line or CI export) is not an
+	# editor session: starting a sidecar, saving project settings or writing
+	# the bootstrap status there clashes with the editor that has this project
+	# open, and the editor loses the reply to its own export call.
+	_inert = _is_export_run()
+	if _inert:
+		set_process(false)
+		return
 	_write_bootstrap_status("starting")
 	_commands = Commands.new(self)
 	_debugger = RuntimeDebugger.new(self)
@@ -60,7 +69,16 @@ func _enter_tree() -> void:
 	_write_bootstrap_status("ready")
 
 
+func _is_export_run() -> bool:
+	for argument in OS.get_cmdline_args():
+		if argument.begins_with("--export-"):
+			return true
+	return false
+
+
 func _exit_tree() -> void:
+	if _inert:
+		return
 	set_process(false)
 	if _socket != null:
 		_socket.close()
@@ -150,6 +168,9 @@ func _disable_plugin() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Godot turns processing back on at ready because this method exists.
+	if _inert:
+		return
 	# Tool-script reloads can briefly clear initialized members before the new
 	# plugin instance enters the tree. Recreate the peer instead of polling a
 	# stale/null object left by the previous instance.

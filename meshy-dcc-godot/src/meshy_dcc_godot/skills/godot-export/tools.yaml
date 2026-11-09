@@ -13,7 +13,7 @@ tools:
     source_file: scripts/dispatch.py
   - name: export_project
     description: Export a project using a named preset and safe project path. Parameters are validated again by the Godot host.
-    input_schema: {"type":"object","properties":{"preset":{"type":"string","maxLength":500,"description":"Export preset name."},"path":{"type":"string","maxLength":500,"description":"Output file relative to the project folder, without res:// or '..'."},"debug":{"type":"boolean","default":false,"description":"Export a debug build."}},"additionalProperties":false,"required":["preset","path"]}
+    input_schema: {"type":"object","properties":{"preset":{"type":"string","maxLength":500,"description":"Export preset name."},"path":{"type":"string","maxLength":500,"description":"Output file relative to the project folder; a res:// prefix is accepted, '..' is not."},"debug":{"type":"boolean","default":false,"description":"Export a debug build."}},"additionalProperties":false,"required":["preset","path"]}
     output_schema: {type: object}
     read_only: false
     destructive: true
