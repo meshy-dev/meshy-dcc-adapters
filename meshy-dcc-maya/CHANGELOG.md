@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - Verified rollbacks undo only their own edit. A mutation that failed before
   its first write used to undo the artist's previous edit and still report
@@ -45,6 +45,9 @@
 - The Meshy DCC menu no longer has Restart MCP Server and Stop MCP Server.
   Stopping the server removed the Maya instance from the gateway until Maya was
   restarted. To unload the connector, use Maya's Plug-in Manager.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 

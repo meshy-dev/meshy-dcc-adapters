@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - A call whose connection resets, closes or times out after the request was
   sent, or whose reply is empty or unreadable, is reported as `-32002` with
@@ -18,6 +18,9 @@
   edition ZBrush was reported as version `.2`. `verify` now compares the SDK's
   year and the executable's full ProductVersion, so the edition no longer makes
   it fail.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - `import_to_scene` carries an OBJ+MTL `map_Kd` diffuse texture onto the
   Principled shader's base-colour texture and enables it. Nested `mtllib`
@@ -23,6 +23,9 @@
   and export-preset tools replace a parm's channel reference without changing
   the parm it points at. A tuple of the wrong length is rejected before any
   component is written.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 

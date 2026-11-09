@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - `set_input_action` now writes the action to the project's input settings and
   saves `project.godot`, then reads the file back before reporting success. It
@@ -25,6 +25,9 @@
   no longer starts a second sidecar or saves project settings and readiness
   under the editor that has the project open. `export_project` timed out
   because of it.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 

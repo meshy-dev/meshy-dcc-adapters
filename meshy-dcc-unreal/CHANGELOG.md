@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - `prepare_official_mcp` no longer rewrites the project's editor INI. It
   appends its four settings and leaves the existing bytes alone, so comments,
@@ -12,6 +12,9 @@
 - `prepare_official_mcp` finds the open project through the editor on macOS
   and Linux, where the editor's Python does not see its command line and the
   call reported that no `.uproject` was given.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 

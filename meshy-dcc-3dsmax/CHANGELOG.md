@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3 (2026-11-09)
 
 - Native values are no longer mistaken for methods. Every pymxs value is
   callable, so `set_object_property` and `scene_patch` refused to write a
@@ -49,6 +49,9 @@
   gateway drop it mid-task. The server stops when 3ds Max closes or the
   connector is uninstalled. Start Server stays in the menu to bring the server
   back if the startup script could not start it.
+- Rebuild with meshy-dcc-core 0.2.4. A sidecar of the same Core version no
+  longer takes over a running gateway, a call that may already have reached
+  the app is never replayed, and tools no longer receive an empty `_meta`.
 
 ## 0.1.2 (2026-11-03)
 
